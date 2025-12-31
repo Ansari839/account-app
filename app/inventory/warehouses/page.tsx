@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
-import DataTable from '@/components/DataTable';
+import DataTable, { Column } from '@/components/DataTable';
 import { authenticatedFetch } from '@/lib/api-client';
 
 interface Warehouse {
@@ -34,7 +34,7 @@ export default function WarehousesPage() {
             });
     }, []);
 
-    const columns = [
+    const columns: Column<Warehouse>[] = [
         { header: 'Code', accessor: 'code' },
         { header: 'Warehouse Name', accessor: 'name' },
         { header: 'Location / Address', accessor: 'address' },

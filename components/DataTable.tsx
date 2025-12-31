@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 
-interface Column<T> {
+export interface Column<T> {
     header: string;
     accessor: keyof T | ((item: T) => React.ReactNode);
     className?: string;
@@ -14,6 +14,7 @@ interface DataTableProps<T> {
     searchPlaceholder?: string;
     onRowClick?: (item: T) => void;
     actions?: (item: T) => React.ReactNode;
+    isLoading?: boolean;
 }
 
 export default function DataTable<T extends { id: string | number }>({
@@ -21,7 +22,8 @@ export default function DataTable<T extends { id: string | number }>({
     columns,
     searchPlaceholder = "Search records...",
     onRowClick,
-    actions
+    actions,
+    isLoading = false
 }: DataTableProps<T>) {
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -60,7 +62,18 @@ export default function DataTable<T extends { id: string | number }>({
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                            {filteredData.length > 0 ? filteredData.map((item, i) => (
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <tr key={i} className="animate-pulse">
+                                        {columns.map((_, j) => (
+                                            <td key={j} className="px-6 py-4">
+                                                <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded w-3/4"></div>
+                                            </td>
+                                        ))}
+                                        {actions && <td className="px-6 py-4"><div className="h-4 bg-slate-100 dark:bg-slate-800 rounded w-1/2 ml-auto"></div></td>}
+                                    </tr>
+                                ))
+                            ) : filteredData.length > 0 ? filteredData.map((item, i) => (
                                 <tr
                                     key={item.id}
                                     onClick={() => onRowClick?.(item)}

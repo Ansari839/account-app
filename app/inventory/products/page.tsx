@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
-import DataTable from '@/components/DataTable';
+import DataTable, { Column } from '@/components/DataTable';
 import { authenticatedFetch } from '@/lib/api-client';
 
 interface Product {
@@ -36,7 +36,7 @@ export default function ProductsPage() {
             });
     }, []);
 
-    const columns = [
+    const columns: Column<Product>[] = [
         { header: 'P-Code', accessor: 'code' },
         { header: 'Product Name', accessor: 'name' },
         {

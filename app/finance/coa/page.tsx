@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
-import DataTable from '@/components/DataTable';
+import DataTable, { Column } from '@/components/DataTable';
 import { authenticatedFetch } from '@/lib/api-client';
 
 interface Account {
@@ -42,33 +42,68 @@ export default function COAPage() {
             });
     }, []);
 
-    const columns = [
+    const getAccountColor = (type: string) => {
+        switch (type) {
+            case 'ASSET': return 'text-blue-500 bg-blue-500/10 border-blue-500/20';
+            case 'LIABILITY': return 'text-rose-500 bg-rose-500/10 border-rose-500/20';
+            case 'EQUITY': return 'text-amber-500 bg-amber-500/10 border-amber-500/20';
+            case 'INCOME': return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
+            case 'EXPENSE': return 'text-orange-500 bg-orange-500/10 border-orange-500/20';
+            default: return 'text-slate-500 bg-slate-500/10 border-slate-500/20';
+        }
+    };
+
+    const columns: Column<Account>[] = [
         {
             header: 'Code',
             accessor: (acc: Account) => (
-                <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-xs">{acc.code}</span>
+                <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] font-bold tracking-tighter text-slate-400 opacity-60">#</span>
+                    <span className="font-mono text-xs font-semibold">{acc.code}</span>
+                </div>
             )
         },
         {
             header: 'Account Name',
             accessor: (acc: Account) => (
-                <div className="flex items-center gap-2" style={{ paddingLeft: `${acc.level * 24}px` }}>
-                    {!acc.isPosting && <span className="text-slate-400">📁</span>}
-                    <span className={acc.isPosting ? 'font-bold' : 'text-slate-500'}>{acc.name}</span>
+                <div className="flex items-center relative py-1 md:py-2" style={{ paddingLeft: `${acc.level * 24}px` }}>
+                    {/* Visual markers for nesting levels */}
+                    {Array.from({ length: acc.level }).map((_, i) => (
+                        <div
+                            key={i}
+                            className="absolute top-0 bottom-0 border-l border-slate-200 dark:border-slate-800/40 h-full"
+                            style={{ left: `${(i * 24) + 11}px` }}
+                        />
+                    ))}
+
+                    <div className={`flex items-center gap-3 ${acc.level === 0 ? 'text-slate-900 dark:text-white font-black uppercase tracking-wide' : ''}`}>
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs transition-colors ${acc.isPosting ? 'bg-slate-100 dark:bg-slate-800' : 'bg-indigo-600 text-white'}`}>
+                            {acc.isPosting ? '⚖️' : '📁'}
+                        </div>
+                        <span className={`${acc.isPosting ? 'text-sm font-medium' : 'text-sm font-bold'}`}>
+                            {acc.name}
+                        </span>
+                    </div>
                 </div>
             )
         },
         {
-            header: 'Type',
-            accessor: (acc: Account) => acc.type,
-            className: 'text-xs uppercase tracking-wider opacity-60'
+            header: 'Nature',
+            accessor: (acc: Account) => (
+                <div className={`px-2.5 py-1 rounded-full border text-[9px] font-black tracking-widest ${getAccountColor(acc.type)}`}>
+                    {acc.type}
+                </div>
+            )
         },
         {
-            header: 'Mode',
+            header: 'Classification',
             accessor: (acc: Account) => (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${acc.isPosting ? 'bg-emerald-500/10 text-emerald-500' : 'bg-indigo-500/10 text-indigo-500'}`}>
-                    {acc.isPosting ? 'POSTING' : 'SUMMARY'}
-                </span>
+                <div className="flex items-center gap-2">
+                    <div className={`w-1.5 h-1.5 rounded-full ${acc.isPosting ? 'bg-emerald-500' : 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]'}`}></div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                        {acc.isPosting ? 'Posting' : 'Group'} Account
+                    </span>
+                </div>
             )
         }
     ];
@@ -86,17 +121,12 @@ export default function COAPage() {
                     </button>
                 </div>
 
-                {isLoading ? (
-                    <div className="h-64 flex items-center justify-center">
-                        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                ) : (
-                    <DataTable
-                        data={accounts}
-                        columns={columns}
-                        searchPlaceholder="Search accounts by code or name..."
-                    />
-                )}
+                <DataTable
+                    data={accounts}
+                    columns={columns}
+                    isLoading={isLoading}
+                    searchPlaceholder="Search accounts by code or name..."
+                />
             </div>
         </MainLayout>
     );
