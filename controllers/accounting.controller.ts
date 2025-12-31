@@ -35,6 +35,83 @@ export class AccountingController {
     }
 
     /**
+     * Get Profit & Loss
+     */
+    static async getProfitLoss(req: Request, res: Response) {
+        try {
+            const { startDate, endDate } = req.query;
+            const data = await ReportService.getProfitLoss(new Date(startDate as string), new Date(endDate as string));
+            res.json(data);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    /**
+     * Get Balance Sheet
+     */
+    static async getBalanceSheet(req: Request, res: Response) {
+        try {
+            const { endDate } = req.query;
+            const data = await ReportService.getBalanceSheet(new Date(endDate as string));
+            res.json(data);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    /**
+     * Get Aging Report
+     */
+    static async getAgingReport(req: Request, res: Response) {
+        try {
+            const { type, endDate } = req.query;
+            const data = await ReportService.getAgingReport(type as any, new Date(endDate as string));
+            res.json(data);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    /**
+     * Get Stock Summary
+     */
+    static async getStockSummary(req: Request, res: Response) {
+        try {
+            const { warehouseId } = req.query;
+            const data = await ReportService.getStockSummary(warehouseId as string);
+            res.json(data);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    /**
+     * Get Dashboard Stats
+     */
+    static async getDashboardStats(req: Request, res: Response) {
+        try {
+            const data = await ReportService.getDashboardStats();
+            res.json(data);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    /**
+     * Get Cash Flow
+     */
+    static async getCashFlow(req: Request, res: Response) {
+        try {
+            const { startDate, endDate } = req.query;
+            const data = await ReportService.getCashFlow(new Date(startDate as string), new Date(endDate as string));
+            res.json(data);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
+    /**
      * Close Financial Year
      */
     static async closeYear(req: Request, res: Response) {
