@@ -28,12 +28,7 @@ export class AuthService {
         });
 
         // Audit Log
-        await AuditService.logAction({
-            userId: user.id,
-            action: "LOGIN",
-            module: "AUTH",
-            ipAddress,
-        });
+        await AuditService.log(user.id, "LOGIN", "AUTH", undefined, undefined, { ipAddress });
 
         // Update Last Login
         await prisma.user.update({
@@ -58,10 +53,6 @@ export class AuthService {
             },
         });
 
-        await AuditService.logAction({
-            userId,
-            action: "CHANGE_PASSWORD",
-            module: "AUTH",
-        });
+        await AuditService.log(userId, "CHANGE_PASSWORD", "AUTH");
     }
 }

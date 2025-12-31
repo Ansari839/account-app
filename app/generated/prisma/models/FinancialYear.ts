@@ -241,10 +241,10 @@ export type FinancialYearOrderByWithRelationInput = {
 
 export type FinancialYearWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  name?: string
   AND?: Prisma.FinancialYearWhereInput | Prisma.FinancialYearWhereInput[]
   OR?: Prisma.FinancialYearWhereInput[]
   NOT?: Prisma.FinancialYearWhereInput | Prisma.FinancialYearWhereInput[]
-  name?: Prisma.StringFilter<"FinancialYear"> | string
   startDate?: Prisma.DateTimeFilter<"FinancialYear"> | Date | string
   endDate?: Prisma.DateTimeFilter<"FinancialYear"> | Date | string
   isOpen?: Prisma.BoolFilter<"FinancialYear"> | boolean
@@ -254,7 +254,7 @@ export type FinancialYearWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"FinancialYear"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"FinancialYear"> | Date | string | null
   journalEntries?: Prisma.JournalEntryListRelationFilter
-}, "id">
+}, "id" | "name">
 
 export type FinancialYearOrderByWithAggregationInput = {
   id?: Prisma.SortOrder

@@ -28,7 +28,7 @@ model Company {
 
 model FinancialYear {
   id          String   @id @default(uuid())
-  name        String   // e.g., "FY 2024-25"
+  name        String   @unique // e.g., "FY 2024-25"
   startDate   DateTime
   endDate     DateTime
   isOpen      Boolean  @default(false)
