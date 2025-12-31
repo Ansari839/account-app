@@ -270,6 +270,23 @@ export type IntWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedIntFilter<$PrismaModel>
 }
 
+export type EnumVoucherTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.VoucherType | Prisma.EnumVoucherTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.VoucherType[] | Prisma.ListEnumVoucherTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.VoucherType[] | Prisma.ListEnumVoucherTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumVoucherTypeFilter<$PrismaModel> | $Enums.VoucherType
+}
+
+export type EnumVoucherTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.VoucherType | Prisma.EnumVoucherTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.VoucherType[] | Prisma.ListEnumVoucherTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.VoucherType[] | Prisma.ListEnumVoucherTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumVoucherTypeWithAggregatesFilter<$PrismaModel> | $Enums.VoucherType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumVoucherTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumVoucherTypeFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -510,6 +527,23 @@ export type NestedFloatFilter<$PrismaModel = never> = {
   gt?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   gte?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   not?: Prisma.NestedFloatFilter<$PrismaModel> | number
+}
+
+export type NestedEnumVoucherTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.VoucherType | Prisma.EnumVoucherTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.VoucherType[] | Prisma.ListEnumVoucherTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.VoucherType[] | Prisma.ListEnumVoucherTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumVoucherTypeFilter<$PrismaModel> | $Enums.VoucherType
+}
+
+export type NestedEnumVoucherTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.VoucherType | Prisma.EnumVoucherTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.VoucherType[] | Prisma.ListEnumVoucherTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.VoucherType[] | Prisma.ListEnumVoucherTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumVoucherTypeWithAggregatesFilter<$PrismaModel> | $Enums.VoucherType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumVoucherTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumVoucherTypeFilter<$PrismaModel>
 }
 
 

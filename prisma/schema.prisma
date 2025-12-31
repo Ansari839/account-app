@@ -78,13 +78,18 @@ model TaxCode {
   name      String   // VAT 5%, GST 18%
   code      String   @unique
   rate      Decimal  @default(0.0)
+  accountId String?  // Link to Tax Account (e.g. Input VAT)
+  
+  account   Account? @relation("TaxAccount", fields: [accountId], references: [id])
   
   // Audit Fields
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
-  products Product[]
+  products       Product[]
+  purchaseOrderItems PurchaseOrderItem[]
+  invoiceItems   PurchaseInvoiceItem[]
 }
 
 // --------------------------------------
@@ -245,6 +250,8 @@ model Account {
 
   customersReceivable Customer[] @relation("ReceivableAccount")
   suppliersPayable    Supplier[] @relation("PayableAccount")
+  journalLines        JournalLine[]
+  taxCodes            TaxCode[] @relation("TaxAccount")
 
   // Audit Fields
   createdAt DateTime @default(now())
@@ -289,6 +296,10 @@ model Supplier {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
+
+  purchaseOrders  PurchaseOrder[]
+  grns            GRN[]
+  invoices        PurchaseInvoice[]
 }
 
 // --------------------------------------
@@ -341,6 +352,12 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
+
+  stockEntries       StockLedger[]
+  purchaseOrderItems PurchaseOrderItem[]
+  grnItems           GRNItem[]
+  invoiceItems       PurchaseInvoiceItem[]
+  requestItems       PurchaseRequestItem[]
 }
 
 // --------------------------------------
@@ -353,10 +370,14 @@ model Warehouse {
   name      String
   address   String?
   isDefault Boolean  @default(false)
-
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
+
+  stockEntries    StockLedger[]
+  purchaseOrders  PurchaseOrder[]
+  grns            GRN[]
 }
 
 // --------------------------------------
@@ -374,4 +395,202 @@ model UnitConversion {
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+
+// --------------------------------------
+// 2.1 General Ledger (Accounting Entries)
+// --------------------------------------
+
+enum VoucherType {
+  JOURNAL
+  PAYMENT
+  RECEIPT
+  PURCHASE
+  SALES
+  CONTRA
+}
+
+model JournalEntry {
+  id          String       @id @default(uuid())
+  number      String       @unique // Voucher Number
+  date        DateTime
+  type        VoucherType
+  reference   String?      // Reference Doc No
+  narration   String?
+  status      Boolean      @default(true) // Posted/Draft
+
+  lines           JournalLine[]
+  purchaseInvoice PurchaseInvoice?
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model JournalLine {
+  id          String       @id @default(uuid())
+  entryId     String
+  accountId   String
+  debit       Decimal      @default(0.0)
+  credit      Decimal      @default(0.0)
+  narration   String?
+
+  entry       JournalEntry @relation(fields: [entryId], references: [id])
+  account     Account      @relation(fields: [accountId], references: [id])
+}
+
+// --------------------------------------
+// 2.2 Inventory Transactions (Stock Ledger)
+// --------------------------------------
+
+model StockLedger {
+  id          String       @id @default(uuid())
+  productId   String
+  warehouseId String
+  date        DateTime
+  qtyIn       Decimal      @default(0.0)
+  qtyOut      Decimal      @default(0.0)
+  costRate    Decimal      @default(0.0)
+  refType     String       // GRN, INVOICE, RETURN, ADJUSTMENT
+  refId       String       // ID of the reference document
+
+  product     Product      @relation(fields: [productId], references: [id])
+  warehouse   Warehouse    @relation(fields: [warehouseId], references: [id])
+  
+  createdAt   DateTime     @default(now())
+}
+
+// --------------------------------------
+// 3.1 Purchase Module
+// --------------------------------------
+
+model PurchaseOrder {
+  id            String             @id @default(uuid())
+  poNo          String             @unique
+  supplierId    String
+  warehouseId   String
+  date          DateTime
+  expectedDate  DateTime?
+  totalAmount   Decimal            @default(0.0)
+  status        String             @default("DRAFT") // DRAFT, OPEN, CLOSED, CANCELLED
+
+  supplier      Supplier           @relation(fields: [supplierId], references: [id])
+  warehouse     Warehouse          @relation(fields: [warehouseId], references: [id])
+  items         PurchaseOrderItem[]
+  grns          GRN[]
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model PurchaseOrderItem {
+  id            String             @id @default(uuid())
+  poId          String
+  productId     String
+  qty           Decimal
+  rate          Decimal
+  taxCodeId     String?
+  taxAmount     Decimal            @default(0.0)
+  total         Decimal
+
+  po            PurchaseOrder      @relation(fields: [poId], references: [id])
+  product       Product            @relation(fields: [productId], references: [id])
+  taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
+  grnItems       GRNItem[]
+}
+
+model GRN {
+  id            String             @id @default(uuid())
+  grnNo         String             @unique
+  poId          String?
+  supplierId    String
+  warehouseId   String
+  date          DateTime
+  remarks       String?
+
+  po            PurchaseOrder?     @relation(fields: [poId], references: [id])
+  supplier      Supplier           @relation(fields: [supplierId], references: [id])
+  warehouse     Warehouse          @relation(fields: [warehouseId], references: [id])
+  items         GRNItem[]
+  invoices      PurchaseInvoice[]
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model GRNItem {
+  id            String             @id @default(uuid())
+  grnId         String
+  productId     String
+  poItemId      String?
+  qtyReceived   Decimal
+  qtyRejected   Decimal            @default(0.0)
+
+  grn           GRN                @relation(fields: [grnId], references: [id])
+  product       Product            @relation(fields: [productId], references: [id])
+  poItem        PurchaseOrderItem? @relation(fields: [poItemId], references: [id])
+}
+
+model PurchaseInvoice {
+  id            String             @id @default(uuid())
+  invoiceNo     String             @unique
+  supplierId    String
+  date          DateTime
+  dueDate       DateTime?
+  totalAmount   Decimal
+  taxAmount     Decimal            @default(0.0)
+  grnId         String?
+  poId          String?
+  journalEntryId String?           @unique
+
+  supplier      Supplier           @relation(fields: [supplierId], references: [id])
+  grn           GRN?               @relation(fields: [grnId], references: [id])
+  journalEntry  JournalEntry?      @relation(fields: [journalEntryId], references: [id])
+  items         PurchaseInvoiceItem[]
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model PurchaseInvoiceItem {
+  id            String             @id @default(uuid())
+  invoiceId     String
+  productId     String
+  qty           Decimal
+  rate          Decimal
+  taxCodeId     String?
+  taxAmount     Decimal            @default(0.0)
+  total         Decimal
+
+  invoice       PurchaseInvoice    @relation(fields: [invoiceId], references: [id])
+  product       Product            @relation(fields: [productId], references: [id])
+  taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
+}
+
+// --------------------------------------
+// 3.2 Purchase Request
+// --------------------------------------
+
+model PurchaseRequest {
+  id            String             @id @default(uuid())
+  reqNo         String             @unique
+  date          DateTime
+  status        String             @default("DRAFT") // DRAFT, APPROVED, REJECTED, PO_CREATED
+  remarks       String?
+  
+  items         PurchaseRequestItem[]
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model PurchaseRequestItem {
+  id            String             @id @default(uuid())
+  requestId     String
+  productId     String
+  qty           Decimal
+  description   String?
+
+  request       PurchaseRequest    @relation(fields: [requestId], references: [id])
+  product       Product            @relation(fields: [productId], references: [id])
 }

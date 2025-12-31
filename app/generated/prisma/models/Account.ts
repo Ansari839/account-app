@@ -264,6 +264,8 @@ export type AccountWhereInput = {
   productsPurchase?: Prisma.ProductListRelationFilter
   customersReceivable?: Prisma.CustomerListRelationFilter
   suppliersPayable?: Prisma.SupplierListRelationFilter
+  journalLines?: Prisma.JournalLineListRelationFilter
+  taxCodes?: Prisma.TaxCodeListRelationFilter
 }
 
 export type AccountOrderByWithRelationInput = {
@@ -285,6 +287,8 @@ export type AccountOrderByWithRelationInput = {
   productsPurchase?: Prisma.ProductOrderByRelationAggregateInput
   customersReceivable?: Prisma.CustomerOrderByRelationAggregateInput
   suppliersPayable?: Prisma.SupplierOrderByRelationAggregateInput
+  journalLines?: Prisma.JournalLineOrderByRelationAggregateInput
+  taxCodes?: Prisma.TaxCodeOrderByRelationAggregateInput
 }
 
 export type AccountWhereUniqueInput = Prisma.AtLeast<{
@@ -309,6 +313,8 @@ export type AccountWhereUniqueInput = Prisma.AtLeast<{
   productsPurchase?: Prisma.ProductListRelationFilter
   customersReceivable?: Prisma.CustomerListRelationFilter
   suppliersPayable?: Prisma.SupplierListRelationFilter
+  journalLines?: Prisma.JournalLineListRelationFilter
+  taxCodes?: Prisma.TaxCodeListRelationFilter
 }, "id" | "code">
 
 export type AccountOrderByWithAggregationInput = {
@@ -363,6 +369,8 @@ export type AccountCreateInput = {
   productsPurchase?: Prisma.ProductCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateInput = {
@@ -383,6 +391,8 @@ export type AccountUncheckedCreateInput = {
   productsPurchase?: Prisma.ProductUncheckedCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUpdateInput = {
@@ -403,6 +413,8 @@ export type AccountUpdateInput = {
   productsPurchase?: Prisma.ProductUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateInput = {
@@ -423,6 +435,8 @@ export type AccountUncheckedUpdateInput = {
   productsPurchase?: Prisma.ProductUncheckedUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountCreateManyInput = {
@@ -523,6 +537,27 @@ export type AccountMinOrderByAggregateInput = {
 
 export type AccountSumOrderByAggregateInput = {
   level?: Prisma.SortOrder
+}
+
+export type AccountScalarRelationFilter = {
+  is?: Prisma.AccountWhereInput
+  isNot?: Prisma.AccountWhereInput
+}
+
+export type AccountCreateNestedOneWithoutTaxCodesInput = {
+  create?: Prisma.XOR<Prisma.AccountCreateWithoutTaxCodesInput, Prisma.AccountUncheckedCreateWithoutTaxCodesInput>
+  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutTaxCodesInput
+  connect?: Prisma.AccountWhereUniqueInput
+}
+
+export type AccountUpdateOneWithoutTaxCodesNestedInput = {
+  create?: Prisma.XOR<Prisma.AccountCreateWithoutTaxCodesInput, Prisma.AccountUncheckedCreateWithoutTaxCodesInput>
+  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutTaxCodesInput
+  upsert?: Prisma.AccountUpsertWithoutTaxCodesInput
+  disconnect?: Prisma.AccountWhereInput | boolean
+  delete?: Prisma.AccountWhereInput | boolean
+  connect?: Prisma.AccountWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AccountUpdateToOneWithWhereWithoutTaxCodesInput, Prisma.AccountUpdateWithoutTaxCodesInput>, Prisma.AccountUncheckedUpdateWithoutTaxCodesInput>
 }
 
 export type AccountCreateNestedOneWithoutChildrenInput = {
@@ -691,6 +726,120 @@ export type AccountUpdateOneWithoutProductsPurchaseNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.AccountUpdateToOneWithWhereWithoutProductsPurchaseInput, Prisma.AccountUpdateWithoutProductsPurchaseInput>, Prisma.AccountUncheckedUpdateWithoutProductsPurchaseInput>
 }
 
+export type AccountCreateNestedOneWithoutJournalLinesInput = {
+  create?: Prisma.XOR<Prisma.AccountCreateWithoutJournalLinesInput, Prisma.AccountUncheckedCreateWithoutJournalLinesInput>
+  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutJournalLinesInput
+  connect?: Prisma.AccountWhereUniqueInput
+}
+
+export type AccountUpdateOneRequiredWithoutJournalLinesNestedInput = {
+  create?: Prisma.XOR<Prisma.AccountCreateWithoutJournalLinesInput, Prisma.AccountUncheckedCreateWithoutJournalLinesInput>
+  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutJournalLinesInput
+  upsert?: Prisma.AccountUpsertWithoutJournalLinesInput
+  connect?: Prisma.AccountWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AccountUpdateToOneWithWhereWithoutJournalLinesInput, Prisma.AccountUpdateWithoutJournalLinesInput>, Prisma.AccountUncheckedUpdateWithoutJournalLinesInput>
+}
+
+export type AccountCreateWithoutTaxCodesInput = {
+  id?: string
+  code: string
+  name: string
+  type: $Enums.AccountType
+  level?: number
+  isPosting?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  parent?: Prisma.AccountCreateNestedOneWithoutChildrenInput
+  children?: Prisma.AccountCreateNestedManyWithoutParentInput
+  productsInventory?: Prisma.ProductCreateNestedManyWithoutInventoryAccountInput
+  productsCOGS?: Prisma.ProductCreateNestedManyWithoutCogsAccountInput
+  productsSales?: Prisma.ProductCreateNestedManyWithoutSalesAccountInput
+  productsPurchase?: Prisma.ProductCreateNestedManyWithoutPurchaseAccountInput
+  customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
+  suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
+}
+
+export type AccountUncheckedCreateWithoutTaxCodesInput = {
+  id?: string
+  code: string
+  name: string
+  type: $Enums.AccountType
+  parentId?: string | null
+  level?: number
+  isPosting?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  children?: Prisma.AccountUncheckedCreateNestedManyWithoutParentInput
+  productsInventory?: Prisma.ProductUncheckedCreateNestedManyWithoutInventoryAccountInput
+  productsCOGS?: Prisma.ProductUncheckedCreateNestedManyWithoutCogsAccountInput
+  productsSales?: Prisma.ProductUncheckedCreateNestedManyWithoutSalesAccountInput
+  productsPurchase?: Prisma.ProductUncheckedCreateNestedManyWithoutPurchaseAccountInput
+  customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
+  suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
+}
+
+export type AccountCreateOrConnectWithoutTaxCodesInput = {
+  where: Prisma.AccountWhereUniqueInput
+  create: Prisma.XOR<Prisma.AccountCreateWithoutTaxCodesInput, Prisma.AccountUncheckedCreateWithoutTaxCodesInput>
+}
+
+export type AccountUpsertWithoutTaxCodesInput = {
+  update: Prisma.XOR<Prisma.AccountUpdateWithoutTaxCodesInput, Prisma.AccountUncheckedUpdateWithoutTaxCodesInput>
+  create: Prisma.XOR<Prisma.AccountCreateWithoutTaxCodesInput, Prisma.AccountUncheckedCreateWithoutTaxCodesInput>
+  where?: Prisma.AccountWhereInput
+}
+
+export type AccountUpdateToOneWithWhereWithoutTaxCodesInput = {
+  where?: Prisma.AccountWhereInput
+  data: Prisma.XOR<Prisma.AccountUpdateWithoutTaxCodesInput, Prisma.AccountUncheckedUpdateWithoutTaxCodesInput>
+}
+
+export type AccountUpdateWithoutTaxCodesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  level?: Prisma.IntFieldUpdateOperationsInput | number
+  isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  parent?: Prisma.AccountUpdateOneWithoutChildrenNestedInput
+  children?: Prisma.AccountUpdateManyWithoutParentNestedInput
+  productsInventory?: Prisma.ProductUpdateManyWithoutInventoryAccountNestedInput
+  productsCOGS?: Prisma.ProductUpdateManyWithoutCogsAccountNestedInput
+  productsSales?: Prisma.ProductUpdateManyWithoutSalesAccountNestedInput
+  productsPurchase?: Prisma.ProductUpdateManyWithoutPurchaseAccountNestedInput
+  customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
+  suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
+}
+
+export type AccountUncheckedUpdateWithoutTaxCodesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  level?: Prisma.IntFieldUpdateOperationsInput | number
+  isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  children?: Prisma.AccountUncheckedUpdateManyWithoutParentNestedInput
+  productsInventory?: Prisma.ProductUncheckedUpdateManyWithoutInventoryAccountNestedInput
+  productsCOGS?: Prisma.ProductUncheckedUpdateManyWithoutCogsAccountNestedInput
+  productsSales?: Prisma.ProductUncheckedUpdateManyWithoutSalesAccountNestedInput
+  productsPurchase?: Prisma.ProductUncheckedUpdateManyWithoutPurchaseAccountNestedInput
+  customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
+  suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
+}
+
 export type AccountCreateWithoutChildrenInput = {
   id?: string
   code: string
@@ -708,6 +857,8 @@ export type AccountCreateWithoutChildrenInput = {
   productsPurchase?: Prisma.ProductCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutChildrenInput = {
@@ -727,6 +878,8 @@ export type AccountUncheckedCreateWithoutChildrenInput = {
   productsPurchase?: Prisma.ProductUncheckedCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutChildrenInput = {
@@ -751,6 +904,8 @@ export type AccountCreateWithoutParentInput = {
   productsPurchase?: Prisma.ProductCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutParentInput = {
@@ -770,6 +925,8 @@ export type AccountUncheckedCreateWithoutParentInput = {
   productsPurchase?: Prisma.ProductUncheckedCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutParentInput = {
@@ -810,6 +967,8 @@ export type AccountUpdateWithoutChildrenInput = {
   productsPurchase?: Prisma.ProductUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutChildrenInput = {
@@ -829,6 +988,8 @@ export type AccountUncheckedUpdateWithoutChildrenInput = {
   productsPurchase?: Prisma.ProductUncheckedUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUpsertWithWhereUniqueWithoutParentInput = {
@@ -880,6 +1041,8 @@ export type AccountCreateWithoutCustomersReceivableInput = {
   productsSales?: Prisma.ProductCreateNestedManyWithoutSalesAccountInput
   productsPurchase?: Prisma.ProductCreateNestedManyWithoutPurchaseAccountInput
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutCustomersReceivableInput = {
@@ -899,6 +1062,8 @@ export type AccountUncheckedCreateWithoutCustomersReceivableInput = {
   productsSales?: Prisma.ProductUncheckedCreateNestedManyWithoutSalesAccountInput
   productsPurchase?: Prisma.ProductUncheckedCreateNestedManyWithoutPurchaseAccountInput
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutCustomersReceivableInput = {
@@ -934,6 +1099,8 @@ export type AccountUpdateWithoutCustomersReceivableInput = {
   productsSales?: Prisma.ProductUpdateManyWithoutSalesAccountNestedInput
   productsPurchase?: Prisma.ProductUpdateManyWithoutPurchaseAccountNestedInput
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutCustomersReceivableInput = {
@@ -953,6 +1120,8 @@ export type AccountUncheckedUpdateWithoutCustomersReceivableInput = {
   productsSales?: Prisma.ProductUncheckedUpdateManyWithoutSalesAccountNestedInput
   productsPurchase?: Prisma.ProductUncheckedUpdateManyWithoutPurchaseAccountNestedInput
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountCreateWithoutSuppliersPayableInput = {
@@ -972,6 +1141,8 @@ export type AccountCreateWithoutSuppliersPayableInput = {
   productsSales?: Prisma.ProductCreateNestedManyWithoutSalesAccountInput
   productsPurchase?: Prisma.ProductCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
+  journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutSuppliersPayableInput = {
@@ -991,6 +1162,8 @@ export type AccountUncheckedCreateWithoutSuppliersPayableInput = {
   productsSales?: Prisma.ProductUncheckedCreateNestedManyWithoutSalesAccountInput
   productsPurchase?: Prisma.ProductUncheckedCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
+  journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutSuppliersPayableInput = {
@@ -1026,6 +1199,8 @@ export type AccountUpdateWithoutSuppliersPayableInput = {
   productsSales?: Prisma.ProductUpdateManyWithoutSalesAccountNestedInput
   productsPurchase?: Prisma.ProductUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
+  journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutSuppliersPayableInput = {
@@ -1045,6 +1220,8 @@ export type AccountUncheckedUpdateWithoutSuppliersPayableInput = {
   productsSales?: Prisma.ProductUncheckedUpdateManyWithoutSalesAccountNestedInput
   productsPurchase?: Prisma.ProductUncheckedUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
+  journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountCreateWithoutProductsInventoryInput = {
@@ -1064,6 +1241,8 @@ export type AccountCreateWithoutProductsInventoryInput = {
   productsPurchase?: Prisma.ProductCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutProductsInventoryInput = {
@@ -1083,6 +1262,8 @@ export type AccountUncheckedCreateWithoutProductsInventoryInput = {
   productsPurchase?: Prisma.ProductUncheckedCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutProductsInventoryInput = {
@@ -1107,6 +1288,8 @@ export type AccountCreateWithoutProductsCOGSInput = {
   productsPurchase?: Prisma.ProductCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutProductsCOGSInput = {
@@ -1126,6 +1309,8 @@ export type AccountUncheckedCreateWithoutProductsCOGSInput = {
   productsPurchase?: Prisma.ProductUncheckedCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutProductsCOGSInput = {
@@ -1150,6 +1335,8 @@ export type AccountCreateWithoutProductsSalesInput = {
   productsPurchase?: Prisma.ProductCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutProductsSalesInput = {
@@ -1169,6 +1356,8 @@ export type AccountUncheckedCreateWithoutProductsSalesInput = {
   productsPurchase?: Prisma.ProductUncheckedCreateNestedManyWithoutPurchaseAccountInput
   customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutProductsSalesInput = {
@@ -1193,6 +1382,8 @@ export type AccountCreateWithoutProductsPurchaseInput = {
   productsSales?: Prisma.ProductCreateNestedManyWithoutSalesAccountInput
   customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutProductsPurchaseInput = {
@@ -1212,6 +1403,8 @@ export type AccountUncheckedCreateWithoutProductsPurchaseInput = {
   productsSales?: Prisma.ProductUncheckedCreateNestedManyWithoutSalesAccountInput
   customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutProductsPurchaseInput = {
@@ -1247,6 +1440,8 @@ export type AccountUpdateWithoutProductsInventoryInput = {
   productsPurchase?: Prisma.ProductUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutProductsInventoryInput = {
@@ -1266,6 +1461,8 @@ export type AccountUncheckedUpdateWithoutProductsInventoryInput = {
   productsPurchase?: Prisma.ProductUncheckedUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUpsertWithoutProductsCOGSInput = {
@@ -1296,6 +1493,8 @@ export type AccountUpdateWithoutProductsCOGSInput = {
   productsPurchase?: Prisma.ProductUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutProductsCOGSInput = {
@@ -1315,6 +1514,8 @@ export type AccountUncheckedUpdateWithoutProductsCOGSInput = {
   productsPurchase?: Prisma.ProductUncheckedUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUpsertWithoutProductsSalesInput = {
@@ -1345,6 +1546,8 @@ export type AccountUpdateWithoutProductsSalesInput = {
   productsPurchase?: Prisma.ProductUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutProductsSalesInput = {
@@ -1364,6 +1567,8 @@ export type AccountUncheckedUpdateWithoutProductsSalesInput = {
   productsPurchase?: Prisma.ProductUncheckedUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUpsertWithoutProductsPurchaseInput = {
@@ -1394,6 +1599,8 @@ export type AccountUpdateWithoutProductsPurchaseInput = {
   productsSales?: Prisma.ProductUpdateManyWithoutSalesAccountNestedInput
   customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutProductsPurchaseInput = {
@@ -1413,6 +1620,108 @@ export type AccountUncheckedUpdateWithoutProductsPurchaseInput = {
   productsSales?: Prisma.ProductUncheckedUpdateManyWithoutSalesAccountNestedInput
   customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
+}
+
+export type AccountCreateWithoutJournalLinesInput = {
+  id?: string
+  code: string
+  name: string
+  type: $Enums.AccountType
+  level?: number
+  isPosting?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  parent?: Prisma.AccountCreateNestedOneWithoutChildrenInput
+  children?: Prisma.AccountCreateNestedManyWithoutParentInput
+  productsInventory?: Prisma.ProductCreateNestedManyWithoutInventoryAccountInput
+  productsCOGS?: Prisma.ProductCreateNestedManyWithoutCogsAccountInput
+  productsSales?: Prisma.ProductCreateNestedManyWithoutSalesAccountInput
+  productsPurchase?: Prisma.ProductCreateNestedManyWithoutPurchaseAccountInput
+  customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
+  suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
+  taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
+}
+
+export type AccountUncheckedCreateWithoutJournalLinesInput = {
+  id?: string
+  code: string
+  name: string
+  type: $Enums.AccountType
+  parentId?: string | null
+  level?: number
+  isPosting?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  children?: Prisma.AccountUncheckedCreateNestedManyWithoutParentInput
+  productsInventory?: Prisma.ProductUncheckedCreateNestedManyWithoutInventoryAccountInput
+  productsCOGS?: Prisma.ProductUncheckedCreateNestedManyWithoutCogsAccountInput
+  productsSales?: Prisma.ProductUncheckedCreateNestedManyWithoutSalesAccountInput
+  productsPurchase?: Prisma.ProductUncheckedCreateNestedManyWithoutPurchaseAccountInput
+  customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
+  suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
+  taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
+}
+
+export type AccountCreateOrConnectWithoutJournalLinesInput = {
+  where: Prisma.AccountWhereUniqueInput
+  create: Prisma.XOR<Prisma.AccountCreateWithoutJournalLinesInput, Prisma.AccountUncheckedCreateWithoutJournalLinesInput>
+}
+
+export type AccountUpsertWithoutJournalLinesInput = {
+  update: Prisma.XOR<Prisma.AccountUpdateWithoutJournalLinesInput, Prisma.AccountUncheckedUpdateWithoutJournalLinesInput>
+  create: Prisma.XOR<Prisma.AccountCreateWithoutJournalLinesInput, Prisma.AccountUncheckedCreateWithoutJournalLinesInput>
+  where?: Prisma.AccountWhereInput
+}
+
+export type AccountUpdateToOneWithWhereWithoutJournalLinesInput = {
+  where?: Prisma.AccountWhereInput
+  data: Prisma.XOR<Prisma.AccountUpdateWithoutJournalLinesInput, Prisma.AccountUncheckedUpdateWithoutJournalLinesInput>
+}
+
+export type AccountUpdateWithoutJournalLinesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  level?: Prisma.IntFieldUpdateOperationsInput | number
+  isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  parent?: Prisma.AccountUpdateOneWithoutChildrenNestedInput
+  children?: Prisma.AccountUpdateManyWithoutParentNestedInput
+  productsInventory?: Prisma.ProductUpdateManyWithoutInventoryAccountNestedInput
+  productsCOGS?: Prisma.ProductUpdateManyWithoutCogsAccountNestedInput
+  productsSales?: Prisma.ProductUpdateManyWithoutSalesAccountNestedInput
+  productsPurchase?: Prisma.ProductUpdateManyWithoutPurchaseAccountNestedInput
+  customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
+  suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
+}
+
+export type AccountUncheckedUpdateWithoutJournalLinesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  level?: Prisma.IntFieldUpdateOperationsInput | number
+  isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  children?: Prisma.AccountUncheckedUpdateManyWithoutParentNestedInput
+  productsInventory?: Prisma.ProductUncheckedUpdateManyWithoutInventoryAccountNestedInput
+  productsCOGS?: Prisma.ProductUncheckedUpdateManyWithoutCogsAccountNestedInput
+  productsSales?: Prisma.ProductUncheckedUpdateManyWithoutSalesAccountNestedInput
+  productsPurchase?: Prisma.ProductUncheckedUpdateManyWithoutPurchaseAccountNestedInput
+  customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
+  suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountCreateManyParentInput = {
@@ -1444,6 +1753,8 @@ export type AccountUpdateWithoutParentInput = {
   productsPurchase?: Prisma.ProductUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutParentInput = {
@@ -1463,6 +1774,8 @@ export type AccountUncheckedUpdateWithoutParentInput = {
   productsPurchase?: Prisma.ProductUncheckedUpdateManyWithoutPurchaseAccountNestedInput
   customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateManyWithoutParentInput = {
@@ -1490,6 +1803,8 @@ export type AccountCountOutputType = {
   productsPurchase: number
   customersReceivable: number
   suppliersPayable: number
+  journalLines: number
+  taxCodes: number
 }
 
 export type AccountCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1500,6 +1815,8 @@ export type AccountCountOutputTypeSelect<ExtArgs extends runtime.Types.Extension
   productsPurchase?: boolean | AccountCountOutputTypeCountProductsPurchaseArgs
   customersReceivable?: boolean | AccountCountOutputTypeCountCustomersReceivableArgs
   suppliersPayable?: boolean | AccountCountOutputTypeCountSuppliersPayableArgs
+  journalLines?: boolean | AccountCountOutputTypeCountJournalLinesArgs
+  taxCodes?: boolean | AccountCountOutputTypeCountTaxCodesArgs
 }
 
 /**
@@ -1561,6 +1878,20 @@ export type AccountCountOutputTypeCountSuppliersPayableArgs<ExtArgs extends runt
   where?: Prisma.SupplierWhereInput
 }
 
+/**
+ * AccountCountOutputType without action
+ */
+export type AccountCountOutputTypeCountJournalLinesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.JournalLineWhereInput
+}
+
+/**
+ * AccountCountOutputType without action
+ */
+export type AccountCountOutputTypeCountTaxCodesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TaxCodeWhereInput
+}
+
 
 export type AccountSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1581,6 +1912,8 @@ export type AccountSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   productsPurchase?: boolean | Prisma.Account$productsPurchaseArgs<ExtArgs>
   customersReceivable?: boolean | Prisma.Account$customersReceivableArgs<ExtArgs>
   suppliersPayable?: boolean | Prisma.Account$suppliersPayableArgs<ExtArgs>
+  journalLines?: boolean | Prisma.Account$journalLinesArgs<ExtArgs>
+  taxCodes?: boolean | Prisma.Account$taxCodesArgs<ExtArgs>
   _count?: boolean | Prisma.AccountCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["account"]>
 
@@ -1635,6 +1968,8 @@ export type AccountInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs
   productsPurchase?: boolean | Prisma.Account$productsPurchaseArgs<ExtArgs>
   customersReceivable?: boolean | Prisma.Account$customersReceivableArgs<ExtArgs>
   suppliersPayable?: boolean | Prisma.Account$suppliersPayableArgs<ExtArgs>
+  journalLines?: boolean | Prisma.Account$journalLinesArgs<ExtArgs>
+  taxCodes?: boolean | Prisma.Account$taxCodesArgs<ExtArgs>
   _count?: boolean | Prisma.AccountCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type AccountIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1655,6 +1990,8 @@ export type $AccountPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     productsPurchase: Prisma.$ProductPayload<ExtArgs>[]
     customersReceivable: Prisma.$CustomerPayload<ExtArgs>[]
     suppliersPayable: Prisma.$SupplierPayload<ExtArgs>[]
+    journalLines: Prisma.$JournalLinePayload<ExtArgs>[]
+    taxCodes: Prisma.$TaxCodePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2069,6 +2406,8 @@ export interface Prisma__AccountClient<T, Null = never, ExtArgs extends runtime.
   productsPurchase<T extends Prisma.Account$productsPurchaseArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$productsPurchaseArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProductPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   customersReceivable<T extends Prisma.Account$customersReceivableArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$customersReceivableArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CustomerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   suppliersPayable<T extends Prisma.Account$suppliersPayableArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$suppliersPayableArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SupplierPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  journalLines<T extends Prisma.Account$journalLinesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$journalLinesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$JournalLinePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  taxCodes<T extends Prisma.Account$taxCodesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$taxCodesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TaxCodePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2688,6 +3027,54 @@ export type Account$suppliersPayableArgs<ExtArgs extends runtime.Types.Extension
   take?: number
   skip?: number
   distinct?: Prisma.SupplierScalarFieldEnum | Prisma.SupplierScalarFieldEnum[]
+}
+
+/**
+ * Account.journalLines
+ */
+export type Account$journalLinesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the JournalLine
+   */
+  select?: Prisma.JournalLineSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the JournalLine
+   */
+  omit?: Prisma.JournalLineOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JournalLineInclude<ExtArgs> | null
+  where?: Prisma.JournalLineWhereInput
+  orderBy?: Prisma.JournalLineOrderByWithRelationInput | Prisma.JournalLineOrderByWithRelationInput[]
+  cursor?: Prisma.JournalLineWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.JournalLineScalarFieldEnum | Prisma.JournalLineScalarFieldEnum[]
+}
+
+/**
+ * Account.taxCodes
+ */
+export type Account$taxCodesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the TaxCode
+   */
+  select?: Prisma.TaxCodeSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the TaxCode
+   */
+  omit?: Prisma.TaxCodeOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaxCodeInclude<ExtArgs> | null
+  where?: Prisma.TaxCodeWhereInput
+  orderBy?: Prisma.TaxCodeOrderByWithRelationInput | Prisma.TaxCodeOrderByWithRelationInput[]
+  cursor?: Prisma.TaxCodeWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TaxCodeScalarFieldEnum | Prisma.TaxCodeScalarFieldEnum[]
 }
 
 /**

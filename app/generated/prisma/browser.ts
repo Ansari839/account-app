@@ -117,3 +117,58 @@ export type Warehouse = Prisma.WarehouseModel
  * 
  */
 export type UnitConversion = Prisma.UnitConversionModel
+/**
+ * Model JournalEntry
+ * 
+ */
+export type JournalEntry = Prisma.JournalEntryModel
+/**
+ * Model JournalLine
+ * 
+ */
+export type JournalLine = Prisma.JournalLineModel
+/**
+ * Model StockLedger
+ * 
+ */
+export type StockLedger = Prisma.StockLedgerModel
+/**
+ * Model PurchaseOrder
+ * 
+ */
+export type PurchaseOrder = Prisma.PurchaseOrderModel
+/**
+ * Model PurchaseOrderItem
+ * 
+ */
+export type PurchaseOrderItem = Prisma.PurchaseOrderItemModel
+/**
+ * Model GRN
+ * 
+ */
+export type GRN = Prisma.GRNModel
+/**
+ * Model GRNItem
+ * 
+ */
+export type GRNItem = Prisma.GRNItemModel
+/**
+ * Model PurchaseInvoice
+ * 
+ */
+export type PurchaseInvoice = Prisma.PurchaseInvoiceModel
+/**
+ * Model PurchaseInvoiceItem
+ * 
+ */
+export type PurchaseInvoiceItem = Prisma.PurchaseInvoiceItemModel
+/**
+ * Model PurchaseRequest
+ * 
+ */
+export type PurchaseRequest = Prisma.PurchaseRequestModel
+/**
+ * Model PurchaseRequestItem
+ * 
+ */
+export type PurchaseRequestItem = Prisma.PurchaseRequestItemModel

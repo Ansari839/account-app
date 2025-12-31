@@ -39,6 +39,7 @@ export type TaxCodeMinAggregateOutputType = {
   name: string | null
   code: string | null
   rate: runtime.Decimal | null
+  accountId: string | null
   createdAt: Date | null
   updatedAt: Date | null
   deletedAt: Date | null
@@ -49,6 +50,7 @@ export type TaxCodeMaxAggregateOutputType = {
   name: string | null
   code: string | null
   rate: runtime.Decimal | null
+  accountId: string | null
   createdAt: Date | null
   updatedAt: Date | null
   deletedAt: Date | null
@@ -59,6 +61,7 @@ export type TaxCodeCountAggregateOutputType = {
   name: number
   code: number
   rate: number
+  accountId: number
   createdAt: number
   updatedAt: number
   deletedAt: number
@@ -79,6 +82,7 @@ export type TaxCodeMinAggregateInputType = {
   name?: true
   code?: true
   rate?: true
+  accountId?: true
   createdAt?: true
   updatedAt?: true
   deletedAt?: true
@@ -89,6 +93,7 @@ export type TaxCodeMaxAggregateInputType = {
   name?: true
   code?: true
   rate?: true
+  accountId?: true
   createdAt?: true
   updatedAt?: true
   deletedAt?: true
@@ -99,6 +104,7 @@ export type TaxCodeCountAggregateInputType = {
   name?: true
   code?: true
   rate?: true
+  accountId?: true
   createdAt?: true
   updatedAt?: true
   deletedAt?: true
@@ -196,6 +202,7 @@ export type TaxCodeGroupByOutputType = {
   name: string
   code: string
   rate: runtime.Decimal
+  accountId: string | null
   createdAt: Date
   updatedAt: Date
   deletedAt: Date | null
@@ -229,10 +236,14 @@ export type TaxCodeWhereInput = {
   name?: Prisma.StringFilter<"TaxCode"> | string
   code?: Prisma.StringFilter<"TaxCode"> | string
   rate?: Prisma.DecimalFilter<"TaxCode"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: Prisma.StringNullableFilter<"TaxCode"> | string | null
   createdAt?: Prisma.DateTimeFilter<"TaxCode"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"TaxCode"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"TaxCode"> | Date | string | null
+  account?: Prisma.XOR<Prisma.AccountNullableScalarRelationFilter, Prisma.AccountWhereInput> | null
   products?: Prisma.ProductListRelationFilter
+  purchaseOrderItems?: Prisma.PurchaseOrderItemListRelationFilter
+  invoiceItems?: Prisma.PurchaseInvoiceItemListRelationFilter
 }
 
 export type TaxCodeOrderByWithRelationInput = {
@@ -240,10 +251,14 @@ export type TaxCodeOrderByWithRelationInput = {
   name?: Prisma.SortOrder
   code?: Prisma.SortOrder
   rate?: Prisma.SortOrder
+  accountId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  account?: Prisma.AccountOrderByWithRelationInput
   products?: Prisma.ProductOrderByRelationAggregateInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemOrderByRelationAggregateInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemOrderByRelationAggregateInput
 }
 
 export type TaxCodeWhereUniqueInput = Prisma.AtLeast<{
@@ -254,10 +269,14 @@ export type TaxCodeWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.TaxCodeWhereInput | Prisma.TaxCodeWhereInput[]
   name?: Prisma.StringFilter<"TaxCode"> | string
   rate?: Prisma.DecimalFilter<"TaxCode"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: Prisma.StringNullableFilter<"TaxCode"> | string | null
   createdAt?: Prisma.DateTimeFilter<"TaxCode"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"TaxCode"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"TaxCode"> | Date | string | null
+  account?: Prisma.XOR<Prisma.AccountNullableScalarRelationFilter, Prisma.AccountWhereInput> | null
   products?: Prisma.ProductListRelationFilter
+  purchaseOrderItems?: Prisma.PurchaseOrderItemListRelationFilter
+  invoiceItems?: Prisma.PurchaseInvoiceItemListRelationFilter
 }, "id" | "code">
 
 export type TaxCodeOrderByWithAggregationInput = {
@@ -265,6 +284,7 @@ export type TaxCodeOrderByWithAggregationInput = {
   name?: Prisma.SortOrder
   code?: Prisma.SortOrder
   rate?: Prisma.SortOrder
+  accountId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -283,6 +303,7 @@ export type TaxCodeScalarWhereWithAggregatesInput = {
   name?: Prisma.StringWithAggregatesFilter<"TaxCode"> | string
   code?: Prisma.StringWithAggregatesFilter<"TaxCode"> | string
   rate?: Prisma.DecimalWithAggregatesFilter<"TaxCode"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: Prisma.StringNullableWithAggregatesFilter<"TaxCode"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"TaxCode"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"TaxCode"> | Date | string
   deletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"TaxCode"> | Date | string | null
@@ -296,7 +317,10 @@ export type TaxCodeCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
+  account?: Prisma.AccountCreateNestedOneWithoutTaxCodesInput
   products?: Prisma.ProductCreateNestedManyWithoutTaxCodeInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemCreateNestedManyWithoutTaxCodeInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemCreateNestedManyWithoutTaxCodeInput
 }
 
 export type TaxCodeUncheckedCreateInput = {
@@ -304,10 +328,13 @@ export type TaxCodeUncheckedCreateInput = {
   name: string
   code: string
   rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
   products?: Prisma.ProductUncheckedCreateNestedManyWithoutTaxCodeInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemUncheckedCreateNestedManyWithoutTaxCodeInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemUncheckedCreateNestedManyWithoutTaxCodeInput
 }
 
 export type TaxCodeUpdateInput = {
@@ -318,7 +345,10 @@ export type TaxCodeUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  account?: Prisma.AccountUpdateOneWithoutTaxCodesNestedInput
   products?: Prisma.ProductUpdateManyWithoutTaxCodeNestedInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemUpdateManyWithoutTaxCodeNestedInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemUpdateManyWithoutTaxCodeNestedInput
 }
 
 export type TaxCodeUncheckedUpdateInput = {
@@ -326,10 +356,13 @@ export type TaxCodeUncheckedUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   code?: Prisma.StringFieldUpdateOperationsInput | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   products?: Prisma.ProductUncheckedUpdateManyWithoutTaxCodeNestedInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemUncheckedUpdateManyWithoutTaxCodeNestedInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemUncheckedUpdateManyWithoutTaxCodeNestedInput
 }
 
 export type TaxCodeCreateManyInput = {
@@ -337,6 +370,7 @@ export type TaxCodeCreateManyInput = {
   name: string
   code: string
   rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -357,6 +391,7 @@ export type TaxCodeUncheckedUpdateManyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   code?: Prisma.StringFieldUpdateOperationsInput | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -367,6 +402,7 @@ export type TaxCodeCountOrderByAggregateInput = {
   name?: Prisma.SortOrder
   code?: Prisma.SortOrder
   rate?: Prisma.SortOrder
+  accountId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrder
@@ -381,6 +417,7 @@ export type TaxCodeMaxOrderByAggregateInput = {
   name?: Prisma.SortOrder
   code?: Prisma.SortOrder
   rate?: Prisma.SortOrder
+  accountId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrder
@@ -391,6 +428,7 @@ export type TaxCodeMinOrderByAggregateInput = {
   name?: Prisma.SortOrder
   code?: Prisma.SortOrder
   rate?: Prisma.SortOrder
+  accountId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrder
@@ -400,9 +438,61 @@ export type TaxCodeSumOrderByAggregateInput = {
   rate?: Prisma.SortOrder
 }
 
+export type TaxCodeListRelationFilter = {
+  every?: Prisma.TaxCodeWhereInput
+  some?: Prisma.TaxCodeWhereInput
+  none?: Prisma.TaxCodeWhereInput
+}
+
+export type TaxCodeOrderByRelationAggregateInput = {
+  _count?: Prisma.SortOrder
+}
+
 export type TaxCodeNullableScalarRelationFilter = {
   is?: Prisma.TaxCodeWhereInput | null
   isNot?: Prisma.TaxCodeWhereInput | null
+}
+
+export type TaxCodeCreateNestedManyWithoutAccountInput = {
+  create?: Prisma.XOR<Prisma.TaxCodeCreateWithoutAccountInput, Prisma.TaxCodeUncheckedCreateWithoutAccountInput> | Prisma.TaxCodeCreateWithoutAccountInput[] | Prisma.TaxCodeUncheckedCreateWithoutAccountInput[]
+  connectOrCreate?: Prisma.TaxCodeCreateOrConnectWithoutAccountInput | Prisma.TaxCodeCreateOrConnectWithoutAccountInput[]
+  createMany?: Prisma.TaxCodeCreateManyAccountInputEnvelope
+  connect?: Prisma.TaxCodeWhereUniqueInput | Prisma.TaxCodeWhereUniqueInput[]
+}
+
+export type TaxCodeUncheckedCreateNestedManyWithoutAccountInput = {
+  create?: Prisma.XOR<Prisma.TaxCodeCreateWithoutAccountInput, Prisma.TaxCodeUncheckedCreateWithoutAccountInput> | Prisma.TaxCodeCreateWithoutAccountInput[] | Prisma.TaxCodeUncheckedCreateWithoutAccountInput[]
+  connectOrCreate?: Prisma.TaxCodeCreateOrConnectWithoutAccountInput | Prisma.TaxCodeCreateOrConnectWithoutAccountInput[]
+  createMany?: Prisma.TaxCodeCreateManyAccountInputEnvelope
+  connect?: Prisma.TaxCodeWhereUniqueInput | Prisma.TaxCodeWhereUniqueInput[]
+}
+
+export type TaxCodeUpdateManyWithoutAccountNestedInput = {
+  create?: Prisma.XOR<Prisma.TaxCodeCreateWithoutAccountInput, Prisma.TaxCodeUncheckedCreateWithoutAccountInput> | Prisma.TaxCodeCreateWithoutAccountInput[] | Prisma.TaxCodeUncheckedCreateWithoutAccountInput[]
+  connectOrCreate?: Prisma.TaxCodeCreateOrConnectWithoutAccountInput | Prisma.TaxCodeCreateOrConnectWithoutAccountInput[]
+  upsert?: Prisma.TaxCodeUpsertWithWhereUniqueWithoutAccountInput | Prisma.TaxCodeUpsertWithWhereUniqueWithoutAccountInput[]
+  createMany?: Prisma.TaxCodeCreateManyAccountInputEnvelope
+  set?: Prisma.TaxCodeWhereUniqueInput | Prisma.TaxCodeWhereUniqueInput[]
+  disconnect?: Prisma.TaxCodeWhereUniqueInput | Prisma.TaxCodeWhereUniqueInput[]
+  delete?: Prisma.TaxCodeWhereUniqueInput | Prisma.TaxCodeWhereUniqueInput[]
+  connect?: Prisma.TaxCodeWhereUniqueInput | Prisma.TaxCodeWhereUniqueInput[]
+  update?: Prisma.TaxCodeUpdateWithWhereUniqueWithoutAccountInput | Prisma.TaxCodeUpdateWithWhereUniqueWithoutAccountInput[]
+  updateMany?: Prisma.TaxCodeUpdateManyWithWhereWithoutAccountInput | Prisma.TaxCodeUpdateManyWithWhereWithoutAccountInput[]
+  deleteMany?: Prisma.TaxCodeScalarWhereInput | Prisma.TaxCodeScalarWhereInput[]
+}
+
+export type TaxCodeUncheckedUpdateManyWithoutAccountNestedInput = {
+  create?: Prisma.XOR<Prisma.TaxCodeCreateWithoutAccountInput, Prisma.TaxCodeUncheckedCreateWithoutAccountInput> | Prisma.TaxCodeCreateWithoutAccountInput[] | Prisma.TaxCodeUncheckedCreateWithoutAccountInput[]
+  connectOrCreate?: Prisma.TaxCodeCreateOrConnectWithoutAccountInput | Prisma.TaxCodeCreateOrConnectWithoutAccountInput[]
+  upsert?: Prisma.TaxCodeUpsertWithWhereUniqueWithoutAccountInput | Prisma.TaxCodeUpsertWithWhereUniqueWithoutAccountInput[]
+  createMany?: Prisma.TaxCodeCreateManyAccountInputEnvelope
+  set?: Prisma.TaxCodeWhereUniqueInput | Prisma.TaxCodeWhereUniqueInput[]
+  disconnect?: Prisma.TaxCodeWhereUniqueInput | Prisma.TaxCodeWhereUniqueInput[]
+  delete?: Prisma.TaxCodeWhereUniqueInput | Prisma.TaxCodeWhereUniqueInput[]
+  connect?: Prisma.TaxCodeWhereUniqueInput | Prisma.TaxCodeWhereUniqueInput[]
+  update?: Prisma.TaxCodeUpdateWithWhereUniqueWithoutAccountInput | Prisma.TaxCodeUpdateWithWhereUniqueWithoutAccountInput[]
+  updateMany?: Prisma.TaxCodeUpdateManyWithWhereWithoutAccountInput | Prisma.TaxCodeUpdateManyWithWhereWithoutAccountInput[]
+  deleteMany?: Prisma.TaxCodeScalarWhereInput | Prisma.TaxCodeScalarWhereInput[]
 }
 
 export type TaxCodeCreateNestedOneWithoutProductsInput = {
@@ -421,6 +511,104 @@ export type TaxCodeUpdateOneWithoutProductsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.TaxCodeUpdateToOneWithWhereWithoutProductsInput, Prisma.TaxCodeUpdateWithoutProductsInput>, Prisma.TaxCodeUncheckedUpdateWithoutProductsInput>
 }
 
+export type TaxCodeCreateNestedOneWithoutPurchaseOrderItemsInput = {
+  create?: Prisma.XOR<Prisma.TaxCodeCreateWithoutPurchaseOrderItemsInput, Prisma.TaxCodeUncheckedCreateWithoutPurchaseOrderItemsInput>
+  connectOrCreate?: Prisma.TaxCodeCreateOrConnectWithoutPurchaseOrderItemsInput
+  connect?: Prisma.TaxCodeWhereUniqueInput
+}
+
+export type TaxCodeUpdateOneWithoutPurchaseOrderItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.TaxCodeCreateWithoutPurchaseOrderItemsInput, Prisma.TaxCodeUncheckedCreateWithoutPurchaseOrderItemsInput>
+  connectOrCreate?: Prisma.TaxCodeCreateOrConnectWithoutPurchaseOrderItemsInput
+  upsert?: Prisma.TaxCodeUpsertWithoutPurchaseOrderItemsInput
+  disconnect?: Prisma.TaxCodeWhereInput | boolean
+  delete?: Prisma.TaxCodeWhereInput | boolean
+  connect?: Prisma.TaxCodeWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.TaxCodeUpdateToOneWithWhereWithoutPurchaseOrderItemsInput, Prisma.TaxCodeUpdateWithoutPurchaseOrderItemsInput>, Prisma.TaxCodeUncheckedUpdateWithoutPurchaseOrderItemsInput>
+}
+
+export type TaxCodeCreateNestedOneWithoutInvoiceItemsInput = {
+  create?: Prisma.XOR<Prisma.TaxCodeCreateWithoutInvoiceItemsInput, Prisma.TaxCodeUncheckedCreateWithoutInvoiceItemsInput>
+  connectOrCreate?: Prisma.TaxCodeCreateOrConnectWithoutInvoiceItemsInput
+  connect?: Prisma.TaxCodeWhereUniqueInput
+}
+
+export type TaxCodeUpdateOneWithoutInvoiceItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.TaxCodeCreateWithoutInvoiceItemsInput, Prisma.TaxCodeUncheckedCreateWithoutInvoiceItemsInput>
+  connectOrCreate?: Prisma.TaxCodeCreateOrConnectWithoutInvoiceItemsInput
+  upsert?: Prisma.TaxCodeUpsertWithoutInvoiceItemsInput
+  disconnect?: Prisma.TaxCodeWhereInput | boolean
+  delete?: Prisma.TaxCodeWhereInput | boolean
+  connect?: Prisma.TaxCodeWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.TaxCodeUpdateToOneWithWhereWithoutInvoiceItemsInput, Prisma.TaxCodeUpdateWithoutInvoiceItemsInput>, Prisma.TaxCodeUncheckedUpdateWithoutInvoiceItemsInput>
+}
+
+export type TaxCodeCreateWithoutAccountInput = {
+  id?: string
+  name: string
+  code: string
+  rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  products?: Prisma.ProductCreateNestedManyWithoutTaxCodeInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemCreateNestedManyWithoutTaxCodeInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemCreateNestedManyWithoutTaxCodeInput
+}
+
+export type TaxCodeUncheckedCreateWithoutAccountInput = {
+  id?: string
+  name: string
+  code: string
+  rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  products?: Prisma.ProductUncheckedCreateNestedManyWithoutTaxCodeInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemUncheckedCreateNestedManyWithoutTaxCodeInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemUncheckedCreateNestedManyWithoutTaxCodeInput
+}
+
+export type TaxCodeCreateOrConnectWithoutAccountInput = {
+  where: Prisma.TaxCodeWhereUniqueInput
+  create: Prisma.XOR<Prisma.TaxCodeCreateWithoutAccountInput, Prisma.TaxCodeUncheckedCreateWithoutAccountInput>
+}
+
+export type TaxCodeCreateManyAccountInputEnvelope = {
+  data: Prisma.TaxCodeCreateManyAccountInput | Prisma.TaxCodeCreateManyAccountInput[]
+  skipDuplicates?: boolean
+}
+
+export type TaxCodeUpsertWithWhereUniqueWithoutAccountInput = {
+  where: Prisma.TaxCodeWhereUniqueInput
+  update: Prisma.XOR<Prisma.TaxCodeUpdateWithoutAccountInput, Prisma.TaxCodeUncheckedUpdateWithoutAccountInput>
+  create: Prisma.XOR<Prisma.TaxCodeCreateWithoutAccountInput, Prisma.TaxCodeUncheckedCreateWithoutAccountInput>
+}
+
+export type TaxCodeUpdateWithWhereUniqueWithoutAccountInput = {
+  where: Prisma.TaxCodeWhereUniqueInput
+  data: Prisma.XOR<Prisma.TaxCodeUpdateWithoutAccountInput, Prisma.TaxCodeUncheckedUpdateWithoutAccountInput>
+}
+
+export type TaxCodeUpdateManyWithWhereWithoutAccountInput = {
+  where: Prisma.TaxCodeScalarWhereInput
+  data: Prisma.XOR<Prisma.TaxCodeUpdateManyMutationInput, Prisma.TaxCodeUncheckedUpdateManyWithoutAccountInput>
+}
+
+export type TaxCodeScalarWhereInput = {
+  AND?: Prisma.TaxCodeScalarWhereInput | Prisma.TaxCodeScalarWhereInput[]
+  OR?: Prisma.TaxCodeScalarWhereInput[]
+  NOT?: Prisma.TaxCodeScalarWhereInput | Prisma.TaxCodeScalarWhereInput[]
+  id?: Prisma.StringFilter<"TaxCode"> | string
+  name?: Prisma.StringFilter<"TaxCode"> | string
+  code?: Prisma.StringFilter<"TaxCode"> | string
+  rate?: Prisma.DecimalFilter<"TaxCode"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: Prisma.StringNullableFilter<"TaxCode"> | string | null
+  createdAt?: Prisma.DateTimeFilter<"TaxCode"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"TaxCode"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableFilter<"TaxCode"> | Date | string | null
+}
+
 export type TaxCodeCreateWithoutProductsInput = {
   id?: string
   name: string
@@ -429,6 +617,9 @@ export type TaxCodeCreateWithoutProductsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
+  account?: Prisma.AccountCreateNestedOneWithoutTaxCodesInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemCreateNestedManyWithoutTaxCodeInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemCreateNestedManyWithoutTaxCodeInput
 }
 
 export type TaxCodeUncheckedCreateWithoutProductsInput = {
@@ -436,9 +627,12 @@ export type TaxCodeUncheckedCreateWithoutProductsInput = {
   name: string
   code: string
   rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
+  purchaseOrderItems?: Prisma.PurchaseOrderItemUncheckedCreateNestedManyWithoutTaxCodeInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemUncheckedCreateNestedManyWithoutTaxCodeInput
 }
 
 export type TaxCodeCreateOrConnectWithoutProductsInput = {
@@ -465,9 +659,197 @@ export type TaxCodeUpdateWithoutProductsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  account?: Prisma.AccountUpdateOneWithoutTaxCodesNestedInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemUpdateManyWithoutTaxCodeNestedInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemUpdateManyWithoutTaxCodeNestedInput
 }
 
 export type TaxCodeUncheckedUpdateWithoutProductsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  purchaseOrderItems?: Prisma.PurchaseOrderItemUncheckedUpdateManyWithoutTaxCodeNestedInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemUncheckedUpdateManyWithoutTaxCodeNestedInput
+}
+
+export type TaxCodeCreateWithoutPurchaseOrderItemsInput = {
+  id?: string
+  name: string
+  code: string
+  rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  account?: Prisma.AccountCreateNestedOneWithoutTaxCodesInput
+  products?: Prisma.ProductCreateNestedManyWithoutTaxCodeInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemCreateNestedManyWithoutTaxCodeInput
+}
+
+export type TaxCodeUncheckedCreateWithoutPurchaseOrderItemsInput = {
+  id?: string
+  name: string
+  code: string
+  rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  products?: Prisma.ProductUncheckedCreateNestedManyWithoutTaxCodeInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemUncheckedCreateNestedManyWithoutTaxCodeInput
+}
+
+export type TaxCodeCreateOrConnectWithoutPurchaseOrderItemsInput = {
+  where: Prisma.TaxCodeWhereUniqueInput
+  create: Prisma.XOR<Prisma.TaxCodeCreateWithoutPurchaseOrderItemsInput, Prisma.TaxCodeUncheckedCreateWithoutPurchaseOrderItemsInput>
+}
+
+export type TaxCodeUpsertWithoutPurchaseOrderItemsInput = {
+  update: Prisma.XOR<Prisma.TaxCodeUpdateWithoutPurchaseOrderItemsInput, Prisma.TaxCodeUncheckedUpdateWithoutPurchaseOrderItemsInput>
+  create: Prisma.XOR<Prisma.TaxCodeCreateWithoutPurchaseOrderItemsInput, Prisma.TaxCodeUncheckedCreateWithoutPurchaseOrderItemsInput>
+  where?: Prisma.TaxCodeWhereInput
+}
+
+export type TaxCodeUpdateToOneWithWhereWithoutPurchaseOrderItemsInput = {
+  where?: Prisma.TaxCodeWhereInput
+  data: Prisma.XOR<Prisma.TaxCodeUpdateWithoutPurchaseOrderItemsInput, Prisma.TaxCodeUncheckedUpdateWithoutPurchaseOrderItemsInput>
+}
+
+export type TaxCodeUpdateWithoutPurchaseOrderItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  account?: Prisma.AccountUpdateOneWithoutTaxCodesNestedInput
+  products?: Prisma.ProductUpdateManyWithoutTaxCodeNestedInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemUpdateManyWithoutTaxCodeNestedInput
+}
+
+export type TaxCodeUncheckedUpdateWithoutPurchaseOrderItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  products?: Prisma.ProductUncheckedUpdateManyWithoutTaxCodeNestedInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemUncheckedUpdateManyWithoutTaxCodeNestedInput
+}
+
+export type TaxCodeCreateWithoutInvoiceItemsInput = {
+  id?: string
+  name: string
+  code: string
+  rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  account?: Prisma.AccountCreateNestedOneWithoutTaxCodesInput
+  products?: Prisma.ProductCreateNestedManyWithoutTaxCodeInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemCreateNestedManyWithoutTaxCodeInput
+}
+
+export type TaxCodeUncheckedCreateWithoutInvoiceItemsInput = {
+  id?: string
+  name: string
+  code: string
+  rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  products?: Prisma.ProductUncheckedCreateNestedManyWithoutTaxCodeInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemUncheckedCreateNestedManyWithoutTaxCodeInput
+}
+
+export type TaxCodeCreateOrConnectWithoutInvoiceItemsInput = {
+  where: Prisma.TaxCodeWhereUniqueInput
+  create: Prisma.XOR<Prisma.TaxCodeCreateWithoutInvoiceItemsInput, Prisma.TaxCodeUncheckedCreateWithoutInvoiceItemsInput>
+}
+
+export type TaxCodeUpsertWithoutInvoiceItemsInput = {
+  update: Prisma.XOR<Prisma.TaxCodeUpdateWithoutInvoiceItemsInput, Prisma.TaxCodeUncheckedUpdateWithoutInvoiceItemsInput>
+  create: Prisma.XOR<Prisma.TaxCodeCreateWithoutInvoiceItemsInput, Prisma.TaxCodeUncheckedCreateWithoutInvoiceItemsInput>
+  where?: Prisma.TaxCodeWhereInput
+}
+
+export type TaxCodeUpdateToOneWithWhereWithoutInvoiceItemsInput = {
+  where?: Prisma.TaxCodeWhereInput
+  data: Prisma.XOR<Prisma.TaxCodeUpdateWithoutInvoiceItemsInput, Prisma.TaxCodeUncheckedUpdateWithoutInvoiceItemsInput>
+}
+
+export type TaxCodeUpdateWithoutInvoiceItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  account?: Prisma.AccountUpdateOneWithoutTaxCodesNestedInput
+  products?: Prisma.ProductUpdateManyWithoutTaxCodeNestedInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemUpdateManyWithoutTaxCodeNestedInput
+}
+
+export type TaxCodeUncheckedUpdateWithoutInvoiceItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  accountId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  products?: Prisma.ProductUncheckedUpdateManyWithoutTaxCodeNestedInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemUncheckedUpdateManyWithoutTaxCodeNestedInput
+}
+
+export type TaxCodeCreateManyAccountInput = {
+  id?: string
+  name: string
+  code: string
+  rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+}
+
+export type TaxCodeUpdateWithoutAccountInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  products?: Prisma.ProductUpdateManyWithoutTaxCodeNestedInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemUpdateManyWithoutTaxCodeNestedInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemUpdateManyWithoutTaxCodeNestedInput
+}
+
+export type TaxCodeUncheckedUpdateWithoutAccountInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  products?: Prisma.ProductUncheckedUpdateManyWithoutTaxCodeNestedInput
+  purchaseOrderItems?: Prisma.PurchaseOrderItemUncheckedUpdateManyWithoutTaxCodeNestedInput
+  invoiceItems?: Prisma.PurchaseInvoiceItemUncheckedUpdateManyWithoutTaxCodeNestedInput
+}
+
+export type TaxCodeUncheckedUpdateManyWithoutAccountInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   code?: Prisma.StringFieldUpdateOperationsInput | string
@@ -484,10 +866,14 @@ export type TaxCodeUncheckedUpdateWithoutProductsInput = {
 
 export type TaxCodeCountOutputType = {
   products: number
+  purchaseOrderItems: number
+  invoiceItems: number
 }
 
 export type TaxCodeCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   products?: boolean | TaxCodeCountOutputTypeCountProductsArgs
+  purchaseOrderItems?: boolean | TaxCodeCountOutputTypeCountPurchaseOrderItemsArgs
+  invoiceItems?: boolean | TaxCodeCountOutputTypeCountInvoiceItemsArgs
 }
 
 /**
@@ -507,16 +893,34 @@ export type TaxCodeCountOutputTypeCountProductsArgs<ExtArgs extends runtime.Type
   where?: Prisma.ProductWhereInput
 }
 
+/**
+ * TaxCodeCountOutputType without action
+ */
+export type TaxCodeCountOutputTypeCountPurchaseOrderItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PurchaseOrderItemWhereInput
+}
+
+/**
+ * TaxCodeCountOutputType without action
+ */
+export type TaxCodeCountOutputTypeCountInvoiceItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PurchaseInvoiceItemWhereInput
+}
+
 
 export type TaxCodeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   name?: boolean
   code?: boolean
   rate?: boolean
+  accountId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
+  account?: boolean | Prisma.TaxCode$accountArgs<ExtArgs>
   products?: boolean | Prisma.TaxCode$productsArgs<ExtArgs>
+  purchaseOrderItems?: boolean | Prisma.TaxCode$purchaseOrderItemsArgs<ExtArgs>
+  invoiceItems?: boolean | Prisma.TaxCode$invoiceItemsArgs<ExtArgs>
   _count?: boolean | Prisma.TaxCodeCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["taxCode"]>
 
@@ -525,9 +929,11 @@ export type TaxCodeSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   name?: boolean
   code?: boolean
   rate?: boolean
+  accountId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
+  account?: boolean | Prisma.TaxCode$accountArgs<ExtArgs>
 }, ExtArgs["result"]["taxCode"]>
 
 export type TaxCodeSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -535,9 +941,11 @@ export type TaxCodeSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   name?: boolean
   code?: boolean
   rate?: boolean
+  accountId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
+  account?: boolean | Prisma.TaxCode$accountArgs<ExtArgs>
 }, ExtArgs["result"]["taxCode"]>
 
 export type TaxCodeSelectScalar = {
@@ -545,29 +953,41 @@ export type TaxCodeSelectScalar = {
   name?: boolean
   code?: boolean
   rate?: boolean
+  accountId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
 }
 
-export type TaxCodeOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "code" | "rate" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["taxCode"]>
+export type TaxCodeOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "code" | "rate" | "accountId" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["taxCode"]>
 export type TaxCodeInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  account?: boolean | Prisma.TaxCode$accountArgs<ExtArgs>
   products?: boolean | Prisma.TaxCode$productsArgs<ExtArgs>
+  purchaseOrderItems?: boolean | Prisma.TaxCode$purchaseOrderItemsArgs<ExtArgs>
+  invoiceItems?: boolean | Prisma.TaxCode$invoiceItemsArgs<ExtArgs>
   _count?: boolean | Prisma.TaxCodeCountOutputTypeDefaultArgs<ExtArgs>
 }
-export type TaxCodeIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
-export type TaxCodeIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type TaxCodeIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  account?: boolean | Prisma.TaxCode$accountArgs<ExtArgs>
+}
+export type TaxCodeIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  account?: boolean | Prisma.TaxCode$accountArgs<ExtArgs>
+}
 
 export type $TaxCodePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "TaxCode"
   objects: {
+    account: Prisma.$AccountPayload<ExtArgs> | null
     products: Prisma.$ProductPayload<ExtArgs>[]
+    purchaseOrderItems: Prisma.$PurchaseOrderItemPayload<ExtArgs>[]
+    invoiceItems: Prisma.$PurchaseInvoiceItemPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     name: string
     code: string
     rate: runtime.Decimal
+    accountId: string | null
     createdAt: Date
     updatedAt: Date
     deletedAt: Date | null
@@ -965,7 +1385,10 @@ readonly fields: TaxCodeFieldRefs;
  */
 export interface Prisma__TaxCodeClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  account<T extends Prisma.TaxCode$accountArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.TaxCode$accountArgs<ExtArgs>>): Prisma.Prisma__AccountClient<runtime.Types.Result.GetResult<Prisma.$AccountPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   products<T extends Prisma.TaxCode$productsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.TaxCode$productsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProductPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  purchaseOrderItems<T extends Prisma.TaxCode$purchaseOrderItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.TaxCode$purchaseOrderItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PurchaseOrderItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  invoiceItems<T extends Prisma.TaxCode$invoiceItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.TaxCode$invoiceItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PurchaseInvoiceItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -999,6 +1422,7 @@ export interface TaxCodeFieldRefs {
   readonly name: Prisma.FieldRef<"TaxCode", 'String'>
   readonly code: Prisma.FieldRef<"TaxCode", 'String'>
   readonly rate: Prisma.FieldRef<"TaxCode", 'Decimal'>
+  readonly accountId: Prisma.FieldRef<"TaxCode", 'String'>
   readonly createdAt: Prisma.FieldRef<"TaxCode", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"TaxCode", 'DateTime'>
   readonly deletedAt: Prisma.FieldRef<"TaxCode", 'DateTime'>
@@ -1251,6 +1675,10 @@ export type TaxCodeCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensi
    */
   data: Prisma.TaxCodeCreateManyInput | Prisma.TaxCodeCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaxCodeIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1321,6 +1749,10 @@ export type TaxCodeUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensi
    * Limit how many TaxCodes to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaxCodeIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1390,6 +1822,25 @@ export type TaxCodeDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
 }
 
 /**
+ * TaxCode.account
+ */
+export type TaxCode$accountArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Account
+   */
+  select?: Prisma.AccountSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Account
+   */
+  omit?: Prisma.AccountOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AccountInclude<ExtArgs> | null
+  where?: Prisma.AccountWhereInput
+}
+
+/**
  * TaxCode.products
  */
 export type TaxCode$productsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1411,6 +1862,54 @@ export type TaxCode$productsArgs<ExtArgs extends runtime.Types.Extensions.Intern
   take?: number
   skip?: number
   distinct?: Prisma.ProductScalarFieldEnum | Prisma.ProductScalarFieldEnum[]
+}
+
+/**
+ * TaxCode.purchaseOrderItems
+ */
+export type TaxCode$purchaseOrderItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the PurchaseOrderItem
+   */
+  select?: Prisma.PurchaseOrderItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the PurchaseOrderItem
+   */
+  omit?: Prisma.PurchaseOrderItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PurchaseOrderItemInclude<ExtArgs> | null
+  where?: Prisma.PurchaseOrderItemWhereInput
+  orderBy?: Prisma.PurchaseOrderItemOrderByWithRelationInput | Prisma.PurchaseOrderItemOrderByWithRelationInput[]
+  cursor?: Prisma.PurchaseOrderItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PurchaseOrderItemScalarFieldEnum | Prisma.PurchaseOrderItemScalarFieldEnum[]
+}
+
+/**
+ * TaxCode.invoiceItems
+ */
+export type TaxCode$invoiceItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the PurchaseInvoiceItem
+   */
+  select?: Prisma.PurchaseInvoiceItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the PurchaseInvoiceItem
+   */
+  omit?: Prisma.PurchaseInvoiceItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PurchaseInvoiceItemInclude<ExtArgs> | null
+  where?: Prisma.PurchaseInvoiceItemWhereInput
+  orderBy?: Prisma.PurchaseInvoiceItemOrderByWithRelationInput | Prisma.PurchaseInvoiceItemOrderByWithRelationInput[]
+  cursor?: Prisma.PurchaseInvoiceItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PurchaseInvoiceItemScalarFieldEnum | Prisma.PurchaseInvoiceItemScalarFieldEnum[]
 }
 
 /**
