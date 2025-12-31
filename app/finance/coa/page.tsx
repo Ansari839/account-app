@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
+import MainLayout from '@/components/MainLayout';
 import {
     BookOpen, Plus, Search, ChevronDown,
     ChevronRight, Folder, FileText,
@@ -145,7 +145,7 @@ export default function ChartOfAccountsPage() {
         return (
             <div key={node.id} className="select-none">
                 <div
-                    className={`flex items-center group py-3 px-4 rounded-2xl transition-all ${depth === 0 ? 'bg-slate-900/40 border border-slate-800/60 mb-2' : 'hover:bg-white/5'
+                    className={`flex items-center group py-3 px-4 rounded-xl transition-all ${depth === 0 ? 'bg-white dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 mb-2 shadow-sm' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30'
                         }`}
                     style={{ marginLeft: `${depth * 24}px` }}
                 >
@@ -166,12 +166,12 @@ export default function ChartOfAccountsPage() {
 
                     <div className="flex-1">
                         <div className="flex items-center gap-3">
-                            <span className="text-white font-black tracking-tight">{node.name}</span>
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
+                            <span className="text-slate-900 dark:text-white font-bold">{node.name}</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-100 dark:bg-slate-950 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-800">
                                 {node.code}
                             </span>
                         </div>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{node.type}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{node.type}</p>
                     </div>
 
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
@@ -227,17 +227,19 @@ export default function ChartOfAccountsPage() {
     };
 
     return (
-        <DashboardLayout>
-            <div className="max-w-6xl mx-auto space-y-8">
+        <MainLayout>
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-4xl font-black text-white tracking-tighter uppercase italic">Chart of Accounts</h1>
-                        <p className="text-slate-500 text-sm font-bold uppercase tracking-[0.2em] mt-1">Financial Structure & Hierarchy</p>
+                        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-500 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
+                            Chart of Accounts
+                        </h1>
+                        <p className="text-slate-500 mt-1 uppercase text-[10px] font-bold tracking-widest">Financial Structure & Hierarchy</p>
                     </div>
                     <div className="flex gap-3">
-                        <button className="flex items-center gap-2 bg-slate-900 border border-slate-800 text-slate-400 px-6 py-4 rounded-[2rem] font-black transition-all hover:bg-slate-800 hover:text-white text-xs uppercase tracking-widest shadow-xl">
-                            <Layers size={18} />
+                        <button className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
+                            <Layers size={16} />
                             Full Expand
                         </button>
                         <button
@@ -246,51 +248,53 @@ export default function ChartOfAccountsPage() {
                                 setFormData({ id: '', code: '', name: '', type: 'ASSET', description: '', parentId: '' });
                                 setShowModal(true);
                             }}
-                            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-[2rem] font-black transition-all flex items-center gap-2 text-sm uppercase tracking-widest shadow-xl shadow-blue-600/20"
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all flex items-center gap-2"
                         >
-                            <Plus size={20} />
+                            <Plus size={18} />
                             New Account
                         </button>
                     </div>
                 </div>
 
-                {/* Search & Stats */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     <div className="lg:col-span-3">
                         <div className="relative group">
-                            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={20} />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
                             <input
                                 type="text"
                                 placeholder="Search by name, code or type..."
-                                className="w-full bg-slate-900/40 backdrop-blur-xl border border-slate-800/60 rounded-[2.5rem] py-5 pl-16 pr-8 text-white font-bold placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
+                                className="w-full bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-500"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
                     </div>
-                    <div className="bg-gradient-to-br from-indigo-600/20 to-blue-600/20 border border-blue-500/20 rounded-[2.5rem] p-6 flex items-center justify-between">
+                    <div className="p-4 bg-white dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl shadow-sm flex items-center justify-between">
                         <div>
-                            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Total Accounts</p>
-                            <p className="text-3xl font-black text-white tracking-tighter">{accounts.length}</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Accounts</p>
+                            <p className="text-2xl font-bold">{accounts.length}</p>
                         </div>
-                        <PieChart size={32} className="text-blue-400 opacity-50" />
+                        <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center">
+                            <PieChart size={20} className="text-indigo-500" />
+                        </div>
                     </div>
                 </div>
 
-                {/* Tree View */}
-                <div className="bg-slate-950/20 rounded-[2.5rem] p-8 border border-white/5 space-y-2">
+                <div className="bg-white dark:bg-slate-900/40 rounded-2xl p-6 border border-slate-200/60 dark:border-slate-800/60 shadow-sm min-h-[400px]">
                     {loading ? (
-                        <div className="py-20 flex flex-col items-center">
-                            <div className="animate-spin w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full mb-4" />
-                            <p className="text-slate-500 font-black uppercase tracking-widest text-[10px]">Loading Hierarchy...</p>
+                        <div className="h-[300px] flex flex-col items-center justify-center">
+                            <div className="animate-spin w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full mb-4" />
+                            <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Loading Hierarchy...</p>
                         </div>
                     ) : tree.length === 0 ? (
-                        <div className="py-20 text-center">
-                            <BookOpen size={48} className="text-slate-800 mx-auto mb-4" />
-                            <p className="text-slate-500 font-bold uppercase tracking-widest text-sm">No accounts configured</p>
+                        <div className="h-[300px] flex flex-col items-center justify-center opacity-40">
+                            <BookOpen size={40} className="text-slate-400 mb-4" />
+                            <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">No accounts found</p>
                         </div>
                     ) : (
-                        tree.map(node => renderNode(node))
+                        <div className="space-y-1">
+                            {tree.map(node => renderNode(node))}
+                        </div>
                     )}
                 </div>
 
@@ -309,13 +313,13 @@ export default function ChartOfAccountsPage() {
                 {/* Management Modal */}
                 {showModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-                        <div className="relative bg-slate-900 border border-slate-800 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-                            <div className="p-8 border-b border-white/5">
-                                <h3 className="text-2xl font-black text-white tracking-tighter">{editingAccount ? 'Edit Account' : 'New Account'}</h3>
-                                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Manage Financial Structure</p>
+                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+                        <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in duration-300">
+                            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                                <h3 className="text-xl font-bold">{editingAccount ? 'Edit Account' : 'New Account'}</h3>
+                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">Manage Financial Structure</p>
                             </div>
-                            <form onSubmit={handleSaveAccount} className="p-8 space-y-6">
+                            <form onSubmit={handleSaveAccount} className="p-6 space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Account Code</label>
@@ -382,17 +386,17 @@ export default function ChartOfAccountsPage() {
                                         onChange={e => setFormData({ ...formData, description: e.target.value })}
                                     />
                                 </div>
-                                <div className="flex gap-4 pt-4">
+                                <div className="flex gap-3 pt-4">
                                     <button
                                         type="button"
                                         onClick={() => setShowModal(false)}
-                                        className="flex-1 px-6 py-4 rounded-2xl border border-slate-800 text-slate-400 font-bold uppercase tracking-widest text-xs hover:bg-slate-800 hover:text-white transition-all"
+                                        className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 font-bold uppercase tracking-widest text-[10px] hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+                                        className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
                                     >
                                         {editingAccount ? 'Update Account' : 'Create Account'}
                                     </button>
@@ -402,6 +406,6 @@ export default function ChartOfAccountsPage() {
                     </div>
                 )}
             </div>
-        </DashboardLayout>
+        </MainLayout>
     );
 }
