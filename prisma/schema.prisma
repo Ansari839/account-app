@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --------------------------------------
+// 0.2 Core Database Foundations: Master Tables
+// --------------------------------------
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  address   String?
+  phone     String?
+  email     String?
+  website   String?
+  logo      String?
+  
+  // Audit Fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime? 
+}
+
+model FinancialYear {
+  id          String   @id @default(uuid())
+  name        String   // e.g., "FY 2024-25"
+  startDate   DateTime
+  endDate     DateTime
+  isOpen      Boolean  @default(false)
+  openKeyHash String?  // Hashed key required to open year
+  lockedAt    DateTime? // Permanently locked timestamp
+
+  // Audit Fields
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+}
+
+model Currency {
+  id        String   @id @default(uuid())
+  code      String   @unique // USD, EUR
+  name      String
+  symbol    String
+  rate      Decimal  @default(1.0) // Exchange rate to base currency
+  isBase    Boolean  @default(false)
+  
+  // Audit Fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+model Unit {
+  id        String   @id @default(uuid())
+  name      String   // Kg, Pcs, Box
+  code      String   @unique
+  
+  // Audit Fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+model TaxCode {
+  id        String   @id @default(uuid())
+  name      String   // VAT 5%, GST 18%
+  code      String   @unique
+  rate      Decimal  @default(0.0)
+  
+  // Audit Fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+// --------------------------------------
+// 0.3 Auth System (RBAC + ABAC) & Security Tables
+// --------------------------------------
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  passwordHash   String
+  fullName       String?
+  phone          String?
+  isActive       Boolean   @default(true)
+  mustChangePass Boolean   @default(true) // Force password change on first login
+  lastLoginAt    DateTime?
+  
+  // Relations
+  roles          UserRole[]
+  auditLogs      AuditLog[]
+
+  // Audit Fields
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // ADMIN, MANAGER, ACCOUNTANT
+  description String?
+  
+  // Relations
+  users       UserRole[]
+  permissions RolePermission[]
+
+  // Audit Fields
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  roleId    String
+  
+  user      User     @relation(fields: [userId], references: [id])
+  role      Role     @relation(fields: [roleId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, roleId])
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  module      String   // INVOICE, USER, REPORT
+  action      String   // READ, WRITE, DELETE, APPROVE
+  description String?
+  
+  roles       RolePermission[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  permissionId String
+  
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([roleId, permissionId])
+}
+
+// ABAC Limits
+model UserRoleLimit {
+  id        String   @id @default(uuid())
+  userId    String
+  module    String   // e.g. "PURCHASE_ORDER"
+  limitType String   // AMOUNT, WAREHOUSE_ID
+  limitValue String  // "10000", "WH-001"
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --------------------------------------
+// 0.5 Global Settings Engine
+// --------------------------------------
+
+model GlobalSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  type      String   // STRING, BOOLEAN, JSON
+  group     String?  // SYSTEM, FINANCE, UI
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --------------------------------------
+// 0.6 Audit Logs (System Wide)
+// --------------------------------------
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  action      String   // CREATE, UPDATE, DELETE, LOGIN, APPROVE
+  module      String   // USER, INVOICE, SETTINGS
+  entityId    String?  // ID of the record being verified
+  beforeState Json?    // Snapshot before change
+  afterState  Json?    // Snapshot after change
+  ipAddress   String?
+  userAgent   String?
+  
+  user        User?    @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime @default(now())
+}
