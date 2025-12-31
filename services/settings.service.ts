@@ -35,4 +35,26 @@ export class GlobalSettingsService {
         if (val === null) return defaultValue;
         return val === "true";
     }
+
+    /**
+     * Get all settings by group
+     */
+    static async getGroup(group: string) {
+        const settings = await prisma.globalSetting.findMany({
+            where: { group }
+        });
+        return settings.reduce((acc: any, s) => {
+            acc[s.key] = s.value;
+            return acc;
+        }, {});
+    }
+
+    /**
+     * List all settings grouped
+     */
+    static async listAll() {
+        return await prisma.globalSetting.findMany({
+            orderBy: { group: 'asc' }
+        });
+    }
 }

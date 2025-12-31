@@ -3,6 +3,8 @@ import { VoucherType, Prisma } from "@/app/generated/prisma/client";
 import { VoucherService } from "./voucher.service";
 import { FinancialYearService } from "./financialYear.service";
 import { AccountingControlService } from "./accountingControl.service";
+import { ABACService } from "./abac.service";
+import { AuditService } from "./audit.service";
 
 export interface JournalLineInput {
     accountId: string;
@@ -13,6 +15,7 @@ export interface JournalLineInput {
 
 export interface JournalEntryInput {
     id?: string; // For updates
+    userId?: string; // Added for ABAC and Audit
     number?: string; // Made optional for auto-generation
     date: Date;
     type: VoucherType;
@@ -31,7 +34,16 @@ export class JournalService {
         // 1. Accounting Controls
         await AccountingControlService.validateTransaction(data.date, data.id);
 
-        // 2. Validation: Balance Check
+        // 2. ABAC: Value Limits
+        if (data.userId) {
+            const totalVal = data.lines.reduce((s, l) => s + (l.debit || 0), 0);
+            const hasAccess = await ABACService.checkLimit(data.userId, "JOURNAL", totalVal);
+            if (!hasAccess) {
+                throw new Error(`Transaction amount ${totalVal} exceeds your authorized limit.`);
+            }
+        }
+
+        // 3. Validation: Balance Check
         const totalDebit = data.lines.reduce((sum, line) => sum + (line.debit || 0), 0);
         const totalCredit = data.lines.reduce((sum, line) => sum + (line.credit || 0), 0);
 
@@ -43,13 +55,13 @@ export class JournalService {
             throw new Error("Journal Entry must have at least two lines.");
         }
 
-        // 2. Financial Year Handling
+        // 4. Financial Year Handling
         const activeYear = await FinancialYearService.getActiveYear(data.date);
         if (!activeYear.isOpen) {
             throw new Error(`Financial Year ${activeYear.name} is closed. Cannot post transaction.`);
         }
 
-        // 3. Voucher Number Handling
+        // 5. Voucher Number Handling
         let voucherNo = data.number;
 
         const execute = async (txClient: Prisma.TransactionClient) => {
@@ -59,7 +71,7 @@ export class JournalService {
                 await VoucherService.validateNumber(voucherNo, txClient);
             }
 
-            return await txClient.journalEntry.create({
+            const entry = await txClient.journalEntry.create({
                 data: {
                     number: voucherNo,
                     date: data.date,
@@ -78,6 +90,11 @@ export class JournalService {
                 },
                 include: { lines: true }
             });
+
+            // Audit Log
+            await AuditService.log(data.userId || null, "CREATE", "JOURNAL", entry.id, null, entry);
+
+            return entry;
         };
 
         if (tx) {
