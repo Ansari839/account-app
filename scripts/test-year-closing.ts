@@ -18,18 +18,18 @@ async function runTest() {
         await prisma.account.deleteMany({});
 
         // 1. Setup Accounts
-        const assets = await AccountService.createAccount({ code: "1000", name: "Assets", type: AccountType.ASSET, isPosting: false });
-        const bank = await AccountService.createAccount({ code: "1001", name: "Bank", type: AccountType.ASSET, isPosting: true, parentId: assets.id });
+        const assets = await AccountService.createAccount({ name: "Assets", type: AccountType.ASSET, isPosting: false });
+        const bank = await AccountService.createAccount({ name: "Bank", type: AccountType.ASSET, isPosting: true, parentId: assets.id });
 
-        const income = await AccountService.createAccount({ code: "3000", name: "Income", type: AccountType.INCOME, isPosting: false });
-        const sales = await AccountService.createAccount({ code: "3001", name: "Sales", type: AccountType.INCOME, isPosting: true, parentId: income.id });
+        const income = await AccountService.createAccount({ name: "Income", type: AccountType.INCOME, isPosting: false });
+        const sales = await AccountService.createAccount({ name: "Sales", type: AccountType.INCOME, isPosting: true, parentId: income.id });
 
-        const expense = await AccountService.createAccount({ code: "4000", name: "Expense", type: AccountType.EXPENSE, isPosting: false });
-        const rent = await AccountService.createAccount({ code: "4001", name: "Rent", type: AccountType.EXPENSE, isPosting: true, parentId: expense.id });
+        const expense = await AccountService.createAccount({ name: "Expense", type: AccountType.EXPENSE, isPosting: false });
+        const rent = await AccountService.createAccount({ name: "Rent", type: AccountType.EXPENSE, isPosting: true, parentId: expense.id });
 
-        const equity = await AccountService.createAccount({ code: "5000", name: "Equity", type: AccountType.EQUITY, isPosting: false });
-        const pnl = await AccountService.createAccount({ code: "5001", name: "P&L Summary", type: AccountType.EQUITY, isPosting: true, parentId: equity.id });
-        const retainedEarnings = await AccountService.createAccount({ code: "5002", name: "Retained Earnings", type: AccountType.EQUITY, isPosting: true, parentId: equity.id });
+        const equity = await AccountService.createAccount({ name: "Equity", type: AccountType.EQUITY, isPosting: false });
+        const pnl = await AccountService.createAccount({ name: "P&L Summary", type: AccountType.EQUITY, isPosting: true, parentId: equity.id });
+        const retainedEarnings = await AccountService.createAccount({ name: "Retained Earnings", type: AccountType.EQUITY, isPosting: true, parentId: equity.id });
 
         // 2. Setup Year 1
         const fy1 = await FinancialYearService.createYear({

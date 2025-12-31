@@ -16,7 +16,6 @@ async function main() {
         // 1. Test Create Root Account
         const rootCode = `TEST-ASSET-${Date.now()}`;
         const root = await AccountService.createAccount({
-            code: rootCode,
             name: 'Test Assets',
             type: AccountType.ASSET,
             isPosting: false
@@ -26,7 +25,6 @@ async function main() {
         // 2. Test Create Child Account
         const childCode = `TEST-BANK-${Date.now()}`;
         const child = await AccountService.createAccount({
-            code: childCode,
             name: 'Test Bank',
             type: AccountType.ASSET,
             parentId: root.id,

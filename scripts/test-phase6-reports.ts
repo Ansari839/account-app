@@ -42,11 +42,11 @@ async function runTest() {
         await prisma.financialYear.deleteMany({});
         await prisma.voucherSequence.deleteMany({});
 
-        const bank = await AccountService.createAccount({ code: "1001", name: "Bank", type: AccountType.ASSET, isPosting: true });
-        const sales = await AccountService.createAccount({ code: "3001", name: "Sales", type: AccountType.INCOME, isPosting: true });
-        const tax = await AccountService.createAccount({ code: "2001", name: "Output Tax", type: AccountType.LIABILITY, isPosting: true });
-        const expenses = await AccountService.createAccount({ code: "4001", name: "Rent Expense", type: AccountType.EXPENSE, isPosting: true });
-        const receivables = await AccountService.createAccount({ code: "1101", name: "Accounts Receivable", type: AccountType.ASSET, isPosting: true });
+        const bank = await AccountService.createAccount({ name: "Bank", type: AccountType.ASSET, isPosting: true });
+        const sales = await AccountService.createAccount({ name: "Sales", type: AccountType.INCOME, isPosting: true });
+        const tax = await AccountService.createAccount({ name: "Output Tax", type: AccountType.LIABILITY, isPosting: true });
+        const expenses = await AccountService.createAccount({ name: "Rent Expense", type: AccountType.EXPENSE, isPosting: true });
+        const receivables = await AccountService.createAccount({ name: "Accounts Receivable", type: AccountType.ASSET, isPosting: true });
 
         await FinancialYearService.createYear({
             name: "FY 2025",

@@ -48,8 +48,8 @@ async function runTest() {
             }
         });
 
-        const bank = await AccountService.createAccount({ code: "1001", name: "Bank", type: AccountType.ASSET, isPosting: true });
-        const sales = await AccountService.createAccount({ code: "3001", name: "Sales", type: AccountType.INCOME, isPosting: true });
+        const bank = await AccountService.createAccount({ name: "Bank", type: AccountType.ASSET, isPosting: true });
+        const sales = await AccountService.createAccount({ name: "Sales", type: AccountType.INCOME, isPosting: true });
         await FinancialYearService.createYear({ name: "FY 2025", startDate: new Date("2025-01-01"), endDate: new Date("2025-12-31") });
 
         // Case A: Within Limit (500 < 1000)

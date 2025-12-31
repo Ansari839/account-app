@@ -237,6 +237,11 @@ enum AccountType {
   EXPENSE
 }
 
+enum BalanceType {
+  DR
+  CR
+}
+
 model Account {
   id        String      @id @default(uuid())
   code      String      @unique
@@ -245,6 +250,9 @@ model Account {
   parentId  String?
   level     Int         @default(0)
   isPosting Boolean     @default(true) // Leaf node check
+  
+  openingBalance      Decimal     @default(0.0)
+  openingBalanceType  BalanceType @default(DR)
   
   parent    Account?    @relation("AccountHierarchy", fields: [parentId], references: [id])
   children  Account[]   @relation("AccountHierarchy")

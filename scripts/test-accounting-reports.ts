@@ -27,8 +27,8 @@ async function runTest() {
         });
 
         // 2. Setup Accounts
-        const bank = await AccountService.createAccount({ code: "1001", name: "Bank", type: AccountType.ASSET, isPosting: true });
-        const sales = await AccountService.createAccount({ code: "3001", name: "Sales", type: AccountType.INCOME, isPosting: true });
+        const bank = await AccountService.createAccount({ name: "Bank", type: AccountType.ASSET, isPosting: true });
+        const sales = await AccountService.createAccount({ name: "Sales", type: AccountType.INCOME, isPosting: true });
 
         // 3. Post Transactions
         console.log("--- Posting Transactions ---");

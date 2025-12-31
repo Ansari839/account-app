@@ -20,6 +20,14 @@ export const AccountType = {
 export type AccountType = (typeof AccountType)[keyof typeof AccountType]
 
 
+export const BalanceType = {
+  DR: 'DR',
+  CR: 'CR'
+} as const
+
+export type BalanceType = (typeof BalanceType)[keyof typeof BalanceType]
+
+
 export const VoucherType = {
   JOURNAL: 'JOURNAL',
   PAYMENT: 'PAYMENT',

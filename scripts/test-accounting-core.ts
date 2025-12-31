@@ -30,13 +30,11 @@ async function runTest() {
         // 2. Setup Accounts
         console.log("--- Setting up Accounts ---");
         const bank = await AccountService.createAccount({
-            code: "1001",
             name: "HBL Bank",
             type: AccountType.ASSET,
             isPosting: true
         });
         const sales = await AccountService.createAccount({
-            code: "3001",
             name: "Sales Revenue",
             type: AccountType.INCOME,
             isPosting: true

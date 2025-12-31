@@ -3778,6 +3778,8 @@ export const AccountScalarFieldEnum = {
   parentId: 'parentId',
   level: 'level',
   isPosting: 'isPosting',
+  openingBalance: 'openingBalance',
+  openingBalanceType: 'openingBalanceType',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   deletedAt: 'deletedAt'
@@ -4328,6 +4330,20 @@ export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'In
  * Reference to a field of type 'Int[]'
  */
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
+ * Reference to a field of type 'BalanceType'
+ */
+export type EnumBalanceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BalanceType'>
+    
+
+
+/**
+ * Reference to a field of type 'BalanceType[]'
+ */
+export type ListEnumBalanceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BalanceType[]'>
     
 
 

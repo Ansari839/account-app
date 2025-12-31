@@ -297,6 +297,8 @@ export const AccountScalarFieldEnum = {
   parentId: 'parentId',
   level: 'level',
   isPosting: 'isPosting',
+  openingBalance: 'openingBalance',
+  openingBalanceType: 'openingBalanceType',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   deletedAt: 'deletedAt'

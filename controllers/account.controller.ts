@@ -23,6 +23,36 @@ export class AccountController {
         }
     }
 
+    static async update(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const body = await req.json();
+            const account = await AccountService.updateAccount(id, body);
+            return NextResponse.json({ success: true, data: account });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+        }
+    }
+
+    static async delete(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            await AccountService.deleteAccount(id);
+            return NextResponse.json({ success: true, message: 'Account deleted successfully' });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+        }
+    }
+
+    static async setupDefault() {
+        try {
+            const result = await AccountService.setupDefaultCOA();
+            return NextResponse.json({ success: true, data: result });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+        }
+    }
+
     static async getPostingAccounts(req: Request) {
         try {
             // Extract query param 'type' if needed
