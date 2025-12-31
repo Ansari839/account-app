@@ -20,6 +20,23 @@ export default function Header() {
         ? user.fullName.split(' ').map((n: string) => n[0]).join('')
         : 'AA';
 
+    const handleLogout = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+        } catch (error) {
+            console.error('Logout failed:', error);
+        } finally {
+            localStorage.clear();
+            window.location.href = '/auth/login';
+        }
+    };
+
     return (
         <header className="h-16 border-b border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-[#0f172a]/70 backdrop-blur-md flex items-center justify-between px-8 sticky top-0 z-40">
             <div className="flex items-center gap-4">
@@ -64,11 +81,21 @@ export default function Header() {
                         <p className="text-xs font-bold truncate max-w-[120px]">{user?.fullName || 'Administrator'}</p>
                         <p className="text-[10px] text-slate-500 font-medium">Power User</p>
                     </div>
-                    <button className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-800 flex items-center justify-center hover:shadow-lg transition-all active:scale-95 overflow-hidden">
-                        <img
-                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'Administrator')}&background=4f46e5&color=fff`}
-                            alt="User"
-                        />
+                    <button
+                        onClick={handleLogout}
+                        className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-800 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-rose-500 transition-all active:scale-95 group relative"
+                        title="Logout"
+                    >
+                        <span className="text-xl group-hover:hidden">
+                            <img
+                                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'Administrator')}&background=4f46e5&color=fff`}
+                                alt="User"
+                                className="w-full h-full object-cover"
+                            />
+                        </span>
+                        <span className="hidden group-hover:block transition-all animate-in fade-in duration-200">
+                            🚪
+                        </span>
                     </button>
                 </div>
             </div>

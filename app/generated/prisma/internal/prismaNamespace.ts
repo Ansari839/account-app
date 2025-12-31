@@ -398,6 +398,8 @@ export const ModelName = {
   GlobalSetting: 'GlobalSetting',
   AuditLog: 'AuditLog',
   Account: 'Account',
+  Transaction: 'Transaction',
+  AccountEntry: 'AccountEntry',
   Customer: 'Customer',
   Supplier: 'Supplier',
   Category: 'Category',
@@ -441,7 +443,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "company" | "financialYear" | "currency" | "unit" | "taxCode" | "user" | "role" | "userRole" | "permission" | "rolePermission" | "userRoleLimit" | "globalSetting" | "auditLog" | "account" | "customer" | "supplier" | "category" | "product" | "warehouse" | "unitConversion" | "journalEntry" | "journalLine" | "stockLedger" | "purchaseOrder" | "purchaseOrderItem" | "gRN" | "gRNItem" | "purchaseInvoice" | "purchaseInvoiceItem" | "purchaseRequest" | "purchaseRequestItem" | "salesQuotation" | "salesQuotationItem" | "salesOrder" | "salesOrderItem" | "deliveryOrder" | "deliveryOrderItem" | "salesInvoice" | "salesInvoiceItem" | "salesReturn" | "salesReturnItem" | "voucherSequence"
+    modelProps: "company" | "financialYear" | "currency" | "unit" | "taxCode" | "user" | "role" | "userRole" | "permission" | "rolePermission" | "userRoleLimit" | "globalSetting" | "auditLog" | "account" | "transaction" | "accountEntry" | "customer" | "supplier" | "category" | "product" | "warehouse" | "unitConversion" | "journalEntry" | "journalLine" | "stockLedger" | "purchaseOrder" | "purchaseOrderItem" | "gRN" | "gRNItem" | "purchaseInvoice" | "purchaseInvoiceItem" | "purchaseRequest" | "purchaseRequestItem" | "salesQuotation" | "salesQuotationItem" | "salesOrder" | "salesOrderItem" | "deliveryOrder" | "deliveryOrderItem" | "salesInvoice" | "salesInvoiceItem" | "salesReturn" | "salesReturnItem" | "voucherSequence"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1478,6 +1480,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.AccountCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.AccountCountAggregateOutputType> | number
+        }
+      }
+    }
+    Transaction: {
+      payload: Prisma.$TransactionPayload<ExtArgs>
+      fields: Prisma.TransactionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.TransactionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TransactionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.TransactionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TransactionPayload>
+        }
+        findFirst: {
+          args: Prisma.TransactionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TransactionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.TransactionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TransactionPayload>
+        }
+        findMany: {
+          args: Prisma.TransactionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TransactionPayload>[]
+        }
+        create: {
+          args: Prisma.TransactionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TransactionPayload>
+        }
+        createMany: {
+          args: Prisma.TransactionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.TransactionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TransactionPayload>[]
+        }
+        delete: {
+          args: Prisma.TransactionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TransactionPayload>
+        }
+        update: {
+          args: Prisma.TransactionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TransactionPayload>
+        }
+        deleteMany: {
+          args: Prisma.TransactionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.TransactionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.TransactionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TransactionPayload>[]
+        }
+        upsert: {
+          args: Prisma.TransactionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TransactionPayload>
+        }
+        aggregate: {
+          args: Prisma.TransactionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateTransaction>
+        }
+        groupBy: {
+          args: Prisma.TransactionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TransactionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.TransactionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TransactionCountAggregateOutputType> | number
+        }
+      }
+    }
+    AccountEntry: {
+      payload: Prisma.$AccountEntryPayload<ExtArgs>
+      fields: Prisma.AccountEntryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AccountEntryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountEntryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AccountEntryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountEntryPayload>
+        }
+        findFirst: {
+          args: Prisma.AccountEntryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountEntryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AccountEntryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountEntryPayload>
+        }
+        findMany: {
+          args: Prisma.AccountEntryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountEntryPayload>[]
+        }
+        create: {
+          args: Prisma.AccountEntryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountEntryPayload>
+        }
+        createMany: {
+          args: Prisma.AccountEntryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AccountEntryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountEntryPayload>[]
+        }
+        delete: {
+          args: Prisma.AccountEntryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountEntryPayload>
+        }
+        update: {
+          args: Prisma.AccountEntryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountEntryPayload>
+        }
+        deleteMany: {
+          args: Prisma.AccountEntryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AccountEntryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AccountEntryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountEntryPayload>[]
+        }
+        upsert: {
+          args: Prisma.AccountEntryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountEntryPayload>
+        }
+        aggregate: {
+          args: Prisma.AccountEntryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAccountEntry>
+        }
+        groupBy: {
+          args: Prisma.AccountEntryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AccountEntryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AccountEntryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AccountEntryCountAggregateOutputType> | number
         }
       }
     }
@@ -3674,6 +3824,7 @@ export const UserScalarFieldEnum = {
   isActive: 'isActive',
   mustChangePass: 'mustChangePass',
   lastLoginAt: 'lastLoginAt',
+  companyId: 'companyId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   deletedAt: 'deletedAt'
@@ -3775,17 +3926,50 @@ export const AccountScalarFieldEnum = {
   code: 'code',
   name: 'name',
   type: 'type',
+  description: 'description',
   parentId: 'parentId',
   level: 'level',
   isPosting: 'isPosting',
   openingBalance: 'openingBalance',
   openingBalanceType: 'openingBalanceType',
+  companyId: 'companyId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   deletedAt: 'deletedAt'
 } as const
 
 export type AccountScalarFieldEnum = (typeof AccountScalarFieldEnum)[keyof typeof AccountScalarFieldEnum]
+
+
+export const TransactionScalarFieldEnum = {
+  id: 'id',
+  reference: 'reference',
+  date: 'date',
+  description: 'description',
+  type: 'type',
+  invoiceId: 'invoiceId',
+  paymentId: 'paymentId',
+  purchaseId: 'purchaseId',
+  companyId: 'companyId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  isLocked: 'isLocked'
+} as const
+
+export type TransactionScalarFieldEnum = (typeof TransactionScalarFieldEnum)[keyof typeof TransactionScalarFieldEnum]
+
+
+export const AccountEntryScalarFieldEnum = {
+  id: 'id',
+  transactionId: 'transactionId',
+  accountId: 'accountId',
+  debit: 'debit',
+  credit: 'credit',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AccountEntryScalarFieldEnum = (typeof AccountEntryScalarFieldEnum)[keyof typeof AccountEntryScalarFieldEnum]
 
 
 export const CustomerScalarFieldEnum = {
@@ -4334,20 +4518,6 @@ export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel,
 
 
 /**
- * Reference to a field of type 'BalanceType'
- */
-export type EnumBalanceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BalanceType'>
-    
-
-
-/**
- * Reference to a field of type 'BalanceType[]'
- */
-export type ListEnumBalanceTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BalanceType[]'>
-    
-
-
-/**
  * Reference to a field of type 'VoucherType'
  */
 export type EnumVoucherTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'VoucherType'>
@@ -4483,6 +4653,8 @@ export type GlobalOmitConfig = {
   globalSetting?: Prisma.GlobalSettingOmit
   auditLog?: Prisma.AuditLogOmit
   account?: Prisma.AccountOmit
+  transaction?: Prisma.TransactionOmit
+  accountEntry?: Prisma.AccountEntryOmit
   customer?: Prisma.CustomerOmit
   supplier?: Prisma.SupplierOmit
   category?: Prisma.CategoryOmit

@@ -244,13 +244,6 @@ export type IntFilter<$PrismaModel = never> = {
   not?: Prisma.NestedIntFilter<$PrismaModel> | number
 }
 
-export type EnumBalanceTypeFilter<$PrismaModel = never> = {
-  equals?: $Enums.BalanceType | Prisma.EnumBalanceTypeFieldRefInput<$PrismaModel>
-  in?: $Enums.BalanceType[] | Prisma.ListEnumBalanceTypeFieldRefInput<$PrismaModel>
-  notIn?: $Enums.BalanceType[] | Prisma.ListEnumBalanceTypeFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumBalanceTypeFilter<$PrismaModel> | $Enums.BalanceType
-}
-
 export type EnumAccountTypeWithAggregatesFilter<$PrismaModel = never> = {
   equals?: $Enums.AccountType | Prisma.EnumAccountTypeFieldRefInput<$PrismaModel>
   in?: $Enums.AccountType[] | Prisma.ListEnumAccountTypeFieldRefInput<$PrismaModel>
@@ -275,16 +268,6 @@ export type IntWithAggregatesFilter<$PrismaModel = never> = {
   _sum?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedIntFilter<$PrismaModel>
   _max?: Prisma.NestedIntFilter<$PrismaModel>
-}
-
-export type EnumBalanceTypeWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: $Enums.BalanceType | Prisma.EnumBalanceTypeFieldRefInput<$PrismaModel>
-  in?: $Enums.BalanceType[] | Prisma.ListEnumBalanceTypeFieldRefInput<$PrismaModel>
-  notIn?: $Enums.BalanceType[] | Prisma.ListEnumBalanceTypeFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumBalanceTypeWithAggregatesFilter<$PrismaModel> | $Enums.BalanceType
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumBalanceTypeFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumBalanceTypeFilter<$PrismaModel>
 }
 
 export type EnumVoucherTypeFilter<$PrismaModel = never> = {
@@ -509,13 +492,6 @@ export type NestedEnumAccountTypeFilter<$PrismaModel = never> = {
   not?: Prisma.NestedEnumAccountTypeFilter<$PrismaModel> | $Enums.AccountType
 }
 
-export type NestedEnumBalanceTypeFilter<$PrismaModel = never> = {
-  equals?: $Enums.BalanceType | Prisma.EnumBalanceTypeFieldRefInput<$PrismaModel>
-  in?: $Enums.BalanceType[] | Prisma.ListEnumBalanceTypeFieldRefInput<$PrismaModel>
-  notIn?: $Enums.BalanceType[] | Prisma.ListEnumBalanceTypeFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumBalanceTypeFilter<$PrismaModel> | $Enums.BalanceType
-}
-
 export type NestedEnumAccountTypeWithAggregatesFilter<$PrismaModel = never> = {
   equals?: $Enums.AccountType | Prisma.EnumAccountTypeFieldRefInput<$PrismaModel>
   in?: $Enums.AccountType[] | Prisma.ListEnumAccountTypeFieldRefInput<$PrismaModel>
@@ -551,16 +527,6 @@ export type NestedFloatFilter<$PrismaModel = never> = {
   gt?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   gte?: number | Prisma.FloatFieldRefInput<$PrismaModel>
   not?: Prisma.NestedFloatFilter<$PrismaModel> | number
-}
-
-export type NestedEnumBalanceTypeWithAggregatesFilter<$PrismaModel = never> = {
-  equals?: $Enums.BalanceType | Prisma.EnumBalanceTypeFieldRefInput<$PrismaModel>
-  in?: $Enums.BalanceType[] | Prisma.ListEnumBalanceTypeFieldRefInput<$PrismaModel>
-  notIn?: $Enums.BalanceType[] | Prisma.ListEnumBalanceTypeFieldRefInput<$PrismaModel>
-  not?: Prisma.NestedEnumBalanceTypeWithAggregatesFilter<$PrismaModel> | $Enums.BalanceType
-  _count?: Prisma.NestedIntFilter<$PrismaModel>
-  _min?: Prisma.NestedEnumBalanceTypeFilter<$PrismaModel>
-  _max?: Prisma.NestedEnumBalanceTypeFilter<$PrismaModel>
 }
 
 export type NestedEnumVoucherTypeFilter<$PrismaModel = never> = {

@@ -41,11 +41,13 @@ export type AccountMinAggregateOutputType = {
   code: string | null
   name: string | null
   type: $Enums.AccountType | null
+  description: string | null
   parentId: string | null
   level: number | null
   isPosting: boolean | null
   openingBalance: runtime.Decimal | null
-  openingBalanceType: $Enums.BalanceType | null
+  openingBalanceType: string | null
+  companyId: string | null
   createdAt: Date | null
   updatedAt: Date | null
   deletedAt: Date | null
@@ -56,11 +58,13 @@ export type AccountMaxAggregateOutputType = {
   code: string | null
   name: string | null
   type: $Enums.AccountType | null
+  description: string | null
   parentId: string | null
   level: number | null
   isPosting: boolean | null
   openingBalance: runtime.Decimal | null
-  openingBalanceType: $Enums.BalanceType | null
+  openingBalanceType: string | null
+  companyId: string | null
   createdAt: Date | null
   updatedAt: Date | null
   deletedAt: Date | null
@@ -71,11 +75,13 @@ export type AccountCountAggregateOutputType = {
   code: number
   name: number
   type: number
+  description: number
   parentId: number
   level: number
   isPosting: number
   openingBalance: number
   openingBalanceType: number
+  companyId: number
   createdAt: number
   updatedAt: number
   deletedAt: number
@@ -98,11 +104,13 @@ export type AccountMinAggregateInputType = {
   code?: true
   name?: true
   type?: true
+  description?: true
   parentId?: true
   level?: true
   isPosting?: true
   openingBalance?: true
   openingBalanceType?: true
+  companyId?: true
   createdAt?: true
   updatedAt?: true
   deletedAt?: true
@@ -113,11 +121,13 @@ export type AccountMaxAggregateInputType = {
   code?: true
   name?: true
   type?: true
+  description?: true
   parentId?: true
   level?: true
   isPosting?: true
   openingBalance?: true
   openingBalanceType?: true
+  companyId?: true
   createdAt?: true
   updatedAt?: true
   deletedAt?: true
@@ -128,11 +138,13 @@ export type AccountCountAggregateInputType = {
   code?: true
   name?: true
   type?: true
+  description?: true
   parentId?: true
   level?: true
   isPosting?: true
   openingBalance?: true
   openingBalanceType?: true
+  companyId?: true
   createdAt?: true
   updatedAt?: true
   deletedAt?: true
@@ -230,11 +242,13 @@ export type AccountGroupByOutputType = {
   code: string
   name: string
   type: $Enums.AccountType
+  description: string | null
   parentId: string | null
   level: number
   isPosting: boolean
   openingBalance: runtime.Decimal
-  openingBalanceType: $Enums.BalanceType
+  openingBalanceType: string | null
+  companyId: string | null
   createdAt: Date
   updatedAt: Date
   deletedAt: Date | null
@@ -268,11 +282,13 @@ export type AccountWhereInput = {
   code?: Prisma.StringFilter<"Account"> | string
   name?: Prisma.StringFilter<"Account"> | string
   type?: Prisma.EnumAccountTypeFilter<"Account"> | $Enums.AccountType
+  description?: Prisma.StringNullableFilter<"Account"> | string | null
   parentId?: Prisma.StringNullableFilter<"Account"> | string | null
   level?: Prisma.IntFilter<"Account"> | number
   isPosting?: Prisma.BoolFilter<"Account"> | boolean
   openingBalance?: Prisma.DecimalFilter<"Account"> | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFilter<"Account"> | $Enums.BalanceType
+  openingBalanceType?: Prisma.StringNullableFilter<"Account"> | string | null
+  companyId?: Prisma.StringNullableFilter<"Account"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Account"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Account"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"Account"> | Date | string | null
@@ -286,6 +302,8 @@ export type AccountWhereInput = {
   suppliersPayable?: Prisma.SupplierListRelationFilter
   journalLines?: Prisma.JournalLineListRelationFilter
   taxCodes?: Prisma.TaxCodeListRelationFilter
+  company?: Prisma.XOR<Prisma.CompanyNullableScalarRelationFilter, Prisma.CompanyWhereInput> | null
+  entries?: Prisma.AccountEntryListRelationFilter
 }
 
 export type AccountOrderByWithRelationInput = {
@@ -293,11 +311,13 @@ export type AccountOrderByWithRelationInput = {
   code?: Prisma.SortOrder
   name?: Prisma.SortOrder
   type?: Prisma.SortOrder
+  description?: Prisma.SortOrderInput | Prisma.SortOrder
   parentId?: Prisma.SortOrderInput | Prisma.SortOrder
   level?: Prisma.SortOrder
   isPosting?: Prisma.SortOrder
   openingBalance?: Prisma.SortOrder
-  openingBalanceType?: Prisma.SortOrder
+  openingBalanceType?: Prisma.SortOrderInput | Prisma.SortOrder
+  companyId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -311,21 +331,26 @@ export type AccountOrderByWithRelationInput = {
   suppliersPayable?: Prisma.SupplierOrderByRelationAggregateInput
   journalLines?: Prisma.JournalLineOrderByRelationAggregateInput
   taxCodes?: Prisma.TaxCodeOrderByRelationAggregateInput
+  company?: Prisma.CompanyOrderByWithRelationInput
+  entries?: Prisma.AccountEntryOrderByRelationAggregateInput
 }
 
 export type AccountWhereUniqueInput = Prisma.AtLeast<{
   id?: string
-  code?: string
+  companyId_code?: Prisma.AccountCompanyIdCodeCompoundUniqueInput
   AND?: Prisma.AccountWhereInput | Prisma.AccountWhereInput[]
   OR?: Prisma.AccountWhereInput[]
   NOT?: Prisma.AccountWhereInput | Prisma.AccountWhereInput[]
+  code?: Prisma.StringFilter<"Account"> | string
   name?: Prisma.StringFilter<"Account"> | string
   type?: Prisma.EnumAccountTypeFilter<"Account"> | $Enums.AccountType
+  description?: Prisma.StringNullableFilter<"Account"> | string | null
   parentId?: Prisma.StringNullableFilter<"Account"> | string | null
   level?: Prisma.IntFilter<"Account"> | number
   isPosting?: Prisma.BoolFilter<"Account"> | boolean
   openingBalance?: Prisma.DecimalFilter<"Account"> | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFilter<"Account"> | $Enums.BalanceType
+  openingBalanceType?: Prisma.StringNullableFilter<"Account"> | string | null
+  companyId?: Prisma.StringNullableFilter<"Account"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Account"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Account"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"Account"> | Date | string | null
@@ -339,18 +364,22 @@ export type AccountWhereUniqueInput = Prisma.AtLeast<{
   suppliersPayable?: Prisma.SupplierListRelationFilter
   journalLines?: Prisma.JournalLineListRelationFilter
   taxCodes?: Prisma.TaxCodeListRelationFilter
-}, "id" | "code">
+  company?: Prisma.XOR<Prisma.CompanyNullableScalarRelationFilter, Prisma.CompanyWhereInput> | null
+  entries?: Prisma.AccountEntryListRelationFilter
+}, "id" | "companyId_code">
 
 export type AccountOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   code?: Prisma.SortOrder
   name?: Prisma.SortOrder
   type?: Prisma.SortOrder
+  description?: Prisma.SortOrderInput | Prisma.SortOrder
   parentId?: Prisma.SortOrderInput | Prisma.SortOrder
   level?: Prisma.SortOrder
   isPosting?: Prisma.SortOrder
   openingBalance?: Prisma.SortOrder
-  openingBalanceType?: Prisma.SortOrder
+  openingBalanceType?: Prisma.SortOrderInput | Prisma.SortOrder
+  companyId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -369,11 +398,13 @@ export type AccountScalarWhereWithAggregatesInput = {
   code?: Prisma.StringWithAggregatesFilter<"Account"> | string
   name?: Prisma.StringWithAggregatesFilter<"Account"> | string
   type?: Prisma.EnumAccountTypeWithAggregatesFilter<"Account"> | $Enums.AccountType
+  description?: Prisma.StringNullableWithAggregatesFilter<"Account"> | string | null
   parentId?: Prisma.StringNullableWithAggregatesFilter<"Account"> | string | null
   level?: Prisma.IntWithAggregatesFilter<"Account"> | number
   isPosting?: Prisma.BoolWithAggregatesFilter<"Account"> | boolean
   openingBalance?: Prisma.DecimalWithAggregatesFilter<"Account"> | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeWithAggregatesFilter<"Account"> | $Enums.BalanceType
+  openingBalanceType?: Prisma.StringNullableWithAggregatesFilter<"Account"> | string | null
+  companyId?: Prisma.StringNullableWithAggregatesFilter<"Account"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Account"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Account"> | Date | string
   deletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Account"> | Date | string | null
@@ -384,10 +415,11 @@ export type AccountCreateInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -401,6 +433,8 @@ export type AccountCreateInput = {
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
+  company?: Prisma.CompanyCreateNestedOneWithoutAccountsInput
+  entries?: Prisma.AccountEntryCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateInput = {
@@ -408,11 +442,13 @@ export type AccountUncheckedCreateInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   parentId?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
+  companyId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -425,6 +461,7 @@ export type AccountUncheckedCreateInput = {
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
+  entries?: Prisma.AccountEntryUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUpdateInput = {
@@ -432,10 +469,11 @@ export type AccountUpdateInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -449,6 +487,8 @@ export type AccountUpdateInput = {
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
+  company?: Prisma.CompanyUpdateOneWithoutAccountsNestedInput
+  entries?: Prisma.AccountEntryUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateInput = {
@@ -456,11 +496,13 @@ export type AccountUncheckedUpdateInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -473,6 +515,7 @@ export type AccountUncheckedUpdateInput = {
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
+  entries?: Prisma.AccountEntryUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountCreateManyInput = {
@@ -480,11 +523,13 @@ export type AccountCreateManyInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   parentId?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
+  companyId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -495,10 +540,11 @@ export type AccountUpdateManyMutationInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -509,19 +555,16 @@ export type AccountUncheckedUpdateManyInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-}
-
-export type AccountNullableScalarRelationFilter = {
-  is?: Prisma.AccountWhereInput | null
-  isNot?: Prisma.AccountWhereInput | null
 }
 
 export type AccountListRelationFilter = {
@@ -534,16 +577,28 @@ export type AccountOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type AccountNullableScalarRelationFilter = {
+  is?: Prisma.AccountWhereInput | null
+  isNot?: Prisma.AccountWhereInput | null
+}
+
+export type AccountCompanyIdCodeCompoundUniqueInput = {
+  companyId: string
+  code: string
+}
+
 export type AccountCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   code?: Prisma.SortOrder
   name?: Prisma.SortOrder
   type?: Prisma.SortOrder
+  description?: Prisma.SortOrder
   parentId?: Prisma.SortOrder
   level?: Prisma.SortOrder
   isPosting?: Prisma.SortOrder
   openingBalance?: Prisma.SortOrder
   openingBalanceType?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrder
@@ -559,11 +614,13 @@ export type AccountMaxOrderByAggregateInput = {
   code?: Prisma.SortOrder
   name?: Prisma.SortOrder
   type?: Prisma.SortOrder
+  description?: Prisma.SortOrder
   parentId?: Prisma.SortOrder
   level?: Prisma.SortOrder
   isPosting?: Prisma.SortOrder
   openingBalance?: Prisma.SortOrder
   openingBalanceType?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrder
@@ -574,11 +631,13 @@ export type AccountMinOrderByAggregateInput = {
   code?: Prisma.SortOrder
   name?: Prisma.SortOrder
   type?: Prisma.SortOrder
+  description?: Prisma.SortOrder
   parentId?: Prisma.SortOrder
   level?: Prisma.SortOrder
   isPosting?: Prisma.SortOrder
   openingBalance?: Prisma.SortOrder
   openingBalanceType?: Prisma.SortOrder
+  companyId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrder
@@ -592,6 +651,48 @@ export type AccountSumOrderByAggregateInput = {
 export type AccountScalarRelationFilter = {
   is?: Prisma.AccountWhereInput
   isNot?: Prisma.AccountWhereInput
+}
+
+export type AccountCreateNestedManyWithoutCompanyInput = {
+  create?: Prisma.XOR<Prisma.AccountCreateWithoutCompanyInput, Prisma.AccountUncheckedCreateWithoutCompanyInput> | Prisma.AccountCreateWithoutCompanyInput[] | Prisma.AccountUncheckedCreateWithoutCompanyInput[]
+  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutCompanyInput | Prisma.AccountCreateOrConnectWithoutCompanyInput[]
+  createMany?: Prisma.AccountCreateManyCompanyInputEnvelope
+  connect?: Prisma.AccountWhereUniqueInput | Prisma.AccountWhereUniqueInput[]
+}
+
+export type AccountUncheckedCreateNestedManyWithoutCompanyInput = {
+  create?: Prisma.XOR<Prisma.AccountCreateWithoutCompanyInput, Prisma.AccountUncheckedCreateWithoutCompanyInput> | Prisma.AccountCreateWithoutCompanyInput[] | Prisma.AccountUncheckedCreateWithoutCompanyInput[]
+  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutCompanyInput | Prisma.AccountCreateOrConnectWithoutCompanyInput[]
+  createMany?: Prisma.AccountCreateManyCompanyInputEnvelope
+  connect?: Prisma.AccountWhereUniqueInput | Prisma.AccountWhereUniqueInput[]
+}
+
+export type AccountUpdateManyWithoutCompanyNestedInput = {
+  create?: Prisma.XOR<Prisma.AccountCreateWithoutCompanyInput, Prisma.AccountUncheckedCreateWithoutCompanyInput> | Prisma.AccountCreateWithoutCompanyInput[] | Prisma.AccountUncheckedCreateWithoutCompanyInput[]
+  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutCompanyInput | Prisma.AccountCreateOrConnectWithoutCompanyInput[]
+  upsert?: Prisma.AccountUpsertWithWhereUniqueWithoutCompanyInput | Prisma.AccountUpsertWithWhereUniqueWithoutCompanyInput[]
+  createMany?: Prisma.AccountCreateManyCompanyInputEnvelope
+  set?: Prisma.AccountWhereUniqueInput | Prisma.AccountWhereUniqueInput[]
+  disconnect?: Prisma.AccountWhereUniqueInput | Prisma.AccountWhereUniqueInput[]
+  delete?: Prisma.AccountWhereUniqueInput | Prisma.AccountWhereUniqueInput[]
+  connect?: Prisma.AccountWhereUniqueInput | Prisma.AccountWhereUniqueInput[]
+  update?: Prisma.AccountUpdateWithWhereUniqueWithoutCompanyInput | Prisma.AccountUpdateWithWhereUniqueWithoutCompanyInput[]
+  updateMany?: Prisma.AccountUpdateManyWithWhereWithoutCompanyInput | Prisma.AccountUpdateManyWithWhereWithoutCompanyInput[]
+  deleteMany?: Prisma.AccountScalarWhereInput | Prisma.AccountScalarWhereInput[]
+}
+
+export type AccountUncheckedUpdateManyWithoutCompanyNestedInput = {
+  create?: Prisma.XOR<Prisma.AccountCreateWithoutCompanyInput, Prisma.AccountUncheckedCreateWithoutCompanyInput> | Prisma.AccountCreateWithoutCompanyInput[] | Prisma.AccountUncheckedCreateWithoutCompanyInput[]
+  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutCompanyInput | Prisma.AccountCreateOrConnectWithoutCompanyInput[]
+  upsert?: Prisma.AccountUpsertWithWhereUniqueWithoutCompanyInput | Prisma.AccountUpsertWithWhereUniqueWithoutCompanyInput[]
+  createMany?: Prisma.AccountCreateManyCompanyInputEnvelope
+  set?: Prisma.AccountWhereUniqueInput | Prisma.AccountWhereUniqueInput[]
+  disconnect?: Prisma.AccountWhereUniqueInput | Prisma.AccountWhereUniqueInput[]
+  delete?: Prisma.AccountWhereUniqueInput | Prisma.AccountWhereUniqueInput[]
+  connect?: Prisma.AccountWhereUniqueInput | Prisma.AccountWhereUniqueInput[]
+  update?: Prisma.AccountUpdateWithWhereUniqueWithoutCompanyInput | Prisma.AccountUpdateWithWhereUniqueWithoutCompanyInput[]
+  updateMany?: Prisma.AccountUpdateManyWithWhereWithoutCompanyInput | Prisma.AccountUpdateManyWithWhereWithoutCompanyInput[]
+  deleteMany?: Prisma.AccountScalarWhereInput | Prisma.AccountScalarWhereInput[]
 }
 
 export type AccountCreateNestedOneWithoutTaxCodesInput = {
@@ -642,10 +743,6 @@ export type IntFieldUpdateOperationsInput = {
   divide?: number
 }
 
-export type EnumBalanceTypeFieldUpdateOperationsInput = {
-  set?: $Enums.BalanceType
-}
-
 export type AccountUpdateOneWithoutChildrenNestedInput = {
   create?: Prisma.XOR<Prisma.AccountCreateWithoutChildrenInput, Prisma.AccountUncheckedCreateWithoutChildrenInput>
   connectOrCreate?: Prisma.AccountCreateOrConnectWithoutChildrenInput
@@ -682,6 +779,20 @@ export type AccountUncheckedUpdateManyWithoutParentNestedInput = {
   update?: Prisma.AccountUpdateWithWhereUniqueWithoutParentInput | Prisma.AccountUpdateWithWhereUniqueWithoutParentInput[]
   updateMany?: Prisma.AccountUpdateManyWithWhereWithoutParentInput | Prisma.AccountUpdateManyWithWhereWithoutParentInput[]
   deleteMany?: Prisma.AccountScalarWhereInput | Prisma.AccountScalarWhereInput[]
+}
+
+export type AccountCreateNestedOneWithoutEntriesInput = {
+  create?: Prisma.XOR<Prisma.AccountCreateWithoutEntriesInput, Prisma.AccountUncheckedCreateWithoutEntriesInput>
+  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutEntriesInput
+  connect?: Prisma.AccountWhereUniqueInput
+}
+
+export type AccountUpdateOneRequiredWithoutEntriesNestedInput = {
+  create?: Prisma.XOR<Prisma.AccountCreateWithoutEntriesInput, Prisma.AccountUncheckedCreateWithoutEntriesInput>
+  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutEntriesInput
+  upsert?: Prisma.AccountUpsertWithoutEntriesInput
+  connect?: Prisma.AccountWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AccountUpdateToOneWithWhereWithoutEntriesInput, Prisma.AccountUpdateWithoutEntriesInput>, Prisma.AccountUncheckedUpdateWithoutEntriesInput>
 }
 
 export type AccountCreateNestedOneWithoutCustomersReceivableInput = {
@@ -794,15 +905,16 @@ export type AccountUpdateOneRequiredWithoutJournalLinesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.AccountUpdateToOneWithWhereWithoutJournalLinesInput, Prisma.AccountUpdateWithoutJournalLinesInput>, Prisma.AccountUncheckedUpdateWithoutJournalLinesInput>
 }
 
-export type AccountCreateWithoutTaxCodesInput = {
+export type AccountCreateWithoutCompanyInput = {
   id?: string
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -815,18 +927,21 @@ export type AccountCreateWithoutTaxCodesInput = {
   customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
+  entries?: Prisma.AccountEntryCreateNestedManyWithoutAccountInput
 }
 
-export type AccountUncheckedCreateWithoutTaxCodesInput = {
+export type AccountUncheckedCreateWithoutCompanyInput = {
   id?: string
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   parentId?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -838,6 +953,106 @@ export type AccountUncheckedCreateWithoutTaxCodesInput = {
   customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
+  entries?: Prisma.AccountEntryUncheckedCreateNestedManyWithoutAccountInput
+}
+
+export type AccountCreateOrConnectWithoutCompanyInput = {
+  where: Prisma.AccountWhereUniqueInput
+  create: Prisma.XOR<Prisma.AccountCreateWithoutCompanyInput, Prisma.AccountUncheckedCreateWithoutCompanyInput>
+}
+
+export type AccountCreateManyCompanyInputEnvelope = {
+  data: Prisma.AccountCreateManyCompanyInput | Prisma.AccountCreateManyCompanyInput[]
+  skipDuplicates?: boolean
+}
+
+export type AccountUpsertWithWhereUniqueWithoutCompanyInput = {
+  where: Prisma.AccountWhereUniqueInput
+  update: Prisma.XOR<Prisma.AccountUpdateWithoutCompanyInput, Prisma.AccountUncheckedUpdateWithoutCompanyInput>
+  create: Prisma.XOR<Prisma.AccountCreateWithoutCompanyInput, Prisma.AccountUncheckedCreateWithoutCompanyInput>
+}
+
+export type AccountUpdateWithWhereUniqueWithoutCompanyInput = {
+  where: Prisma.AccountWhereUniqueInput
+  data: Prisma.XOR<Prisma.AccountUpdateWithoutCompanyInput, Prisma.AccountUncheckedUpdateWithoutCompanyInput>
+}
+
+export type AccountUpdateManyWithWhereWithoutCompanyInput = {
+  where: Prisma.AccountScalarWhereInput
+  data: Prisma.XOR<Prisma.AccountUpdateManyMutationInput, Prisma.AccountUncheckedUpdateManyWithoutCompanyInput>
+}
+
+export type AccountScalarWhereInput = {
+  AND?: Prisma.AccountScalarWhereInput | Prisma.AccountScalarWhereInput[]
+  OR?: Prisma.AccountScalarWhereInput[]
+  NOT?: Prisma.AccountScalarWhereInput | Prisma.AccountScalarWhereInput[]
+  id?: Prisma.StringFilter<"Account"> | string
+  code?: Prisma.StringFilter<"Account"> | string
+  name?: Prisma.StringFilter<"Account"> | string
+  type?: Prisma.EnumAccountTypeFilter<"Account"> | $Enums.AccountType
+  description?: Prisma.StringNullableFilter<"Account"> | string | null
+  parentId?: Prisma.StringNullableFilter<"Account"> | string | null
+  level?: Prisma.IntFilter<"Account"> | number
+  isPosting?: Prisma.BoolFilter<"Account"> | boolean
+  openingBalance?: Prisma.DecimalFilter<"Account"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  openingBalanceType?: Prisma.StringNullableFilter<"Account"> | string | null
+  companyId?: Prisma.StringNullableFilter<"Account"> | string | null
+  createdAt?: Prisma.DateTimeFilter<"Account"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Account"> | Date | string
+  deletedAt?: Prisma.DateTimeNullableFilter<"Account"> | Date | string | null
+}
+
+export type AccountCreateWithoutTaxCodesInput = {
+  id?: string
+  code: string
+  name: string
+  type: $Enums.AccountType
+  description?: string | null
+  level?: number
+  isPosting?: boolean
+  openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  openingBalanceType?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  parent?: Prisma.AccountCreateNestedOneWithoutChildrenInput
+  children?: Prisma.AccountCreateNestedManyWithoutParentInput
+  productsInventory?: Prisma.ProductCreateNestedManyWithoutInventoryAccountInput
+  productsCOGS?: Prisma.ProductCreateNestedManyWithoutCogsAccountInput
+  productsSales?: Prisma.ProductCreateNestedManyWithoutSalesAccountInput
+  productsPurchase?: Prisma.ProductCreateNestedManyWithoutPurchaseAccountInput
+  customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
+  suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
+  company?: Prisma.CompanyCreateNestedOneWithoutAccountsInput
+  entries?: Prisma.AccountEntryCreateNestedManyWithoutAccountInput
+}
+
+export type AccountUncheckedCreateWithoutTaxCodesInput = {
+  id?: string
+  code: string
+  name: string
+  type: $Enums.AccountType
+  description?: string | null
+  parentId?: string | null
+  level?: number
+  isPosting?: boolean
+  openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  openingBalanceType?: string | null
+  companyId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  children?: Prisma.AccountUncheckedCreateNestedManyWithoutParentInput
+  productsInventory?: Prisma.ProductUncheckedCreateNestedManyWithoutInventoryAccountInput
+  productsCOGS?: Prisma.ProductUncheckedCreateNestedManyWithoutCogsAccountInput
+  productsSales?: Prisma.ProductUncheckedCreateNestedManyWithoutSalesAccountInput
+  productsPurchase?: Prisma.ProductUncheckedCreateNestedManyWithoutPurchaseAccountInput
+  customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
+  suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
+  entries?: Prisma.AccountEntryUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutTaxCodesInput = {
@@ -861,10 +1076,11 @@ export type AccountUpdateWithoutTaxCodesInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -877,6 +1093,8 @@ export type AccountUpdateWithoutTaxCodesInput = {
   customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
+  company?: Prisma.CompanyUpdateOneWithoutAccountsNestedInput
+  entries?: Prisma.AccountEntryUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutTaxCodesInput = {
@@ -884,11 +1102,13 @@ export type AccountUncheckedUpdateWithoutTaxCodesInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -900,6 +1120,7 @@ export type AccountUncheckedUpdateWithoutTaxCodesInput = {
   customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
+  entries?: Prisma.AccountEntryUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountCreateWithoutChildrenInput = {
@@ -907,10 +1128,11 @@ export type AccountCreateWithoutChildrenInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -923,6 +1145,8 @@ export type AccountCreateWithoutChildrenInput = {
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
+  company?: Prisma.CompanyCreateNestedOneWithoutAccountsInput
+  entries?: Prisma.AccountEntryCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutChildrenInput = {
@@ -930,11 +1154,13 @@ export type AccountUncheckedCreateWithoutChildrenInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   parentId?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
+  companyId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -946,6 +1172,7 @@ export type AccountUncheckedCreateWithoutChildrenInput = {
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
+  entries?: Prisma.AccountEntryUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutChildrenInput = {
@@ -958,10 +1185,11 @@ export type AccountCreateWithoutParentInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -974,6 +1202,8 @@ export type AccountCreateWithoutParentInput = {
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
+  company?: Prisma.CompanyCreateNestedOneWithoutAccountsInput
+  entries?: Prisma.AccountEntryCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutParentInput = {
@@ -981,10 +1211,12 @@ export type AccountUncheckedCreateWithoutParentInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
+  companyId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -997,6 +1229,7 @@ export type AccountUncheckedCreateWithoutParentInput = {
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
+  entries?: Prisma.AccountEntryUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutParentInput = {
@@ -1025,10 +1258,11 @@ export type AccountUpdateWithoutChildrenInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1041,6 +1275,8 @@ export type AccountUpdateWithoutChildrenInput = {
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
+  company?: Prisma.CompanyUpdateOneWithoutAccountsNestedInput
+  entries?: Prisma.AccountEntryUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutChildrenInput = {
@@ -1048,11 +1284,13 @@ export type AccountUncheckedUpdateWithoutChildrenInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1064,6 +1302,7 @@ export type AccountUncheckedUpdateWithoutChildrenInput = {
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
+  entries?: Prisma.AccountEntryUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUpsertWithWhereUniqueWithoutParentInput = {
@@ -1082,22 +1321,124 @@ export type AccountUpdateManyWithWhereWithoutParentInput = {
   data: Prisma.XOR<Prisma.AccountUpdateManyMutationInput, Prisma.AccountUncheckedUpdateManyWithoutParentInput>
 }
 
-export type AccountScalarWhereInput = {
-  AND?: Prisma.AccountScalarWhereInput | Prisma.AccountScalarWhereInput[]
-  OR?: Prisma.AccountScalarWhereInput[]
-  NOT?: Prisma.AccountScalarWhereInput | Prisma.AccountScalarWhereInput[]
-  id?: Prisma.StringFilter<"Account"> | string
-  code?: Prisma.StringFilter<"Account"> | string
-  name?: Prisma.StringFilter<"Account"> | string
-  type?: Prisma.EnumAccountTypeFilter<"Account"> | $Enums.AccountType
-  parentId?: Prisma.StringNullableFilter<"Account"> | string | null
-  level?: Prisma.IntFilter<"Account"> | number
-  isPosting?: Prisma.BoolFilter<"Account"> | boolean
-  openingBalance?: Prisma.DecimalFilter<"Account"> | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFilter<"Account"> | $Enums.BalanceType
-  createdAt?: Prisma.DateTimeFilter<"Account"> | Date | string
-  updatedAt?: Prisma.DateTimeFilter<"Account"> | Date | string
-  deletedAt?: Prisma.DateTimeNullableFilter<"Account"> | Date | string | null
+export type AccountCreateWithoutEntriesInput = {
+  id?: string
+  code: string
+  name: string
+  type: $Enums.AccountType
+  description?: string | null
+  level?: number
+  isPosting?: boolean
+  openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  openingBalanceType?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  parent?: Prisma.AccountCreateNestedOneWithoutChildrenInput
+  children?: Prisma.AccountCreateNestedManyWithoutParentInput
+  productsInventory?: Prisma.ProductCreateNestedManyWithoutInventoryAccountInput
+  productsCOGS?: Prisma.ProductCreateNestedManyWithoutCogsAccountInput
+  productsSales?: Prisma.ProductCreateNestedManyWithoutSalesAccountInput
+  productsPurchase?: Prisma.ProductCreateNestedManyWithoutPurchaseAccountInput
+  customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
+  suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
+  company?: Prisma.CompanyCreateNestedOneWithoutAccountsInput
+}
+
+export type AccountUncheckedCreateWithoutEntriesInput = {
+  id?: string
+  code: string
+  name: string
+  type: $Enums.AccountType
+  description?: string | null
+  parentId?: string | null
+  level?: number
+  isPosting?: boolean
+  openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  openingBalanceType?: string | null
+  companyId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  children?: Prisma.AccountUncheckedCreateNestedManyWithoutParentInput
+  productsInventory?: Prisma.ProductUncheckedCreateNestedManyWithoutInventoryAccountInput
+  productsCOGS?: Prisma.ProductUncheckedCreateNestedManyWithoutCogsAccountInput
+  productsSales?: Prisma.ProductUncheckedCreateNestedManyWithoutSalesAccountInput
+  productsPurchase?: Prisma.ProductUncheckedCreateNestedManyWithoutPurchaseAccountInput
+  customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
+  suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
+  journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
+  taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
+}
+
+export type AccountCreateOrConnectWithoutEntriesInput = {
+  where: Prisma.AccountWhereUniqueInput
+  create: Prisma.XOR<Prisma.AccountCreateWithoutEntriesInput, Prisma.AccountUncheckedCreateWithoutEntriesInput>
+}
+
+export type AccountUpsertWithoutEntriesInput = {
+  update: Prisma.XOR<Prisma.AccountUpdateWithoutEntriesInput, Prisma.AccountUncheckedUpdateWithoutEntriesInput>
+  create: Prisma.XOR<Prisma.AccountCreateWithoutEntriesInput, Prisma.AccountUncheckedCreateWithoutEntriesInput>
+  where?: Prisma.AccountWhereInput
+}
+
+export type AccountUpdateToOneWithWhereWithoutEntriesInput = {
+  where?: Prisma.AccountWhereInput
+  data: Prisma.XOR<Prisma.AccountUpdateWithoutEntriesInput, Prisma.AccountUncheckedUpdateWithoutEntriesInput>
+}
+
+export type AccountUpdateWithoutEntriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  level?: Prisma.IntFieldUpdateOperationsInput | number
+  isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  parent?: Prisma.AccountUpdateOneWithoutChildrenNestedInput
+  children?: Prisma.AccountUpdateManyWithoutParentNestedInput
+  productsInventory?: Prisma.ProductUpdateManyWithoutInventoryAccountNestedInput
+  productsCOGS?: Prisma.ProductUpdateManyWithoutCogsAccountNestedInput
+  productsSales?: Prisma.ProductUpdateManyWithoutSalesAccountNestedInput
+  productsPurchase?: Prisma.ProductUpdateManyWithoutPurchaseAccountNestedInput
+  customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
+  suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
+  company?: Prisma.CompanyUpdateOneWithoutAccountsNestedInput
+}
+
+export type AccountUncheckedUpdateWithoutEntriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  level?: Prisma.IntFieldUpdateOperationsInput | number
+  isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  children?: Prisma.AccountUncheckedUpdateManyWithoutParentNestedInput
+  productsInventory?: Prisma.ProductUncheckedUpdateManyWithoutInventoryAccountNestedInput
+  productsCOGS?: Prisma.ProductUncheckedUpdateManyWithoutCogsAccountNestedInput
+  productsSales?: Prisma.ProductUncheckedUpdateManyWithoutSalesAccountNestedInput
+  productsPurchase?: Prisma.ProductUncheckedUpdateManyWithoutPurchaseAccountNestedInput
+  customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
+  suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountCreateWithoutCustomersReceivableInput = {
@@ -1105,10 +1446,11 @@ export type AccountCreateWithoutCustomersReceivableInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1121,6 +1463,8 @@ export type AccountCreateWithoutCustomersReceivableInput = {
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
+  company?: Prisma.CompanyCreateNestedOneWithoutAccountsInput
+  entries?: Prisma.AccountEntryCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutCustomersReceivableInput = {
@@ -1128,11 +1472,13 @@ export type AccountUncheckedCreateWithoutCustomersReceivableInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   parentId?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
+  companyId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1144,6 +1490,7 @@ export type AccountUncheckedCreateWithoutCustomersReceivableInput = {
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
+  entries?: Prisma.AccountEntryUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutCustomersReceivableInput = {
@@ -1167,10 +1514,11 @@ export type AccountUpdateWithoutCustomersReceivableInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1183,6 +1531,8 @@ export type AccountUpdateWithoutCustomersReceivableInput = {
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
+  company?: Prisma.CompanyUpdateOneWithoutAccountsNestedInput
+  entries?: Prisma.AccountEntryUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutCustomersReceivableInput = {
@@ -1190,11 +1540,13 @@ export type AccountUncheckedUpdateWithoutCustomersReceivableInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1206,6 +1558,7 @@ export type AccountUncheckedUpdateWithoutCustomersReceivableInput = {
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
+  entries?: Prisma.AccountEntryUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountCreateWithoutSuppliersPayableInput = {
@@ -1213,10 +1566,11 @@ export type AccountCreateWithoutSuppliersPayableInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1229,6 +1583,8 @@ export type AccountCreateWithoutSuppliersPayableInput = {
   customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
   journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
+  company?: Prisma.CompanyCreateNestedOneWithoutAccountsInput
+  entries?: Prisma.AccountEntryCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutSuppliersPayableInput = {
@@ -1236,11 +1592,13 @@ export type AccountUncheckedCreateWithoutSuppliersPayableInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   parentId?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
+  companyId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1252,6 +1610,7 @@ export type AccountUncheckedCreateWithoutSuppliersPayableInput = {
   customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
   journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
+  entries?: Prisma.AccountEntryUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutSuppliersPayableInput = {
@@ -1275,10 +1634,11 @@ export type AccountUpdateWithoutSuppliersPayableInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1291,6 +1651,8 @@ export type AccountUpdateWithoutSuppliersPayableInput = {
   customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
   journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
+  company?: Prisma.CompanyUpdateOneWithoutAccountsNestedInput
+  entries?: Prisma.AccountEntryUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutSuppliersPayableInput = {
@@ -1298,11 +1660,13 @@ export type AccountUncheckedUpdateWithoutSuppliersPayableInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1314,6 +1678,7 @@ export type AccountUncheckedUpdateWithoutSuppliersPayableInput = {
   customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
   journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
+  entries?: Prisma.AccountEntryUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountCreateWithoutProductsInventoryInput = {
@@ -1321,10 +1686,11 @@ export type AccountCreateWithoutProductsInventoryInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1337,6 +1703,8 @@ export type AccountCreateWithoutProductsInventoryInput = {
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
+  company?: Prisma.CompanyCreateNestedOneWithoutAccountsInput
+  entries?: Prisma.AccountEntryCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutProductsInventoryInput = {
@@ -1344,11 +1712,13 @@ export type AccountUncheckedCreateWithoutProductsInventoryInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   parentId?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
+  companyId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1360,6 +1730,7 @@ export type AccountUncheckedCreateWithoutProductsInventoryInput = {
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
+  entries?: Prisma.AccountEntryUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutProductsInventoryInput = {
@@ -1372,10 +1743,11 @@ export type AccountCreateWithoutProductsCOGSInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1388,6 +1760,8 @@ export type AccountCreateWithoutProductsCOGSInput = {
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
+  company?: Prisma.CompanyCreateNestedOneWithoutAccountsInput
+  entries?: Prisma.AccountEntryCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutProductsCOGSInput = {
@@ -1395,11 +1769,13 @@ export type AccountUncheckedCreateWithoutProductsCOGSInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   parentId?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
+  companyId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1411,6 +1787,7 @@ export type AccountUncheckedCreateWithoutProductsCOGSInput = {
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
+  entries?: Prisma.AccountEntryUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutProductsCOGSInput = {
@@ -1423,10 +1800,11 @@ export type AccountCreateWithoutProductsSalesInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1439,6 +1817,8 @@ export type AccountCreateWithoutProductsSalesInput = {
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
+  company?: Prisma.CompanyCreateNestedOneWithoutAccountsInput
+  entries?: Prisma.AccountEntryCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutProductsSalesInput = {
@@ -1446,11 +1826,13 @@ export type AccountUncheckedCreateWithoutProductsSalesInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   parentId?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
+  companyId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1462,6 +1844,7 @@ export type AccountUncheckedCreateWithoutProductsSalesInput = {
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
+  entries?: Prisma.AccountEntryUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutProductsSalesInput = {
@@ -1474,10 +1857,11 @@ export type AccountCreateWithoutProductsPurchaseInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1490,6 +1874,8 @@ export type AccountCreateWithoutProductsPurchaseInput = {
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
+  company?: Prisma.CompanyCreateNestedOneWithoutAccountsInput
+  entries?: Prisma.AccountEntryCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutProductsPurchaseInput = {
@@ -1497,11 +1883,13 @@ export type AccountUncheckedCreateWithoutProductsPurchaseInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   parentId?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
+  companyId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1513,6 +1901,7 @@ export type AccountUncheckedCreateWithoutProductsPurchaseInput = {
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
   journalLines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutAccountInput
   taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
+  entries?: Prisma.AccountEntryUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutProductsPurchaseInput = {
@@ -1536,10 +1925,11 @@ export type AccountUpdateWithoutProductsInventoryInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1552,6 +1942,8 @@ export type AccountUpdateWithoutProductsInventoryInput = {
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
+  company?: Prisma.CompanyUpdateOneWithoutAccountsNestedInput
+  entries?: Prisma.AccountEntryUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutProductsInventoryInput = {
@@ -1559,11 +1951,13 @@ export type AccountUncheckedUpdateWithoutProductsInventoryInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1575,6 +1969,7 @@ export type AccountUncheckedUpdateWithoutProductsInventoryInput = {
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
+  entries?: Prisma.AccountEntryUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUpsertWithoutProductsCOGSInput = {
@@ -1593,10 +1988,11 @@ export type AccountUpdateWithoutProductsCOGSInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1609,6 +2005,8 @@ export type AccountUpdateWithoutProductsCOGSInput = {
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
+  company?: Prisma.CompanyUpdateOneWithoutAccountsNestedInput
+  entries?: Prisma.AccountEntryUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutProductsCOGSInput = {
@@ -1616,11 +2014,13 @@ export type AccountUncheckedUpdateWithoutProductsCOGSInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1632,6 +2032,7 @@ export type AccountUncheckedUpdateWithoutProductsCOGSInput = {
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
+  entries?: Prisma.AccountEntryUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUpsertWithoutProductsSalesInput = {
@@ -1650,10 +2051,11 @@ export type AccountUpdateWithoutProductsSalesInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1666,6 +2068,8 @@ export type AccountUpdateWithoutProductsSalesInput = {
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
+  company?: Prisma.CompanyUpdateOneWithoutAccountsNestedInput
+  entries?: Prisma.AccountEntryUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutProductsSalesInput = {
@@ -1673,11 +2077,13 @@ export type AccountUncheckedUpdateWithoutProductsSalesInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1689,6 +2095,7 @@ export type AccountUncheckedUpdateWithoutProductsSalesInput = {
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
+  entries?: Prisma.AccountEntryUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUpsertWithoutProductsPurchaseInput = {
@@ -1707,10 +2114,11 @@ export type AccountUpdateWithoutProductsPurchaseInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1723,6 +2131,8 @@ export type AccountUpdateWithoutProductsPurchaseInput = {
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
+  company?: Prisma.CompanyUpdateOneWithoutAccountsNestedInput
+  entries?: Prisma.AccountEntryUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutProductsPurchaseInput = {
@@ -1730,11 +2140,13 @@ export type AccountUncheckedUpdateWithoutProductsPurchaseInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1746,6 +2158,7 @@ export type AccountUncheckedUpdateWithoutProductsPurchaseInput = {
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
+  entries?: Prisma.AccountEntryUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountCreateWithoutJournalLinesInput = {
@@ -1753,10 +2166,11 @@ export type AccountCreateWithoutJournalLinesInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1769,6 +2183,8 @@ export type AccountCreateWithoutJournalLinesInput = {
   customersReceivable?: Prisma.CustomerCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierCreateNestedManyWithoutPayableAccountInput
   taxCodes?: Prisma.TaxCodeCreateNestedManyWithoutAccountInput
+  company?: Prisma.CompanyCreateNestedOneWithoutAccountsInput
+  entries?: Prisma.AccountEntryCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutJournalLinesInput = {
@@ -1776,11 +2192,13 @@ export type AccountUncheckedCreateWithoutJournalLinesInput = {
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
   parentId?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
+  companyId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1792,6 +2210,7 @@ export type AccountUncheckedCreateWithoutJournalLinesInput = {
   customersReceivable?: Prisma.CustomerUncheckedCreateNestedManyWithoutReceivableAccountInput
   suppliersPayable?: Prisma.SupplierUncheckedCreateNestedManyWithoutPayableAccountInput
   taxCodes?: Prisma.TaxCodeUncheckedCreateNestedManyWithoutAccountInput
+  entries?: Prisma.AccountEntryUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutJournalLinesInput = {
@@ -1815,10 +2234,11 @@ export type AccountUpdateWithoutJournalLinesInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1831,6 +2251,8 @@ export type AccountUpdateWithoutJournalLinesInput = {
   customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
   taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
+  company?: Prisma.CompanyUpdateOneWithoutAccountsNestedInput
+  entries?: Prisma.AccountEntryUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutJournalLinesInput = {
@@ -1838,11 +2260,13 @@ export type AccountUncheckedUpdateWithoutJournalLinesInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1854,34 +2278,39 @@ export type AccountUncheckedUpdateWithoutJournalLinesInput = {
   customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
   taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
+  entries?: Prisma.AccountEntryUncheckedUpdateManyWithoutAccountNestedInput
 }
 
-export type AccountCreateManyParentInput = {
+export type AccountCreateManyCompanyInput = {
   id?: string
   code: string
   name: string
   type: $Enums.AccountType
+  description?: string | null
+  parentId?: string | null
   level?: number
   isPosting?: boolean
   openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: $Enums.BalanceType
+  openingBalanceType?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
 }
 
-export type AccountUpdateWithoutParentInput = {
+export type AccountUpdateWithoutCompanyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  parent?: Prisma.AccountUpdateOneWithoutChildrenNestedInput
   children?: Prisma.AccountUpdateManyWithoutParentNestedInput
   productsInventory?: Prisma.ProductUpdateManyWithoutInventoryAccountNestedInput
   productsCOGS?: Prisma.ProductUpdateManyWithoutCogsAccountNestedInput
@@ -1891,17 +2320,20 @@ export type AccountUpdateWithoutParentInput = {
   suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
+  entries?: Prisma.AccountEntryUpdateManyWithoutAccountNestedInput
 }
 
-export type AccountUncheckedUpdateWithoutParentInput = {
+export type AccountUncheckedUpdateWithoutCompanyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1914,6 +2346,91 @@ export type AccountUncheckedUpdateWithoutParentInput = {
   suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
   journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
   taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
+  entries?: Prisma.AccountEntryUncheckedUpdateManyWithoutAccountNestedInput
+}
+
+export type AccountUncheckedUpdateManyWithoutCompanyInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  level?: Prisma.IntFieldUpdateOperationsInput | number
+  isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+export type AccountCreateManyParentInput = {
+  id?: string
+  code: string
+  name: string
+  type: $Enums.AccountType
+  description?: string | null
+  level?: number
+  isPosting?: boolean
+  openingBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  openingBalanceType?: string | null
+  companyId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+}
+
+export type AccountUpdateWithoutParentInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  level?: Prisma.IntFieldUpdateOperationsInput | number
+  isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  children?: Prisma.AccountUpdateManyWithoutParentNestedInput
+  productsInventory?: Prisma.ProductUpdateManyWithoutInventoryAccountNestedInput
+  productsCOGS?: Prisma.ProductUpdateManyWithoutCogsAccountNestedInput
+  productsSales?: Prisma.ProductUpdateManyWithoutSalesAccountNestedInput
+  productsPurchase?: Prisma.ProductUpdateManyWithoutPurchaseAccountNestedInput
+  customersReceivable?: Prisma.CustomerUpdateManyWithoutReceivableAccountNestedInput
+  suppliersPayable?: Prisma.SupplierUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUpdateManyWithoutAccountNestedInput
+  company?: Prisma.CompanyUpdateOneWithoutAccountsNestedInput
+  entries?: Prisma.AccountEntryUpdateManyWithoutAccountNestedInput
+}
+
+export type AccountUncheckedUpdateWithoutParentInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  level?: Prisma.IntFieldUpdateOperationsInput | number
+  isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  children?: Prisma.AccountUncheckedUpdateManyWithoutParentNestedInput
+  productsInventory?: Prisma.ProductUncheckedUpdateManyWithoutInventoryAccountNestedInput
+  productsCOGS?: Prisma.ProductUncheckedUpdateManyWithoutCogsAccountNestedInput
+  productsSales?: Prisma.ProductUncheckedUpdateManyWithoutSalesAccountNestedInput
+  productsPurchase?: Prisma.ProductUncheckedUpdateManyWithoutPurchaseAccountNestedInput
+  customersReceivable?: Prisma.CustomerUncheckedUpdateManyWithoutReceivableAccountNestedInput
+  suppliersPayable?: Prisma.SupplierUncheckedUpdateManyWithoutPayableAccountNestedInput
+  journalLines?: Prisma.JournalLineUncheckedUpdateManyWithoutAccountNestedInput
+  taxCodes?: Prisma.TaxCodeUncheckedUpdateManyWithoutAccountNestedInput
+  entries?: Prisma.AccountEntryUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateManyWithoutParentInput = {
@@ -1921,10 +2438,12 @@ export type AccountUncheckedUpdateManyWithoutParentInput = {
   code?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumAccountTypeFieldUpdateOperationsInput | $Enums.AccountType
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   level?: Prisma.IntFieldUpdateOperationsInput | number
   isPosting?: Prisma.BoolFieldUpdateOperationsInput | boolean
   openingBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  openingBalanceType?: Prisma.EnumBalanceTypeFieldUpdateOperationsInput | $Enums.BalanceType
+  openingBalanceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1945,6 +2464,7 @@ export type AccountCountOutputType = {
   suppliersPayable: number
   journalLines: number
   taxCodes: number
+  entries: number
 }
 
 export type AccountCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1957,6 +2477,7 @@ export type AccountCountOutputTypeSelect<ExtArgs extends runtime.Types.Extension
   suppliersPayable?: boolean | AccountCountOutputTypeCountSuppliersPayableArgs
   journalLines?: boolean | AccountCountOutputTypeCountJournalLinesArgs
   taxCodes?: boolean | AccountCountOutputTypeCountTaxCodesArgs
+  entries?: boolean | AccountCountOutputTypeCountEntriesArgs
 }
 
 /**
@@ -2032,17 +2553,26 @@ export type AccountCountOutputTypeCountTaxCodesArgs<ExtArgs extends runtime.Type
   where?: Prisma.TaxCodeWhereInput
 }
 
+/**
+ * AccountCountOutputType without action
+ */
+export type AccountCountOutputTypeCountEntriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AccountEntryWhereInput
+}
+
 
 export type AccountSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   code?: boolean
   name?: boolean
   type?: boolean
+  description?: boolean
   parentId?: boolean
   level?: boolean
   isPosting?: boolean
   openingBalance?: boolean
   openingBalanceType?: boolean
+  companyId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
@@ -2056,6 +2586,8 @@ export type AccountSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   suppliersPayable?: boolean | Prisma.Account$suppliersPayableArgs<ExtArgs>
   journalLines?: boolean | Prisma.Account$journalLinesArgs<ExtArgs>
   taxCodes?: boolean | Prisma.Account$taxCodesArgs<ExtArgs>
+  company?: boolean | Prisma.Account$companyArgs<ExtArgs>
+  entries?: boolean | Prisma.Account$entriesArgs<ExtArgs>
   _count?: boolean | Prisma.AccountCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["account"]>
 
@@ -2064,15 +2596,18 @@ export type AccountSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   code?: boolean
   name?: boolean
   type?: boolean
+  description?: boolean
   parentId?: boolean
   level?: boolean
   isPosting?: boolean
   openingBalance?: boolean
   openingBalanceType?: boolean
+  companyId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
   parent?: boolean | Prisma.Account$parentArgs<ExtArgs>
+  company?: boolean | Prisma.Account$companyArgs<ExtArgs>
 }, ExtArgs["result"]["account"]>
 
 export type AccountSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -2080,15 +2615,18 @@ export type AccountSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   code?: boolean
   name?: boolean
   type?: boolean
+  description?: boolean
   parentId?: boolean
   level?: boolean
   isPosting?: boolean
   openingBalance?: boolean
   openingBalanceType?: boolean
+  companyId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
   parent?: boolean | Prisma.Account$parentArgs<ExtArgs>
+  company?: boolean | Prisma.Account$companyArgs<ExtArgs>
 }, ExtArgs["result"]["account"]>
 
 export type AccountSelectScalar = {
@@ -2096,17 +2634,19 @@ export type AccountSelectScalar = {
   code?: boolean
   name?: boolean
   type?: boolean
+  description?: boolean
   parentId?: boolean
   level?: boolean
   isPosting?: boolean
   openingBalance?: boolean
   openingBalanceType?: boolean
+  companyId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
 }
 
-export type AccountOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "code" | "name" | "type" | "parentId" | "level" | "isPosting" | "openingBalance" | "openingBalanceType" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["account"]>
+export type AccountOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "code" | "name" | "type" | "description" | "parentId" | "level" | "isPosting" | "openingBalance" | "openingBalanceType" | "companyId" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["account"]>
 export type AccountInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   parent?: boolean | Prisma.Account$parentArgs<ExtArgs>
   children?: boolean | Prisma.Account$childrenArgs<ExtArgs>
@@ -2118,13 +2658,17 @@ export type AccountInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs
   suppliersPayable?: boolean | Prisma.Account$suppliersPayableArgs<ExtArgs>
   journalLines?: boolean | Prisma.Account$journalLinesArgs<ExtArgs>
   taxCodes?: boolean | Prisma.Account$taxCodesArgs<ExtArgs>
+  company?: boolean | Prisma.Account$companyArgs<ExtArgs>
+  entries?: boolean | Prisma.Account$entriesArgs<ExtArgs>
   _count?: boolean | Prisma.AccountCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type AccountIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   parent?: boolean | Prisma.Account$parentArgs<ExtArgs>
+  company?: boolean | Prisma.Account$companyArgs<ExtArgs>
 }
 export type AccountIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   parent?: boolean | Prisma.Account$parentArgs<ExtArgs>
+  company?: boolean | Prisma.Account$companyArgs<ExtArgs>
 }
 
 export type $AccountPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2140,17 +2684,21 @@ export type $AccountPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     suppliersPayable: Prisma.$SupplierPayload<ExtArgs>[]
     journalLines: Prisma.$JournalLinePayload<ExtArgs>[]
     taxCodes: Prisma.$TaxCodePayload<ExtArgs>[]
+    company: Prisma.$CompanyPayload<ExtArgs> | null
+    entries: Prisma.$AccountEntryPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     code: string
     name: string
     type: $Enums.AccountType
+    description: string | null
     parentId: string | null
     level: number
     isPosting: boolean
     openingBalance: runtime.Decimal
-    openingBalanceType: $Enums.BalanceType
+    openingBalanceType: string | null
+    companyId: string | null
     createdAt: Date
     updatedAt: Date
     deletedAt: Date | null
@@ -2558,6 +3106,8 @@ export interface Prisma__AccountClient<T, Null = never, ExtArgs extends runtime.
   suppliersPayable<T extends Prisma.Account$suppliersPayableArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$suppliersPayableArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SupplierPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   journalLines<T extends Prisma.Account$journalLinesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$journalLinesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$JournalLinePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   taxCodes<T extends Prisma.Account$taxCodesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$taxCodesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TaxCodePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  company<T extends Prisma.Account$companyArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$companyArgs<ExtArgs>>): Prisma.Prisma__CompanyClient<runtime.Types.Result.GetResult<Prisma.$CompanyPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  entries<T extends Prisma.Account$entriesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$entriesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AccountEntryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2591,11 +3141,13 @@ export interface AccountFieldRefs {
   readonly code: Prisma.FieldRef<"Account", 'String'>
   readonly name: Prisma.FieldRef<"Account", 'String'>
   readonly type: Prisma.FieldRef<"Account", 'AccountType'>
+  readonly description: Prisma.FieldRef<"Account", 'String'>
   readonly parentId: Prisma.FieldRef<"Account", 'String'>
   readonly level: Prisma.FieldRef<"Account", 'Int'>
   readonly isPosting: Prisma.FieldRef<"Account", 'Boolean'>
   readonly openingBalance: Prisma.FieldRef<"Account", 'Decimal'>
-  readonly openingBalanceType: Prisma.FieldRef<"Account", 'BalanceType'>
+  readonly openingBalanceType: Prisma.FieldRef<"Account", 'String'>
+  readonly companyId: Prisma.FieldRef<"Account", 'String'>
   readonly createdAt: Prisma.FieldRef<"Account", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Account", 'DateTime'>
   readonly deletedAt: Prisma.FieldRef<"Account", 'DateTime'>
@@ -3227,6 +3779,49 @@ export type Account$taxCodesArgs<ExtArgs extends runtime.Types.Extensions.Intern
   take?: number
   skip?: number
   distinct?: Prisma.TaxCodeScalarFieldEnum | Prisma.TaxCodeScalarFieldEnum[]
+}
+
+/**
+ * Account.company
+ */
+export type Account$companyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Company
+   */
+  select?: Prisma.CompanySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Company
+   */
+  omit?: Prisma.CompanyOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CompanyInclude<ExtArgs> | null
+  where?: Prisma.CompanyWhereInput
+}
+
+/**
+ * Account.entries
+ */
+export type Account$entriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AccountEntry
+   */
+  select?: Prisma.AccountEntrySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AccountEntry
+   */
+  omit?: Prisma.AccountEntryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AccountEntryInclude<ExtArgs> | null
+  where?: Prisma.AccountEntryWhereInput
+  orderBy?: Prisma.AccountEntryOrderByWithRelationInput | Prisma.AccountEntryOrderByWithRelationInput[]
+  cursor?: Prisma.AccountEntryWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AccountEntryScalarFieldEnum | Prisma.AccountEntryScalarFieldEnum[]
 }
 
 /**

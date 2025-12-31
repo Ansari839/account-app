@@ -65,6 +65,8 @@ export const ModelName = {
   GlobalSetting: 'GlobalSetting',
   AuditLog: 'AuditLog',
   Account: 'Account',
+  Transaction: 'Transaction',
+  AccountEntry: 'AccountEntry',
   Customer: 'Customer',
   Supplier: 'Supplier',
   Category: 'Category',
@@ -193,6 +195,7 @@ export const UserScalarFieldEnum = {
   isActive: 'isActive',
   mustChangePass: 'mustChangePass',
   lastLoginAt: 'lastLoginAt',
+  companyId: 'companyId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   deletedAt: 'deletedAt'
@@ -294,17 +297,50 @@ export const AccountScalarFieldEnum = {
   code: 'code',
   name: 'name',
   type: 'type',
+  description: 'description',
   parentId: 'parentId',
   level: 'level',
   isPosting: 'isPosting',
   openingBalance: 'openingBalance',
   openingBalanceType: 'openingBalanceType',
+  companyId: 'companyId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   deletedAt: 'deletedAt'
 } as const
 
 export type AccountScalarFieldEnum = (typeof AccountScalarFieldEnum)[keyof typeof AccountScalarFieldEnum]
+
+
+export const TransactionScalarFieldEnum = {
+  id: 'id',
+  reference: 'reference',
+  date: 'date',
+  description: 'description',
+  type: 'type',
+  invoiceId: 'invoiceId',
+  paymentId: 'paymentId',
+  purchaseId: 'purchaseId',
+  companyId: 'companyId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  isLocked: 'isLocked'
+} as const
+
+export type TransactionScalarFieldEnum = (typeof TransactionScalarFieldEnum)[keyof typeof TransactionScalarFieldEnum]
+
+
+export const AccountEntryScalarFieldEnum = {
+  id: 'id',
+  transactionId: 'transactionId',
+  accountId: 'accountId',
+  debit: 'debit',
+  credit: 'credit',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AccountEntryScalarFieldEnum = (typeof AccountEntryScalarFieldEnum)[keyof typeof AccountEntryScalarFieldEnum]
 
 
 export const CustomerScalarFieldEnum = {

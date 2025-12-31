@@ -68,7 +68,7 @@ async function runTest() {
 
         // Accounts
         const getAccount = async (code: string, name: string, type: AccountType, isPosting: boolean, parentId?: string) => {
-            const existing = await prisma.account.findUnique({ where: { code } });
+            const existing = await prisma.account.findFirst({ where: { code } });
             if (existing) return existing;
             return await AccountService.createAccount({ name, type, isPosting, parentId });
         };

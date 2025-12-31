@@ -59,60 +59,122 @@ async function main() {
     });
   }
 
-  // 4. Chart of Accounts (Basic Hierarchy)
+  // 4. Chart of Accounts (User Provided Detailed Hierarchy)
   console.log("🗂️  Seeding Chart of Accounts...");
-  const coa = [
-    // Assets
-    { code: '1000', name: 'Current Assets', type: AccountType.ASSET, isPosting: false },
-    { code: '1001', name: 'Bank Account', type: AccountType.ASSET, isPosting: true, parentCode: '1000' },
-    { code: '1100', name: 'Accounts Receivable', type: AccountType.ASSET, isPosting: true, parentCode: '1000' },
-    { code: '1200', name: 'Inventory', type: AccountType.ASSET, isPosting: true, parentCode: '1000' },
+  const coaData = [
+    // 1. ASSETS
+    { code: '1000', name: 'ASSETS', type: 'ASSET' },
+    { code: '1100', name: 'Non-Current Assets', type: 'ASSET', parentCode: '1000' },
+    { code: '1110', name: 'Property, Plant & Equipment', type: 'ASSET', parentCode: '1100' },
+    { code: '1120', name: 'Accumulated Depreciation', type: 'ASSET', parentCode: '1100' },
+    { code: '1200', name: 'Current Assets', type: 'ASSET', parentCode: '1000' },
+    { code: '1210', name: 'Cash & Cash Equivalents', type: 'ASSET', parentCode: '1200' },
+    { code: '1211', name: 'Petty Cash', type: 'ASSET', parentCode: '1210' },
+    { code: '1212', name: 'Cash in Hand', type: 'ASSET', parentCode: '1210' },
+    { code: '1220', name: 'Bank Accounts', type: 'ASSET', parentCode: '1200' },
+    { code: '1221', name: 'Meezan Bank - Operation', type: 'ASSET', parentCode: '1220' },
+    { code: '1222', name: 'HBL - Corporate', type: 'ASSET', parentCode: '1220' },
+    { code: '1230', name: 'Accounts Receivable', type: 'ASSET', parentCode: '1200' },
+    { code: '1240', name: 'Inventory', type: 'ASSET', parentCode: '1200' },
+    { code: '1250', name: 'Advances, Deposits & Prepayments', type: 'ASSET', parentCode: '1200' },
+    { code: '1251', name: 'Advance Income Tax', type: 'ASSET', parentCode: '1250' },
+    { code: '1252', name: 'Security Deposits', type: 'ASSET', parentCode: '1250' },
 
-    // Liabilities
-    { code: '2000', name: 'Current Liabilities', type: AccountType.LIABILITY, isPosting: false },
-    { code: '2100', name: 'Accounts Payable', type: AccountType.LIABILITY, isPosting: true, parentCode: '2000' },
-    { code: '2200', name: 'Output Tax', type: AccountType.LIABILITY, isPosting: true, parentCode: '2000' },
+    // 2. LIABILITIES
+    { code: '2000', name: 'LIABILITIES', type: 'LIABILITY' },
+    { code: '2100', name: 'Non-Current Liabilities', type: 'LIABILITY', parentCode: '2000' },
+    { code: '2110', name: 'Long Term Loans', type: 'LIABILITY', parentCode: '2100' },
+    { code: '2200', name: 'Current Liabilities', type: 'LIABILITY', parentCode: '2000' },
+    { code: '2210', name: 'Accounts Payable', type: 'LIABILITY', parentCode: '2200' },
+    { code: '2220', name: 'Tax Payable', type: 'LIABILITY', parentCode: '2200' },
+    { code: '2221', name: 'Sales Tax Payable', type: 'LIABILITY', parentCode: '2220' },
+    { code: '2222', name: 'Income Tax Payable', type: 'LIABILITY', parentCode: '2220' },
+    { code: '2223', name: 'SRB Payable', type: 'LIABILITY', parentCode: '2220' },
+    { code: '2230', name: 'Accrued Expenses', type: 'LIABILITY', parentCode: '2200' },
+    { code: '2240', name: 'Short Term Loans', type: 'LIABILITY', parentCode: '2200' },
 
-    // Equity
-    { code: '3000', name: 'Equity & Capital', type: AccountType.EQUITY, isPosting: false },
-    { code: '3100', name: 'Owner Capital', type: AccountType.EQUITY, isPosting: true, parentCode: '3000' },
-    { code: '3200', name: 'Retained Earnings', type: AccountType.EQUITY, isPosting: true, parentCode: '3000' },
+    // 3. EQUITY
+    { code: '3000', name: 'EQUITY', type: 'EQUITY' },
+    { code: '3100', name: 'Share Capital', type: 'EQUITY', parentCode: '3000' },
+    { code: '3200', name: 'Retained Earnings', type: 'EQUITY', parentCode: '3000' },
+    { code: '3300', name: 'Drawings / Dividends', type: 'EQUITY', parentCode: '3000' },
 
-    // Income
-    { code: '4000', name: 'Sales Revenue', type: AccountType.INCOME, isPosting: true },
+    // 4. REVENUE
+    { code: '4000', name: 'REVENUE', type: 'REVENUE' },
+    { code: '4100', name: 'Operating Revenue', type: 'REVENUE', parentCode: '4000' },
+    { code: '4110', name: 'Ocean Freight Income', type: 'REVENUE', parentCode: '4100' },
+    { code: '4120', name: 'Air Freight Income', type: 'REVENUE', parentCode: '4100' },
+    { code: '4130', name: 'Transportation Income', type: 'REVENUE', parentCode: '4100' },
+    { code: '4140', name: 'Customs Clearance Income', type: 'REVENUE', parentCode: '4100' },
+    { code: '4150', name: 'Agency Commission', type: 'REVENUE', parentCode: '4100' },
+    { code: '4200', name: 'Other Income', type: 'REVENUE', parentCode: '4000' },
+    { code: '4210', name: 'Exchange Gain', type: 'REVENUE', parentCode: '4200' },
+    { code: '4220', name: 'Bank Profit', type: 'REVENUE', parentCode: '4200' },
 
-    // Expenses
-    { code: '5000', name: 'Cost of Goods Sold', type: AccountType.EXPENSE, isPosting: true },
-    { code: '5100', name: 'Operating Expenses', type: AccountType.EXPENSE, isPosting: false },
-    { code: '5101', name: 'Rent Expense', type: AccountType.EXPENSE, isPosting: true, parentCode: '5100' },
-    { code: '5102', name: 'Salary Expense', type: AccountType.EXPENSE, isPosting: true, parentCode: '5100' },
+    // 5. EXPENSES
+    { code: '5000', name: 'EXPENSES', type: 'EXPENSE' },
+    { code: '5100', name: 'Cost of Services (Direct)', type: 'EXPENSE', parentCode: '5000' },
+    { code: '5110', name: 'Ocean Freight Expense', type: 'EXPENSE', parentCode: '5100' },
+    { code: '5120', name: 'Air Freight Expense', type: 'EXPENSE', parentCode: '5100' },
+    { code: '5130', name: 'Terminal Handling Charges (THC)', type: 'EXPENSE', parentCode: '5100' },
+    { code: '5140', name: 'Delivery Order (DO) Charges', type: 'EXPENSE', parentCode: '5100' },
+    { code: '5150', name: 'Customs Duty & Taxes', type: 'EXPENSE', parentCode: '5100' },
+    { code: '5160', name: 'Transportation Charges', type: 'EXPENSE', parentCode: '5100' },
+    { code: '5170', name: 'Port Charges', type: 'EXPENSE', parentCode: '5100' },
+    { code: '5200', name: 'Operating Expenses (Admin)', type: 'EXPENSE', parentCode: '5000' },
+    { code: '5210', name: 'Salaries & Wages', type: 'EXPENSE', parentCode: '5200' },
+    { code: '5220', name: 'Rent, Rates & Taxes', type: 'EXPENSE', parentCode: '5200' },
+    { code: '5230', name: 'Utilities (Elec, Water, Gas)', type: 'EXPENSE', parentCode: '5200' },
+    { code: '5240', name: 'Internet & Communication', type: 'EXPENSE', parentCode: '5200' },
+    { code: '5250', name: 'Entertainment & Refreshment', type: 'EXPENSE', parentCode: '5200' },
+    { code: '5260', name: 'Repair & Maintenance', type: 'EXPENSE', parentCode: '5200' },
+    { code: '5270', name: 'Marketing & Advertisement', type: 'EXPENSE', parentCode: '5200' },
+    { code: '5280', name: 'Exchange Loss', type: 'EXPENSE', parentCode: '5200' },
   ];
 
-  const accountMap = new Map();
+  for (const ac of coaData) {
+    const parent = ac.parentCode
+      ? await prisma.account.findUnique({ where: { companyId_code: { companyId: 'default-company', code: ac.parentCode } } })
+      : null;
 
-  for (const acc of coa) {
-    const parentId = acc.parentCode ? accountMap.get(acc.parentCode) : null;
-    const level = parentId ? 1 : 0; // Simple level logic for seed
+    // Map REVENUE to INCOME, ensure Enum validity
+    let type = ac.type === 'REVENUE' ? 'INCOME' : ac.type;
+    // Simple level calculation: if parent, level = parent.level + 1, else 0
+    const level = parent ? parent.level + 1 : 0;
+    // Basic posting logic: if it has children in this list, it's a summary (isPosting=false). 
+    // BUT the user didn't provide this flag. 
+    // Heuristic: If another account lists THIS as parentCode, likely summary.
+    // OR standard convention: Level 0, 1 usually summary.
+    // Let's assume all provided are posting EXCEPT if they are parents.
+    // Better: Check if any other item in `coaData` has `parentCode === ac.code`.
+    const isParent = coaData.some(item => item.parentCode === ac.code);
+    const isPosting = !isParent;
 
-    const created = await prisma.account.upsert({
-      where: { code: acc.code },
-      update: {
-        name: acc.name,
-        type: acc.type,
-        isPosting: acc.isPosting,
-        parentId: parentId || undefined,
-        level
-      },
-      create: {
-        code: acc.code,
-        name: acc.name,
-        type: acc.type,
-        isPosting: acc.isPosting,
-        parentId,
-        level
-      }
-    });
-    accountMap.set(acc.code, created.id);
+    try {
+      await prisma.account.upsert({
+        where: { companyId_code: { companyId: 'default-company', code: ac.code } },
+        update: {
+          parentId: parent?.id,
+          name: ac.name,
+          // Preserve existing type if updating? No, force overwrite.
+          type: type as AccountType,
+          level,
+          isPosting: isPosting,
+          companyId: 'default-company'
+        },
+        create: {
+          code: ac.code,
+          name: ac.name,
+          type: type as AccountType,
+          companyId: 'default-company',
+          parentId: parent?.id,
+          level,
+          isPosting: isPosting
+        }
+      });
+    } catch (e: any) {
+      console.error(`Error seeding COA ${ac.code}: ${e.message}`);
+    }
   }
 
   // 5. User Roles & Admin
@@ -138,13 +200,14 @@ async function main() {
 
   const adminUser = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: { passwordHash },
+    update: { passwordHash, companyId: 'default-company' },
     create: {
       email: adminEmail,
       passwordHash,
       fullName: 'Super Administrator',
       isActive: true,
-      mustChangePass: false
+      mustChangePass: false,
+      companyId: 'default-company'
     }
   });
 

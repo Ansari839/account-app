@@ -1,0 +1,53 @@
+Loaded Prisma config from prisma.config.ts.
+
+Running seed command `tsx prisma/seed.ts` ...
+🚀 Start seeding production data ...
+⚙️  Seeding Global Settings...
+📝 Seeding Tax Codes...
+🗂️  Seeding Chart of Accounts...
+Error seeding COA 1000: 
+Invalid `prisma.account.upsert()` invocation in
+/home/abdullah/Nextks/account-app/prisma/seed.ts:154:28
+
+  151 const isPosting = !isParent;
+  152 
+  153 try {
+→ 154   await prisma.account.upsert(
+The column `openingBalance` does not exist in the current database.
+PrismaClientKnownRequestError: 
+Invalid `prisma.account.findUnique()` invocation in
+/home/abdullah/Nextks/account-app/prisma/seed.ts:137:30
+
+  134 
+  135 for (const ac of coaData) {
+  136   const parent = ac.parentCode
+→ 137     ? await prisma.account.findUnique(
+The column `(not available)` does not exist in the current database.
+    at qr.handleRequestError (/home/abdullah/Nextks/account-app/node_modules/@prisma/client/src/runtime/RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (/home/abdullah/Nextks/account-app/node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+    at qr.request (/home/abdullah/Nextks/account-app/node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async a (/home/abdullah/Nextks/account-app/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:805:24)
+    at async main (/home/abdullah/Nextks/account-app/prisma/seed.ts:137:9) {
+  code: 'P2022',
+  meta: {
+    modelName: 'Account',
+    driverAdapterError: DriverAdapterError: ColumnNotFound
+        at PrismaPgAdapter.onError (/home/abdullah/Nextks/account-app/node_modules/@prisma/adapter-pg/dist/index.js:687:11)
+        at PrismaPgAdapter.performIO (/home/abdullah/Nextks/account-app/node_modules/@prisma/adapter-pg/dist/index.js:682:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+        at async PrismaPgAdapter.queryRaw (/home/abdullah/Nextks/account-app/node_modules/@prisma/adapter-pg/dist/index.js:602:30)
+        at async <anonymous> (/home/abdullah/Nextks/account-app/node_modules/@prisma/client-engine-runtime/src/tracing.ts:68:22)
+        at async fr (/home/abdullah/Nextks/account-app/node_modules/@prisma/client-engine-runtime/src/tracing.ts:56:10)
+        at async e.interpretNode (/home/abdullah/Nextks/account-app/node_modules/@prisma/client-engine-runtime/src/interpreter/query-interpreter.ts:190:26)
+        at async e.interpretNode (/home/abdullah/Nextks/account-app/node_modules/@prisma/client-engine-runtime/src/interpreter/query-interpreter.ts:217:41)
+        at async e.interpretNode (/home/abdullah/Nextks/account-app/node_modules/@prisma/client-engine-runtime/src/interpreter/query-interpreter.ts:276:41)
+        at async e.run (/home/abdullah/Nextks/account-app/node_modules/@prisma/client-engine-runtime/src/interpreter/query-interpreter.ts:96:23) {
+      cause: [Object]
+    }
+  },
+  clientVersion: '7.2.0'
+}
+
+An error occurred while running the seed command:
+Error: Command failed with exit code 1: tsx prisma/seed.ts

@@ -110,6 +110,16 @@ export type AuditLog = Prisma.AuditLogModel
  */
 export type Account = Prisma.AccountModel
 /**
+ * Model Transaction
+ * 
+ */
+export type Transaction = Prisma.TransactionModel
+/**
+ * Model AccountEntry
+ * 
+ */
+export type AccountEntry = Prisma.AccountEntryModel
+/**
  * Model Customer
  * 
  */

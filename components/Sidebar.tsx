@@ -92,14 +92,31 @@ export default function Sidebar() {
 
             {/* User Block */}
             <div className="p-4 border-t border-slate-800/50">
-                <div className={`flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800/50 cursor-pointer transition-colors ${isCollapsed ? 'justify-center' : ''}`}>
-                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold border border-slate-600">
-                        AA
+                <div className={`flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800/50 cursor-pointer transition-colors group ${isCollapsed ? 'justify-center' : ''}`}>
+                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold border border-slate-600 group-hover:bg-rose-500/20 group-hover:border-rose-500/50 transition-colors">
+                        <span className="group-hover:hidden">AA</span>
+                        <span className="hidden group-hover:block" onClick={async () => {
+                            try {
+                                const token = localStorage.getItem('token');
+                                await fetch('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+                            } finally {
+                                localStorage.clear();
+                                window.location.href = '/auth/login';
+                            }
+                        }}>🚪</span>
                     </div>
                     {!isCollapsed && (
-                        <div className="flex-1 overflow-hidden">
-                            <p className="text-sm font-semibold truncate text-white">Abdullah Ansari</p>
-                            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Administrator</p>
+                        <div className="flex-1 overflow-hidden" onClick={async () => {
+                            try {
+                                const token = localStorage.getItem('token');
+                                await fetch('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+                            } finally {
+                                localStorage.clear();
+                                window.location.href = '/auth/login';
+                            }
+                        }}>
+                            <p className="text-sm font-semibold truncate text-white group-hover:text-rose-400">Abdullah Ansari</p>
+                            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold group-hover:text-rose-500/50">Logout</p>
                         </div>
                     )}
                 </div>

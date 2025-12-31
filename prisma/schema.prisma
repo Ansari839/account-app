@@ -24,6 +24,10 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime? 
+
+  accounts      Account[]
+  transactions  Transaction[]
+  users         User[]
 }
 
 model FinancialYear {
@@ -112,6 +116,10 @@ model User {
   isActive       Boolean   @default(true)
   mustChangePass Boolean   @default(true) // Force password change on first login
   lastLoginAt    DateTime?
+  
+  // Multi-tenancy
+  companyId      String?
+  company        Company?  @relation(fields: [companyId], references: [id])
   
   // Relations
   roles          UserRole[]
@@ -244,16 +252,21 @@ enum BalanceType {
 
 model Account {
   id        String      @id @default(uuid())
-  code      String      @unique
+  code      String
   name      String
   type      AccountType
+  description String?
+  
+  // Hierarchy
   parentId  String?
   level     Int         @default(0)
   isPosting Boolean     @default(true) // Leaf node check
   
+  // Balances
   openingBalance      Decimal     @default(0.0)
-  openingBalanceType  BalanceType @default(DR)
+  openingBalanceType  String?      // Changed to String to match user request (was BalanceType)
   
+  // Relations
   parent    Account?    @relation("AccountHierarchy", fields: [parentId], references: [id])
   children  Account[]   @relation("AccountHierarchy")
 
@@ -267,11 +280,59 @@ model Account {
   suppliersPayable    Supplier[] @relation("PayableAccount")
   journalLines        JournalLine[]
   taxCodes            TaxCode[] @relation("TaxAccount")
+  
+  // Multi-tenancy (Added)
+  companyId   String?
+  company     Company?   @relation(fields: [companyId], references: [id])
+  entries     AccountEntry[]
+
+
 
   // Audit Fields
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
+
+  @@unique([companyId, code])
+}
+
+model Transaction {
+  id            String          @id @default(uuid())
+  reference     String          
+  date          DateTime        @default(now())
+  description   String?
+  type          String          @default("JOURNAL")
+  
+  entries       AccountEntry[]
+  
+  // Links
+  invoiceId     String?
+  paymentId     String?
+  purchaseId    String?
+  
+  // Multi-tenancy
+  companyId     String
+  company       Company         @relation(fields: [companyId], references: [id])
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  isLocked      Boolean         @default(false)
+
+  @@unique([companyId, reference])
+}
+
+model AccountEntry {
+  id            String       @id @default(uuid())
+  transactionId String
+  accountId     String
+  debit         Decimal      @default(0.0)
+  credit        Decimal      @default(0.0)
+  
+  transaction   Transaction  @relation(fields: [transactionId], references: [id])
+  account       Account      @relation(fields: [accountId], references: [id])
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
 
 // --------------------------------------

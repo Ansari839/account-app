@@ -24,6 +24,8 @@ export class AuthService {
         const token = await AuthUtils.signToken({
             userId: user.id,
             email: user.email,
+            role: 'ADMIN', // Hardcoded for now as user.role lookup requires a join
+            companyId: user.companyId,
             mustChangePass: user.mustChangePass,
         });
 
