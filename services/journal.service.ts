@@ -110,4 +110,12 @@ export class JournalService {
             include: { lines: { include: { account: true } } }
         });
     }
+
+    static async getEntries(filters?: { type?: VoucherType }) {
+        return prisma.journalEntry.findMany({
+            where: filters,
+            include: { lines: true },
+            orderBy: { date: 'desc' }
+        });
+    }
 }

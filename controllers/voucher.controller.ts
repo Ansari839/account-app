@@ -27,4 +27,16 @@ export class VoucherController {
             res.status(500).json({ error: error.message });
         }
     }
+
+    /**
+     * List all journal entries
+     */
+    static async listJournals(req: Request, res: Response) {
+        try {
+            const entries = await JournalService.getEntries({ type: 'JOURNAL' });
+            res.json(entries);
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
+        }
+    }
 }

@@ -8,8 +8,8 @@ const menuItems = [
     { name: 'Dashboard', icon: '📊', path: '/finance/dashboard' },
     { name: 'Chart of Accounts', icon: '🗂️', path: '/finance/coa' },
     { name: 'Vouchers', icon: '📝', path: '/finance/vouchers', sub: ['Journal', 'Payment', 'Receipt'] },
-    { name: 'Sales', icon: '📈', path: '/sales', sub: ['Order', 'Invoice', 'Return'] },
-    { name: 'Purchase', icon: '🛒', path: '/purchase', sub: ['Order', 'Invoice', 'Return'] },
+    { name: 'Sales', icon: '📈', path: '/sales/invoices', sub: ['Order', 'Invoice', 'Return'] },
+    { name: 'Purchase', icon: '🛒', path: '/purchase/invoices', sub: ['Order', 'Invoice', 'Return'] },
     { name: 'Reports', icon: '📜', path: '/finance/reports', sub: ['P&L', 'Balance Sheet', 'Ledger', 'Aging'] },
     { name: 'Settings', icon: '⚙️', path: '/admin/settings' },
 ];
@@ -45,20 +45,45 @@ export default function Sidebar() {
                 {menuItems.map((item) => {
                     const isActive = pathname.startsWith(item.path);
                     return (
-                        <div key={item.name}>
+                        <div key={item.name} className="space-y-1">
                             <Link
                                 href={item.path}
                                 className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
-                                        ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20'
-                                        : 'hover:bg-slate-800/50 hover:text-white'
+                                    ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20'
+                                    : 'hover:bg-slate-800/50 hover:text-white'
                                     }`}
                             >
                                 <span className="text-xl">{item.icon}</span>
                                 {!isCollapsed && (
                                     <span className="font-medium flex-1">{item.name}</span>
                                 )}
-                                {!isCollapsed && item.sub && <span className="text-[10px] opacity-50">▼</span>}
+                                {!isCollapsed && item.sub && (
+                                    <span className={`text-[10px] transition-transform duration-200 ${isActive ? 'rotate-180 opacity-100' : 'opacity-30'}`}>
+                                        ▼
+                                    </span>
+                                )}
                             </Link>
+
+                            {/* Sub-menu rendering */}
+                            {!isCollapsed && item.sub && isActive && (
+                                <div className="ml-12 border-l border-slate-800 space-y-1 py-1 animate-in slide-in-from-left-2 duration-300">
+                                    {item.sub.map((sub) => {
+                                        const subPath = `${item.path}/${sub.toLowerCase()}`;
+                                        const isSubActive = pathname === subPath;
+                                        return (
+                                            <Link
+                                                key={sub}
+                                                href={subPath}
+                                                className={`block px-4 py-2 text-xs font-semibold rounded-lg transition-colors ${isSubActive
+                                                    ? 'text-white'
+                                                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}
+                                            >
+                                                {sub}
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     );
                 })}
