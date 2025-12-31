@@ -10,6 +10,7 @@ const menuItems = [
     { name: 'Vouchers', icon: '📝', path: '/finance/vouchers', sub: ['Journal', 'Payment', 'Receipt'] },
     { name: 'Sales', icon: '📈', path: '/sales/invoices', sub: ['Order', 'Invoice', 'Return'] },
     { name: 'Purchase', icon: '🛒', path: '/purchase/invoices', sub: ['Order', 'Invoice', 'Return'] },
+    { name: 'Inventory', icon: '📦', path: '/inventory', sub: ['Products', 'Warehouses'] },
     { name: 'Reports', icon: '📜', path: '/finance/reports', sub: ['P&L', 'Balance Sheet', 'Ledger', 'Aging'] },
     { name: 'Settings', icon: '⚙️', path: '/admin/settings' },
 ];

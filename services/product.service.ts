@@ -69,4 +69,18 @@ export class ProductService {
             }
         });
     }
+
+    /**
+     * Get All Products
+     */
+    static async getAllProducts() {
+        return prisma.product.findMany({
+            include: {
+                category: true,
+                baseUnit: true,
+                taxCode: true,
+            },
+            orderBy: { name: 'asc' }
+        });
+    }
 }
