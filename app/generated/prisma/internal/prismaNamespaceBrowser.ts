@@ -63,7 +63,14 @@ export const ModelName = {
   RolePermission: 'RolePermission',
   UserRoleLimit: 'UserRoleLimit',
   GlobalSetting: 'GlobalSetting',
-  AuditLog: 'AuditLog'
+  AuditLog: 'AuditLog',
+  Account: 'Account',
+  Customer: 'Customer',
+  Supplier: 'Supplier',
+  Category: 'Category',
+  Product: 'Product',
+  Warehouse: 'Warehouse',
+  UnitConversion: 'UnitConversion'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -257,6 +264,111 @@ export const AuditLogScalarFieldEnum = {
 } as const
 
 export type AuditLogScalarFieldEnum = (typeof AuditLogScalarFieldEnum)[keyof typeof AuditLogScalarFieldEnum]
+
+
+export const AccountScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  name: 'name',
+  type: 'type',
+  parentId: 'parentId',
+  level: 'level',
+  isPosting: 'isPosting',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
+} as const
+
+export type AccountScalarFieldEnum = (typeof AccountScalarFieldEnum)[keyof typeof AccountScalarFieldEnum]
+
+
+export const CustomerScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  name: 'name',
+  taxId: 'taxId',
+  currencyCode: 'currencyCode',
+  creditLimit: 'creditLimit',
+  receivableAccountId: 'receivableAccountId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
+} as const
+
+export type CustomerScalarFieldEnum = (typeof CustomerScalarFieldEnum)[keyof typeof CustomerScalarFieldEnum]
+
+
+export const SupplierScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  name: 'name',
+  taxId: 'taxId',
+  currencyCode: 'currencyCode',
+  payableAccountId: 'payableAccountId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
+} as const
+
+export type SupplierScalarFieldEnum = (typeof SupplierScalarFieldEnum)[keyof typeof SupplierScalarFieldEnum]
+
+
+export const CategoryScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  parentId: 'parentId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
+} as const
+
+export type CategoryScalarFieldEnum = (typeof CategoryScalarFieldEnum)[keyof typeof CategoryScalarFieldEnum]
+
+
+export const ProductScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  name: 'name',
+  categoryId: 'categoryId',
+  baseUnitId: 'baseUnitId',
+  taxCodeId: 'taxCodeId',
+  inventoryAccountId: 'inventoryAccountId',
+  cogsAccountId: 'cogsAccountId',
+  salesAccountId: 'salesAccountId',
+  purchaseAccountId: 'purchaseAccountId',
+  openingStock: 'openingStock',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
+} as const
+
+export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeof ProductScalarFieldEnum]
+
+
+export const WarehouseScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  name: 'name',
+  address: 'address',
+  isDefault: 'isDefault',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
+} as const
+
+export type WarehouseScalarFieldEnum = (typeof WarehouseScalarFieldEnum)[keyof typeof WarehouseScalarFieldEnum]
+
+
+export const UnitConversionScalarFieldEnum = {
+  id: 'id',
+  fromUnitId: 'fromUnitId',
+  toUnitId: 'toUnitId',
+  factor: 'factor',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type UnitConversionScalarFieldEnum = (typeof UnitConversionScalarFieldEnum)[keyof typeof UnitConversionScalarFieldEnum]
 
 
 export const SortOrder = {

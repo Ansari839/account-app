@@ -248,6 +248,8 @@ export type CurrencyWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Currency"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Currency"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"Currency"> | Date | string | null
+  customers?: Prisma.CustomerListRelationFilter
+  suppliers?: Prisma.SupplierListRelationFilter
 }
 
 export type CurrencyOrderByWithRelationInput = {
@@ -260,6 +262,8 @@ export type CurrencyOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  customers?: Prisma.CustomerOrderByRelationAggregateInput
+  suppliers?: Prisma.SupplierOrderByRelationAggregateInput
 }
 
 export type CurrencyWhereUniqueInput = Prisma.AtLeast<{
@@ -275,6 +279,8 @@ export type CurrencyWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"Currency"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Currency"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"Currency"> | Date | string | null
+  customers?: Prisma.CustomerListRelationFilter
+  suppliers?: Prisma.SupplierListRelationFilter
 }, "id" | "code">
 
 export type CurrencyOrderByWithAggregationInput = {
@@ -319,6 +325,8 @@ export type CurrencyCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
+  customers?: Prisma.CustomerCreateNestedManyWithoutCurrencyInput
+  suppliers?: Prisma.SupplierCreateNestedManyWithoutCurrencyInput
 }
 
 export type CurrencyUncheckedCreateInput = {
@@ -331,6 +339,8 @@ export type CurrencyUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
+  customers?: Prisma.CustomerUncheckedCreateNestedManyWithoutCurrencyInput
+  suppliers?: Prisma.SupplierUncheckedCreateNestedManyWithoutCurrencyInput
 }
 
 export type CurrencyUpdateInput = {
@@ -343,6 +353,8 @@ export type CurrencyUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customers?: Prisma.CustomerUpdateManyWithoutCurrencyNestedInput
+  suppliers?: Prisma.SupplierUpdateManyWithoutCurrencyNestedInput
 }
 
 export type CurrencyUncheckedUpdateInput = {
@@ -355,6 +367,8 @@ export type CurrencyUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customers?: Prisma.CustomerUncheckedUpdateManyWithoutCurrencyNestedInput
+  suppliers?: Prisma.SupplierUncheckedUpdateManyWithoutCurrencyNestedInput
 }
 
 export type CurrencyCreateManyInput = {
@@ -437,6 +451,11 @@ export type CurrencySumOrderByAggregateInput = {
   rate?: Prisma.SortOrder
 }
 
+export type CurrencyScalarRelationFilter = {
+  is?: Prisma.CurrencyWhereInput
+  isNot?: Prisma.CurrencyWhereInput
+}
+
 export type DecimalFieldUpdateOperationsInput = {
   set?: runtime.Decimal | runtime.DecimalJsLike | number | string
   increment?: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -445,6 +464,208 @@ export type DecimalFieldUpdateOperationsInput = {
   divide?: runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
+export type CurrencyCreateNestedOneWithoutCustomersInput = {
+  create?: Prisma.XOR<Prisma.CurrencyCreateWithoutCustomersInput, Prisma.CurrencyUncheckedCreateWithoutCustomersInput>
+  connectOrCreate?: Prisma.CurrencyCreateOrConnectWithoutCustomersInput
+  connect?: Prisma.CurrencyWhereUniqueInput
+}
+
+export type CurrencyUpdateOneRequiredWithoutCustomersNestedInput = {
+  create?: Prisma.XOR<Prisma.CurrencyCreateWithoutCustomersInput, Prisma.CurrencyUncheckedCreateWithoutCustomersInput>
+  connectOrCreate?: Prisma.CurrencyCreateOrConnectWithoutCustomersInput
+  upsert?: Prisma.CurrencyUpsertWithoutCustomersInput
+  connect?: Prisma.CurrencyWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.CurrencyUpdateToOneWithWhereWithoutCustomersInput, Prisma.CurrencyUpdateWithoutCustomersInput>, Prisma.CurrencyUncheckedUpdateWithoutCustomersInput>
+}
+
+export type CurrencyCreateNestedOneWithoutSuppliersInput = {
+  create?: Prisma.XOR<Prisma.CurrencyCreateWithoutSuppliersInput, Prisma.CurrencyUncheckedCreateWithoutSuppliersInput>
+  connectOrCreate?: Prisma.CurrencyCreateOrConnectWithoutSuppliersInput
+  connect?: Prisma.CurrencyWhereUniqueInput
+}
+
+export type CurrencyUpdateOneRequiredWithoutSuppliersNestedInput = {
+  create?: Prisma.XOR<Prisma.CurrencyCreateWithoutSuppliersInput, Prisma.CurrencyUncheckedCreateWithoutSuppliersInput>
+  connectOrCreate?: Prisma.CurrencyCreateOrConnectWithoutSuppliersInput
+  upsert?: Prisma.CurrencyUpsertWithoutSuppliersInput
+  connect?: Prisma.CurrencyWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.CurrencyUpdateToOneWithWhereWithoutSuppliersInput, Prisma.CurrencyUpdateWithoutSuppliersInput>, Prisma.CurrencyUncheckedUpdateWithoutSuppliersInput>
+}
+
+export type CurrencyCreateWithoutCustomersInput = {
+  id?: string
+  code: string
+  name: string
+  symbol: string
+  rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  isBase?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  suppliers?: Prisma.SupplierCreateNestedManyWithoutCurrencyInput
+}
+
+export type CurrencyUncheckedCreateWithoutCustomersInput = {
+  id?: string
+  code: string
+  name: string
+  symbol: string
+  rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  isBase?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  suppliers?: Prisma.SupplierUncheckedCreateNestedManyWithoutCurrencyInput
+}
+
+export type CurrencyCreateOrConnectWithoutCustomersInput = {
+  where: Prisma.CurrencyWhereUniqueInput
+  create: Prisma.XOR<Prisma.CurrencyCreateWithoutCustomersInput, Prisma.CurrencyUncheckedCreateWithoutCustomersInput>
+}
+
+export type CurrencyUpsertWithoutCustomersInput = {
+  update: Prisma.XOR<Prisma.CurrencyUpdateWithoutCustomersInput, Prisma.CurrencyUncheckedUpdateWithoutCustomersInput>
+  create: Prisma.XOR<Prisma.CurrencyCreateWithoutCustomersInput, Prisma.CurrencyUncheckedCreateWithoutCustomersInput>
+  where?: Prisma.CurrencyWhereInput
+}
+
+export type CurrencyUpdateToOneWithWhereWithoutCustomersInput = {
+  where?: Prisma.CurrencyWhereInput
+  data: Prisma.XOR<Prisma.CurrencyUpdateWithoutCustomersInput, Prisma.CurrencyUncheckedUpdateWithoutCustomersInput>
+}
+
+export type CurrencyUpdateWithoutCustomersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  symbol?: Prisma.StringFieldUpdateOperationsInput | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  isBase?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  suppliers?: Prisma.SupplierUpdateManyWithoutCurrencyNestedInput
+}
+
+export type CurrencyUncheckedUpdateWithoutCustomersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  symbol?: Prisma.StringFieldUpdateOperationsInput | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  isBase?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  suppliers?: Prisma.SupplierUncheckedUpdateManyWithoutCurrencyNestedInput
+}
+
+export type CurrencyCreateWithoutSuppliersInput = {
+  id?: string
+  code: string
+  name: string
+  symbol: string
+  rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  isBase?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  customers?: Prisma.CustomerCreateNestedManyWithoutCurrencyInput
+}
+
+export type CurrencyUncheckedCreateWithoutSuppliersInput = {
+  id?: string
+  code: string
+  name: string
+  symbol: string
+  rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  isBase?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  customers?: Prisma.CustomerUncheckedCreateNestedManyWithoutCurrencyInput
+}
+
+export type CurrencyCreateOrConnectWithoutSuppliersInput = {
+  where: Prisma.CurrencyWhereUniqueInput
+  create: Prisma.XOR<Prisma.CurrencyCreateWithoutSuppliersInput, Prisma.CurrencyUncheckedCreateWithoutSuppliersInput>
+}
+
+export type CurrencyUpsertWithoutSuppliersInput = {
+  update: Prisma.XOR<Prisma.CurrencyUpdateWithoutSuppliersInput, Prisma.CurrencyUncheckedUpdateWithoutSuppliersInput>
+  create: Prisma.XOR<Prisma.CurrencyCreateWithoutSuppliersInput, Prisma.CurrencyUncheckedCreateWithoutSuppliersInput>
+  where?: Prisma.CurrencyWhereInput
+}
+
+export type CurrencyUpdateToOneWithWhereWithoutSuppliersInput = {
+  where?: Prisma.CurrencyWhereInput
+  data: Prisma.XOR<Prisma.CurrencyUpdateWithoutSuppliersInput, Prisma.CurrencyUncheckedUpdateWithoutSuppliersInput>
+}
+
+export type CurrencyUpdateWithoutSuppliersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  symbol?: Prisma.StringFieldUpdateOperationsInput | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  isBase?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customers?: Prisma.CustomerUpdateManyWithoutCurrencyNestedInput
+}
+
+export type CurrencyUncheckedUpdateWithoutSuppliersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  symbol?: Prisma.StringFieldUpdateOperationsInput | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  isBase?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  customers?: Prisma.CustomerUncheckedUpdateManyWithoutCurrencyNestedInput
+}
+
+
+/**
+ * Count Type CurrencyCountOutputType
+ */
+
+export type CurrencyCountOutputType = {
+  customers: number
+  suppliers: number
+}
+
+export type CurrencyCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  customers?: boolean | CurrencyCountOutputTypeCountCustomersArgs
+  suppliers?: boolean | CurrencyCountOutputTypeCountSuppliersArgs
+}
+
+/**
+ * CurrencyCountOutputType without action
+ */
+export type CurrencyCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CurrencyCountOutputType
+   */
+  select?: Prisma.CurrencyCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * CurrencyCountOutputType without action
+ */
+export type CurrencyCountOutputTypeCountCustomersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CustomerWhereInput
+}
+
+/**
+ * CurrencyCountOutputType without action
+ */
+export type CurrencyCountOutputTypeCountSuppliersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SupplierWhereInput
+}
 
 
 export type CurrencySelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -457,6 +678,9 @@ export type CurrencySelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
+  customers?: boolean | Prisma.Currency$customersArgs<ExtArgs>
+  suppliers?: boolean | Prisma.Currency$suppliersArgs<ExtArgs>
+  _count?: boolean | Prisma.CurrencyCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["currency"]>
 
 export type CurrencySelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -496,10 +720,20 @@ export type CurrencySelectScalar = {
 }
 
 export type CurrencyOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "code" | "name" | "symbol" | "rate" | "isBase" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["currency"]>
+export type CurrencyInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  customers?: boolean | Prisma.Currency$customersArgs<ExtArgs>
+  suppliers?: boolean | Prisma.Currency$suppliersArgs<ExtArgs>
+  _count?: boolean | Prisma.CurrencyCountOutputTypeDefaultArgs<ExtArgs>
+}
+export type CurrencyIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type CurrencyIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
 
 export type $CurrencyPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Currency"
-  objects: {}
+  objects: {
+    customers: Prisma.$CustomerPayload<ExtArgs>[]
+    suppliers: Prisma.$SupplierPayload<ExtArgs>[]
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     code: string
@@ -904,6 +1138,8 @@ readonly fields: CurrencyFieldRefs;
  */
 export interface Prisma__CurrencyClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  customers<T extends Prisma.Currency$customersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Currency$customersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CustomerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  suppliers<T extends Prisma.Currency$suppliersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Currency$suppliersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SupplierPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -959,6 +1195,10 @@ export type CurrencyFindUniqueArgs<ExtArgs extends runtime.Types.Extensions.Inte
    */
   omit?: Prisma.CurrencyOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CurrencyInclude<ExtArgs> | null
+  /**
    * Filter, which Currency to fetch.
    */
   where: Prisma.CurrencyWhereUniqueInput
@@ -977,6 +1217,10 @@ export type CurrencyFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.Extensio
    */
   omit?: Prisma.CurrencyOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CurrencyInclude<ExtArgs> | null
+  /**
    * Filter, which Currency to fetch.
    */
   where: Prisma.CurrencyWhereUniqueInput
@@ -994,6 +1238,10 @@ export type CurrencyFindFirstArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * Omit specific fields from the Currency
    */
   omit?: Prisma.CurrencyOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CurrencyInclude<ExtArgs> | null
   /**
    * Filter, which Currency to fetch.
    */
@@ -1043,6 +1291,10 @@ export type CurrencyFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Extension
    */
   omit?: Prisma.CurrencyOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CurrencyInclude<ExtArgs> | null
+  /**
    * Filter, which Currency to fetch.
    */
   where?: Prisma.CurrencyWhereInput
@@ -1091,6 +1343,10 @@ export type CurrencyFindManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    */
   omit?: Prisma.CurrencyOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CurrencyInclude<ExtArgs> | null
+  /**
    * Filter, which Currencies to fetch.
    */
   where?: Prisma.CurrencyWhereInput
@@ -1133,6 +1389,10 @@ export type CurrencyCreateArgs<ExtArgs extends runtime.Types.Extensions.Internal
    * Omit specific fields from the Currency
    */
   omit?: Prisma.CurrencyOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CurrencyInclude<ExtArgs> | null
   /**
    * The data needed to create a Currency.
    */
@@ -1181,6 +1441,10 @@ export type CurrencyUpdateArgs<ExtArgs extends runtime.Types.Extensions.Internal
    * Omit specific fields from the Currency
    */
   omit?: Prisma.CurrencyOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CurrencyInclude<ExtArgs> | null
   /**
    * The data needed to update a Currency.
    */
@@ -1248,6 +1512,10 @@ export type CurrencyUpsertArgs<ExtArgs extends runtime.Types.Extensions.Internal
    */
   omit?: Prisma.CurrencyOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CurrencyInclude<ExtArgs> | null
+  /**
    * The filter to search for the Currency to update in case it exists.
    */
   where: Prisma.CurrencyWhereUniqueInput
@@ -1274,6 +1542,10 @@ export type CurrencyDeleteArgs<ExtArgs extends runtime.Types.Extensions.Internal
    */
   omit?: Prisma.CurrencyOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CurrencyInclude<ExtArgs> | null
+  /**
    * Filter which Currency to delete.
    */
   where: Prisma.CurrencyWhereUniqueInput
@@ -1294,6 +1566,54 @@ export type CurrencyDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
 }
 
 /**
+ * Currency.customers
+ */
+export type Currency$customersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Customer
+   */
+  select?: Prisma.CustomerSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Customer
+   */
+  omit?: Prisma.CustomerOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CustomerInclude<ExtArgs> | null
+  where?: Prisma.CustomerWhereInput
+  orderBy?: Prisma.CustomerOrderByWithRelationInput | Prisma.CustomerOrderByWithRelationInput[]
+  cursor?: Prisma.CustomerWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CustomerScalarFieldEnum | Prisma.CustomerScalarFieldEnum[]
+}
+
+/**
+ * Currency.suppliers
+ */
+export type Currency$suppliersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Supplier
+   */
+  select?: Prisma.SupplierSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Supplier
+   */
+  omit?: Prisma.SupplierOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SupplierInclude<ExtArgs> | null
+  where?: Prisma.SupplierWhereInput
+  orderBy?: Prisma.SupplierOrderByWithRelationInput | Prisma.SupplierOrderByWithRelationInput[]
+  cursor?: Prisma.SupplierWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SupplierScalarFieldEnum | Prisma.SupplierScalarFieldEnum[]
+}
+
+/**
  * Currency without action
  */
 export type CurrencyDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1305,4 +1625,8 @@ export type CurrencyDefaultArgs<ExtArgs extends runtime.Types.Extensions.Interna
    * Omit specific fields from the Currency
    */
   omit?: Prisma.CurrencyOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CurrencyInclude<ExtArgs> | null
 }

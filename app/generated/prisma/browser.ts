@@ -82,3 +82,38 @@ export type GlobalSetting = Prisma.GlobalSettingModel
  * 
  */
 export type AuditLog = Prisma.AuditLogModel
+/**
+ * Model Account
+ * 
+ */
+export type Account = Prisma.AccountModel
+/**
+ * Model Customer
+ * 
+ */
+export type Customer = Prisma.CustomerModel
+/**
+ * Model Supplier
+ * 
+ */
+export type Supplier = Prisma.SupplierModel
+/**
+ * Model Category
+ * 
+ */
+export type Category = Prisma.CategoryModel
+/**
+ * Model Product
+ * 
+ */
+export type Product = Prisma.ProductModel
+/**
+ * Model Warehouse
+ * 
+ */
+export type Warehouse = Prisma.WarehouseModel
+/**
+ * Model UnitConversion
+ * 
+ */
+export type UnitConversion = Prisma.UnitConversionModel

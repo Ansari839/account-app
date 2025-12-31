@@ -232,6 +232,7 @@ export type TaxCodeWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"TaxCode"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"TaxCode"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"TaxCode"> | Date | string | null
+  products?: Prisma.ProductListRelationFilter
 }
 
 export type TaxCodeOrderByWithRelationInput = {
@@ -242,6 +243,7 @@ export type TaxCodeOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  products?: Prisma.ProductOrderByRelationAggregateInput
 }
 
 export type TaxCodeWhereUniqueInput = Prisma.AtLeast<{
@@ -255,6 +257,7 @@ export type TaxCodeWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"TaxCode"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"TaxCode"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"TaxCode"> | Date | string | null
+  products?: Prisma.ProductListRelationFilter
 }, "id" | "code">
 
 export type TaxCodeOrderByWithAggregationInput = {
@@ -293,6 +296,7 @@ export type TaxCodeCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
+  products?: Prisma.ProductCreateNestedManyWithoutTaxCodeInput
 }
 
 export type TaxCodeUncheckedCreateInput = {
@@ -303,6 +307,7 @@ export type TaxCodeUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
+  products?: Prisma.ProductUncheckedCreateNestedManyWithoutTaxCodeInput
 }
 
 export type TaxCodeUpdateInput = {
@@ -313,6 +318,7 @@ export type TaxCodeUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  products?: Prisma.ProductUpdateManyWithoutTaxCodeNestedInput
 }
 
 export type TaxCodeUncheckedUpdateInput = {
@@ -323,6 +329,7 @@ export type TaxCodeUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  products?: Prisma.ProductUncheckedUpdateManyWithoutTaxCodeNestedInput
 }
 
 export type TaxCodeCreateManyInput = {
@@ -393,6 +400,112 @@ export type TaxCodeSumOrderByAggregateInput = {
   rate?: Prisma.SortOrder
 }
 
+export type TaxCodeNullableScalarRelationFilter = {
+  is?: Prisma.TaxCodeWhereInput | null
+  isNot?: Prisma.TaxCodeWhereInput | null
+}
+
+export type TaxCodeCreateNestedOneWithoutProductsInput = {
+  create?: Prisma.XOR<Prisma.TaxCodeCreateWithoutProductsInput, Prisma.TaxCodeUncheckedCreateWithoutProductsInput>
+  connectOrCreate?: Prisma.TaxCodeCreateOrConnectWithoutProductsInput
+  connect?: Prisma.TaxCodeWhereUniqueInput
+}
+
+export type TaxCodeUpdateOneWithoutProductsNestedInput = {
+  create?: Prisma.XOR<Prisma.TaxCodeCreateWithoutProductsInput, Prisma.TaxCodeUncheckedCreateWithoutProductsInput>
+  connectOrCreate?: Prisma.TaxCodeCreateOrConnectWithoutProductsInput
+  upsert?: Prisma.TaxCodeUpsertWithoutProductsInput
+  disconnect?: Prisma.TaxCodeWhereInput | boolean
+  delete?: Prisma.TaxCodeWhereInput | boolean
+  connect?: Prisma.TaxCodeWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.TaxCodeUpdateToOneWithWhereWithoutProductsInput, Prisma.TaxCodeUpdateWithoutProductsInput>, Prisma.TaxCodeUncheckedUpdateWithoutProductsInput>
+}
+
+export type TaxCodeCreateWithoutProductsInput = {
+  id?: string
+  name: string
+  code: string
+  rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+}
+
+export type TaxCodeUncheckedCreateWithoutProductsInput = {
+  id?: string
+  name: string
+  code: string
+  rate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+}
+
+export type TaxCodeCreateOrConnectWithoutProductsInput = {
+  where: Prisma.TaxCodeWhereUniqueInput
+  create: Prisma.XOR<Prisma.TaxCodeCreateWithoutProductsInput, Prisma.TaxCodeUncheckedCreateWithoutProductsInput>
+}
+
+export type TaxCodeUpsertWithoutProductsInput = {
+  update: Prisma.XOR<Prisma.TaxCodeUpdateWithoutProductsInput, Prisma.TaxCodeUncheckedUpdateWithoutProductsInput>
+  create: Prisma.XOR<Prisma.TaxCodeCreateWithoutProductsInput, Prisma.TaxCodeUncheckedCreateWithoutProductsInput>
+  where?: Prisma.TaxCodeWhereInput
+}
+
+export type TaxCodeUpdateToOneWithWhereWithoutProductsInput = {
+  where?: Prisma.TaxCodeWhereInput
+  data: Prisma.XOR<Prisma.TaxCodeUpdateWithoutProductsInput, Prisma.TaxCodeUncheckedUpdateWithoutProductsInput>
+}
+
+export type TaxCodeUpdateWithoutProductsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+export type TaxCodeUncheckedUpdateWithoutProductsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  code?: Prisma.StringFieldUpdateOperationsInput | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+
+/**
+ * Count Type TaxCodeCountOutputType
+ */
+
+export type TaxCodeCountOutputType = {
+  products: number
+}
+
+export type TaxCodeCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  products?: boolean | TaxCodeCountOutputTypeCountProductsArgs
+}
+
+/**
+ * TaxCodeCountOutputType without action
+ */
+export type TaxCodeCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the TaxCodeCountOutputType
+   */
+  select?: Prisma.TaxCodeCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * TaxCodeCountOutputType without action
+ */
+export type TaxCodeCountOutputTypeCountProductsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ProductWhereInput
+}
 
 
 export type TaxCodeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -403,6 +516,8 @@ export type TaxCodeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
+  products?: boolean | Prisma.TaxCode$productsArgs<ExtArgs>
+  _count?: boolean | Prisma.TaxCodeCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["taxCode"]>
 
 export type TaxCodeSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -436,10 +551,18 @@ export type TaxCodeSelectScalar = {
 }
 
 export type TaxCodeOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "code" | "rate" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["taxCode"]>
+export type TaxCodeInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  products?: boolean | Prisma.TaxCode$productsArgs<ExtArgs>
+  _count?: boolean | Prisma.TaxCodeCountOutputTypeDefaultArgs<ExtArgs>
+}
+export type TaxCodeIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type TaxCodeIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
 
 export type $TaxCodePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "TaxCode"
-  objects: {}
+  objects: {
+    products: Prisma.$ProductPayload<ExtArgs>[]
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     name: string
@@ -842,6 +965,7 @@ readonly fields: TaxCodeFieldRefs;
  */
 export interface Prisma__TaxCodeClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  products<T extends Prisma.TaxCode$productsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.TaxCode$productsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProductPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -895,6 +1019,10 @@ export type TaxCodeFindUniqueArgs<ExtArgs extends runtime.Types.Extensions.Inter
    */
   omit?: Prisma.TaxCodeOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaxCodeInclude<ExtArgs> | null
+  /**
    * Filter, which TaxCode to fetch.
    */
   where: Prisma.TaxCodeWhereUniqueInput
@@ -913,6 +1041,10 @@ export type TaxCodeFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.Extension
    */
   omit?: Prisma.TaxCodeOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaxCodeInclude<ExtArgs> | null
+  /**
    * Filter, which TaxCode to fetch.
    */
   where: Prisma.TaxCodeWhereUniqueInput
@@ -930,6 +1062,10 @@ export type TaxCodeFindFirstArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Omit specific fields from the TaxCode
    */
   omit?: Prisma.TaxCodeOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaxCodeInclude<ExtArgs> | null
   /**
    * Filter, which TaxCode to fetch.
    */
@@ -979,6 +1115,10 @@ export type TaxCodeFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Extensions
    */
   omit?: Prisma.TaxCodeOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaxCodeInclude<ExtArgs> | null
+  /**
    * Filter, which TaxCode to fetch.
    */
   where?: Prisma.TaxCodeWhereInput
@@ -1027,6 +1167,10 @@ export type TaxCodeFindManyArgs<ExtArgs extends runtime.Types.Extensions.Interna
    */
   omit?: Prisma.TaxCodeOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaxCodeInclude<ExtArgs> | null
+  /**
    * Filter, which TaxCodes to fetch.
    */
   where?: Prisma.TaxCodeWhereInput
@@ -1069,6 +1213,10 @@ export type TaxCodeCreateArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * Omit specific fields from the TaxCode
    */
   omit?: Prisma.TaxCodeOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaxCodeInclude<ExtArgs> | null
   /**
    * The data needed to create a TaxCode.
    */
@@ -1117,6 +1265,10 @@ export type TaxCodeUpdateArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * Omit specific fields from the TaxCode
    */
   omit?: Prisma.TaxCodeOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaxCodeInclude<ExtArgs> | null
   /**
    * The data needed to update a TaxCode.
    */
@@ -1184,6 +1336,10 @@ export type TaxCodeUpsertArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    */
   omit?: Prisma.TaxCodeOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaxCodeInclude<ExtArgs> | null
+  /**
    * The filter to search for the TaxCode to update in case it exists.
    */
   where: Prisma.TaxCodeWhereUniqueInput
@@ -1210,6 +1366,10 @@ export type TaxCodeDeleteArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    */
   omit?: Prisma.TaxCodeOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaxCodeInclude<ExtArgs> | null
+  /**
    * Filter which TaxCode to delete.
    */
   where: Prisma.TaxCodeWhereUniqueInput
@@ -1230,6 +1390,30 @@ export type TaxCodeDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
 }
 
 /**
+ * TaxCode.products
+ */
+export type TaxCode$productsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Product
+   */
+  select?: Prisma.ProductSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Product
+   */
+  omit?: Prisma.ProductOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ProductInclude<ExtArgs> | null
+  where?: Prisma.ProductWhereInput
+  orderBy?: Prisma.ProductOrderByWithRelationInput | Prisma.ProductOrderByWithRelationInput[]
+  cursor?: Prisma.ProductWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ProductScalarFieldEnum | Prisma.ProductScalarFieldEnum[]
+}
+
+/**
  * TaxCode without action
  */
 export type TaxCodeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1241,4 +1425,8 @@ export type TaxCodeDefaultArgs<ExtArgs extends runtime.Types.Extensions.Internal
    * Omit specific fields from the TaxCode
    */
   omit?: Prisma.TaxCodeOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaxCodeInclude<ExtArgs> | null
 }

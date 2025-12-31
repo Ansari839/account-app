@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { AuthUtils } from "@/lib/auth-utils";
 import { AuditService } from "./audit.service";
 

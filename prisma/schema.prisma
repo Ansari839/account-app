@@ -53,6 +53,9 @@ model Currency {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
+
+  customers Customer[]
+  suppliers Supplier[]
 }
 
 model Unit {
@@ -64,6 +67,10 @@ model Unit {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
+
+  conversionsFrom UnitConversion[] @relation("FromUnit")
+  conversionsTo   UnitConversion[] @relation("ToUnit")
+  products        Product[]
 }
 
 model TaxCode {
@@ -76,6 +83,8 @@ model TaxCode {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
+
+  products Product[]
 }
 
 // --------------------------------------
@@ -202,4 +211,167 @@ model AuditLog {
   user        User?    @relation(fields: [userId], references: [id])
 
   createdAt   DateTime @default(now())
+}
+
+// --------------------------------------
+// 1.1 Chart of Accounts (COA)
+// --------------------------------------
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+model Account {
+  id        String      @id @default(uuid())
+  code      String      @unique
+  name      String
+  type      AccountType
+  parentId  String?
+  level     Int         @default(0)
+  isPosting Boolean     @default(true) // Leaf node check
+  
+  parent    Account?    @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children  Account[]   @relation("AccountHierarchy")
+
+  // Linkages
+  productsInventory Product[] @relation("InventoryAccount")
+  productsCOGS      Product[] @relation("COGSAccount")
+  productsSales     Product[] @relation("SalesAccount")
+  productsPurchase  Product[] @relation("PurchaseAccount")
+
+  customersReceivable Customer[] @relation("ReceivableAccount")
+  suppliersPayable    Supplier[] @relation("PayableAccount")
+
+  // Audit Fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+// --------------------------------------
+// 1.2 Party Masters
+// --------------------------------------
+
+model Customer {
+  id                  String   @id @default(uuid())
+  code                String   @unique
+  name                String
+  taxId               String?
+  currencyCode        String
+  creditLimit         Decimal  @default(0.0)
+  receivableAccountId String?
+
+  currency            Currency @relation(fields: [currencyCode], references: [code])
+  receivableAccount   Account? @relation("ReceivableAccount", fields: [receivableAccountId], references: [id])
+
+  // Audit Fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+model Supplier {
+  id               String   @id @default(uuid())
+  code             String   @unique
+  name             String
+  taxId            String?
+  currencyCode     String
+  payableAccountId String?
+
+  currency         Currency @relation(fields: [currencyCode], references: [code])
+  payableAccount   Account? @relation("PayableAccount", fields: [payableAccountId], references: [id])
+
+  // Audit Fields
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+// --------------------------------------
+// 1.4 Category & Sub-Category
+// --------------------------------------
+
+model Category {
+  id        String     @id @default(uuid())
+  name      String
+  parentId  String?
+  
+  parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryHierarchy")
+  products  Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+// --------------------------------------
+// 1.3 Product Master (Accounting Linked)
+// --------------------------------------
+
+model Product {
+  id                String   @id @default(uuid())
+  code              String   @unique // SKU
+  name              String
+  categoryId        String?
+  baseUnitId        String
+  taxCodeId         String?
+  
+  // Ledger Mapping
+  inventoryAccountId String?
+  cogsAccountId      String?
+  salesAccountId     String?
+  purchaseAccountId  String?
+  
+  openingStock      Decimal  @default(0.0)
+
+  category          Category? @relation(fields: [categoryId], references: [id])
+  baseUnit          Unit      @relation(fields: [baseUnitId], references: [id])
+  taxCode           TaxCode?  @relation(fields: [taxCodeId], references: [id])
+  
+  inventoryAccount  Account?  @relation("InventoryAccount", fields: [inventoryAccountId], references: [id])
+  cogsAccount       Account?  @relation("COGSAccount", fields: [cogsAccountId], references: [id])
+  salesAccount      Account?  @relation("SalesAccount", fields: [salesAccountId], references: [id])
+  purchaseAccount   Account?  @relation("PurchaseAccount", fields: [purchaseAccountId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+// --------------------------------------
+// 1.5 Warehouse Master
+// --------------------------------------
+
+model Warehouse {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  address   String?
+  isDefault Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+// --------------------------------------
+// 1.7 Unit Conversion
+// --------------------------------------
+
+model UnitConversion {
+  id         String   @id @default(uuid())
+  fromUnitId String
+  toUnitId   String
+  factor     Decimal  // Multiply 'from' by factor to get 'to'
+
+  fromUnit   Unit     @relation("FromUnit", fields: [fromUnitId], references: [id])
+  toUnit     Unit     @relation("ToUnit", fields: [toUnitId], references: [id])
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
