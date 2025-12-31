@@ -90,6 +90,11 @@ model TaxCode {
   products       Product[]
   purchaseOrderItems PurchaseOrderItem[]
   invoiceItems   PurchaseInvoiceItem[]
+
+  salesQuotationItems SalesQuotationItem[]
+  salesOrderItems     SalesOrderItem[]
+  salesInvoiceItems   SalesInvoiceItem[]
+  salesReturnItems    SalesReturnItem[]
 }
 
 // --------------------------------------
@@ -279,6 +284,12 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
+
+  quotes         SalesQuotation[]
+  orders         SalesOrder[]
+  deliveryOrders DeliveryOrder[]
+  invoices       SalesInvoice[]
+  returns        SalesReturn[]
 }
 
 model Supplier {
@@ -358,6 +369,12 @@ model Product {
   grnItems           GRNItem[]
   invoiceItems       PurchaseInvoiceItem[]
   requestItems       PurchaseRequestItem[]
+
+  quoteItems         SalesQuotationItem[]
+  orderItems         SalesOrderItem[]
+  doItems            DeliveryOrderItem[]
+  salesInvoiceItems  SalesInvoiceItem[]
+  returnItems        SalesReturnItem[]
 }
 
 // --------------------------------------
@@ -378,6 +395,10 @@ model Warehouse {
   stockEntries    StockLedger[]
   purchaseOrders  PurchaseOrder[]
   grns            GRN[]
+
+  deliveryOrders  DeliveryOrder[]
+  salesInvoices   SalesInvoice[]
+  salesOrders     SalesOrder[]
 }
 
 // --------------------------------------
@@ -422,6 +443,8 @@ model JournalEntry {
 
   lines           JournalLine[]
   purchaseInvoice PurchaseInvoice?
+  salesInvoice    SalesInvoice?
+  salesReturn     SalesReturn?
   
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -593,4 +616,182 @@ model PurchaseRequestItem {
 
   request       PurchaseRequest    @relation(fields: [requestId], references: [id])
   product       Product            @relation(fields: [productId], references: [id])
+}
+
+// --------------------------------------
+// 4.1 Sales Module
+// --------------------------------------
+
+model SalesQuotation {
+  id            String             @id @default(uuid())
+  quoteNo       String             @unique
+  customerId    String
+  date          DateTime
+  validUntil    DateTime?
+  totalAmount   Decimal            @default(0.0)
+  status        String             @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED, EXPIRED
+
+  customer      Customer           @relation(fields: [customerId], references: [id])
+  items         SalesQuotationItem[]
+  orders        SalesOrder[]
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model SalesQuotationItem {
+  id            String             @id @default(uuid())
+  quoteId       String
+  productId     String
+  qty           Decimal
+  rate          Decimal
+  taxCodeId     String?
+  taxAmount     Decimal            @default(0.0)
+  total         Decimal
+
+  quote         SalesQuotation     @relation(fields: [quoteId], references: [id])
+  product       Product            @relation(fields: [productId], references: [id])
+  taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
+}
+
+model SalesOrder {
+  id            String             @id @default(uuid())
+  orderNo       String             @unique
+  customerId    String
+  warehouseId   String?
+  date          DateTime
+  expectedDate  DateTime?
+  totalAmount   Decimal            @default(0.0)
+  status        String             @default("DRAFT") // DRAFT, OPEN, CLOSED, CANCELLED
+  quoteId       String?
+
+  customer      Customer           @relation(fields: [customerId], references: [id])
+  warehouse     Warehouse?         @relation(fields: [warehouseId], references: [id])
+  quote         SalesQuotation?    @relation(fields: [quoteId], references: [id])
+  items         SalesOrderItem[]
+  deliveryOrders DeliveryOrder[]
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model SalesOrderItem {
+  id            String             @id @default(uuid())
+  orderId       String
+  productId     String
+  qty           Decimal
+  rate          Decimal
+  taxCodeId     String?
+  taxAmount     Decimal            @default(0.0)
+  total         Decimal
+
+  order         SalesOrder         @relation(fields: [orderId], references: [id])
+  product       Product            @relation(fields: [productId], references: [id])
+  taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
+  doItems       DeliveryOrderItem[]
+}
+
+model DeliveryOrder {
+  id            String             @id @default(uuid())
+  doNo          String             @unique
+  orderId       String?
+  customerId    String
+  warehouseId   String
+  date          DateTime
+  remarks       String?
+
+  order         SalesOrder?        @relation(fields: [orderId], references: [id])
+  customer      Customer           @relation(fields: [customerId], references: [id])
+  warehouse     Warehouse          @relation(fields: [warehouseId], references: [id])
+  items         DeliveryOrderItem[]
+  invoices      SalesInvoice[]
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model DeliveryOrderItem {
+  id            String             @id @default(uuid())
+  doId          String
+  productId     String
+  orderItemId   String?
+  qtyShipped    Decimal
+  qtyReturned   Decimal            @default(0.0)
+
+  do            DeliveryOrder      @relation(fields: [doId], references: [id])
+  product       Product            @relation(fields: [productId], references: [id])
+  orderItem     SalesOrderItem?    @relation(fields: [orderItemId], references: [id])
+}
+
+model SalesInvoice {
+  id            String             @id @default(uuid())
+  invoiceNo     String             @unique
+  customerId    String
+  warehouseId   String?
+  date          DateTime
+  dueDate       DateTime?
+  totalAmount   Decimal
+  taxAmount     Decimal            @default(0.0)
+  doId          String?
+  journalEntryId String?           @unique
+
+  customer      Customer           @relation(fields: [customerId], references: [id])
+  warehouse     Warehouse?         @relation(fields: [warehouseId], references: [id])
+  do            DeliveryOrder?     @relation(fields: [doId], references: [id])
+  journalEntry  JournalEntry?      @relation(fields: [journalEntryId], references: [id])
+  items         SalesInvoiceItem[]
+  returns       SalesReturn[]
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model SalesInvoiceItem {
+  id            String             @id @default(uuid())
+  invoiceId     String
+  productId     String
+  qty           Decimal
+  rate          Decimal
+  taxCodeId     String?
+  taxAmount     Decimal            @default(0.0)
+  total         Decimal
+
+  invoice       SalesInvoice       @relation(fields: [invoiceId], references: [id])
+  product       Product            @relation(fields: [productId], references: [id])
+  taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
+}
+
+model SalesReturn {
+  id            String             @id @default(uuid())
+  returnNo      String             @unique
+  invoiceId     String
+  customerId    String
+  date          DateTime
+  totalAmount   Decimal
+  taxAmount     Decimal            @default(0.0)
+  journalEntryId String?           @unique
+  remarks       String?
+
+  invoice       SalesInvoice       @relation(fields: [invoiceId], references: [id])
+  customer      Customer           @relation(fields: [customerId], references: [id])
+  journalEntry  JournalEntry?      @relation(fields: [journalEntryId], references: [id])
+  items         SalesReturnItem[]
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model SalesReturnItem {
+  id            String             @id @default(uuid())
+  returnId      String
+  productId     String
+  qty           Decimal
+  rate          Decimal
+  taxCodeId     String?
+  taxAmount     Decimal            @default(0.0)
+  total         Decimal
+
+  return        SalesReturn        @relation(fields: [returnId], references: [id])
+  product       Product            @relation(fields: [productId], references: [id])
+  taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
 }

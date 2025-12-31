@@ -172,3 +172,53 @@ export type PurchaseRequest = Prisma.PurchaseRequestModel
  * 
  */
 export type PurchaseRequestItem = Prisma.PurchaseRequestItemModel
+/**
+ * Model SalesQuotation
+ * 
+ */
+export type SalesQuotation = Prisma.SalesQuotationModel
+/**
+ * Model SalesQuotationItem
+ * 
+ */
+export type SalesQuotationItem = Prisma.SalesQuotationItemModel
+/**
+ * Model SalesOrder
+ * 
+ */
+export type SalesOrder = Prisma.SalesOrderModel
+/**
+ * Model SalesOrderItem
+ * 
+ */
+export type SalesOrderItem = Prisma.SalesOrderItemModel
+/**
+ * Model DeliveryOrder
+ * 
+ */
+export type DeliveryOrder = Prisma.DeliveryOrderModel
+/**
+ * Model DeliveryOrderItem
+ * 
+ */
+export type DeliveryOrderItem = Prisma.DeliveryOrderItemModel
+/**
+ * Model SalesInvoice
+ * 
+ */
+export type SalesInvoice = Prisma.SalesInvoiceModel
+/**
+ * Model SalesInvoiceItem
+ * 
+ */
+export type SalesInvoiceItem = Prisma.SalesInvoiceItemModel
+/**
+ * Model SalesReturn
+ * 
+ */
+export type SalesReturn = Prisma.SalesReturnModel
+/**
+ * Model SalesReturnItem
+ * 
+ */
+export type SalesReturnItem = Prisma.SalesReturnItemModel
