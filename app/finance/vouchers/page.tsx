@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import DataTable from '@/components/DataTable';
+import { authenticatedFetch } from '@/lib/api-client';
 
 interface Voucher {
     id: string;
@@ -20,7 +21,7 @@ export default function VouchersPage() {
 
     useEffect(() => {
         // Note: We need a generic voucher list API, using Journal as a fallback for now
-        fetch('/api/finance/vouchers/journal')
+        authenticatedFetch('/api/finance/vouchers/journal')
             .then(res => res.json())
             .then(json => {
                 if (!json.success || !Array.isArray(json.data)) {

@@ -1,7 +1,22 @@
+"use client";
+
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
+    const router = useRouter();
+
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        const isLoggedIn = localStorage.getItem('isLoggedIn');
+
+        if (!token || isLoggedIn !== 'true') {
+            router.push('/auth/login');
+        }
+    }, [router]);
+
     return (
         <div className="flex min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 font-[Inter,sans-serif]">
             {/* Sidebar */}

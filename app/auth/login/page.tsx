@@ -16,15 +16,25 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            // Mocking login for now since actual API integration might need more handlers
-            // But we use the seeded credentials logic
-            if (email === 'admin@antigravity.erp' && password === 'Admin@123') {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            const json = await res.json();
+
+            if (json.success) {
                 showNotification('success', 'Welcome back, Administrator!');
+                localStorage.setItem('token', json.data.token);
+                localStorage.setItem('user', JSON.stringify(json.data.user));
                 localStorage.setItem('isLoggedIn', 'true');
                 router.push('/finance/dashboard');
             } else {
-                showNotification('error', 'Invalid email or password');
+                showNotification('error', json.error || 'Invalid email or password');
             }
+        } catch (err: any) {
+            showNotification('error', 'Login server unreachable. Please try again.');
         } finally {
             setIsLoading(false);
         }

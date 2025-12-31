@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import DataTable from '@/components/DataTable';
+import { authenticatedFetch } from '@/lib/api-client';
 
 interface Account {
     id: string;
@@ -18,7 +19,7 @@ export default function COAPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/finance/coa')
+        authenticatedFetch('/api/finance/coa')
             .then(res => res.json())
             .then(json => {
                 if (!json.success || !Array.isArray(json.data)) {

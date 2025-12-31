@@ -7,6 +7,18 @@ import { useNotifications } from '@/context/NotificationContext';
 export default function Header() {
     const { theme, toggleTheme } = useTheme();
     const { notifications } = useNotifications();
+    const [user, setUser] = React.useState<any>(null);
+
+    React.useEffect(() => {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            setUser(JSON.parse(storedUser));
+        }
+    }, []);
+
+    const nameInitials = user?.fullName
+        ? user.fullName.split(' ').map((n: string) => n[0]).join('')
+        : 'AA';
 
     return (
         <header className="h-16 border-b border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-[#0f172a]/70 backdrop-blur-md flex items-center justify-between px-8 sticky top-0 z-40">
@@ -47,12 +59,18 @@ export default function Header() {
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 </div>
 
-                <button className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-800 flex items-center justify-center hover:shadow-lg transition-all active:scale-95 overflow-hidden">
-                    <img
-                        src="https://ui-avatars.com/api/?name=Abdullah+Ansari&background=4f46e5&color=fff"
-                        alt="User"
-                    />
-                </button>
+                <div className="flex items-center gap-3 ml-2">
+                    <div className="text-right hidden sm:block">
+                        <p className="text-xs font-bold truncate max-w-[120px]">{user?.fullName || 'Administrator'}</p>
+                        <p className="text-[10px] text-slate-500 font-medium">Power User</p>
+                    </div>
+                    <button className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-800 flex items-center justify-center hover:shadow-lg transition-all active:scale-95 overflow-hidden">
+                        <img
+                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'Administrator')}&background=4f46e5&color=fff`}
+                            alt="User"
+                        />
+                    </button>
+                </div>
             </div>
         </header>
     );
