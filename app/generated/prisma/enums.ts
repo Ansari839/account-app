@@ -26,7 +26,11 @@ export const VoucherType = {
   RECEIPT: 'RECEIPT',
   PURCHASE: 'PURCHASE',
   SALES: 'SALES',
-  CONTRA: 'CONTRA'
+  CONTRA: 'CONTRA',
+  PURCHASE_RETURN: 'PURCHASE_RETURN',
+  SALES_RETURN: 'SALES_RETURN',
+  OPENING: 'OPENING',
+  CLOSING: 'CLOSING'
 } as const
 
 export type VoucherType = (typeof VoucherType)[keyof typeof VoucherType]

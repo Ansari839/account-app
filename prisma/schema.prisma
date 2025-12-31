@@ -39,6 +39,8 @@ model FinancialYear {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   deletedAt   DateTime?
+
+  journalEntries JournalEntry[]
 }
 
 model Currency {
@@ -430,17 +432,23 @@ enum VoucherType {
   PURCHASE
   SALES
   CONTRA
+  PURCHASE_RETURN
+  SALES_RETURN
+  OPENING
+  CLOSING
 }
 
 model JournalEntry {
-  id          String       @id @default(uuid())
-  number      String       @unique // Voucher Number
-  date        DateTime
-  type        VoucherType
-  reference   String?      // Reference Doc No
-  narration   String?
-  status      Boolean      @default(true) // Posted/Draft
+  id              String       @id @default(uuid())
+  number          String       @unique // Voucher Number
+  date            DateTime
+  type            VoucherType
+  reference       String?      // Reference Doc No
+  narration       String?
+  status          Boolean      @default(true) // Posted/Draft
+  financialYearId String?
 
+  financialYear   FinancialYear? @relation(fields: [financialYearId], references: [id])
   lines           JournalLine[]
   purchaseInvoice PurchaseInvoice?
   salesInvoice    SalesInvoice?
@@ -794,4 +802,13 @@ model SalesReturnItem {
   return        SalesReturn        @relation(fields: [returnId], references: [id])
   product       Product            @relation(fields: [productId], references: [id])
   taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
+}
+
+model VoucherSequence {
+  id        String      @id @default(uuid())
+  type      VoucherType @unique
+  prefix    String
+  nextValue Int         @default(1)
+
+  updatedAt DateTime    @updatedAt
 }

@@ -91,7 +91,8 @@ export const ModelName = {
   SalesInvoice: 'SalesInvoice',
   SalesInvoiceItem: 'SalesInvoiceItem',
   SalesReturn: 'SalesReturn',
-  SalesReturnItem: 'SalesReturnItem'
+  SalesReturnItem: 'SalesReturnItem',
+  VoucherSequence: 'VoucherSequence'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -401,6 +402,7 @@ export const JournalEntryScalarFieldEnum = {
   reference: 'reference',
   narration: 'narration',
   status: 'status',
+  financialYearId: 'financialYearId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -697,6 +699,17 @@ export const SalesReturnItemScalarFieldEnum = {
 } as const
 
 export type SalesReturnItemScalarFieldEnum = (typeof SalesReturnItemScalarFieldEnum)[keyof typeof SalesReturnItemScalarFieldEnum]
+
+
+export const VoucherSequenceScalarFieldEnum = {
+  id: 'id',
+  type: 'type',
+  prefix: 'prefix',
+  nextValue: 'nextValue',
+  updatedAt: 'updatedAt'
+} as const
+
+export type VoucherSequenceScalarFieldEnum = (typeof VoucherSequenceScalarFieldEnum)[keyof typeof VoucherSequenceScalarFieldEnum]
 
 
 export const SortOrder = {

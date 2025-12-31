@@ -1,5 +1,8 @@
 import prisma from "@/lib/prisma";
 import { VoucherType, Prisma } from "@/app/generated/prisma/client";
+import { VoucherService } from "./voucher.service";
+import { FinancialYearService } from "./financialYear.service";
+import { AccountingControlService } from "./accountingControl.service";
 
 export interface JournalLineInput {
     accountId: string;
@@ -9,7 +12,8 @@ export interface JournalLineInput {
 }
 
 export interface JournalEntryInput {
-    number: string;
+    id?: string; // For updates
+    number?: string; // Made optional for auto-generation
     date: Date;
     type: VoucherType;
     reference?: string;
@@ -22,7 +26,12 @@ export class JournalService {
      * Creates a balanced Journal Entry (Voucher)
      */
     static async createEntry(data: JournalEntryInput, tx?: Prisma.TransactionClient) {
-        // 1. Validation: Balance Check
+        const client = tx || prisma;
+
+        // 1. Accounting Controls
+        await AccountingControlService.validateTransaction(data.date, data.id);
+
+        // 2. Validation: Balance Check
         const totalDebit = data.lines.reduce((sum, line) => sum + (line.debit || 0), 0);
         const totalCredit = data.lines.reduce((sum, line) => sum + (line.credit || 0), 0);
 
@@ -34,14 +43,30 @@ export class JournalService {
             throw new Error("Journal Entry must have at least two lines.");
         }
 
-        const execute = async (client: any) => {
-            return await client.journalEntry.create({
+        // 2. Financial Year Handling
+        const activeYear = await FinancialYearService.getActiveYear(data.date);
+        if (!activeYear.isOpen) {
+            throw new Error(`Financial Year ${activeYear.name} is closed. Cannot post transaction.`);
+        }
+
+        // 3. Voucher Number Handling
+        let voucherNo = data.number;
+
+        const execute = async (txClient: Prisma.TransactionClient) => {
+            if (!voucherNo) {
+                voucherNo = await VoucherService.generateNumber(data.type, txClient);
+            } else {
+                await VoucherService.validateNumber(voucherNo, txClient);
+            }
+
+            return await txClient.journalEntry.create({
                 data: {
-                    number: data.number,
+                    number: voucherNo,
                     date: data.date,
                     type: data.type,
                     reference: data.reference,
                     narration: data.narration,
+                    financialYearId: activeYear.id,
                     lines: {
                         create: data.lines.map(line => ({
                             accountId: line.accountId,

@@ -32,6 +32,7 @@ export type JournalEntryMinAggregateOutputType = {
   reference: string | null
   narration: string | null
   status: boolean | null
+  financialYearId: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -44,6 +45,7 @@ export type JournalEntryMaxAggregateOutputType = {
   reference: string | null
   narration: string | null
   status: boolean | null
+  financialYearId: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -56,6 +58,7 @@ export type JournalEntryCountAggregateOutputType = {
   reference: number
   narration: number
   status: number
+  financialYearId: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -70,6 +73,7 @@ export type JournalEntryMinAggregateInputType = {
   reference?: true
   narration?: true
   status?: true
+  financialYearId?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -82,6 +86,7 @@ export type JournalEntryMaxAggregateInputType = {
   reference?: true
   narration?: true
   status?: true
+  financialYearId?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -94,6 +99,7 @@ export type JournalEntryCountAggregateInputType = {
   reference?: true
   narration?: true
   status?: true
+  financialYearId?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -179,6 +185,7 @@ export type JournalEntryGroupByOutputType = {
   reference: string | null
   narration: string | null
   status: boolean
+  financialYearId: string | null
   createdAt: Date
   updatedAt: Date
   _count: JournalEntryCountAggregateOutputType | null
@@ -212,8 +219,10 @@ export type JournalEntryWhereInput = {
   reference?: Prisma.StringNullableFilter<"JournalEntry"> | string | null
   narration?: Prisma.StringNullableFilter<"JournalEntry"> | string | null
   status?: Prisma.BoolFilter<"JournalEntry"> | boolean
+  financialYearId?: Prisma.StringNullableFilter<"JournalEntry"> | string | null
   createdAt?: Prisma.DateTimeFilter<"JournalEntry"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"JournalEntry"> | Date | string
+  financialYear?: Prisma.XOR<Prisma.FinancialYearNullableScalarRelationFilter, Prisma.FinancialYearWhereInput> | null
   lines?: Prisma.JournalLineListRelationFilter
   purchaseInvoice?: Prisma.XOR<Prisma.PurchaseInvoiceNullableScalarRelationFilter, Prisma.PurchaseInvoiceWhereInput> | null
   salesInvoice?: Prisma.XOR<Prisma.SalesInvoiceNullableScalarRelationFilter, Prisma.SalesInvoiceWhereInput> | null
@@ -228,8 +237,10 @@ export type JournalEntryOrderByWithRelationInput = {
   reference?: Prisma.SortOrderInput | Prisma.SortOrder
   narration?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
+  financialYearId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  financialYear?: Prisma.FinancialYearOrderByWithRelationInput
   lines?: Prisma.JournalLineOrderByRelationAggregateInput
   purchaseInvoice?: Prisma.PurchaseInvoiceOrderByWithRelationInput
   salesInvoice?: Prisma.SalesInvoiceOrderByWithRelationInput
@@ -247,8 +258,10 @@ export type JournalEntryWhereUniqueInput = Prisma.AtLeast<{
   reference?: Prisma.StringNullableFilter<"JournalEntry"> | string | null
   narration?: Prisma.StringNullableFilter<"JournalEntry"> | string | null
   status?: Prisma.BoolFilter<"JournalEntry"> | boolean
+  financialYearId?: Prisma.StringNullableFilter<"JournalEntry"> | string | null
   createdAt?: Prisma.DateTimeFilter<"JournalEntry"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"JournalEntry"> | Date | string
+  financialYear?: Prisma.XOR<Prisma.FinancialYearNullableScalarRelationFilter, Prisma.FinancialYearWhereInput> | null
   lines?: Prisma.JournalLineListRelationFilter
   purchaseInvoice?: Prisma.XOR<Prisma.PurchaseInvoiceNullableScalarRelationFilter, Prisma.PurchaseInvoiceWhereInput> | null
   salesInvoice?: Prisma.XOR<Prisma.SalesInvoiceNullableScalarRelationFilter, Prisma.SalesInvoiceWhereInput> | null
@@ -263,6 +276,7 @@ export type JournalEntryOrderByWithAggregationInput = {
   reference?: Prisma.SortOrderInput | Prisma.SortOrder
   narration?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
+  financialYearId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.JournalEntryCountOrderByAggregateInput
@@ -281,6 +295,7 @@ export type JournalEntryScalarWhereWithAggregatesInput = {
   reference?: Prisma.StringNullableWithAggregatesFilter<"JournalEntry"> | string | null
   narration?: Prisma.StringNullableWithAggregatesFilter<"JournalEntry"> | string | null
   status?: Prisma.BoolWithAggregatesFilter<"JournalEntry"> | boolean
+  financialYearId?: Prisma.StringNullableWithAggregatesFilter<"JournalEntry"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"JournalEntry"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"JournalEntry"> | Date | string
 }
@@ -295,6 +310,7 @@ export type JournalEntryCreateInput = {
   status?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  financialYear?: Prisma.FinancialYearCreateNestedOneWithoutJournalEntriesInput
   lines?: Prisma.JournalLineCreateNestedManyWithoutEntryInput
   purchaseInvoice?: Prisma.PurchaseInvoiceCreateNestedOneWithoutJournalEntryInput
   salesInvoice?: Prisma.SalesInvoiceCreateNestedOneWithoutJournalEntryInput
@@ -309,6 +325,7 @@ export type JournalEntryUncheckedCreateInput = {
   reference?: string | null
   narration?: string | null
   status?: boolean
+  financialYearId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   lines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutEntryInput
@@ -327,6 +344,7 @@ export type JournalEntryUpdateInput = {
   status?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  financialYear?: Prisma.FinancialYearUpdateOneWithoutJournalEntriesNestedInput
   lines?: Prisma.JournalLineUpdateManyWithoutEntryNestedInput
   purchaseInvoice?: Prisma.PurchaseInvoiceUpdateOneWithoutJournalEntryNestedInput
   salesInvoice?: Prisma.SalesInvoiceUpdateOneWithoutJournalEntryNestedInput
@@ -341,6 +359,7 @@ export type JournalEntryUncheckedUpdateInput = {
   reference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   narration?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  financialYearId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lines?: Prisma.JournalLineUncheckedUpdateManyWithoutEntryNestedInput
@@ -357,6 +376,7 @@ export type JournalEntryCreateManyInput = {
   reference?: string | null
   narration?: string | null
   status?: boolean
+  financialYearId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -381,8 +401,19 @@ export type JournalEntryUncheckedUpdateManyInput = {
   reference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   narration?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  financialYearId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type JournalEntryListRelationFilter = {
+  every?: Prisma.JournalEntryWhereInput
+  some?: Prisma.JournalEntryWhereInput
+  none?: Prisma.JournalEntryWhereInput
+}
+
+export type JournalEntryOrderByRelationAggregateInput = {
+  _count?: Prisma.SortOrder
 }
 
 export type JournalEntryCountOrderByAggregateInput = {
@@ -393,6 +424,7 @@ export type JournalEntryCountOrderByAggregateInput = {
   reference?: Prisma.SortOrder
   narration?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  financialYearId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -405,6 +437,7 @@ export type JournalEntryMaxOrderByAggregateInput = {
   reference?: Prisma.SortOrder
   narration?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  financialYearId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -417,6 +450,7 @@ export type JournalEntryMinOrderByAggregateInput = {
   reference?: Prisma.SortOrder
   narration?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  financialYearId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -429,6 +463,48 @@ export type JournalEntryScalarRelationFilter = {
 export type JournalEntryNullableScalarRelationFilter = {
   is?: Prisma.JournalEntryWhereInput | null
   isNot?: Prisma.JournalEntryWhereInput | null
+}
+
+export type JournalEntryCreateNestedManyWithoutFinancialYearInput = {
+  create?: Prisma.XOR<Prisma.JournalEntryCreateWithoutFinancialYearInput, Prisma.JournalEntryUncheckedCreateWithoutFinancialYearInput> | Prisma.JournalEntryCreateWithoutFinancialYearInput[] | Prisma.JournalEntryUncheckedCreateWithoutFinancialYearInput[]
+  connectOrCreate?: Prisma.JournalEntryCreateOrConnectWithoutFinancialYearInput | Prisma.JournalEntryCreateOrConnectWithoutFinancialYearInput[]
+  createMany?: Prisma.JournalEntryCreateManyFinancialYearInputEnvelope
+  connect?: Prisma.JournalEntryWhereUniqueInput | Prisma.JournalEntryWhereUniqueInput[]
+}
+
+export type JournalEntryUncheckedCreateNestedManyWithoutFinancialYearInput = {
+  create?: Prisma.XOR<Prisma.JournalEntryCreateWithoutFinancialYearInput, Prisma.JournalEntryUncheckedCreateWithoutFinancialYearInput> | Prisma.JournalEntryCreateWithoutFinancialYearInput[] | Prisma.JournalEntryUncheckedCreateWithoutFinancialYearInput[]
+  connectOrCreate?: Prisma.JournalEntryCreateOrConnectWithoutFinancialYearInput | Prisma.JournalEntryCreateOrConnectWithoutFinancialYearInput[]
+  createMany?: Prisma.JournalEntryCreateManyFinancialYearInputEnvelope
+  connect?: Prisma.JournalEntryWhereUniqueInput | Prisma.JournalEntryWhereUniqueInput[]
+}
+
+export type JournalEntryUpdateManyWithoutFinancialYearNestedInput = {
+  create?: Prisma.XOR<Prisma.JournalEntryCreateWithoutFinancialYearInput, Prisma.JournalEntryUncheckedCreateWithoutFinancialYearInput> | Prisma.JournalEntryCreateWithoutFinancialYearInput[] | Prisma.JournalEntryUncheckedCreateWithoutFinancialYearInput[]
+  connectOrCreate?: Prisma.JournalEntryCreateOrConnectWithoutFinancialYearInput | Prisma.JournalEntryCreateOrConnectWithoutFinancialYearInput[]
+  upsert?: Prisma.JournalEntryUpsertWithWhereUniqueWithoutFinancialYearInput | Prisma.JournalEntryUpsertWithWhereUniqueWithoutFinancialYearInput[]
+  createMany?: Prisma.JournalEntryCreateManyFinancialYearInputEnvelope
+  set?: Prisma.JournalEntryWhereUniqueInput | Prisma.JournalEntryWhereUniqueInput[]
+  disconnect?: Prisma.JournalEntryWhereUniqueInput | Prisma.JournalEntryWhereUniqueInput[]
+  delete?: Prisma.JournalEntryWhereUniqueInput | Prisma.JournalEntryWhereUniqueInput[]
+  connect?: Prisma.JournalEntryWhereUniqueInput | Prisma.JournalEntryWhereUniqueInput[]
+  update?: Prisma.JournalEntryUpdateWithWhereUniqueWithoutFinancialYearInput | Prisma.JournalEntryUpdateWithWhereUniqueWithoutFinancialYearInput[]
+  updateMany?: Prisma.JournalEntryUpdateManyWithWhereWithoutFinancialYearInput | Prisma.JournalEntryUpdateManyWithWhereWithoutFinancialYearInput[]
+  deleteMany?: Prisma.JournalEntryScalarWhereInput | Prisma.JournalEntryScalarWhereInput[]
+}
+
+export type JournalEntryUncheckedUpdateManyWithoutFinancialYearNestedInput = {
+  create?: Prisma.XOR<Prisma.JournalEntryCreateWithoutFinancialYearInput, Prisma.JournalEntryUncheckedCreateWithoutFinancialYearInput> | Prisma.JournalEntryCreateWithoutFinancialYearInput[] | Prisma.JournalEntryUncheckedCreateWithoutFinancialYearInput[]
+  connectOrCreate?: Prisma.JournalEntryCreateOrConnectWithoutFinancialYearInput | Prisma.JournalEntryCreateOrConnectWithoutFinancialYearInput[]
+  upsert?: Prisma.JournalEntryUpsertWithWhereUniqueWithoutFinancialYearInput | Prisma.JournalEntryUpsertWithWhereUniqueWithoutFinancialYearInput[]
+  createMany?: Prisma.JournalEntryCreateManyFinancialYearInputEnvelope
+  set?: Prisma.JournalEntryWhereUniqueInput | Prisma.JournalEntryWhereUniqueInput[]
+  disconnect?: Prisma.JournalEntryWhereUniqueInput | Prisma.JournalEntryWhereUniqueInput[]
+  delete?: Prisma.JournalEntryWhereUniqueInput | Prisma.JournalEntryWhereUniqueInput[]
+  connect?: Prisma.JournalEntryWhereUniqueInput | Prisma.JournalEntryWhereUniqueInput[]
+  update?: Prisma.JournalEntryUpdateWithWhereUniqueWithoutFinancialYearInput | Prisma.JournalEntryUpdateWithWhereUniqueWithoutFinancialYearInput[]
+  updateMany?: Prisma.JournalEntryUpdateManyWithWhereWithoutFinancialYearInput | Prisma.JournalEntryUpdateManyWithWhereWithoutFinancialYearInput[]
+  deleteMany?: Prisma.JournalEntryScalarWhereInput | Prisma.JournalEntryScalarWhereInput[]
 }
 
 export type EnumVoucherTypeFieldUpdateOperationsInput = {
@@ -497,6 +573,80 @@ export type JournalEntryUpdateOneWithoutSalesReturnNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.JournalEntryUpdateToOneWithWhereWithoutSalesReturnInput, Prisma.JournalEntryUpdateWithoutSalesReturnInput>, Prisma.JournalEntryUncheckedUpdateWithoutSalesReturnInput>
 }
 
+export type JournalEntryCreateWithoutFinancialYearInput = {
+  id?: string
+  number: string
+  date: Date | string
+  type: $Enums.VoucherType
+  reference?: string | null
+  narration?: string | null
+  status?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  lines?: Prisma.JournalLineCreateNestedManyWithoutEntryInput
+  purchaseInvoice?: Prisma.PurchaseInvoiceCreateNestedOneWithoutJournalEntryInput
+  salesInvoice?: Prisma.SalesInvoiceCreateNestedOneWithoutJournalEntryInput
+  salesReturn?: Prisma.SalesReturnCreateNestedOneWithoutJournalEntryInput
+}
+
+export type JournalEntryUncheckedCreateWithoutFinancialYearInput = {
+  id?: string
+  number: string
+  date: Date | string
+  type: $Enums.VoucherType
+  reference?: string | null
+  narration?: string | null
+  status?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  lines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutEntryInput
+  purchaseInvoice?: Prisma.PurchaseInvoiceUncheckedCreateNestedOneWithoutJournalEntryInput
+  salesInvoice?: Prisma.SalesInvoiceUncheckedCreateNestedOneWithoutJournalEntryInput
+  salesReturn?: Prisma.SalesReturnUncheckedCreateNestedOneWithoutJournalEntryInput
+}
+
+export type JournalEntryCreateOrConnectWithoutFinancialYearInput = {
+  where: Prisma.JournalEntryWhereUniqueInput
+  create: Prisma.XOR<Prisma.JournalEntryCreateWithoutFinancialYearInput, Prisma.JournalEntryUncheckedCreateWithoutFinancialYearInput>
+}
+
+export type JournalEntryCreateManyFinancialYearInputEnvelope = {
+  data: Prisma.JournalEntryCreateManyFinancialYearInput | Prisma.JournalEntryCreateManyFinancialYearInput[]
+  skipDuplicates?: boolean
+}
+
+export type JournalEntryUpsertWithWhereUniqueWithoutFinancialYearInput = {
+  where: Prisma.JournalEntryWhereUniqueInput
+  update: Prisma.XOR<Prisma.JournalEntryUpdateWithoutFinancialYearInput, Prisma.JournalEntryUncheckedUpdateWithoutFinancialYearInput>
+  create: Prisma.XOR<Prisma.JournalEntryCreateWithoutFinancialYearInput, Prisma.JournalEntryUncheckedCreateWithoutFinancialYearInput>
+}
+
+export type JournalEntryUpdateWithWhereUniqueWithoutFinancialYearInput = {
+  where: Prisma.JournalEntryWhereUniqueInput
+  data: Prisma.XOR<Prisma.JournalEntryUpdateWithoutFinancialYearInput, Prisma.JournalEntryUncheckedUpdateWithoutFinancialYearInput>
+}
+
+export type JournalEntryUpdateManyWithWhereWithoutFinancialYearInput = {
+  where: Prisma.JournalEntryScalarWhereInput
+  data: Prisma.XOR<Prisma.JournalEntryUpdateManyMutationInput, Prisma.JournalEntryUncheckedUpdateManyWithoutFinancialYearInput>
+}
+
+export type JournalEntryScalarWhereInput = {
+  AND?: Prisma.JournalEntryScalarWhereInput | Prisma.JournalEntryScalarWhereInput[]
+  OR?: Prisma.JournalEntryScalarWhereInput[]
+  NOT?: Prisma.JournalEntryScalarWhereInput | Prisma.JournalEntryScalarWhereInput[]
+  id?: Prisma.StringFilter<"JournalEntry"> | string
+  number?: Prisma.StringFilter<"JournalEntry"> | string
+  date?: Prisma.DateTimeFilter<"JournalEntry"> | Date | string
+  type?: Prisma.EnumVoucherTypeFilter<"JournalEntry"> | $Enums.VoucherType
+  reference?: Prisma.StringNullableFilter<"JournalEntry"> | string | null
+  narration?: Prisma.StringNullableFilter<"JournalEntry"> | string | null
+  status?: Prisma.BoolFilter<"JournalEntry"> | boolean
+  financialYearId?: Prisma.StringNullableFilter<"JournalEntry"> | string | null
+  createdAt?: Prisma.DateTimeFilter<"JournalEntry"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"JournalEntry"> | Date | string
+}
+
 export type JournalEntryCreateWithoutLinesInput = {
   id?: string
   number: string
@@ -507,6 +657,7 @@ export type JournalEntryCreateWithoutLinesInput = {
   status?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  financialYear?: Prisma.FinancialYearCreateNestedOneWithoutJournalEntriesInput
   purchaseInvoice?: Prisma.PurchaseInvoiceCreateNestedOneWithoutJournalEntryInput
   salesInvoice?: Prisma.SalesInvoiceCreateNestedOneWithoutJournalEntryInput
   salesReturn?: Prisma.SalesReturnCreateNestedOneWithoutJournalEntryInput
@@ -520,6 +671,7 @@ export type JournalEntryUncheckedCreateWithoutLinesInput = {
   reference?: string | null
   narration?: string | null
   status?: boolean
+  financialYearId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   purchaseInvoice?: Prisma.PurchaseInvoiceUncheckedCreateNestedOneWithoutJournalEntryInput
@@ -553,6 +705,7 @@ export type JournalEntryUpdateWithoutLinesInput = {
   status?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  financialYear?: Prisma.FinancialYearUpdateOneWithoutJournalEntriesNestedInput
   purchaseInvoice?: Prisma.PurchaseInvoiceUpdateOneWithoutJournalEntryNestedInput
   salesInvoice?: Prisma.SalesInvoiceUpdateOneWithoutJournalEntryNestedInput
   salesReturn?: Prisma.SalesReturnUpdateOneWithoutJournalEntryNestedInput
@@ -566,6 +719,7 @@ export type JournalEntryUncheckedUpdateWithoutLinesInput = {
   reference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   narration?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  financialYearId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   purchaseInvoice?: Prisma.PurchaseInvoiceUncheckedUpdateOneWithoutJournalEntryNestedInput
@@ -583,6 +737,7 @@ export type JournalEntryCreateWithoutPurchaseInvoiceInput = {
   status?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  financialYear?: Prisma.FinancialYearCreateNestedOneWithoutJournalEntriesInput
   lines?: Prisma.JournalLineCreateNestedManyWithoutEntryInput
   salesInvoice?: Prisma.SalesInvoiceCreateNestedOneWithoutJournalEntryInput
   salesReturn?: Prisma.SalesReturnCreateNestedOneWithoutJournalEntryInput
@@ -596,6 +751,7 @@ export type JournalEntryUncheckedCreateWithoutPurchaseInvoiceInput = {
   reference?: string | null
   narration?: string | null
   status?: boolean
+  financialYearId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   lines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutEntryInput
@@ -629,6 +785,7 @@ export type JournalEntryUpdateWithoutPurchaseInvoiceInput = {
   status?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  financialYear?: Prisma.FinancialYearUpdateOneWithoutJournalEntriesNestedInput
   lines?: Prisma.JournalLineUpdateManyWithoutEntryNestedInput
   salesInvoice?: Prisma.SalesInvoiceUpdateOneWithoutJournalEntryNestedInput
   salesReturn?: Prisma.SalesReturnUpdateOneWithoutJournalEntryNestedInput
@@ -642,6 +799,7 @@ export type JournalEntryUncheckedUpdateWithoutPurchaseInvoiceInput = {
   reference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   narration?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  financialYearId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lines?: Prisma.JournalLineUncheckedUpdateManyWithoutEntryNestedInput
@@ -659,6 +817,7 @@ export type JournalEntryCreateWithoutSalesInvoiceInput = {
   status?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  financialYear?: Prisma.FinancialYearCreateNestedOneWithoutJournalEntriesInput
   lines?: Prisma.JournalLineCreateNestedManyWithoutEntryInput
   purchaseInvoice?: Prisma.PurchaseInvoiceCreateNestedOneWithoutJournalEntryInput
   salesReturn?: Prisma.SalesReturnCreateNestedOneWithoutJournalEntryInput
@@ -672,6 +831,7 @@ export type JournalEntryUncheckedCreateWithoutSalesInvoiceInput = {
   reference?: string | null
   narration?: string | null
   status?: boolean
+  financialYearId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   lines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutEntryInput
@@ -705,6 +865,7 @@ export type JournalEntryUpdateWithoutSalesInvoiceInput = {
   status?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  financialYear?: Prisma.FinancialYearUpdateOneWithoutJournalEntriesNestedInput
   lines?: Prisma.JournalLineUpdateManyWithoutEntryNestedInput
   purchaseInvoice?: Prisma.PurchaseInvoiceUpdateOneWithoutJournalEntryNestedInput
   salesReturn?: Prisma.SalesReturnUpdateOneWithoutJournalEntryNestedInput
@@ -718,6 +879,7 @@ export type JournalEntryUncheckedUpdateWithoutSalesInvoiceInput = {
   reference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   narration?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  financialYearId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lines?: Prisma.JournalLineUncheckedUpdateManyWithoutEntryNestedInput
@@ -735,6 +897,7 @@ export type JournalEntryCreateWithoutSalesReturnInput = {
   status?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  financialYear?: Prisma.FinancialYearCreateNestedOneWithoutJournalEntriesInput
   lines?: Prisma.JournalLineCreateNestedManyWithoutEntryInput
   purchaseInvoice?: Prisma.PurchaseInvoiceCreateNestedOneWithoutJournalEntryInput
   salesInvoice?: Prisma.SalesInvoiceCreateNestedOneWithoutJournalEntryInput
@@ -748,6 +911,7 @@ export type JournalEntryUncheckedCreateWithoutSalesReturnInput = {
   reference?: string | null
   narration?: string | null
   status?: boolean
+  financialYearId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   lines?: Prisma.JournalLineUncheckedCreateNestedManyWithoutEntryInput
@@ -781,6 +945,7 @@ export type JournalEntryUpdateWithoutSalesReturnInput = {
   status?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  financialYear?: Prisma.FinancialYearUpdateOneWithoutJournalEntriesNestedInput
   lines?: Prisma.JournalLineUpdateManyWithoutEntryNestedInput
   purchaseInvoice?: Prisma.PurchaseInvoiceUpdateOneWithoutJournalEntryNestedInput
   salesInvoice?: Prisma.SalesInvoiceUpdateOneWithoutJournalEntryNestedInput
@@ -794,11 +959,68 @@ export type JournalEntryUncheckedUpdateWithoutSalesReturnInput = {
   reference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   narration?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   status?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  financialYearId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lines?: Prisma.JournalLineUncheckedUpdateManyWithoutEntryNestedInput
   purchaseInvoice?: Prisma.PurchaseInvoiceUncheckedUpdateOneWithoutJournalEntryNestedInput
   salesInvoice?: Prisma.SalesInvoiceUncheckedUpdateOneWithoutJournalEntryNestedInput
+}
+
+export type JournalEntryCreateManyFinancialYearInput = {
+  id?: string
+  number: string
+  date: Date | string
+  type: $Enums.VoucherType
+  reference?: string | null
+  narration?: string | null
+  status?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type JournalEntryUpdateWithoutFinancialYearInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  type?: Prisma.EnumVoucherTypeFieldUpdateOperationsInput | $Enums.VoucherType
+  reference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  narration?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lines?: Prisma.JournalLineUpdateManyWithoutEntryNestedInput
+  purchaseInvoice?: Prisma.PurchaseInvoiceUpdateOneWithoutJournalEntryNestedInput
+  salesInvoice?: Prisma.SalesInvoiceUpdateOneWithoutJournalEntryNestedInput
+  salesReturn?: Prisma.SalesReturnUpdateOneWithoutJournalEntryNestedInput
+}
+
+export type JournalEntryUncheckedUpdateWithoutFinancialYearInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  type?: Prisma.EnumVoucherTypeFieldUpdateOperationsInput | $Enums.VoucherType
+  reference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  narration?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  lines?: Prisma.JournalLineUncheckedUpdateManyWithoutEntryNestedInput
+  purchaseInvoice?: Prisma.PurchaseInvoiceUncheckedUpdateOneWithoutJournalEntryNestedInput
+  salesInvoice?: Prisma.SalesInvoiceUncheckedUpdateOneWithoutJournalEntryNestedInput
+  salesReturn?: Prisma.SalesReturnUncheckedUpdateOneWithoutJournalEntryNestedInput
+}
+
+export type JournalEntryUncheckedUpdateManyWithoutFinancialYearInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  number?: Prisma.StringFieldUpdateOperationsInput | string
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  type?: Prisma.EnumVoucherTypeFieldUpdateOperationsInput | $Enums.VoucherType
+  reference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  narration?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 
@@ -840,8 +1062,10 @@ export type JournalEntrySelect<ExtArgs extends runtime.Types.Extensions.Internal
   reference?: boolean
   narration?: boolean
   status?: boolean
+  financialYearId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  financialYear?: boolean | Prisma.JournalEntry$financialYearArgs<ExtArgs>
   lines?: boolean | Prisma.JournalEntry$linesArgs<ExtArgs>
   purchaseInvoice?: boolean | Prisma.JournalEntry$purchaseInvoiceArgs<ExtArgs>
   salesInvoice?: boolean | Prisma.JournalEntry$salesInvoiceArgs<ExtArgs>
@@ -857,8 +1081,10 @@ export type JournalEntrySelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   reference?: boolean
   narration?: boolean
   status?: boolean
+  financialYearId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  financialYear?: boolean | Prisma.JournalEntry$financialYearArgs<ExtArgs>
 }, ExtArgs["result"]["journalEntry"]>
 
 export type JournalEntrySelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -869,8 +1095,10 @@ export type JournalEntrySelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   reference?: boolean
   narration?: boolean
   status?: boolean
+  financialYearId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  financialYear?: boolean | Prisma.JournalEntry$financialYearArgs<ExtArgs>
 }, ExtArgs["result"]["journalEntry"]>
 
 export type JournalEntrySelectScalar = {
@@ -881,24 +1109,31 @@ export type JournalEntrySelectScalar = {
   reference?: boolean
   narration?: boolean
   status?: boolean
+  financialYearId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type JournalEntryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "number" | "date" | "type" | "reference" | "narration" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["journalEntry"]>
+export type JournalEntryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "number" | "date" | "type" | "reference" | "narration" | "status" | "financialYearId" | "createdAt" | "updatedAt", ExtArgs["result"]["journalEntry"]>
 export type JournalEntryInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  financialYear?: boolean | Prisma.JournalEntry$financialYearArgs<ExtArgs>
   lines?: boolean | Prisma.JournalEntry$linesArgs<ExtArgs>
   purchaseInvoice?: boolean | Prisma.JournalEntry$purchaseInvoiceArgs<ExtArgs>
   salesInvoice?: boolean | Prisma.JournalEntry$salesInvoiceArgs<ExtArgs>
   salesReturn?: boolean | Prisma.JournalEntry$salesReturnArgs<ExtArgs>
   _count?: boolean | Prisma.JournalEntryCountOutputTypeDefaultArgs<ExtArgs>
 }
-export type JournalEntryIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
-export type JournalEntryIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type JournalEntryIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  financialYear?: boolean | Prisma.JournalEntry$financialYearArgs<ExtArgs>
+}
+export type JournalEntryIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  financialYear?: boolean | Prisma.JournalEntry$financialYearArgs<ExtArgs>
+}
 
 export type $JournalEntryPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "JournalEntry"
   objects: {
+    financialYear: Prisma.$FinancialYearPayload<ExtArgs> | null
     lines: Prisma.$JournalLinePayload<ExtArgs>[]
     purchaseInvoice: Prisma.$PurchaseInvoicePayload<ExtArgs> | null
     salesInvoice: Prisma.$SalesInvoicePayload<ExtArgs> | null
@@ -912,6 +1147,7 @@ export type $JournalEntryPayload<ExtArgs extends runtime.Types.Extensions.Intern
     reference: string | null
     narration: string | null
     status: boolean
+    financialYearId: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["journalEntry"]>
@@ -1308,6 +1544,7 @@ readonly fields: JournalEntryFieldRefs;
  */
 export interface Prisma__JournalEntryClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  financialYear<T extends Prisma.JournalEntry$financialYearArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.JournalEntry$financialYearArgs<ExtArgs>>): Prisma.Prisma__FinancialYearClient<runtime.Types.Result.GetResult<Prisma.$FinancialYearPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   lines<T extends Prisma.JournalEntry$linesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.JournalEntry$linesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$JournalLinePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   purchaseInvoice<T extends Prisma.JournalEntry$purchaseInvoiceArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.JournalEntry$purchaseInvoiceArgs<ExtArgs>>): Prisma.Prisma__PurchaseInvoiceClient<runtime.Types.Result.GetResult<Prisma.$PurchaseInvoicePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   salesInvoice<T extends Prisma.JournalEntry$salesInvoiceArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.JournalEntry$salesInvoiceArgs<ExtArgs>>): Prisma.Prisma__SalesInvoiceClient<runtime.Types.Result.GetResult<Prisma.$SalesInvoicePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
@@ -1348,6 +1585,7 @@ export interface JournalEntryFieldRefs {
   readonly reference: Prisma.FieldRef<"JournalEntry", 'String'>
   readonly narration: Prisma.FieldRef<"JournalEntry", 'String'>
   readonly status: Prisma.FieldRef<"JournalEntry", 'Boolean'>
+  readonly financialYearId: Prisma.FieldRef<"JournalEntry", 'String'>
   readonly createdAt: Prisma.FieldRef<"JournalEntry", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"JournalEntry", 'DateTime'>
 }
@@ -1599,6 +1837,10 @@ export type JournalEntryCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Ex
    */
   data: Prisma.JournalEntryCreateManyInput | Prisma.JournalEntryCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JournalEntryIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1669,6 +1911,10 @@ export type JournalEntryUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Ex
    * Limit how many JournalEntries to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JournalEntryIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1735,6 +1981,25 @@ export type JournalEntryDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.
    * Limit how many JournalEntries to delete.
    */
   limit?: number
+}
+
+/**
+ * JournalEntry.financialYear
+ */
+export type JournalEntry$financialYearArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FinancialYear
+   */
+  select?: Prisma.FinancialYearSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FinancialYear
+   */
+  omit?: Prisma.FinancialYearOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FinancialYearInclude<ExtArgs> | null
+  where?: Prisma.FinancialYearWhereInput
 }
 
 /**

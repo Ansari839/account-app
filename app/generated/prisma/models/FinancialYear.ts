@@ -222,6 +222,7 @@ export type FinancialYearWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"FinancialYear"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"FinancialYear"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"FinancialYear"> | Date | string | null
+  journalEntries?: Prisma.JournalEntryListRelationFilter
 }
 
 export type FinancialYearOrderByWithRelationInput = {
@@ -235,6 +236,7 @@ export type FinancialYearOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  journalEntries?: Prisma.JournalEntryOrderByRelationAggregateInput
 }
 
 export type FinancialYearWhereUniqueInput = Prisma.AtLeast<{
@@ -251,6 +253,7 @@ export type FinancialYearWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"FinancialYear"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"FinancialYear"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"FinancialYear"> | Date | string | null
+  journalEntries?: Prisma.JournalEntryListRelationFilter
 }, "id">
 
 export type FinancialYearOrderByWithAggregationInput = {
@@ -296,6 +299,7 @@ export type FinancialYearCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
+  journalEntries?: Prisma.JournalEntryCreateNestedManyWithoutFinancialYearInput
 }
 
 export type FinancialYearUncheckedCreateInput = {
@@ -309,6 +313,7 @@ export type FinancialYearUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
+  journalEntries?: Prisma.JournalEntryUncheckedCreateNestedManyWithoutFinancialYearInput
 }
 
 export type FinancialYearUpdateInput = {
@@ -322,6 +327,7 @@ export type FinancialYearUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  journalEntries?: Prisma.JournalEntryUpdateManyWithoutFinancialYearNestedInput
 }
 
 export type FinancialYearUncheckedUpdateInput = {
@@ -335,6 +341,7 @@ export type FinancialYearUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  journalEntries?: Prisma.JournalEntryUncheckedUpdateManyWithoutFinancialYearNestedInput
 }
 
 export type FinancialYearCreateManyInput = {
@@ -415,10 +422,128 @@ export type FinancialYearMinOrderByAggregateInput = {
   deletedAt?: Prisma.SortOrder
 }
 
+export type FinancialYearNullableScalarRelationFilter = {
+  is?: Prisma.FinancialYearWhereInput | null
+  isNot?: Prisma.FinancialYearWhereInput | null
+}
+
 export type BoolFieldUpdateOperationsInput = {
   set?: boolean
 }
 
+export type FinancialYearCreateNestedOneWithoutJournalEntriesInput = {
+  create?: Prisma.XOR<Prisma.FinancialYearCreateWithoutJournalEntriesInput, Prisma.FinancialYearUncheckedCreateWithoutJournalEntriesInput>
+  connectOrCreate?: Prisma.FinancialYearCreateOrConnectWithoutJournalEntriesInput
+  connect?: Prisma.FinancialYearWhereUniqueInput
+}
+
+export type FinancialYearUpdateOneWithoutJournalEntriesNestedInput = {
+  create?: Prisma.XOR<Prisma.FinancialYearCreateWithoutJournalEntriesInput, Prisma.FinancialYearUncheckedCreateWithoutJournalEntriesInput>
+  connectOrCreate?: Prisma.FinancialYearCreateOrConnectWithoutJournalEntriesInput
+  upsert?: Prisma.FinancialYearUpsertWithoutJournalEntriesInput
+  disconnect?: Prisma.FinancialYearWhereInput | boolean
+  delete?: Prisma.FinancialYearWhereInput | boolean
+  connect?: Prisma.FinancialYearWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.FinancialYearUpdateToOneWithWhereWithoutJournalEntriesInput, Prisma.FinancialYearUpdateWithoutJournalEntriesInput>, Prisma.FinancialYearUncheckedUpdateWithoutJournalEntriesInput>
+}
+
+export type FinancialYearCreateWithoutJournalEntriesInput = {
+  id?: string
+  name: string
+  startDate: Date | string
+  endDate: Date | string
+  isOpen?: boolean
+  openKeyHash?: string | null
+  lockedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+}
+
+export type FinancialYearUncheckedCreateWithoutJournalEntriesInput = {
+  id?: string
+  name: string
+  startDate: Date | string
+  endDate: Date | string
+  isOpen?: boolean
+  openKeyHash?: string | null
+  lockedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+}
+
+export type FinancialYearCreateOrConnectWithoutJournalEntriesInput = {
+  where: Prisma.FinancialYearWhereUniqueInput
+  create: Prisma.XOR<Prisma.FinancialYearCreateWithoutJournalEntriesInput, Prisma.FinancialYearUncheckedCreateWithoutJournalEntriesInput>
+}
+
+export type FinancialYearUpsertWithoutJournalEntriesInput = {
+  update: Prisma.XOR<Prisma.FinancialYearUpdateWithoutJournalEntriesInput, Prisma.FinancialYearUncheckedUpdateWithoutJournalEntriesInput>
+  create: Prisma.XOR<Prisma.FinancialYearCreateWithoutJournalEntriesInput, Prisma.FinancialYearUncheckedCreateWithoutJournalEntriesInput>
+  where?: Prisma.FinancialYearWhereInput
+}
+
+export type FinancialYearUpdateToOneWithWhereWithoutJournalEntriesInput = {
+  where?: Prisma.FinancialYearWhereInput
+  data: Prisma.XOR<Prisma.FinancialYearUpdateWithoutJournalEntriesInput, Prisma.FinancialYearUncheckedUpdateWithoutJournalEntriesInput>
+}
+
+export type FinancialYearUpdateWithoutJournalEntriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isOpen?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  openKeyHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+export type FinancialYearUncheckedUpdateWithoutJournalEntriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  startDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  endDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isOpen?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  openKeyHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lockedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+
+/**
+ * Count Type FinancialYearCountOutputType
+ */
+
+export type FinancialYearCountOutputType = {
+  journalEntries: number
+}
+
+export type FinancialYearCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  journalEntries?: boolean | FinancialYearCountOutputTypeCountJournalEntriesArgs
+}
+
+/**
+ * FinancialYearCountOutputType without action
+ */
+export type FinancialYearCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FinancialYearCountOutputType
+   */
+  select?: Prisma.FinancialYearCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * FinancialYearCountOutputType without action
+ */
+export type FinancialYearCountOutputTypeCountJournalEntriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.JournalEntryWhereInput
+}
 
 
 export type FinancialYearSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -432,6 +557,8 @@ export type FinancialYearSelect<ExtArgs extends runtime.Types.Extensions.Interna
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
+  journalEntries?: boolean | Prisma.FinancialYear$journalEntriesArgs<ExtArgs>
+  _count?: boolean | Prisma.FinancialYearCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["financialYear"]>
 
 export type FinancialYearSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -474,10 +601,18 @@ export type FinancialYearSelectScalar = {
 }
 
 export type FinancialYearOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "startDate" | "endDate" | "isOpen" | "openKeyHash" | "lockedAt" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["financialYear"]>
+export type FinancialYearInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  journalEntries?: boolean | Prisma.FinancialYear$journalEntriesArgs<ExtArgs>
+  _count?: boolean | Prisma.FinancialYearCountOutputTypeDefaultArgs<ExtArgs>
+}
+export type FinancialYearIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type FinancialYearIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
 
 export type $FinancialYearPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "FinancialYear"
-  objects: {}
+  objects: {
+    journalEntries: Prisma.$JournalEntryPayload<ExtArgs>[]
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     name: string
@@ -883,6 +1018,7 @@ readonly fields: FinancialYearFieldRefs;
  */
 export interface Prisma__FinancialYearClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  journalEntries<T extends Prisma.FinancialYear$journalEntriesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.FinancialYear$journalEntriesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$JournalEntryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -939,6 +1075,10 @@ export type FinancialYearFindUniqueArgs<ExtArgs extends runtime.Types.Extensions
    */
   omit?: Prisma.FinancialYearOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FinancialYearInclude<ExtArgs> | null
+  /**
    * Filter, which FinancialYear to fetch.
    */
   where: Prisma.FinancialYearWhereUniqueInput
@@ -957,6 +1097,10 @@ export type FinancialYearFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.Ext
    */
   omit?: Prisma.FinancialYearOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FinancialYearInclude<ExtArgs> | null
+  /**
    * Filter, which FinancialYear to fetch.
    */
   where: Prisma.FinancialYearWhereUniqueInput
@@ -974,6 +1118,10 @@ export type FinancialYearFindFirstArgs<ExtArgs extends runtime.Types.Extensions.
    * Omit specific fields from the FinancialYear
    */
   omit?: Prisma.FinancialYearOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FinancialYearInclude<ExtArgs> | null
   /**
    * Filter, which FinancialYear to fetch.
    */
@@ -1023,6 +1171,10 @@ export type FinancialYearFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Exte
    */
   omit?: Prisma.FinancialYearOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FinancialYearInclude<ExtArgs> | null
+  /**
    * Filter, which FinancialYear to fetch.
    */
   where?: Prisma.FinancialYearWhereInput
@@ -1071,6 +1223,10 @@ export type FinancialYearFindManyArgs<ExtArgs extends runtime.Types.Extensions.I
    */
   omit?: Prisma.FinancialYearOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FinancialYearInclude<ExtArgs> | null
+  /**
    * Filter, which FinancialYears to fetch.
    */
   where?: Prisma.FinancialYearWhereInput
@@ -1113,6 +1269,10 @@ export type FinancialYearCreateArgs<ExtArgs extends runtime.Types.Extensions.Int
    * Omit specific fields from the FinancialYear
    */
   omit?: Prisma.FinancialYearOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FinancialYearInclude<ExtArgs> | null
   /**
    * The data needed to create a FinancialYear.
    */
@@ -1161,6 +1321,10 @@ export type FinancialYearUpdateArgs<ExtArgs extends runtime.Types.Extensions.Int
    * Omit specific fields from the FinancialYear
    */
   omit?: Prisma.FinancialYearOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FinancialYearInclude<ExtArgs> | null
   /**
    * The data needed to update a FinancialYear.
    */
@@ -1228,6 +1392,10 @@ export type FinancialYearUpsertArgs<ExtArgs extends runtime.Types.Extensions.Int
    */
   omit?: Prisma.FinancialYearOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FinancialYearInclude<ExtArgs> | null
+  /**
    * The filter to search for the FinancialYear to update in case it exists.
    */
   where: Prisma.FinancialYearWhereUniqueInput
@@ -1254,6 +1422,10 @@ export type FinancialYearDeleteArgs<ExtArgs extends runtime.Types.Extensions.Int
    */
   omit?: Prisma.FinancialYearOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FinancialYearInclude<ExtArgs> | null
+  /**
    * Filter which FinancialYear to delete.
    */
   where: Prisma.FinancialYearWhereUniqueInput
@@ -1274,6 +1446,30 @@ export type FinancialYearDeleteManyArgs<ExtArgs extends runtime.Types.Extensions
 }
 
 /**
+ * FinancialYear.journalEntries
+ */
+export type FinancialYear$journalEntriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the JournalEntry
+   */
+  select?: Prisma.JournalEntrySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the JournalEntry
+   */
+  omit?: Prisma.JournalEntryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.JournalEntryInclude<ExtArgs> | null
+  where?: Prisma.JournalEntryWhereInput
+  orderBy?: Prisma.JournalEntryOrderByWithRelationInput | Prisma.JournalEntryOrderByWithRelationInput[]
+  cursor?: Prisma.JournalEntryWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.JournalEntryScalarFieldEnum | Prisma.JournalEntryScalarFieldEnum[]
+}
+
+/**
  * FinancialYear without action
  */
 export type FinancialYearDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1285,4 +1481,8 @@ export type FinancialYearDefaultArgs<ExtArgs extends runtime.Types.Extensions.In
    * Omit specific fields from the FinancialYear
    */
   omit?: Prisma.FinancialYearOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FinancialYearInclude<ExtArgs> | null
 }

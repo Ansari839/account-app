@@ -424,7 +424,8 @@ export const ModelName = {
   SalesInvoice: 'SalesInvoice',
   SalesInvoiceItem: 'SalesInvoiceItem',
   SalesReturn: 'SalesReturn',
-  SalesReturnItem: 'SalesReturnItem'
+  SalesReturnItem: 'SalesReturnItem',
+  VoucherSequence: 'VoucherSequence'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -440,7 +441,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "company" | "financialYear" | "currency" | "unit" | "taxCode" | "user" | "role" | "userRole" | "permission" | "rolePermission" | "userRoleLimit" | "globalSetting" | "auditLog" | "account" | "customer" | "supplier" | "category" | "product" | "warehouse" | "unitConversion" | "journalEntry" | "journalLine" | "stockLedger" | "purchaseOrder" | "purchaseOrderItem" | "gRN" | "gRNItem" | "purchaseInvoice" | "purchaseInvoiceItem" | "purchaseRequest" | "purchaseRequestItem" | "salesQuotation" | "salesQuotationItem" | "salesOrder" | "salesOrderItem" | "deliveryOrder" | "deliveryOrderItem" | "salesInvoice" | "salesInvoiceItem" | "salesReturn" | "salesReturnItem"
+    modelProps: "company" | "financialYear" | "currency" | "unit" | "taxCode" | "user" | "role" | "userRole" | "permission" | "rolePermission" | "userRoleLimit" | "globalSetting" | "auditLog" | "account" | "customer" | "supplier" | "category" | "product" | "warehouse" | "unitConversion" | "journalEntry" | "journalLine" | "stockLedger" | "purchaseOrder" | "purchaseOrderItem" | "gRN" | "gRNItem" | "purchaseInvoice" | "purchaseInvoiceItem" | "purchaseRequest" | "purchaseRequestItem" | "salesQuotation" | "salesQuotationItem" | "salesOrder" | "salesOrderItem" | "deliveryOrder" | "deliveryOrderItem" | "salesInvoice" | "salesInvoiceItem" | "salesReturn" | "salesReturnItem" | "voucherSequence"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -3478,6 +3479,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    VoucherSequence: {
+      payload: Prisma.$VoucherSequencePayload<ExtArgs>
+      fields: Prisma.VoucherSequenceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.VoucherSequenceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VoucherSequencePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.VoucherSequenceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VoucherSequencePayload>
+        }
+        findFirst: {
+          args: Prisma.VoucherSequenceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VoucherSequencePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.VoucherSequenceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VoucherSequencePayload>
+        }
+        findMany: {
+          args: Prisma.VoucherSequenceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VoucherSequencePayload>[]
+        }
+        create: {
+          args: Prisma.VoucherSequenceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VoucherSequencePayload>
+        }
+        createMany: {
+          args: Prisma.VoucherSequenceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.VoucherSequenceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VoucherSequencePayload>[]
+        }
+        delete: {
+          args: Prisma.VoucherSequenceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VoucherSequencePayload>
+        }
+        update: {
+          args: Prisma.VoucherSequenceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VoucherSequencePayload>
+        }
+        deleteMany: {
+          args: Prisma.VoucherSequenceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.VoucherSequenceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.VoucherSequenceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VoucherSequencePayload>[]
+        }
+        upsert: {
+          args: Prisma.VoucherSequenceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VoucherSequencePayload>
+        }
+        aggregate: {
+          args: Prisma.VoucherSequenceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateVoucherSequence>
+        }
+        groupBy: {
+          args: Prisma.VoucherSequenceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VoucherSequenceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.VoucherSequenceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VoucherSequenceCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -3808,6 +3883,7 @@ export const JournalEntryScalarFieldEnum = {
   reference: 'reference',
   narration: 'narration',
   status: 'status',
+  financialYearId: 'financialYearId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -4104,6 +4180,17 @@ export const SalesReturnItemScalarFieldEnum = {
 } as const
 
 export type SalesReturnItemScalarFieldEnum = (typeof SalesReturnItemScalarFieldEnum)[keyof typeof SalesReturnItemScalarFieldEnum]
+
+
+export const VoucherSequenceScalarFieldEnum = {
+  id: 'id',
+  type: 'type',
+  prefix: 'prefix',
+  nextValue: 'nextValue',
+  updatedAt: 'updatedAt'
+} as const
+
+export type VoucherSequenceScalarFieldEnum = (typeof VoucherSequenceScalarFieldEnum)[keyof typeof VoucherSequenceScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -4407,6 +4494,7 @@ export type GlobalOmitConfig = {
   salesInvoiceItem?: Prisma.SalesInvoiceItemOmit
   salesReturn?: Prisma.SalesReturnOmit
   salesReturnItem?: Prisma.SalesReturnItemOmit
+  voucherSequence?: Prisma.VoucherSequenceOmit
 }
 
 /* Types for Logging */
