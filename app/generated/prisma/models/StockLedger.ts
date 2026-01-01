@@ -41,6 +41,7 @@ export type StockLedgerSumAggregateOutputType = {
 export type StockLedgerMinAggregateOutputType = {
   id: string | null
   productId: string | null
+  variantId: string | null
   warehouseId: string | null
   date: Date | null
   qtyIn: runtime.Decimal | null
@@ -54,6 +55,7 @@ export type StockLedgerMinAggregateOutputType = {
 export type StockLedgerMaxAggregateOutputType = {
   id: string | null
   productId: string | null
+  variantId: string | null
   warehouseId: string | null
   date: Date | null
   qtyIn: runtime.Decimal | null
@@ -67,6 +69,7 @@ export type StockLedgerMaxAggregateOutputType = {
 export type StockLedgerCountAggregateOutputType = {
   id: number
   productId: number
+  variantId: number
   warehouseId: number
   date: number
   qtyIn: number
@@ -94,6 +97,7 @@ export type StockLedgerSumAggregateInputType = {
 export type StockLedgerMinAggregateInputType = {
   id?: true
   productId?: true
+  variantId?: true
   warehouseId?: true
   date?: true
   qtyIn?: true
@@ -107,6 +111,7 @@ export type StockLedgerMinAggregateInputType = {
 export type StockLedgerMaxAggregateInputType = {
   id?: true
   productId?: true
+  variantId?: true
   warehouseId?: true
   date?: true
   qtyIn?: true
@@ -120,6 +125,7 @@ export type StockLedgerMaxAggregateInputType = {
 export type StockLedgerCountAggregateInputType = {
   id?: true
   productId?: true
+  variantId?: true
   warehouseId?: true
   date?: true
   qtyIn?: true
@@ -220,6 +226,7 @@ export type StockLedgerGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inte
 export type StockLedgerGroupByOutputType = {
   id: string
   productId: string
+  variantId: string | null
   warehouseId: string
   date: Date
   qtyIn: runtime.Decimal
@@ -256,6 +263,7 @@ export type StockLedgerWhereInput = {
   NOT?: Prisma.StockLedgerWhereInput | Prisma.StockLedgerWhereInput[]
   id?: Prisma.StringFilter<"StockLedger"> | string
   productId?: Prisma.StringFilter<"StockLedger"> | string
+  variantId?: Prisma.StringNullableFilter<"StockLedger"> | string | null
   warehouseId?: Prisma.StringFilter<"StockLedger"> | string
   date?: Prisma.DateTimeFilter<"StockLedger"> | Date | string
   qtyIn?: Prisma.DecimalFilter<"StockLedger"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -265,12 +273,14 @@ export type StockLedgerWhereInput = {
   refId?: Prisma.StringFilter<"StockLedger"> | string
   createdAt?: Prisma.DateTimeFilter<"StockLedger"> | Date | string
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
+  variant?: Prisma.XOR<Prisma.ProductVariantNullableScalarRelationFilter, Prisma.ProductVariantWhereInput> | null
   warehouse?: Prisma.XOR<Prisma.WarehouseScalarRelationFilter, Prisma.WarehouseWhereInput>
 }
 
 export type StockLedgerOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  variantId?: Prisma.SortOrderInput | Prisma.SortOrder
   warehouseId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   qtyIn?: Prisma.SortOrder
@@ -280,6 +290,7 @@ export type StockLedgerOrderByWithRelationInput = {
   refId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   product?: Prisma.ProductOrderByWithRelationInput
+  variant?: Prisma.ProductVariantOrderByWithRelationInput
   warehouse?: Prisma.WarehouseOrderByWithRelationInput
 }
 
@@ -289,6 +300,7 @@ export type StockLedgerWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.StockLedgerWhereInput[]
   NOT?: Prisma.StockLedgerWhereInput | Prisma.StockLedgerWhereInput[]
   productId?: Prisma.StringFilter<"StockLedger"> | string
+  variantId?: Prisma.StringNullableFilter<"StockLedger"> | string | null
   warehouseId?: Prisma.StringFilter<"StockLedger"> | string
   date?: Prisma.DateTimeFilter<"StockLedger"> | Date | string
   qtyIn?: Prisma.DecimalFilter<"StockLedger"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -298,12 +310,14 @@ export type StockLedgerWhereUniqueInput = Prisma.AtLeast<{
   refId?: Prisma.StringFilter<"StockLedger"> | string
   createdAt?: Prisma.DateTimeFilter<"StockLedger"> | Date | string
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
+  variant?: Prisma.XOR<Prisma.ProductVariantNullableScalarRelationFilter, Prisma.ProductVariantWhereInput> | null
   warehouse?: Prisma.XOR<Prisma.WarehouseScalarRelationFilter, Prisma.WarehouseWhereInput>
 }, "id">
 
 export type StockLedgerOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  variantId?: Prisma.SortOrderInput | Prisma.SortOrder
   warehouseId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   qtyIn?: Prisma.SortOrder
@@ -325,6 +339,7 @@ export type StockLedgerScalarWhereWithAggregatesInput = {
   NOT?: Prisma.StockLedgerScalarWhereWithAggregatesInput | Prisma.StockLedgerScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"StockLedger"> | string
   productId?: Prisma.StringWithAggregatesFilter<"StockLedger"> | string
+  variantId?: Prisma.StringNullableWithAggregatesFilter<"StockLedger"> | string | null
   warehouseId?: Prisma.StringWithAggregatesFilter<"StockLedger"> | string
   date?: Prisma.DateTimeWithAggregatesFilter<"StockLedger"> | Date | string
   qtyIn?: Prisma.DecimalWithAggregatesFilter<"StockLedger"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -345,12 +360,14 @@ export type StockLedgerCreateInput = {
   refId: string
   createdAt?: Date | string
   product: Prisma.ProductCreateNestedOneWithoutStockEntriesInput
+  variant?: Prisma.ProductVariantCreateNestedOneWithoutStockEntriesInput
   warehouse: Prisma.WarehouseCreateNestedOneWithoutStockEntriesInput
 }
 
 export type StockLedgerUncheckedCreateInput = {
   id?: string
   productId: string
+  variantId?: string | null
   warehouseId: string
   date: Date | string
   qtyIn?: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -371,12 +388,14 @@ export type StockLedgerUpdateInput = {
   refId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   product?: Prisma.ProductUpdateOneRequiredWithoutStockEntriesNestedInput
+  variant?: Prisma.ProductVariantUpdateOneWithoutStockEntriesNestedInput
   warehouse?: Prisma.WarehouseUpdateOneRequiredWithoutStockEntriesNestedInput
 }
 
 export type StockLedgerUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  variantId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   warehouseId?: Prisma.StringFieldUpdateOperationsInput | string
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   qtyIn?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -390,6 +409,7 @@ export type StockLedgerUncheckedUpdateInput = {
 export type StockLedgerCreateManyInput = {
   id?: string
   productId: string
+  variantId?: string | null
   warehouseId: string
   date: Date | string
   qtyIn?: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -414,6 +434,7 @@ export type StockLedgerUpdateManyMutationInput = {
 export type StockLedgerUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  variantId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   warehouseId?: Prisma.StringFieldUpdateOperationsInput | string
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   qtyIn?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -437,6 +458,7 @@ export type StockLedgerOrderByRelationAggregateInput = {
 export type StockLedgerCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  variantId?: Prisma.SortOrder
   warehouseId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   qtyIn?: Prisma.SortOrder
@@ -456,6 +478,7 @@ export type StockLedgerAvgOrderByAggregateInput = {
 export type StockLedgerMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  variantId?: Prisma.SortOrder
   warehouseId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   qtyIn?: Prisma.SortOrder
@@ -469,6 +492,7 @@ export type StockLedgerMaxOrderByAggregateInput = {
 export type StockLedgerMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  variantId?: Prisma.SortOrder
   warehouseId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   qtyIn?: Prisma.SortOrder
@@ -527,6 +551,48 @@ export type StockLedgerUncheckedUpdateManyWithoutProductNestedInput = {
   deleteMany?: Prisma.StockLedgerScalarWhereInput | Prisma.StockLedgerScalarWhereInput[]
 }
 
+export type StockLedgerCreateNestedManyWithoutVariantInput = {
+  create?: Prisma.XOR<Prisma.StockLedgerCreateWithoutVariantInput, Prisma.StockLedgerUncheckedCreateWithoutVariantInput> | Prisma.StockLedgerCreateWithoutVariantInput[] | Prisma.StockLedgerUncheckedCreateWithoutVariantInput[]
+  connectOrCreate?: Prisma.StockLedgerCreateOrConnectWithoutVariantInput | Prisma.StockLedgerCreateOrConnectWithoutVariantInput[]
+  createMany?: Prisma.StockLedgerCreateManyVariantInputEnvelope
+  connect?: Prisma.StockLedgerWhereUniqueInput | Prisma.StockLedgerWhereUniqueInput[]
+}
+
+export type StockLedgerUncheckedCreateNestedManyWithoutVariantInput = {
+  create?: Prisma.XOR<Prisma.StockLedgerCreateWithoutVariantInput, Prisma.StockLedgerUncheckedCreateWithoutVariantInput> | Prisma.StockLedgerCreateWithoutVariantInput[] | Prisma.StockLedgerUncheckedCreateWithoutVariantInput[]
+  connectOrCreate?: Prisma.StockLedgerCreateOrConnectWithoutVariantInput | Prisma.StockLedgerCreateOrConnectWithoutVariantInput[]
+  createMany?: Prisma.StockLedgerCreateManyVariantInputEnvelope
+  connect?: Prisma.StockLedgerWhereUniqueInput | Prisma.StockLedgerWhereUniqueInput[]
+}
+
+export type StockLedgerUpdateManyWithoutVariantNestedInput = {
+  create?: Prisma.XOR<Prisma.StockLedgerCreateWithoutVariantInput, Prisma.StockLedgerUncheckedCreateWithoutVariantInput> | Prisma.StockLedgerCreateWithoutVariantInput[] | Prisma.StockLedgerUncheckedCreateWithoutVariantInput[]
+  connectOrCreate?: Prisma.StockLedgerCreateOrConnectWithoutVariantInput | Prisma.StockLedgerCreateOrConnectWithoutVariantInput[]
+  upsert?: Prisma.StockLedgerUpsertWithWhereUniqueWithoutVariantInput | Prisma.StockLedgerUpsertWithWhereUniqueWithoutVariantInput[]
+  createMany?: Prisma.StockLedgerCreateManyVariantInputEnvelope
+  set?: Prisma.StockLedgerWhereUniqueInput | Prisma.StockLedgerWhereUniqueInput[]
+  disconnect?: Prisma.StockLedgerWhereUniqueInput | Prisma.StockLedgerWhereUniqueInput[]
+  delete?: Prisma.StockLedgerWhereUniqueInput | Prisma.StockLedgerWhereUniqueInput[]
+  connect?: Prisma.StockLedgerWhereUniqueInput | Prisma.StockLedgerWhereUniqueInput[]
+  update?: Prisma.StockLedgerUpdateWithWhereUniqueWithoutVariantInput | Prisma.StockLedgerUpdateWithWhereUniqueWithoutVariantInput[]
+  updateMany?: Prisma.StockLedgerUpdateManyWithWhereWithoutVariantInput | Prisma.StockLedgerUpdateManyWithWhereWithoutVariantInput[]
+  deleteMany?: Prisma.StockLedgerScalarWhereInput | Prisma.StockLedgerScalarWhereInput[]
+}
+
+export type StockLedgerUncheckedUpdateManyWithoutVariantNestedInput = {
+  create?: Prisma.XOR<Prisma.StockLedgerCreateWithoutVariantInput, Prisma.StockLedgerUncheckedCreateWithoutVariantInput> | Prisma.StockLedgerCreateWithoutVariantInput[] | Prisma.StockLedgerUncheckedCreateWithoutVariantInput[]
+  connectOrCreate?: Prisma.StockLedgerCreateOrConnectWithoutVariantInput | Prisma.StockLedgerCreateOrConnectWithoutVariantInput[]
+  upsert?: Prisma.StockLedgerUpsertWithWhereUniqueWithoutVariantInput | Prisma.StockLedgerUpsertWithWhereUniqueWithoutVariantInput[]
+  createMany?: Prisma.StockLedgerCreateManyVariantInputEnvelope
+  set?: Prisma.StockLedgerWhereUniqueInput | Prisma.StockLedgerWhereUniqueInput[]
+  disconnect?: Prisma.StockLedgerWhereUniqueInput | Prisma.StockLedgerWhereUniqueInput[]
+  delete?: Prisma.StockLedgerWhereUniqueInput | Prisma.StockLedgerWhereUniqueInput[]
+  connect?: Prisma.StockLedgerWhereUniqueInput | Prisma.StockLedgerWhereUniqueInput[]
+  update?: Prisma.StockLedgerUpdateWithWhereUniqueWithoutVariantInput | Prisma.StockLedgerUpdateWithWhereUniqueWithoutVariantInput[]
+  updateMany?: Prisma.StockLedgerUpdateManyWithWhereWithoutVariantInput | Prisma.StockLedgerUpdateManyWithWhereWithoutVariantInput[]
+  deleteMany?: Prisma.StockLedgerScalarWhereInput | Prisma.StockLedgerScalarWhereInput[]
+}
+
 export type StockLedgerCreateNestedManyWithoutWarehouseInput = {
   create?: Prisma.XOR<Prisma.StockLedgerCreateWithoutWarehouseInput, Prisma.StockLedgerUncheckedCreateWithoutWarehouseInput> | Prisma.StockLedgerCreateWithoutWarehouseInput[] | Prisma.StockLedgerUncheckedCreateWithoutWarehouseInput[]
   connectOrCreate?: Prisma.StockLedgerCreateOrConnectWithoutWarehouseInput | Prisma.StockLedgerCreateOrConnectWithoutWarehouseInput[]
@@ -578,11 +644,13 @@ export type StockLedgerCreateWithoutProductInput = {
   refType: string
   refId: string
   createdAt?: Date | string
+  variant?: Prisma.ProductVariantCreateNestedOneWithoutStockEntriesInput
   warehouse: Prisma.WarehouseCreateNestedOneWithoutStockEntriesInput
 }
 
 export type StockLedgerUncheckedCreateWithoutProductInput = {
   id?: string
+  variantId?: string | null
   warehouseId: string
   date: Date | string
   qtyIn?: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -625,6 +693,7 @@ export type StockLedgerScalarWhereInput = {
   NOT?: Prisma.StockLedgerScalarWhereInput | Prisma.StockLedgerScalarWhereInput[]
   id?: Prisma.StringFilter<"StockLedger"> | string
   productId?: Prisma.StringFilter<"StockLedger"> | string
+  variantId?: Prisma.StringNullableFilter<"StockLedger"> | string | null
   warehouseId?: Prisma.StringFilter<"StockLedger"> | string
   date?: Prisma.DateTimeFilter<"StockLedger"> | Date | string
   qtyIn?: Prisma.DecimalFilter<"StockLedger"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -633,6 +702,58 @@ export type StockLedgerScalarWhereInput = {
   refType?: Prisma.StringFilter<"StockLedger"> | string
   refId?: Prisma.StringFilter<"StockLedger"> | string
   createdAt?: Prisma.DateTimeFilter<"StockLedger"> | Date | string
+}
+
+export type StockLedgerCreateWithoutVariantInput = {
+  id?: string
+  date: Date | string
+  qtyIn?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  qtyOut?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  costRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  refType: string
+  refId: string
+  createdAt?: Date | string
+  product: Prisma.ProductCreateNestedOneWithoutStockEntriesInput
+  warehouse: Prisma.WarehouseCreateNestedOneWithoutStockEntriesInput
+}
+
+export type StockLedgerUncheckedCreateWithoutVariantInput = {
+  id?: string
+  productId: string
+  warehouseId: string
+  date: Date | string
+  qtyIn?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  qtyOut?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  costRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  refType: string
+  refId: string
+  createdAt?: Date | string
+}
+
+export type StockLedgerCreateOrConnectWithoutVariantInput = {
+  where: Prisma.StockLedgerWhereUniqueInput
+  create: Prisma.XOR<Prisma.StockLedgerCreateWithoutVariantInput, Prisma.StockLedgerUncheckedCreateWithoutVariantInput>
+}
+
+export type StockLedgerCreateManyVariantInputEnvelope = {
+  data: Prisma.StockLedgerCreateManyVariantInput | Prisma.StockLedgerCreateManyVariantInput[]
+  skipDuplicates?: boolean
+}
+
+export type StockLedgerUpsertWithWhereUniqueWithoutVariantInput = {
+  where: Prisma.StockLedgerWhereUniqueInput
+  update: Prisma.XOR<Prisma.StockLedgerUpdateWithoutVariantInput, Prisma.StockLedgerUncheckedUpdateWithoutVariantInput>
+  create: Prisma.XOR<Prisma.StockLedgerCreateWithoutVariantInput, Prisma.StockLedgerUncheckedCreateWithoutVariantInput>
+}
+
+export type StockLedgerUpdateWithWhereUniqueWithoutVariantInput = {
+  where: Prisma.StockLedgerWhereUniqueInput
+  data: Prisma.XOR<Prisma.StockLedgerUpdateWithoutVariantInput, Prisma.StockLedgerUncheckedUpdateWithoutVariantInput>
+}
+
+export type StockLedgerUpdateManyWithWhereWithoutVariantInput = {
+  where: Prisma.StockLedgerScalarWhereInput
+  data: Prisma.XOR<Prisma.StockLedgerUpdateManyMutationInput, Prisma.StockLedgerUncheckedUpdateManyWithoutVariantInput>
 }
 
 export type StockLedgerCreateWithoutWarehouseInput = {
@@ -645,11 +766,13 @@ export type StockLedgerCreateWithoutWarehouseInput = {
   refId: string
   createdAt?: Date | string
   product: Prisma.ProductCreateNestedOneWithoutStockEntriesInput
+  variant?: Prisma.ProductVariantCreateNestedOneWithoutStockEntriesInput
 }
 
 export type StockLedgerUncheckedCreateWithoutWarehouseInput = {
   id?: string
   productId: string
+  variantId?: string | null
   date: Date | string
   qtyIn?: runtime.Decimal | runtime.DecimalJsLike | number | string
   qtyOut?: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -687,6 +810,7 @@ export type StockLedgerUpdateManyWithWhereWithoutWarehouseInput = {
 
 export type StockLedgerCreateManyProductInput = {
   id?: string
+  variantId?: string | null
   warehouseId: string
   date: Date | string
   qtyIn?: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -706,11 +830,13 @@ export type StockLedgerUpdateWithoutProductInput = {
   refType?: Prisma.StringFieldUpdateOperationsInput | string
   refId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  variant?: Prisma.ProductVariantUpdateOneWithoutStockEntriesNestedInput
   warehouse?: Prisma.WarehouseUpdateOneRequiredWithoutStockEntriesNestedInput
 }
 
 export type StockLedgerUncheckedUpdateWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  variantId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   warehouseId?: Prisma.StringFieldUpdateOperationsInput | string
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   qtyIn?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -723,6 +849,59 @@ export type StockLedgerUncheckedUpdateWithoutProductInput = {
 
 export type StockLedgerUncheckedUpdateManyWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  variantId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  warehouseId?: Prisma.StringFieldUpdateOperationsInput | string
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  qtyIn?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  qtyOut?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  costRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  refType?: Prisma.StringFieldUpdateOperationsInput | string
+  refId?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type StockLedgerCreateManyVariantInput = {
+  id?: string
+  productId: string
+  warehouseId: string
+  date: Date | string
+  qtyIn?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  qtyOut?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  costRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  refType: string
+  refId: string
+  createdAt?: Date | string
+}
+
+export type StockLedgerUpdateWithoutVariantInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  qtyIn?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  qtyOut?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  costRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  refType?: Prisma.StringFieldUpdateOperationsInput | string
+  refId?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  product?: Prisma.ProductUpdateOneRequiredWithoutStockEntriesNestedInput
+  warehouse?: Prisma.WarehouseUpdateOneRequiredWithoutStockEntriesNestedInput
+}
+
+export type StockLedgerUncheckedUpdateWithoutVariantInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
+  warehouseId?: Prisma.StringFieldUpdateOperationsInput | string
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  qtyIn?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  qtyOut?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  costRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  refType?: Prisma.StringFieldUpdateOperationsInput | string
+  refId?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type StockLedgerUncheckedUpdateManyWithoutVariantInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
   warehouseId?: Prisma.StringFieldUpdateOperationsInput | string
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   qtyIn?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -736,6 +915,7 @@ export type StockLedgerUncheckedUpdateManyWithoutProductInput = {
 export type StockLedgerCreateManyWarehouseInput = {
   id?: string
   productId: string
+  variantId?: string | null
   date: Date | string
   qtyIn?: runtime.Decimal | runtime.DecimalJsLike | number | string
   qtyOut?: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -755,11 +935,13 @@ export type StockLedgerUpdateWithoutWarehouseInput = {
   refId?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   product?: Prisma.ProductUpdateOneRequiredWithoutStockEntriesNestedInput
+  variant?: Prisma.ProductVariantUpdateOneWithoutStockEntriesNestedInput
 }
 
 export type StockLedgerUncheckedUpdateWithoutWarehouseInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  variantId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   qtyIn?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   qtyOut?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -772,6 +954,7 @@ export type StockLedgerUncheckedUpdateWithoutWarehouseInput = {
 export type StockLedgerUncheckedUpdateManyWithoutWarehouseInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  variantId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   qtyIn?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   qtyOut?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -786,6 +969,7 @@ export type StockLedgerUncheckedUpdateManyWithoutWarehouseInput = {
 export type StockLedgerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   productId?: boolean
+  variantId?: boolean
   warehouseId?: boolean
   date?: boolean
   qtyIn?: boolean
@@ -795,12 +979,14 @@ export type StockLedgerSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   refId?: boolean
   createdAt?: boolean
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  variant?: boolean | Prisma.StockLedger$variantArgs<ExtArgs>
   warehouse?: boolean | Prisma.WarehouseDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["stockLedger"]>
 
 export type StockLedgerSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   productId?: boolean
+  variantId?: boolean
   warehouseId?: boolean
   date?: boolean
   qtyIn?: boolean
@@ -810,12 +996,14 @@ export type StockLedgerSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   refId?: boolean
   createdAt?: boolean
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  variant?: boolean | Prisma.StockLedger$variantArgs<ExtArgs>
   warehouse?: boolean | Prisma.WarehouseDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["stockLedger"]>
 
 export type StockLedgerSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   productId?: boolean
+  variantId?: boolean
   warehouseId?: boolean
   date?: boolean
   qtyIn?: boolean
@@ -825,12 +1013,14 @@ export type StockLedgerSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   refId?: boolean
   createdAt?: boolean
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  variant?: boolean | Prisma.StockLedger$variantArgs<ExtArgs>
   warehouse?: boolean | Prisma.WarehouseDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["stockLedger"]>
 
 export type StockLedgerSelectScalar = {
   id?: boolean
   productId?: boolean
+  variantId?: boolean
   warehouseId?: boolean
   date?: boolean
   qtyIn?: boolean
@@ -841,17 +1031,20 @@ export type StockLedgerSelectScalar = {
   createdAt?: boolean
 }
 
-export type StockLedgerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "warehouseId" | "date" | "qtyIn" | "qtyOut" | "costRate" | "refType" | "refId" | "createdAt", ExtArgs["result"]["stockLedger"]>
+export type StockLedgerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "variantId" | "warehouseId" | "date" | "qtyIn" | "qtyOut" | "costRate" | "refType" | "refId" | "createdAt", ExtArgs["result"]["stockLedger"]>
 export type StockLedgerInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  variant?: boolean | Prisma.StockLedger$variantArgs<ExtArgs>
   warehouse?: boolean | Prisma.WarehouseDefaultArgs<ExtArgs>
 }
 export type StockLedgerIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  variant?: boolean | Prisma.StockLedger$variantArgs<ExtArgs>
   warehouse?: boolean | Prisma.WarehouseDefaultArgs<ExtArgs>
 }
 export type StockLedgerIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  variant?: boolean | Prisma.StockLedger$variantArgs<ExtArgs>
   warehouse?: boolean | Prisma.WarehouseDefaultArgs<ExtArgs>
 }
 
@@ -859,11 +1052,13 @@ export type $StockLedgerPayload<ExtArgs extends runtime.Types.Extensions.Interna
   name: "StockLedger"
   objects: {
     product: Prisma.$ProductPayload<ExtArgs>
+    variant: Prisma.$ProductVariantPayload<ExtArgs> | null
     warehouse: Prisma.$WarehousePayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     productId: string
+    variantId: string | null
     warehouseId: string
     date: Date
     qtyIn: runtime.Decimal
@@ -1267,6 +1462,7 @@ readonly fields: StockLedgerFieldRefs;
 export interface Prisma__StockLedgerClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   product<T extends Prisma.ProductDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ProductDefaultArgs<ExtArgs>>): Prisma.Prisma__ProductClient<runtime.Types.Result.GetResult<Prisma.$ProductPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  variant<T extends Prisma.StockLedger$variantArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.StockLedger$variantArgs<ExtArgs>>): Prisma.Prisma__ProductVariantClient<runtime.Types.Result.GetResult<Prisma.$ProductVariantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   warehouse<T extends Prisma.WarehouseDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.WarehouseDefaultArgs<ExtArgs>>): Prisma.Prisma__WarehouseClient<runtime.Types.Result.GetResult<Prisma.$WarehousePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1299,6 +1495,7 @@ export interface Prisma__StockLedgerClient<T, Null = never, ExtArgs extends runt
 export interface StockLedgerFieldRefs {
   readonly id: Prisma.FieldRef<"StockLedger", 'String'>
   readonly productId: Prisma.FieldRef<"StockLedger", 'String'>
+  readonly variantId: Prisma.FieldRef<"StockLedger", 'String'>
   readonly warehouseId: Prisma.FieldRef<"StockLedger", 'String'>
   readonly date: Prisma.FieldRef<"StockLedger", 'DateTime'>
   readonly qtyIn: Prisma.FieldRef<"StockLedger", 'Decimal'>
@@ -1700,6 +1897,25 @@ export type StockLedgerDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Limit how many StockLedgers to delete.
    */
   limit?: number
+}
+
+/**
+ * StockLedger.variant
+ */
+export type StockLedger$variantArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ProductVariant
+   */
+  select?: Prisma.ProductVariantSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ProductVariant
+   */
+  omit?: Prisma.ProductVariantOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ProductVariantInclude<ExtArgs> | null
+  where?: Prisma.ProductVariantWhereInput
 }
 
 /**

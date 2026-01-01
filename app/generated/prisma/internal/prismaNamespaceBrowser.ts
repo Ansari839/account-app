@@ -71,6 +71,7 @@ export const ModelName = {
   Supplier: 'Supplier',
   Category: 'Category',
   Product: 'Product',
+  ProductVariant: 'ProductVariant',
   Warehouse: 'Warehouse',
   UnitConversion: 'UnitConversion',
   JournalEntry: 'JournalEntry',
@@ -406,6 +407,19 @@ export const ProductScalarFieldEnum = {
 export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeof ProductScalarFieldEnum]
 
 
+export const ProductVariantScalarFieldEnum = {
+  id: 'id',
+  productId: 'productId',
+  name: 'name',
+  sku: 'sku',
+  price: 'price',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProductVariantScalarFieldEnum = (typeof ProductVariantScalarFieldEnum)[keyof typeof ProductVariantScalarFieldEnum]
+
+
 export const WarehouseScalarFieldEnum = {
   id: 'id',
   code: 'code',
@@ -463,6 +477,7 @@ export type JournalLineScalarFieldEnum = (typeof JournalLineScalarFieldEnum)[key
 export const StockLedgerScalarFieldEnum = {
   id: 'id',
   productId: 'productId',
+  variantId: 'variantId',
   warehouseId: 'warehouseId',
   date: 'date',
   qtyIn: 'qtyIn',

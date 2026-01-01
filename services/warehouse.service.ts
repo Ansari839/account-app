@@ -48,4 +48,34 @@ export class WarehouseService {
             where: { isDefault: true }
         });
     }
+    /**
+     * Update Warehouse
+     */
+    static async updateWarehouse(id: string, data: { name: string; address?: string; isDefault?: boolean }) {
+        if (data.isDefault) {
+            await prisma.warehouse.updateMany({
+                where: { isDefault: true, id: { not: id } },
+                data: { isDefault: false }
+            });
+        }
+
+        return prisma.warehouse.update({
+            where: { id },
+            data: {
+                name: data.name,
+                address: data.address,
+                isDefault: data.isDefault
+            }
+        });
+    }
+
+    /**
+     * Delete Warehouse
+     */
+    static async deleteWarehouse(id: string) {
+        const transactions = await prisma.stockLedger.count({ where: { warehouseId: id } });
+        if (transactions > 0) throw new Error("Cannot delete warehouse with stock transactions.");
+
+        return prisma.warehouse.delete({ where: { id } });
+    }
 }

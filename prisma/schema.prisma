@@ -446,6 +446,22 @@ model Product {
   doItems            DeliveryOrderItem[]
   salesInvoiceItems  SalesInvoiceItem[]
   returnItems        SalesReturnItem[]
+  
+  variants           ProductVariant[]
+}
+
+model ProductVariant {
+  id            String       @id @default(uuid())
+  productId     String
+  name          String       // e.g. "Red - XL"
+  sku           String?      @unique
+  price         Decimal?     // Override base price if needed
+  
+  product       Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stockEntries  StockLedger[]
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
 
 // --------------------------------------
@@ -546,6 +562,7 @@ model JournalLine {
 model StockLedger {
   id          String       @id @default(uuid())
   productId   String
+  variantId   String?
   warehouseId String
   date        DateTime
   qtyIn       Decimal      @default(0.0)
@@ -555,6 +572,7 @@ model StockLedger {
   refId       String       // ID of the reference document
 
   product     Product      @relation(fields: [productId], references: [id])
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
   warehouse   Warehouse    @relation(fields: [warehouseId], references: [id])
   
   createdAt   DateTime     @default(now())

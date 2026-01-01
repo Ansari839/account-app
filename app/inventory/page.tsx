@@ -18,6 +18,13 @@ const inventoryModules = [
         path: '/inventory/warehouses',
         icon: '🏢',
         color: 'from-emerald-500 to-teal-600'
+    },
+    {
+        title: 'Categories',
+        desc: 'Organize products into hierarchical categories.',
+        path: '/inventory/categories',
+        icon: '🗂️',
+        color: 'from-purple-500 to-pink-600'
     }
 ];
 
