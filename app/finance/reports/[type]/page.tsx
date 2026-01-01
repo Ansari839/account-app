@@ -334,7 +334,19 @@ export default function ReportViewer() {
     return (
         <MainLayout>
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-8">
+                {/* PRINT ONLY HEADER */}
+                <div className="hidden print:block mb-8 text-center">
+                    <h1 className="text-2xl font-bold uppercase tracking-widest text-black">{reportType}</h1>
+                    <p className="text-sm text-slate-600">
+                        Period: {new Date(dateRange.start).toLocaleDateString()} - {new Date(dateRange.end).toLocaleDateString()}
+                    </p>
+                    {selectedAccount && reportPath === 'ledger' && (
+                        <p className="text-sm font-bold mt-2">Account: {accounts.find(a => a.value === selectedAccount)?.label}</p>
+                    )}
+                </div>
+
+                {/* SCREEN ONLY HEADER */}
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-8 print:hidden">
                     <div>
                         <div className="flex items-center gap-2 text-xs font-bold text-indigo-500 uppercase tracking-widest mb-2">
                             <button onClick={() => router.push('/finance/reports')} className="hover:underline">Reports</button>
@@ -361,8 +373,8 @@ export default function ReportViewer() {
                     </div>
                 </div>
 
-                {/* Report Parameters Section - MOVED TO TOP */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                {/* Report Parameters Section - SCREEN ONLY */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 print:hidden">
                     {/* Account Selection - Only for Ledger */}
                     {reportPath === 'ledger' && (
                         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl md:col-span-1">
@@ -403,8 +415,24 @@ export default function ReportViewer() {
                     </div>
                 </div>
 
-                <div className="min-h-[400px]">
-                    {renderReportContent()}
+                <div className="min-h-[400px] print:min-h-0">
+                    <div className="print:fixed print:inset-0 print:bg-white print:z-[9999] print:p-8 print:overflow-auto">
+                        {/* REPEAT HEADER IN PRINT OVERLAY */}
+                        <div className="hidden print:block mb-8 text-center border-b pb-4 border-black">
+                            <h1 className="text-3xl font-black uppercase tracking-widest text-black mb-2">Ansari Traders</h1>
+                            <h2 className="text-xl font-bold uppercase text-slate-800">{reportType}</h2>
+                            <p className="text-sm text-slate-600 mt-2">
+                                Period: {new Date(dateRange.start).toLocaleDateString()} - {new Date(dateRange.end).toLocaleDateString()}
+                            </p>
+                            {selectedAccount && reportPath === 'ledger' && (
+                                <p className="text-md font-bold mt-2 bg-slate-100 inline-block px-4 py-1 rounded">Account: {accounts.find(a => a.value === selectedAccount)?.label}</p>
+                            )}
+                        </div>
+                        {renderReportContent()}
+                        <div className="hidden print:block mt-8 text-center text-xs text-slate-400 py-4 border-t">
+                            <p>Generated on {new Date().toLocaleString()} by System</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </MainLayout>
