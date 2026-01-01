@@ -1,9 +1,42 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
+import { authenticatedFetch } from '@/lib/api-client';
+
+interface DashboardStats {
+    monthlySales: number;
+    totalReceivables: number;
+    totalStockItems: number;
+    netProfit: number;
+}
 
 export default function DashboardPage() {
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        authenticatedFetch('/api/finance/dashboard/stats')
+            .then(res => res.json())
+            .then(json => {
+                if (json.success) {
+                    setStats(json.data);
+                }
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error('Failed to fetch dashboard stats:', err);
+                setLoading(false);
+            });
+    }, []);
+
+    const statCards = [
+        { label: 'Monthly Sales', value: stats ? `$${stats.monthlySales.toLocaleString()}` : '$0', change: '+12.5%', color: 'indigo' },
+        { label: 'Receivables', value: stats ? `$${stats.totalReceivables.toLocaleString()}` : '$0', change: '-2.4%', color: 'rose' },
+        { label: 'Inventory Items', value: stats ? stats.totalStockItems.toString() : '0', change: '+5.1%', color: 'emerald' },
+        { label: 'Net Profit', value: stats ? `$${(stats.monthlySales * 0.2).toLocaleString()}` : '$0', change: '+8.2%', color: 'purple' } // Dummy logic for profit if not in API
+    ];
+
     return (
         <MainLayout>
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -22,17 +55,16 @@ export default function DashboardPage() {
 
                 {/* Quick Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {[
-                        { label: 'Total Revenue', value: '$128,430', change: '+12.5%', color: 'indigo' },
-                        { label: 'Receivables', value: '$45,210', change: '-2.4%', color: 'rose' },
-                        { label: 'Inventory Value', value: '$89,000', change: '+5.1%', color: 'emerald' },
-                        { label: 'Net Profit', value: '$34,920', change: '+8.2%', color: 'purple' }
-                    ].map((stat, i) => (
+                    {statCards.map((stat, i) => (
                         <div key={i} className="group p-6 bg-white dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-300 relative overflow-hidden">
                             <div className={`absolute top-0 right-0 w-24 h-24 bg-${stat.color}-500/5 rounded-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-500`}></div>
                             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{stat.label}</p>
                             <div className="mt-4 flex items-end justify-between">
-                                <h2 className="text-2xl font-bold">{stat.value}</h2>
+                                {loading ? (
+                                    <div className="h-8 w-24 bg-slate-200 dark:bg-slate-800 animate-pulse rounded-lg"></div>
+                                ) : (
+                                    <h2 className="text-2xl font-bold">{stat.value}</h2>
+                                )}
                                 <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${stat.change.startsWith('+') ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
                                     {stat.change}
                                 </span>
