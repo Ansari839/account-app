@@ -2,45 +2,78 @@ import prisma from "@/lib/prisma";
 
 export class FinancialYearService {
     /**
-     * Get the currently active financial year.
-     * Caches this result in a real app, but queries DB for now.
+     * Create a new Financial Year
      */
-    static async getActiveYear() {
-        return prisma.financialYear.findFirst({
-            where: { isOpen: true },
-        });
-    }
-
-    /**
-     * Verify if a transaction date falls within the active financial year.
-     * @param date Date of the transaction
-     * @returns boolean
-     */
-    static async validateDate(date: Date): Promise<boolean> {
-        const activeYear = await this.getActiveYear();
-        if (!activeYear) return false;
-
-        return date >= activeYear.startDate && date <= activeYear.endDate;
-    }
-
-    /**
-     * Create a new financial year.
-     * Ensures only one year is open at a time.
-     */
-    static async createYear(name: string, startDate: Date, endDate: Date) {
-        // Check if any year is open
-        const openYear = await this.getActiveYear();
-        if (openYear) {
-            throw new Error("A financial year is already open. Close it first.");
-        }
-
+    static async createYear(data: {
+        name: string;
+        startDate: Date;
+        endDate: Date;
+    }) {
+        // Ensure no other year is open? Or allowed multiple open?
+        // For strict accounting, usually one. But let's allow creation, enforcing open logic elsewhere.
         return prisma.financialYear.create({
             data: {
-                name,
-                startDate,
-                endDate,
-                isOpen: true,
-            },
+                name: data.name,
+                startDate: new Date(data.startDate),
+                endDate: new Date(data.endDate),
+                isOpen: true
+            }
         });
+    }
+
+    /**
+     * Get the active financial year for a given date
+     */
+    static async getActiveYear(date: Date = new Date()) {
+        const year = await prisma.financialYear.findFirst({
+            where: {
+                startDate: { lte: date },
+                endDate: { gte: date },
+                isOpen: true,
+                lockedAt: null
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        return year;
+    }
+
+    /**
+     * List all financial years
+     */
+    static async listYears() {
+        return prisma.financialYear.findMany({
+            orderBy: { startDate: 'desc' }
+        });
+    }
+
+    /**
+     * Update a Financial Year
+     */
+    static async updateYear(id: string, data: { name?: string; startDate?: Date; endDate?: Date; isOpen?: boolean }) {
+        return prisma.financialYear.update({
+            where: { id },
+            data: {
+                ...data,
+                startDate: data.startDate ? new Date(data.startDate) : undefined,
+                endDate: data.endDate ? new Date(data.endDate) : undefined
+            }
+        });
+    }
+
+    /**
+     * Terminate/Close a Year (Soft Close)
+     */
+    static async closeYear(id: string) {
+        return prisma.financialYear.update({
+            where: { id },
+            data: { isOpen: false, lockedAt: new Date() }
+        });
+    }
+
+    /**
+     * Delete a Year (If no dependencies)
+     */
+    static async deleteYear(id: string) {
+        return prisma.financialYear.delete({ where: { id } });
     }
 }

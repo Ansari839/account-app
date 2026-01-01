@@ -6,10 +6,12 @@ import CompanySettings from '@/components/settings/CompanySettings';
 import UnitSettings from '@/components/settings/UnitSettings';
 import CurrencySettings from '@/components/settings/CurrencySettings';
 import TaxSettings from '@/components/settings/TaxSettings';
+import FiscalYearSettings from '@/components/settings/FiscalYearSettings';
 // import WarehouseSettings from '@/components/settings/WarehouseSettings';
 
 const TABS = [
     { id: 'company', label: 'Company Info', icon: '🏢' },
+    { id: 'fiscal', label: 'Fiscal Years', icon: '📅' },
     { id: 'units', label: 'Units', icon: '⚖️' },
     { id: 'currency', label: 'Currency', icon: '💱' },
     { id: 'tax', label: 'Tax Codes', icon: '🧾' },
@@ -34,8 +36,8 @@ export default function SettingsPage() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-2 px-5 py-2.5 rounded-t-xl font-bold text-sm transition-all relative top-[1px] ${activeTab === tab.id
-                                    ? 'bg-white dark:bg-slate-900 border-x border-t border-slate-200 dark:border-slate-800 text-indigo-600'
-                                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                ? 'bg-white dark:bg-slate-900 border-x border-t border-slate-200 dark:border-slate-800 text-indigo-600'
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50'
                                 }`}
                         >
                             <span>{tab.icon}</span>
@@ -47,6 +49,7 @@ export default function SettingsPage() {
                 {/* Tab Content */}
                 <div className="min-h-[500px]">
                     {activeTab === 'company' && <CompanySettings />}
+                    {activeTab === 'fiscal' && <FiscalYearSettings />}
                     {activeTab === 'units' && <UnitSettings />}
                     {activeTab === 'currency' && <CurrencySettings />}
                     {activeTab === 'tax' && <TaxSettings />}
