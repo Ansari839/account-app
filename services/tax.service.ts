@@ -1,6 +1,4 @@
-
-import prisma from "../lib/prisma";
-import { TaxCode } from '@/app/generated/prisma/client';
+import prisma from "@/lib/prisma";
 
 export class TaxService {
     /**
@@ -31,5 +29,20 @@ export class TaxService {
         return prisma.taxCode.findMany({
             orderBy: { name: 'asc' }
         });
+    }
+
+    /**
+     * Delete a Tax Code
+     */
+    static async deleteTaxCode(id: string) {
+        return prisma.taxCode.delete({ where: { id } });
+    }
+
+    /**
+     * Update a Tax Code
+     */
+    static async updateTaxCode(id: string, data: { name?: string; code?: string; rate?: number }) {
+        if (data.rate !== undefined && data.rate < 0) throw new Error("Tax rate cannot be negative.");
+        return prisma.taxCode.update({ where: { id }, data });
     }
 }

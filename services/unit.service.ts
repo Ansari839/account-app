@@ -1,6 +1,4 @@
-
-import prisma from "../lib/prisma";
-import { Unit } from '@/app/generated/prisma/client';
+import prisma from "@/lib/prisma";
 
 export class UnitService {
     /**
@@ -32,8 +30,6 @@ export class UnitService {
             throw new Error("Conversion factor must be positive.");
         }
 
-        // Check if conversion already exists (optional, unique constraint would handle this too)
-
         return prisma.unitConversion.create({
             data: {
                 fromUnitId: data.fromUnitId,
@@ -54,5 +50,19 @@ export class UnitService {
                 conversionsTo: { include: { fromUnit: true } }
             }
         });
+    }
+
+    /**
+     * Delete a Unit
+     */
+    static async deleteUnit(id: string) {
+        return prisma.unit.delete({ where: { id } });
+    }
+
+    /**
+     * Update a Unit
+     */
+    static async updateUnit(id: string, data: { name?: string; code?: string }) {
+        return prisma.unit.update({ where: { id }, data });
     }
 }
