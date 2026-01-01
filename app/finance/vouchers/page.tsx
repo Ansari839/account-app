@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import DataTable from '@/components/DataTable';
 import { authenticatedFetch } from '@/lib/api-client';
+import Link from 'next/link';
 
 interface Voucher {
     id: string;
@@ -83,9 +84,11 @@ export default function VouchersPage() {
                         <button className="px-5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-all">
                             Export
                         </button>
-                        <button className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all">
-                            + New Voucher
-                        </button>
+                        <Link href="/finance/vouchers/journal/new">
+                            <button className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all">
+                                + New Voucher
+                            </button>
+                        </Link>
                     </div>
                 </div>
 

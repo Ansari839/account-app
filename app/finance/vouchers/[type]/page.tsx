@@ -5,6 +5,7 @@ import MainLayout from '@/components/MainLayout';
 import DataTable, { Column } from '@/components/DataTable';
 import { useParams } from 'next/navigation';
 import { authenticatedFetch } from '@/lib/api-client';
+import Link from 'next/link';
 
 export default function GenericVoucherPage() {
     const { type } = useParams();
@@ -38,16 +39,53 @@ export default function GenericVoucherPage() {
     }, [type]);
 
     const columns: Column<any>[] = [
-        { header: 'No', accessor: (v) => v.number },
+        {
+            header: 'No',
+            accessor: (v) => (
+                <Link href={`/finance/vouchers/${type || 'journal'}/${v.id}`} className="text-indigo-600 hover:underline font-bold font-mono">
+                    {v.number}
+                </Link>
+            )
+        },
         { header: 'Date', accessor: (v) => new Date(v.date).toLocaleDateString() },
         { header: 'Narration', accessor: (v) => v.narration || 'N/A' },
         { header: 'Reference', accessor: (v) => v.reference || '-' },
         {
-            header: 'Status',
+            header: 'Actions',
             accessor: (v) => (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${v.status ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                    {v.status ? 'CONFIRMED' : 'DRAFT'}
-                </span>
+                <div className="flex items-center gap-2">
+                    <Link href={`/finance/vouchers/${type || 'journal'}/${v.id}/edit`}>
+                        <button className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Edit">
+                            <span className="text-sm font-bold">✎</span>
+                        </button>
+                    </Link>
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            if (confirm('Delete this voucher?')) {
+                                authenticatedFetch(`/api/finance/vouchers/${v.id}`, { method: 'DELETE' })
+                                    .then(res => res.json())
+                                    .then(json => {
+                                        if (json.success) {
+                                            setVouchers(prev => prev.filter(x => x.id !== v.id));
+                                        } else {
+                                            alert(json.error);
+                                        }
+                                    });
+                            }
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                        title="Delete"
+                    >
+                        <span className="text-lg leading-none">×</span>
+                    </button>
+
+                    <Link href={`/finance/vouchers/${type || 'journal'}/${v.id}`}>
+                        <button className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="View">
+                            <span className="text-sm font-bold">👁</span>
+                        </button>
+                    </Link>
+                </div>
             )
         }
     ];
@@ -60,9 +98,11 @@ export default function GenericVoucherPage() {
                         <h1 className="text-3xl font-bold tracking-tight">{voucherType} Registry</h1>
                         <p className="text-slate-500 mt-1">Browse and manage all {voucherType.toLowerCase()} records.</p>
                     </div>
-                    <button className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all">
-                        + New {voucherType}
-                    </button>
+                    <Link href={`/finance/vouchers/${type || 'journal'}/new`}>
+                        <button className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all">
+                            + New {voucherType}
+                        </button>
+                    </Link>
                 </div>
 
                 <DataTable

@@ -122,6 +122,12 @@ export async function POST(req: Request) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Invalid data', details: error.issues }, { status: 400 });
         }
+
+        // Handle Prisma Unique Constraint Error
+        if ((error as any).code === 'P2002') {
+            return NextResponse.json({ error: 'Account code already exists. Please choose a unique code.' }, { status: 409 });
+        }
+
         return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
     }
 }

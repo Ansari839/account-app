@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { VoucherType, Prisma } from "@/app/generated/prisma/client";
 import { VoucherService } from "./voucher.service";
-import { FinancialYearService } from "./financialYear.service";
+import { FinancialYearService } from "./financial-year.service";
 import { AccountingControlService } from "./accountingControl.service";
 import { ABACService } from "./abac.service";
 import { AuditService } from "./audit.service";
@@ -55,8 +55,18 @@ export class JournalService {
             throw new Error("Journal Entry must have at least two lines.");
         }
 
+        // Validate line amounts
+        if (data.lines.some(l => (l.debit || 0) <= 0 && (l.credit || 0) <= 0)) {
+            throw new Error("All journal lines must have a value greater than 0.");
+        }
+
         // 4. Financial Year Handling
         const activeYear = await FinancialYearService.getActiveYear(data.date);
+
+        if (!activeYear) {
+            throw new Error(`No Active Financial Year found for date ${data.date}. Please open a Financial Year in Settings.`);
+        }
+
         if (!activeYear.isOpen) {
             throw new Error(`Financial Year ${activeYear.name} is closed. Cannot post transaction.`);
         }

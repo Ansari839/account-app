@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ReportService } from "../services/report.service";
-import { FinancialYearService } from "../services/financialYear.service";
+import { FinancialYearService } from "@/services/financial-year.service";
 import { ClosingService } from "../services/closing.service";
 
 import { AuthUtils } from '@/lib/auth-utils';
