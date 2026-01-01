@@ -10,12 +10,14 @@ import {
 } from 'lucide-react';
 
 interface Account {
-    id: string; // Changed to string to match Prisma UUID
+    id: string;
     code: string;
     name: string;
     type: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE' | 'INCOME';
     description: string | null;
-    parentId: string | null; // Changed to string
+    parentId: string | null;
+    openingBalance?: number | string;
+    openingBalanceType?: 'DR' | 'CR';
     children?: Account[];
     _count?: { children: number };
 }
@@ -33,7 +35,9 @@ export default function ChartOfAccountsPage() {
         name: '',
         type: 'EXPENSE' as any,
         description: '',
-        parentId: ''
+        parentId: '',
+        openingBalance: '0',
+        openingBalanceType: 'DR' as 'DR' | 'CR'
     });
 
     useEffect(() => {
@@ -184,7 +188,9 @@ export default function ChartOfAccountsPage() {
                                     name: node.name,
                                     type: node.type,
                                     description: node.description || '',
-                                    parentId: node.parentId || ''
+                                    parentId: node.parentId || '',
+                                    openingBalance: node.openingBalance?.toString() || '0',
+                                    openingBalanceType: node.openingBalanceType || 'DR' as any
                                 });
                                 setShowModal(true);
                             }}
@@ -201,7 +207,9 @@ export default function ChartOfAccountsPage() {
                                     name: '',
                                     type: node.type,
                                     description: '',
-                                    parentId: node.id
+                                    parentId: node.id,
+                                    openingBalance: '0',
+                                    openingBalanceType: 'DR'
                                 });
                                 setShowModal(true);
                             }}
@@ -245,7 +253,7 @@ export default function ChartOfAccountsPage() {
                         <button
                             onClick={() => {
                                 setEditingAccount(null);
-                                setFormData({ id: '', code: '', name: '', type: 'ASSET', description: '', parentId: '' });
+                                setFormData({ id: '', code: '', name: '', type: 'ASSET', description: '', parentId: '', openingBalance: '0', openingBalanceType: 'DR' });
                                 setShowModal(true);
                             }}
                             className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all flex items-center gap-2"
@@ -376,6 +384,29 @@ export default function ChartOfAccountsPage() {
                                             <option key={a.id} value={a.id}>({a.code}) {a.name}</option>
                                         ))}
                                     </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Opening Balance</label>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            value={formData.openingBalance}
+                                            onChange={e => setFormData({ ...formData, openingBalance: e.target.value })}
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Balance Type</label>
+                                        <select
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-[10px] font-black uppercase tracking-widest"
+                                            value={formData.openingBalanceType}
+                                            onChange={e => setFormData({ ...formData, openingBalanceType: e.target.value as any })}
+                                        >
+                                            <option value="DR">Debit (DR)</option>
+                                            <option value="CR">Credit (CR)</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Description</label>

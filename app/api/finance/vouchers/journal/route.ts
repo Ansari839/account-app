@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { VoucherController } from "@/controllers/voucher.controller";
 
 export async function GET(req: NextRequest) {
-    return VoucherController.listJournals();
+    return VoucherController.listJournals(req);
 }
 
 export async function POST(req: NextRequest) {

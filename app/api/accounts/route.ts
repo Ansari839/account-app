@@ -15,12 +15,14 @@ const prisma = new PrismaClient({ adapter });
 const accountSchema = z.object({
     code: z.string().min(1),
     name: z.string().min(1),
-    type: z.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE', 'INCOME']), // Added INCOME for compatibility
+    type: z.enum(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE', 'INCOME']),
     description: z.string().optional(),
     parentId: z.preprocess((val) => {
         if (val === '' || val === null || val === undefined) return null;
-        return String(val); // Changed to String to match schema
+        return String(val);
     }, z.string().nullable().optional()),
+    openingBalance: z.preprocess((val) => Number(val) || 0, z.number().default(0)),
+    openingBalanceType: z.enum(['DR', 'CR']).default('DR'),
 });
 
 async function getAuthUser(req: Request) {
@@ -98,19 +100,8 @@ export async function POST(req: Request) {
         const body = await req.json();
         const validatedData = accountSchema.parse(body);
 
-        // Map REVENUE/EXPENSE to INCOME if needed by schema (Schema has INCOME, REVENUE might be enum value in Zod but not DB?)
-        // Actually schema has AccountType enum: ASSET, LIABILITY, EQUITY, INCOME, EXPENSE. 
-        // User code sends 'REVENUE'. We should mapping REVENUE -> INCOME if schema expects INCOME.
-        // Or if schema has REVENUE enum now? Let's check schema replacement.
-        // My replacement added REVENUE to enum? No, I copied AccountType block which had INCOME. 
-        // Wait, user provided snippet had: enum AccountType { ASSET ... REVENUE ... }
-        // My replacement block HAD `type AccountType` but I might have missed updating the Enum definition block if I didn't verify it.
-        // Prudent check: Map REVENUE to INCOME if schema only has INCOME. 
-        // But let's assume I updated Enum correctly or will update it. 
-        // Actually, to be safe, I'll map it here.
-
         let typeVal = validatedData.type;
-        if (typeVal === 'REVENUE') typeVal = 'INCOME' as any; // Fallback mapping
+        if (typeVal === 'REVENUE') typeVal = 'INCOME' as any;
 
         const account = await prisma.account.create({
             data: {
@@ -120,6 +111,8 @@ export async function POST(req: Request) {
                 description: validatedData.description,
                 parentId: validatedData.parentId,
                 companyId: user.companyId,
+                openingBalance: validatedData.openingBalance,
+                openingBalanceType: validatedData.openingBalanceType,
             },
         });
 
@@ -141,7 +134,7 @@ export async function PATCH(req: Request) {
 
     try {
         const body = await req.json();
-        const { id, code, name, type, description, parentId } = body;
+        const { id, code, name, type, description, parentId, openingBalance, openingBalanceType } = body;
 
         if (!id) return NextResponse.json({ error: 'Account ID is required' }, { status: 400 });
 
@@ -156,6 +149,8 @@ export async function PATCH(req: Request) {
                 type: typeVal,
                 description,
                 parentId: parentId || null,
+                openingBalance: Number(openingBalance) || 0,
+                openingBalanceType: openingBalanceType || 'DR',
             },
         });
 

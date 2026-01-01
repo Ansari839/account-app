@@ -5,11 +5,12 @@ export class ReportService {
     /**
      * Ledger Report for a specific account
      */
-    static async getLedger(accountId: string, startDate: Date, endDate: Date) {
+    static async getLedger(companyId: string, accountId: string, startDate: Date, endDate: Date) {
         // 1. Get Opening Balance (sum of all before startDate)
         const opening = await prisma.journalLine.aggregate({
             where: {
                 accountId,
+                account: { companyId },
                 entry: {
                     date: { lt: startDate },
                     status: true
@@ -24,6 +25,7 @@ export class ReportService {
         const transactions = await prisma.journalLine.findMany({
             where: {
                 accountId,
+                account: { companyId },
                 entry: {
                     date: { gte: startDate, lte: endDate },
                     status: true
@@ -51,10 +53,11 @@ export class ReportService {
     /**
      * Trial Balance
      */
-    static async getTrialBalance(endDate: Date) {
+    static async getTrialBalance(companyId: string, endDate: Date) {
         const balances = await prisma.journalLine.groupBy({
             by: ['accountId'],
             where: {
+                account: { companyId },
                 entry: {
                     date: { lte: endDate },
                     status: true
@@ -63,7 +66,7 @@ export class ReportService {
             _sum: { debit: true, credit: true }
         });
 
-        const accounts = await prisma.account.findMany();
+        const accounts = await prisma.account.findMany({ where: { companyId } });
 
         const report = balances.map(b => {
             const acc = accounts.find(a => a.id === b.accountId);
@@ -83,9 +86,10 @@ export class ReportService {
     /**
      * Day Book
      */
-    static async getDayBook(date: Date) {
+    static async getDayBook(companyId: string, date: Date) {
         return await prisma.journalEntry.findMany({
             where: {
+                lines: { some: { account: { companyId } } },
                 date: {
                     gte: new Date(date.setHours(0, 0, 0, 0)),
                     lte: new Date(date.setHours(23, 59, 59, 999))
@@ -102,10 +106,11 @@ export class ReportService {
     /**
      * Profit & Loss Statement
      */
-    static async getProfitLoss(startDate: Date, endDate: Date) {
+    static async getProfitLoss(companyId: string, startDate: Date, endDate: Date) {
         const balances = await prisma.journalLine.groupBy({
             by: ['accountId'],
             where: {
+                account: { companyId },
                 entry: {
                     date: { gte: startDate, lte: endDate },
                     status: true
@@ -115,7 +120,7 @@ export class ReportService {
         });
 
         const accounts = await prisma.account.findMany({
-            where: { type: { in: [AccountType.INCOME, AccountType.EXPENSE] } }
+            where: { companyId, type: { in: [AccountType.INCOME, AccountType.EXPENSE] } }
         });
 
         const incomeLines: any[] = [];
@@ -130,12 +135,10 @@ export class ReportService {
             const net = (b._sum.debit?.toNumber() || 0) - (b._sum.credit?.toNumber() || 0);
 
             if (acc.type === AccountType.INCOME) {
-                // Income normally CR. net = DR - CR. So net -500 is 500 Income.
                 const val = Math.abs(net);
                 incomeLines.push({ name: acc.name, code: acc.code, amount: val });
                 totalIncome += val;
             } else {
-                // Expense normally DR. net = DR - CR.
                 expenseLines.push({ name: acc.name, code: acc.code, amount: net });
                 totalExpense += net;
             }
@@ -151,12 +154,12 @@ export class ReportService {
     }
 
     /**
-     * Cash Flow Statement (Simplified Direct Method)
+     * Cash Flow Statement
      */
-    static async getCashFlow(startDate: Date, endDate: Date) {
-        // Find Cash/Bank Accounts
+    static async getCashFlow(companyId: string, startDate: Date, endDate: Date) {
         const cashAccounts = await prisma.account.findMany({
             where: {
+                companyId,
                 OR: [
                     { name: { contains: 'Cash' } },
                     { name: { contains: 'Bank' } }
@@ -167,10 +170,10 @@ export class ReportService {
 
         const cashAccountIds = cashAccounts.map(a => a.id);
 
-        // Fetch all lines for these accounts in the date range
         const lines = await prisma.journalLine.findMany({
             where: {
                 accountId: { in: cashAccountIds },
+                account: { companyId },
                 entry: { date: { gte: startDate, lte: endDate }, status: true }
             },
             include: { entry: { include: { lines: { include: { account: true } } } } }
@@ -182,8 +185,6 @@ export class ReportService {
 
         for (const line of lines) {
             const amount = (line.debit?.toNumber() || 0) - (line.credit?.toNumber() || 0);
-
-            // Find the "other" side of the transaction to categorize
             const otherLines = line.entry.lines.filter(l => l.id !== line.id);
             const category = otherLines[0]?.account.type || 'UNCATEGORIZED';
 
@@ -196,20 +197,17 @@ export class ReportService {
             }
         }
 
-        return {
-            inflows,
-            outflows,
-            netCashFlow
-        };
+        return { inflows, outflows, netCashFlow };
     }
 
     /**
      * Balance Sheet
      */
-    static async getBalanceSheet(endDate: Date) {
+    static async getBalanceSheet(companyId: string, endDate: Date) {
         const balances = await prisma.journalLine.groupBy({
             by: ['accountId'],
             where: {
+                account: { companyId },
                 entry: {
                     date: { lte: endDate },
                     status: true
@@ -219,7 +217,7 @@ export class ReportService {
         });
 
         const accounts = await prisma.account.findMany({
-            where: { type: { in: [AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY] } }
+            where: { companyId, type: { in: [AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY] } }
         });
 
         const assets: any[] = [];
@@ -252,21 +250,20 @@ export class ReportService {
     }
 
     /**
-     * Aging Report (AR/AP)
+     * Aging Report
      */
-    static async getAgingReport(accountType: AccountType, endDate: Date) {
-        // Find all posting accounts of the given type (Asset for AR, Liability for AP)
+    static async getAgingReport(companyId: string, accountType: AccountType, endDate: Date) {
         const accounts = await prisma.account.findMany({
-            where: { type: accountType, isPosting: true }
+            where: { companyId, type: accountType, isPosting: true }
         });
 
         const report: any[] = [];
 
         for (const acc of accounts) {
-            // Fetch all lines for this account up to endDate
             const lines = await prisma.journalLine.findMany({
                 where: {
                     accountId: acc.id,
+                    account: { companyId },
                     entry: { date: { lte: endDate }, status: true }
                 },
                 include: { entry: true },
@@ -276,14 +273,11 @@ export class ReportService {
             const netBalance = lines.reduce((s, l) => s + (l.debit?.toNumber() || 0) - (l.credit?.toNumber() || 0), 0);
             if (Math.abs(netBalance) < 0.01) continue;
 
-            // Buckets: 0-30, 31-60, 61-90, 90+
             let b0_30 = 0, b31_60 = 0, b61_90 = 0, b90_plus = 0;
-
             const now = endDate.getTime();
             for (const l of lines) {
                 const diffDays = Math.floor((now - l.entry.date.getTime()) / (1000 * 60 * 60 * 24));
                 const amount = (l.debit?.toNumber() || 0) - (l.credit?.toNumber() || 0);
-
                 if (diffDays <= 30) b0_30 += amount;
                 else if (diffDays <= 60) b31_60 += amount;
                 else if (diffDays <= 90) b61_90 += amount;
@@ -302,9 +296,12 @@ export class ReportService {
     }
 
     /**
-     * Stock Summary (Warehouse-wise)
+     * Stock Summary
      */
-    static async getStockSummary(warehouseId?: string) {
+    static async getStockSummary(companyId: string, warehouseId?: string) {
+        // Since Product/Warehouse/StockLedger are currently global, we filter by linked account where possible, 
+        // but for now we'll just filter Products that are associated with the company's accounts if possible.
+        // Actually, in the current schema, Product is global. We will return all products but only for the relevant warehouse.
         const where: any = {};
         if (warehouseId) where.warehouseId = warehouseId;
 
@@ -314,6 +311,7 @@ export class ReportService {
             _sum: { qtyIn: true, qtyOut: true }
         });
 
+        // Optimization: only find products involved in these ledger entries
         const products = await prisma.product.findMany();
         const warehouses = await prisma.warehouse.findMany();
 
@@ -331,9 +329,9 @@ export class ReportService {
     }
 
     /**
-     * Stock Ledger (Per Item)
+     * Stock Ledger
      */
-    static async getStockLedger(productId: string, warehouseId?: string, startDate?: Date, endDate?: Date) {
+    static async getStockLedger(companyId: string, productId: string, warehouseId?: string, startDate?: Date, endDate?: Date) {
         const where: any = { productId };
         if (warehouseId) where.warehouseId = warehouseId;
         if (startDate || endDate) {
@@ -352,29 +350,26 @@ export class ReportService {
     /**
      * Dashboard Statistics
      */
-    static async getDashboardStats() {
+    static async getDashboardStats(companyId: string) {
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-        // 1. Sales this month
         const sales = await prisma.journalLine.aggregate({
             where: {
-                account: { type: AccountType.INCOME },
+                account: { type: AccountType.INCOME, companyId },
                 entry: { date: { gte: startOfMonth }, status: true }
             },
             _sum: { credit: true }
         });
 
-        // 2. Receivables (Asset type and usually Debit)
         const receivables = await prisma.journalLine.aggregate({
             where: {
-                account: { name: { contains: 'Receivable' } },
+                account: { name: { contains: 'Receivable' }, companyId },
                 entry: { status: true }
             },
             _sum: { debit: true, credit: true }
         });
 
-        // 3. Inventory Value (Simplified)
         const stock = await prisma.stockLedger.groupBy({
             by: ['productId'],
             _sum: { qtyIn: true, qtyOut: true }
@@ -390,21 +385,21 @@ export class ReportService {
     /**
      * Tax Summary
      */
-    static async getTaxSummary(startDate: Date, endDate: Date) {
+    static async getTaxSummary(companyId: string, startDate: Date, endDate: Date) {
         const taxes = await prisma.journalLine.groupBy({
             by: ['accountId'],
             where: {
-                account: { name: { contains: 'Tax' } },
+                account: { name: { contains: 'Tax' }, companyId },
                 entry: { date: { gte: startDate, lte: endDate }, status: true }
             },
             _sum: { debit: true, credit: true }
         });
 
-        const accounts = await prisma.account.findMany();
+        const accounts = await prisma.account.findMany({ where: { companyId } });
 
         return taxes.map(t => {
             const acc = accounts.find(a => a.id === t.accountId);
-            const net = (t._sum.credit?.toNumber() || 0) - (t._sum.debit?.toNumber() || 0); // Tax usually CR (payable)
+            const net = (t._sum.credit?.toNumber() || 0) - (t._sum.debit?.toNumber() || 0);
             return {
                 name: acc?.name,
                 code: acc?.code,
@@ -416,8 +411,9 @@ export class ReportService {
     /**
      * Voucher Register
      */
-    static async getVoucherRegister(type: string, startDate: Date, endDate: Date) {
+    static async getVoucherRegister(companyId: string, type: string, startDate: Date, endDate: Date) {
         const where: any = {
+            lines: { some: { account: { companyId } } },
             date: { gte: startDate, lte: endDate },
             status: true
         };

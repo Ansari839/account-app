@@ -3,12 +3,23 @@ import { ReportService } from "../services/report.service";
 import { FinancialYearService } from "../services/financialYear.service";
 import { ClosingService } from "../services/closing.service";
 
+import { AuthUtils } from '@/lib/auth-utils';
+
+async function getAuthUser(req: Request) {
+    const token = req.headers.get('Authorization')?.split(' ')[1];
+    if (!token) return null;
+    return AuthUtils.verifyToken(token);
+}
+
 export class AccountingController {
     /**
      * Get Ledger Report
      */
     static async getLedger(req: Request) {
         try {
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
             const { searchParams } = new URL(req.url);
             const accountId = searchParams.get('accountId');
             const startDate = searchParams.get('startDate');
@@ -19,6 +30,7 @@ export class AccountingController {
             }
 
             const data = await ReportService.getLedger(
+                user.companyId,
                 accountId,
                 new Date(startDate),
                 new Date(endDate)
@@ -34,6 +46,9 @@ export class AccountingController {
      */
     static async getTrialBalance(req: Request) {
         try {
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
             const { searchParams } = new URL(req.url);
             const endDate = searchParams.get('endDate');
 
@@ -41,7 +56,7 @@ export class AccountingController {
                 return NextResponse.json({ success: false, error: "End date is required" }, { status: 400 });
             }
 
-            const data = await ReportService.getTrialBalance(new Date(endDate));
+            const data = await ReportService.getTrialBalance(user.companyId, new Date(endDate));
             return NextResponse.json({ success: true, data });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -53,6 +68,9 @@ export class AccountingController {
      */
     static async getProfitLoss(req: Request) {
         try {
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
             const { searchParams } = new URL(req.url);
             const startDate = searchParams.get('startDate');
             const endDate = searchParams.get('endDate');
@@ -61,7 +79,7 @@ export class AccountingController {
                 return NextResponse.json({ success: false, error: "Start and end dates are required" }, { status: 400 });
             }
 
-            const data = await ReportService.getProfitLoss(new Date(startDate), new Date(endDate));
+            const data = await ReportService.getProfitLoss(user.companyId, new Date(startDate), new Date(endDate));
             return NextResponse.json({ success: true, data });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -73,6 +91,9 @@ export class AccountingController {
      */
     static async getBalanceSheet(req: Request) {
         try {
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
             const { searchParams } = new URL(req.url);
             const endDate = searchParams.get('endDate');
 
@@ -80,7 +101,7 @@ export class AccountingController {
                 return NextResponse.json({ success: false, error: "End date is required" }, { status: 400 });
             }
 
-            const data = await ReportService.getBalanceSheet(new Date(endDate));
+            const data = await ReportService.getBalanceSheet(user.companyId, new Date(endDate));
             return NextResponse.json({ success: true, data });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -92,6 +113,9 @@ export class AccountingController {
      */
     static async getAgingReport(req: Request) {
         try {
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
             const { searchParams } = new URL(req.url);
             const type = searchParams.get('type');
             const endDate = searchParams.get('endDate');
@@ -100,7 +124,7 @@ export class AccountingController {
                 return NextResponse.json({ success: false, error: "Type and end date are required" }, { status: 400 });
             }
 
-            const data = await ReportService.getAgingReport(type as any, new Date(endDate));
+            const data = await ReportService.getAgingReport(user.companyId, type as any, new Date(endDate));
             return NextResponse.json({ success: true, data });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -112,10 +136,13 @@ export class AccountingController {
      */
     static async getStockSummary(req: Request) {
         try {
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
             const { searchParams } = new URL(req.url);
             const warehouseId = searchParams.get('warehouseId');
 
-            const data = await ReportService.getStockSummary(warehouseId || undefined);
+            const data = await ReportService.getStockSummary(user.companyId, warehouseId || undefined);
             return NextResponse.json({ success: true, data });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -125,9 +152,12 @@ export class AccountingController {
     /**
      * Get Dashboard Stats
      */
-    static async getDashboardStats() {
+    static async getDashboardStats(req: Request) {
         try {
-            const data = await ReportService.getDashboardStats();
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const data = await ReportService.getDashboardStats(user.companyId);
             return NextResponse.json({ success: true, data });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -139,6 +169,9 @@ export class AccountingController {
      */
     static async getCashFlow(req: Request) {
         try {
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
             const { searchParams } = new URL(req.url);
             const startDate = searchParams.get('startDate');
             const endDate = searchParams.get('endDate');
@@ -147,7 +180,7 @@ export class AccountingController {
                 return NextResponse.json({ success: false, error: "Start and end dates are required" }, { status: 400 });
             }
 
-            const data = await ReportService.getCashFlow(new Date(startDate), new Date(endDate));
+            const data = await ReportService.getCashFlow(user.companyId, new Date(startDate), new Date(endDate));
             return NextResponse.json({ success: true, data });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -159,6 +192,9 @@ export class AccountingController {
      */
     static async closeYear(req: Request) {
         try {
+            const user = await getAuthUser(req);
+            if (user?.role !== 'ADMIN') return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
             const { yearId, closingDate, pnlAccountId, retainedEarningsAccountId } = await req.json();
             const result = await ClosingService.performYearClosing(
                 yearId,

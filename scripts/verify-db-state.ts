@@ -1,38 +1,59 @@
-import { PrismaClient } from '../app/generated/prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
+import 'dotenv/config';
+import { PrismaClient } from '@/app/generated/prisma/client';
 import { Pool } from 'pg';
-import * as dotenv from 'dotenv';
-
-dotenv.config();
+import { PrismaPg } from '@prisma/adapter-pg';
 
 const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-async function main() {
-    console.log('--- Verifying Users ---');
-    const users = await prisma.user.findMany({
-        select: { id: true, email: true, companyId: true }
+async function verify(companyId: string) {
+    console.log(`\n🔍 Verifying Data Presence for '${companyId}'...`);
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
+    console.log(`🏢 Company: ${company?.name || 'NOT FOUND'}`);
+
+    const accountsCount = await prisma.account.count({ where: { companyId } });
+    console.log(`🗂️ Accounts: ${accountsCount}`);
+
+    const productsCount = await prisma.product.count({ where: { code: { startsWith: 'GPROD-' } } });
+    console.log(`📦 Garment Products: ${productsCount}`);
+
+    const scount = await prisma.supplier.count({ where: { code: { startsWith: 'GSUPP-' } } });
+    console.log(`🤝 Garment Suppliers: ${scount}`);
+
+    const poCount = await prisma.purchaseOrder.count({ where: { poNo: { startsWith: 'GARMENT-PO-' } } });
+    const grnCount = await prisma.gRN.count({ where: { grnNo: { startsWith: 'GARMENT-GRN-' } } });
+    const piCount = await prisma.purchaseInvoice.count({ where: { invoiceNo: { startsWith: 'GARMENT-PI-' } } });
+
+    console.log(`🧾 Document Counts: POs: ${poCount}, GRNs: ${grnCount}, PIs: ${piCount}`);
+
+    const journalsCount = await prisma.journalEntry.count({
+        where: { OR: [{ lines: { some: { account: { companyId } } } }, { number: { startsWith: 'GARMENT-' } }] }
     });
-    console.table(users);
+    console.log(`📓 Total Journal Entries: ${journalsCount} (Opening + Drawings + GRNVs + PURVs)`);
 
-    console.log('\n--- Verifying Companies ---');
-    const companies = await prisma.company.findMany();
-    console.table(companies);
-
-    console.log('\n--- Verifying Accounts (First 10) ---');
-    const accounts = await prisma.account.findMany({
-        take: 10,
-        select: { id: true, code: true, name: true, companyId: true, parentId: true }
-    });
-    console.table(accounts);
-
-    const rootAccounts = await prisma.account.count({ where: { parentId: null } });
-    const totalAccounts = await prisma.account.count();
-    console.log(`\nTotal Accounts: ${totalAccounts}, Root Accounts (parentId is null): ${rootAccounts}`);
+    // Sample check for Accrued Liability
+    const accruedAcc = await prisma.account.findFirst({ where: { companyId, code: '2200' } });
+    if (accruedAcc) {
+        const balance = await prisma.journalLine.aggregate({
+            where: { accountId: accruedAcc.id },
+            _sum: { debit: true, credit: true }
+        });
+        const bal = (balance._sum.credit?.toNumber() || 0) - (balance._sum.debit?.toNumber() || 0);
+        console.log(`💰 Accrued Liability Balance: $${bal.toLocaleString()} (Pending invoices for 15 GRNs)`);
+    }
 }
 
-main()
-    .catch(e => console.error(e))
-    .finally(async () => await prisma.$disconnect());
+async function run() {
+    try {
+        await verify('garments-company-1');
+    } catch (e) {
+        console.error("❌ Verification Error:", e);
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
+run();

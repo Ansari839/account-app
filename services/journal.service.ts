@@ -111,9 +111,12 @@ export class JournalService {
         });
     }
 
-    static async getEntries(filters?: { type?: VoucherType }) {
+    static async getEntries(companyId: string, filters?: { type?: VoucherType }) {
         return prisma.journalEntry.findMany({
-            where: filters,
+            where: {
+                ...filters,
+                lines: { some: { account: { companyId } } }
+            },
             include: { lines: true },
             orderBy: { date: 'desc' }
         });
