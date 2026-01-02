@@ -450,10 +450,12 @@ export type WarehouseCreateNestedOneWithoutPurchaseOrdersInput = {
   connect?: Prisma.WarehouseWhereUniqueInput
 }
 
-export type WarehouseUpdateOneRequiredWithoutPurchaseOrdersNestedInput = {
+export type WarehouseUpdateOneWithoutPurchaseOrdersNestedInput = {
   create?: Prisma.XOR<Prisma.WarehouseCreateWithoutPurchaseOrdersInput, Prisma.WarehouseUncheckedCreateWithoutPurchaseOrdersInput>
   connectOrCreate?: Prisma.WarehouseCreateOrConnectWithoutPurchaseOrdersInput
   upsert?: Prisma.WarehouseUpsertWithoutPurchaseOrdersInput
+  disconnect?: Prisma.WarehouseWhereInput | boolean
+  delete?: Prisma.WarehouseWhereInput | boolean
   connect?: Prisma.WarehouseWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.WarehouseUpdateToOneWithWhereWithoutPurchaseOrdersInput, Prisma.WarehouseUpdateWithoutPurchaseOrdersInput>, Prisma.WarehouseUncheckedUpdateWithoutPurchaseOrdersInput>
 }

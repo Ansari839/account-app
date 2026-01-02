@@ -142,18 +142,18 @@ export class PurchaseController {
             const order = await prisma.purchaseOrder.create({
                 data: {
                     poNo,
-                    supplierId,
-                    warehouseId: body.warehouseId,
+                    supplier: { connect: { id: supplierId } },
+                    warehouse: body.warehouseId ? { connect: { id: body.warehouseId } } : undefined,
                     date: new Date(body.date),
                     expectedDate: body.expectedDate ? new Date(body.expectedDate) : null,
-                    totalAmount: body.items.reduce((acc: number, item: any) => acc + (item.qty * item.rate), 0),
+                    totalAmount: body.items.reduce((acc: number, item: any) => acc + (Number(item.qty || 0) * Number(item.rate || 0)), 0),
                     status: 'OPEN',
                     items: {
                         create: body.items.map((item: any) => ({
                             productId: item.productId,
-                            qty: item.qty,
-                            rate: item.rate,
-                            total: item.qty * item.rate,
+                            qty: Number(item.qty || 0),
+                            rate: Number(item.rate || 0),
+                            total: Number(item.qty || 0) * Number(item.rate || 0),
                             receivedQty: 0,
                             invoicedQty: 0
                         }))
@@ -168,6 +168,110 @@ export class PurchaseController {
             return NextResponse.json({ success: true, data: order });
         } catch (error: any) {
             console.error("Create PO Error:", error);
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Get Single Purchase Order Detail (with GRNs and Invoices)
+     */
+    static async getOrder(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const order = await prisma.purchaseOrder.findUnique({
+                where: { id },
+                include: {
+                    supplier: true,
+                    warehouse: true,
+                    items: { include: { product: true } },
+                    grns: {
+                        include: { items: true }
+                    },
+                    invoices: {
+                        include: { items: true }
+                    }
+                }
+            });
+
+            if (!order) return NextResponse.json({ success: false, error: "Order not found" }, { status: 404 });
+
+            return NextResponse.json({ success: true, data: order });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Update Purchase Order
+     */
+    static async updateOrder(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const body = await req.json();
+
+            // Transaction for items update
+            const result = await prisma.$transaction(async (tx) => {
+                // Remove existing items
+                await tx.purchaseOrderItem.deleteMany({ where: { poId: id } });
+
+                // Update Header
+                return await tx.purchaseOrder.update({
+                    where: { id },
+                    data: {
+                        date: new Date(body.date),
+                        expectedDate: body.expectedDate ? new Date(body.expectedDate) : null,
+                        totalAmount: body.items.reduce((acc: number, item: any) => acc + (Number(item.qty || 0) * Number(item.rate || 0)), 0),
+                        status: body.status || 'OPEN',
+                        items: {
+                            create: body.items.map((item: any) => ({
+                                productId: item.productId,
+                                qty: Number(item.qty || 0),
+                                rate: Number(item.rate || 0),
+                                total: Number(item.qty || 0) * Number(item.rate || 0),
+                                receivedQty: item.receivedQty || 0,
+                                invoicedQty: item.invoicedQty || 0
+                            }))
+                        }
+                    },
+                    include: { items: true }
+                });
+            });
+
+            return NextResponse.json({ success: true, data: result });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Delete Purchase Order
+     */
+    static async deleteOrder(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            // Check if PO has GRNs or Invoices
+            const order = await prisma.purchaseOrder.findUnique({
+                where: { id },
+                include: { _count: { select: { grns: true, invoices: true } } }
+            });
+
+            if (!order) return NextResponse.json({ success: false, error: "Order not found" }, { status: 404 });
+            if (order._count.grns > 0 || order._count.invoices > 0) {
+                return NextResponse.json({ success: false, error: "Cannot delete PO with linked GRNs or Invoices" }, { status: 400 });
+            }
+
+            await prisma.purchaseOrder.delete({ where: { id } });
+            return NextResponse.json({ success: true });
+        } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         }
     }

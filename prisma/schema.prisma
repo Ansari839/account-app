@@ -587,14 +587,14 @@ model PurchaseOrder {
   id            String             @id @default(uuid())
   poNo          String             @unique
   supplierId    String
-  warehouseId   String
+  warehouseId   String?
   date          DateTime
   expectedDate  DateTime?
   totalAmount   Decimal            @default(0.0)
   status        String             @default("DRAFT") // DRAFT, OPEN, CLOSED, CANCELLED
 
   supplier      Supplier           @relation(fields: [supplierId], references: [id])
-  warehouse     Warehouse          @relation(fields: [warehouseId], references: [id])
+  warehouse     Warehouse?          @relation(fields: [warehouseId], references: [id])
   items         PurchaseOrderItem[]
   grns          GRN[]
   invoices      PurchaseInvoice[]  // Direct link

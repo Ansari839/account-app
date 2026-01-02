@@ -16,11 +16,12 @@ export default function PurchaseOrdersPage() {
     // Form Data
     const [formData, setFormData] = useState<any>({
         supplierId: '',
-        warehouseId: '',
         date: new Date().toISOString().split('T')[0],
         expectedDate: '',
         items: []
     });
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     const [suppliers, setSuppliers] = useState<any[]>([]);
     const [warehouses, setWarehouses] = useState<any[]>([]);
@@ -72,12 +73,19 @@ export default function PurchaseOrdersPage() {
 
     const updateItem = (index: number, field: string, value: any) => {
         const newItems = [...formData.items];
-        newItems[index] = { ...newItems[index], [field]: value };
+        let finalValue = value;
+
+        if (field === 'qty' || field === 'rate') {
+            finalValue = value === '' ? 0 : (typeof value === 'string' ? parseFloat(value) : value);
+            if (isNaN(finalValue)) finalValue = 0;
+        }
+
+        newItems[index] = { ...newItems[index], [field]: finalValue };
 
         // Auto-calc total
-        if (field === 'qty' || field === 'rate') {
-            newItems[index].total = newItems[index].qty * newItems[index].rate;
-        }
+        const q = Number(newItems[index].qty || 0);
+        const r = Number(newItems[index].rate || 0);
+        newItems[index].total = q * r;
 
         // Auto-fill rate from product if needed
         if (field === 'productId') {
@@ -96,27 +104,62 @@ export default function PurchaseOrdersPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const res = await authenticatedFetch('/api/finance/purchase/orders', {
-            method: 'POST',
+        const url = isEditing ? `/api/finance/purchase/orders/${editingId}` : '/api/finance/purchase/orders';
+        const method = isEditing ? 'PUT' : 'POST';
+
+        const res = await authenticatedFetch(url, {
+            method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
         });
 
         if (res.ok) {
             setIsModalOpen(false);
-            setFormData({ supplierId: '', warehouseId: '', date: new Date().toISOString().split('T')[0], items: [] });
+            setIsEditing(false);
+            setEditingId(null);
+            setFormData({ supplierId: '', date: new Date().toISOString().split('T')[0], items: [] });
             fetchOrders();
         } else {
-            alert("Failed to create PO");
+            const json = await res.json();
+            alert(json.error || "Failed to save PO");
         }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this PO?')) return;
+        const res = await authenticatedFetch(`/api/finance/purchase/orders/${id}`, { method: 'DELETE' });
+        if (res.ok) fetchOrders();
+        else {
+            const json = await res.json();
+            alert(json.error || "Failed to delete");
+        }
+    };
+
+    const openEdit = (order: any) => {
+        setIsEditing(true);
+        setEditingId(order.id);
+        setFormData({
+            supplierId: order.supplierId,
+            date: format(new Date(order.date), 'yyyy-MM-dd'),
+            expectedDate: order.expectedDate ? format(new Date(order.expectedDate), 'yyyy-MM-dd') : '',
+            items: order.items.map((it: any) => ({
+                id: it.id,
+                productId: it.productId,
+                qty: Number(it.qty),
+                rate: Number(it.rate),
+                total: Number(it.total),
+                receivedQty: Number(it.receivedQty),
+                invoicedQty: Number(it.invoicedQty)
+            }))
+        });
+        setIsModalOpen(true);
     };
 
     const columns: Column<any>[] = [
         { header: 'PO #', accessor: 'poNo' },
         { header: 'Date', accessor: (row) => format(new Date(row.date), 'dd/MM/yyyy') },
         { header: 'Supplier', accessor: (row) => row.supplier?.name },
-        { header: 'Warehouse', accessor: (row) => row.warehouse?.name },
-        { header: 'Amount', accessor: (row) => row.totalAmount },
+        { header: 'Amount', accessor: (row) => Number(row.totalAmount).toLocaleString() },
         {
             header: 'Status',
             accessor: (row) => (
@@ -131,17 +174,32 @@ export default function PurchaseOrdersPage() {
         {
             header: 'Progress',
             accessor: (row) => {
-                // Calculate simplistic progress
-                // In real app, sum items
+                const totalQty = row.items.reduce((sum: number, it: any) => sum + Number(it.qty), 0);
+                const recQty = row.items.reduce((sum: number, it: any) => sum + Number(it.receivedQty || 0), 0);
+                const invQty = row.items.reduce((sum: number, it: any) => sum + Number(it.invoicedQty || 0), 0);
+
+                const recPerc = totalQty > 0 ? Math.round((recQty / totalQty) * 100) : 0;
+                const invPerc = totalQty > 0 ? Math.round((invQty / totalQty) * 100) : 0;
+
                 return (
-                    <div className="flex flex-col gap-1 text-[10px]">
-                        <div className="flex justify-between">
-                            <span>Rec:</span>
-                            <span className="font-mono">--%</span>
+                    <div className="flex flex-col gap-1.5 w-24">
+                        <div className="flex flex-col gap-0.5">
+                            <div className="flex justify-between text-[9px] uppercase font-bold text-slate-400">
+                                <span>Rec</span>
+                                <span>{recPerc}%</span>
+                            </div>
+                            <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-500 transition-all" style={{ width: `${recPerc}%` }}></div>
+                            </div>
                         </div>
-                        <div className="flex justify-between">
-                            <span>Inv:</span>
-                            <span className="font-mono">--%</span>
+                        <div className="flex flex-col gap-0.5">
+                            <div className="flex justify-between text-[9px] uppercase font-bold text-slate-400">
+                                <span>Inv</span>
+                                <span>{invPerc}%</span>
+                            </div>
+                            <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-indigo-500 transition-all" style={{ width: `${invPerc}%` }}></div>
+                            </div>
                         </div>
                     </div>
                 );
@@ -150,9 +208,17 @@ export default function PurchaseOrdersPage() {
         {
             header: 'Actions',
             accessor: (row) => (
-                <button onClick={() => router.push(`/finance/purchase/orders/${row.id}`)} className="text-indigo-600 font-medium hover:underline">
-                    View
-                </button>
+                <div className="flex gap-2">
+                    <button onClick={() => router.push(`/finance/purchase/orders/${row.id}`)} className="text-indigo-600 hover:text-indigo-800 p-1" title="View Detail">
+                        👁
+                    </button>
+                    <button onClick={() => openEdit(row)} className="text-amber-600 hover:text-amber-800 p-1" title="Edit">
+                        ✎
+                    </button>
+                    <button onClick={() => handleDelete(row.id)} className="text-rose-600 hover:text-rose-800 p-1" title="Delete">
+                        ✕
+                    </button>
+                </div>
             )
         }
     ];
@@ -191,40 +257,40 @@ export default function PurchaseOrdersPage() {
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-6">
                             {/* HEADER */}
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Account (Payable)</label>
+                                    <label className="block text-sm font-bold mb-1 text-slate-600 dark:text-slate-400">Account (Payable)</label>
                                     <select
-                                        className="w-full p-2 border rounded-lg dark:bg-slate-800"
+                                        className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl dark:bg-slate-800/50 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                                         required
                                         value={formData.supplierId}
                                         onChange={e => setFormData({ ...formData, supplierId: e.target.value })}
+                                        disabled={isEditing}
                                     >
                                         <option value="">Select Account</option>
                                         {suppliers.map(s => <option key={s.id} value={s.id}>{s.code} - {s.name}</option>)}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-bold mb-1">Warehouse</label>
-                                    <select
-                                        className="w-full p-2 border rounded-lg dark:bg-slate-800"
-                                        required
-                                        value={formData.warehouseId}
-                                        onChange={e => setFormData({ ...formData, warehouseId: e.target.value })}
-                                    >
-                                        <option value="">Select Warehouse</option>
-                                        {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold mb-1">Date</label>
-                                    <input
-                                        type="date"
-                                        className="w-full p-2 border rounded-lg dark:bg-slate-800"
-                                        required
-                                        value={formData.date}
-                                        onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                    />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold mb-1 text-slate-600 dark:text-slate-400">Order Date</label>
+                                        <input
+                                            type="date"
+                                            className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl dark:bg-slate-800/50 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                            required
+                                            value={formData.date}
+                                            onChange={e => setFormData({ ...formData, date: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold mb-1 text-slate-600 dark:text-slate-400">Exp. Delivery</label>
+                                        <input
+                                            type="date"
+                                            className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl dark:bg-slate-800/50 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                            value={formData.expectedDate}
+                                            onChange={e => setFormData({ ...formData, expectedDate: e.target.value })}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -263,23 +329,25 @@ export default function PurchaseOrdersPage() {
                                                 <td className="p-2">
                                                     <input
                                                         type="number"
-                                                        className="w-full p-2 border rounded dark:bg-slate-800"
-                                                        value={item.qty}
-                                                        onChange={e => updateItem(i, 'qty', parseFloat(e.target.value))}
+                                                        className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded dark:bg-slate-800"
+                                                        value={item.qty === 0 ? '' : item.qty}
+                                                        onChange={e => updateItem(i, 'qty', e.target.value)}
+                                                        placeholder="0"
                                                         min="1"
                                                     />
                                                 </td>
                                                 <td className="p-2">
                                                     <input
                                                         type="number"
-                                                        className="w-full p-2 border rounded dark:bg-slate-800"
-                                                        value={item.rate}
-                                                        onChange={e => updateItem(i, 'rate', parseFloat(e.target.value))}
+                                                        className="w-full p-2 border border-slate-200 dark:border-slate-800 rounded dark:bg-slate-800"
+                                                        value={item.rate === 0 ? '' : item.rate}
+                                                        onChange={e => updateItem(i, 'rate', e.target.value)}
+                                                        placeholder="0.00"
                                                         min="0"
                                                     />
                                                 </td>
-                                                <td className="p-2 font-mono text-right">
-                                                    {item.total.toFixed(2)}
+                                                <td className="p-2 font-mono text-right font-bold text-slate-600">
+                                                    {(item.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                                 </td>
                                                 <td className="p-2 text-center">
                                                     <button type="button" onClick={() => removeItem(i)} className="text-slate-400 hover:text-red-500">✕</button>
