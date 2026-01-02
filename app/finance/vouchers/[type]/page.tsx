@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import DataTable, { Column } from '@/components/DataTable';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { authenticatedFetch } from '@/lib/api-client';
 import Link from 'next/link';
+import VoucherTabs from '@/components/VoucherTabs';
 
 export default function GenericVoucherPage() {
     const { type } = useParams();
@@ -13,22 +14,33 @@ export default function GenericVoucherPage() {
 
     const [vouchers, setVouchers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [currency, setCurrency] = useState<{ symbol: string }>({ symbol: '$' });
+
+    useEffect(() => {
+        // Fetch base currency
+        authenticatedFetch('/api/finance/currency')
+            .then(res => res.json())
+            .then(json => {
+                if (json.success) {
+                    const base = json.data.find((c: any) => c.isBase);
+                    if (base) setCurrency({ symbol: base.symbol });
+                }
+            })
+            .catch(err => console.error('Failed to fetch currency:', err));
+    }, []);
 
     useEffect(() => {
         // Mapping types to API endpoints (handling Journal for now as only one active)
-        const endpointMap: Record<string, string> = {
-            'journal': '/api/finance/vouchers/journal',
-            'payment': '/api/finance/vouchers/journal', // Placeholder
-            'receipt': '/api/finance/vouchers/journal', // Placeholder
-        };
-
-        const url = endpointMap[(type as string)?.toLowerCase()] || '/api/finance/vouchers/journal';
+        const url = `/api/finance/vouchers/journal?type=${type}`;
 
         authenticatedFetch(url)
             .then(res => res.json())
             .then(json => {
                 if (json.success) {
-                    setVouchers(json.data);
+                    setVouchers(json.data.map((v: any) => ({
+                        ...v,
+                        total: v.lines.reduce((sum: number, l: any) => sum + (Number(l.debit) || 0), 0)
+                    })));
                 }
                 setLoading(false);
             })
@@ -40,7 +52,7 @@ export default function GenericVoucherPage() {
 
     const columns: Column<any>[] = [
         {
-            header: 'No',
+            header: 'Voucher #',
             accessor: (v) => (
                 <Link href={`/finance/vouchers/${type || 'journal'}/${v.id}`} className="text-indigo-600 hover:underline font-bold font-mono">
                     {v.number}
@@ -48,8 +60,31 @@ export default function GenericVoucherPage() {
             )
         },
         { header: 'Date', accessor: (v) => new Date(v.date).toLocaleDateString() },
-        { header: 'Narration', accessor: (v) => v.narration || 'N/A' },
-        { header: 'Reference', accessor: (v) => v.reference || '-' },
+        {
+            header: 'Type',
+            accessor: (v) => v.type,
+            className: 'text-xs font-bold opacity-60'
+        },
+        {
+            header: 'Amount',
+            accessor: (v) => (
+                <span className="font-mono font-bold">
+                    {currency.symbol}
+                    {Number(v.total || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    })}
+                </span>
+            ),
+            className: 'text-right'
+        },
+        {
+            header: 'Status',
+            accessor: () => (
+                <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded-full text-[10px] font-black">POSTED</span>
+            )
+        },
+        { header: 'Narration', accessor: (v) => v.narration || '-' },
         {
             header: 'Actions',
             accessor: (v) => (
@@ -92,25 +127,31 @@ export default function GenericVoucherPage() {
 
     return (
         <MainLayout>
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">{voucherType} Registry</h1>
-                        <p className="text-slate-500 mt-1">Browse and manage all {voucherType.toLowerCase()} records.</p>
+                        <h1 className="text-3xl font-bold tracking-tight">Voucher Registry</h1>
+                        <p className="text-slate-500 mt-1 font-medium">Manage all accounting entries and financial transactions.</p>
                     </div>
                     <Link href={`/finance/vouchers/${type || 'journal'}/new`}>
                         <button className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all">
-                            + New {voucherType}
+                            + New Voucher
                         </button>
                     </Link>
                 </div>
 
-                <DataTable
-                    data={vouchers}
-                    columns={columns}
-                    isLoading={loading}
-                    searchPlaceholder={`Search ${voucherType.toLowerCase()}s...`}
-                />
+                <div className="space-y-0">
+                    <VoucherTabs />
+
+                    <div className="bg-white dark:bg-slate-900 border-x border-b border-slate-200 dark:border-slate-800 rounded-b-2xl shadow-sm overflow-hidden">
+                        <DataTable
+                            data={vouchers}
+                            columns={columns}
+                            isLoading={loading}
+                            searchPlaceholder={`Search ${voucherType.toLowerCase()}s...`}
+                        />
+                    </div>
+                </div>
             </div>
         </MainLayout>
     );

@@ -56,7 +56,11 @@ export class VoucherController {
             const user = await getAuthUser(req);
             if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
-            const entries = await JournalService.getEntries(user.companyId, { type: 'JOURNAL' });
+            // Extract type from query params
+            const { searchParams } = new URL(req.url);
+            const type = searchParams.get('type') || 'JOURNAL';
+
+            const entries = await JournalService.getEntries(user.companyId, { type: type.toUpperCase() as any });
             return NextResponse.json({ success: true, data: entries });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
