@@ -23,12 +23,22 @@ export default function GRNPage() {
     });
 
     const [pos, setPos] = useState<any[]>([]);
+    const [warehouses, setWarehouses] = useState<any[]>([]);
     const [selectedPO, setSelectedPO] = useState<any>(null);
 
     useEffect(() => {
         fetchGRNs();
         fetchOpenPOs();
+        fetchWarehouses();
     }, []);
+
+    const fetchWarehouses = async () => {
+        try {
+            const res = await authenticatedFetch('/api/inventory/warehouses');
+            const json = await res.json();
+            if (json.success) setWarehouses(json.data);
+        } catch (e) { console.error(e); }
+    };
 
     const fetchGRNs = async () => {
         setLoading(true);
@@ -57,7 +67,7 @@ export default function GRNPage() {
             ...formData,
             poId: po.id,
             supplierId: po.supplierId,
-            warehouseId: po.warehouseId,
+            warehouseId: po.warehouseId || '', // Inherit if available
             items: po.items.map((item: any) => ({
                 productId: item.productId,
                 productName: item.product?.name,
@@ -91,7 +101,25 @@ export default function GRNPage() {
             fetchGRNs();
             fetchOpenPOs(); // Refresh POs as status may change
         } else {
-            alert("Failed to create GRN");
+            const json = await res.json();
+            alert(json.error || "Failed to create GRN");
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this GRN? This will revert stock and PO fulfillment status.")) return;
+
+        try {
+            const res = await authenticatedFetch(`/api/finance/purchase/grn/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchGRNs();
+                fetchOpenPOs();
+            } else {
+                const json = await res.json();
+                alert(json.error || "Failed to delete GRN");
+            }
+        } catch (e) {
+            console.error(e);
         }
     };
 
@@ -108,9 +136,22 @@ export default function GRNPage() {
         {
             header: 'Actions',
             accessor: (row) => (
-                <button className="text-indigo-600 font-medium hover:underline">
-                    View
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => router.push(`/finance/purchase/grn/${row.id}`)}
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
+                        title="View/Print"
+                    >
+                        👁
+                    </button>
+                    <button
+                        onClick={() => handleDelete(row.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                        title="Delete"
+                    >
+                        ✕
+                    </button>
+                </div>
             )
         }
     ];
@@ -175,9 +216,23 @@ export default function GRNPage() {
                             </div>
 
                             {selectedPO && (
-                                <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg text-sm grid grid-cols-2 gap-4">
-                                    <p><span className="font-bold">Supplier:</span> {selectedPO.supplier?.name}</p>
-                                    <p><span className="font-bold">Warehouse:</span> {selectedPO.warehouse?.name}</p>
+                                <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-6">
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Supplier</p>
+                                        <p className="font-bold text-slate-700 dark:text-slate-200">{selectedPO.supplier?.name}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Select Warehouse</p>
+                                        <select
+                                            className="w-full p-2 border rounded-lg dark:bg-slate-800 bg-white font-bold"
+                                            required
+                                            value={formData.warehouseId}
+                                            onChange={e => setFormData({ ...formData, warehouseId: e.target.value })}
+                                        >
+                                            <option value="">Choose Warehouse</option>
+                                            {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                        </select>
+                                    </div>
                                 </div>
                             )}
 

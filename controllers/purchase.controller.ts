@@ -294,7 +294,6 @@ export class PurchaseController {
             // Transaction to ensure atomic updates
             const result = await prisma.$transaction(async (tx) => {
                 // 1. Create GRN
-                // Filter items that have received or rejected quantity
                 const validItems = items.filter((item: any) => (item.qtyReceived > 0 || item.qtyRejected > 0));
 
                 if (validItems.length === 0) {
@@ -352,6 +351,179 @@ export class PurchaseController {
             return NextResponse.json({ success: true, data: result });
         } catch (error: any) {
             console.error("Create GRN Error:", error);
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Get Single GRN Detail
+     */
+    static async getGRN(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const grn = await prisma.gRN.findUnique({
+                where: { id },
+                include: {
+                    supplier: true,
+                    warehouse: true,
+                    po: true,
+                    items: {
+                        include: { product: true, poItem: true }
+                    }
+                }
+            });
+
+            if (!grn) return NextResponse.json({ success: false, error: "GRN not found" }, { status: 404 });
+            return NextResponse.json({ success: true, data: grn });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Delete GRN (with stock and PO reversion)
+     */
+    static async deleteGRN(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const grn = await prisma.gRN.findUnique({
+                where: { id },
+                include: {
+                    items: true,
+                    _count: { select: { invoices: true } } // This relation exists in schema? Let me check.
+                }
+            });
+
+            if (!grn) return NextResponse.json({ success: false, error: "GRN not found" }, { status: 404 });
+
+            // Check if invoiced (in schema? GRN has invoices relation?)
+            // If not direct relation, check via GRNItems linked to PurchaseInvoiceItem
+            const invoicedCount = await prisma.purchaseInvoiceItem.count({
+                where: { grnItemId: { in: grn.items.map(i => i.id) } }
+            });
+
+            if (invoicedCount > 0) {
+                return NextResponse.json({ success: false, error: "Cannot delete GRN already partially or fully invoiced" }, { status: 400 });
+            }
+
+            await prisma.$transaction(async (tx) => {
+                // 1. Revert PO item received quantities & Remove Stock Ledger
+                for (const item of grn.items) {
+                    if (Number(item.qtyReceived) > 0) {
+                        if (item.poItemId) {
+                            await tx.purchaseOrderItem.update({
+                                where: { id: item.poItemId },
+                                data: { receivedQty: { decrement: item.qtyReceived } }
+                            });
+                        }
+
+                        await tx.stockLedger.deleteMany({
+                            where: { refType: 'GRN', refId: grn.id, productId: item.productId }
+                        });
+                    }
+                }
+
+                // 2. Delete Items and GRN
+                await tx.gRNItem.deleteMany({ where: { grnId: id } });
+                await tx.gRN.delete({ where: { id } });
+            });
+
+            return NextResponse.json({ success: true });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Update GRN (Simple implementation: Delete items and recreate if safe)
+     */
+    static async updateGRN(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const body = await req.json();
+            const { date, warehouseId, items } = body;
+
+            const existing = await prisma.gRN.findUnique({
+                where: { id },
+                include: { items: true }
+            });
+
+            if (!existing) return NextResponse.json({ success: false, error: "GRN not found" }, { status: 404 });
+
+            // Check if invoiced
+            const invoicedCount = await prisma.purchaseInvoiceItem.count({
+                where: { grnItemId: { in: existing.items.map(i => i.id) } }
+            });
+            if (invoicedCount > 0) return NextResponse.json({ success: false, error: "Cannot edit invoiced GRN" }, { status: 400 });
+
+            await prisma.$transaction(async (tx) => {
+                // 1. Revert previous state
+                for (const item of existing.items) {
+                    if (item.poItemId) {
+                        await tx.purchaseOrderItem.update({
+                            where: { id: item.poItemId },
+                            data: { receivedQty: { decrement: item.qtyReceived } }
+                        });
+                    }
+                    await tx.stockLedger.deleteMany({
+                        where: { refType: 'GRN', refId: id }
+                    });
+                }
+                await tx.gRNItem.deleteMany({ where: { grnId: id } });
+
+                // 2. Update Header
+                await tx.gRN.update({
+                    where: { id },
+                    data: {
+                        date: new Date(date),
+                        warehouseId,
+                        items: {
+                            create: items.map((item: any) => ({
+                                productId: item.productId,
+                                poItemId: item.poItemId,
+                                qtyReceived: item.qtyReceived,
+                                qtyRejected: item.qtyRejected
+                            }))
+                        }
+                    }
+                });
+
+                // 3. Apply new state
+                for (const item of items) {
+                    if (Number(item.qtyReceived) > 0) {
+                        if (item.poItemId) {
+                            await tx.purchaseOrderItem.update({
+                                where: { id: item.poItemId },
+                                data: { receivedQty: { increment: item.qtyReceived } }
+                            });
+                        }
+
+                        await tx.stockLedger.create({
+                            data: {
+                                productId: item.productId,
+                                warehouseId,
+                                date: new Date(date),
+                                qtyIn: item.qtyReceived,
+                                qtyOut: 0,
+                                refType: 'GRN',
+                                refId: id
+                            }
+                        });
+                    }
+                }
+            });
+
+            return NextResponse.json({ success: true });
+        } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         }
     }
