@@ -615,7 +615,7 @@ model PurchaseOrderItem {
   taxAmount     Decimal            @default(0.0)
   total         Decimal
 
-  po            PurchaseOrder      @relation(fields: [poId], references: [id])
+  po            PurchaseOrder      @relation(fields: [poId], references: [id], onDelete: Cascade)
   product       Product            @relation(fields: [productId], references: [id])
   taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
   grnItems      GRNItem[]
