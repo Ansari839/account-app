@@ -52,7 +52,7 @@ export default function PurchaseInvoicesPage() {
                 const mandatory = json.data.INVENTORY_GRN_MANDATORY === 'true';
                 setIsGrnMandatory(mandatory);
                 // If mandatory, default source type is GRN
-                if (mandatory) setFormData(prev => ({ ...prev, sourceType: 'GRN' }));
+                if (mandatory) setFormData((prev: any) => ({ ...prev, sourceType: 'GRN' }));
             }
         } catch (e) { console.error(e); }
     };
@@ -109,7 +109,7 @@ export default function PurchaseInvoicesPage() {
         }
 
         // Calculate initial totals
-        items.forEach(item => item.total = item.qty * item.rate);
+        items.forEach((item: any) => item.total = item.qty * item.rate);
 
         setFormData({
             ...formData,

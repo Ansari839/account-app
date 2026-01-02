@@ -57,4 +57,14 @@ export class GlobalSettingsService {
             orderBy: { group: 'asc' }
         });
     }
+
+    /**
+     * Update multiple settings at once
+     */
+    static async updateMany(settings: Record<string, string>) {
+        const promises = Object.entries(settings).map(([key, value]) =>
+            this.set(key, value)
+        );
+        return await Promise.all(promises);
+    }
 }

@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { FinancialYearService } from "../services/financialYear.service";
+import { FinancialYearService } from "../services/financial-year.service";
 import { JournalService } from "../services/journal.service";
 import { AccountService } from "../services/account.service";
 import { ReportService } from "../services/report.service";
@@ -25,6 +25,10 @@ async function runTest() {
             startDate: new Date("2024-01-01"),
             endDate: new Date("2024-12-31")
         });
+
+        // Get company
+        const company = await prisma.company.findFirst();
+        if (!company) throw new Error("No company found");
 
         // 2. Setup Accounts
         const bank = await AccountService.createAccount({ name: "Bank", type: AccountType.ASSET, isPosting: true });
@@ -52,13 +56,13 @@ async function runTest() {
 
         // 4. Test Trial Balance
         console.log("--- Testing Trial Balance ---");
-        const tb = await ReportService.getTrialBalance(new Date("2024-12-31"));
+        const tb = await ReportService.getTrialBalance(company.id, new Date("2024-12-31"));
         console.log("📊 Trial Balance Result:");
         tb.forEach(r => console.log(`   ${r.accountName} | DR: ${r.debit} | CR: ${r.credit}`));
 
         // 5. Test Ledger
         console.log("--- Testing Ledger (Bank) ---");
-        const ledger = await ReportService.getLedger(bank.id, new Date("2024-05-01"), new Date("2024-05-31"));
+        const ledger = await ReportService.getLedger(company.id, bank.id, new Date("2024-05-01"), new Date("2024-05-31"));
         console.log(`📖 Bank Ledger Transactions: ${ledger.transactions.length}`);
 
         // 6. Test Date Lock Control

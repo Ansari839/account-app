@@ -153,7 +153,7 @@ async function seed() {
         });
 
         const do_doc = await prisma.deliveryOrder.create({
-            data: { doNo: 'TRIAL-DO-001', orderId: order.id, customerId: cust.id, warehouseId: mwh.id, date: new Date('2026-01-18'), items: { create: [{ productId: prod.id, qtyShipped: 5 }] } }
+            data: { doNo: 'TRIAL-DO-001', orderId: order.id, customerId: cust.id, warehouseId: mwh.id, date: new Date('2026-01-18'), items: { create: [{ productId: prod.id, qty: 5 }] } }
         });
         await prisma.stockLedger.create({ data: { productId: prod.id, warehouseId: mwh.id, date: do_doc.date, qtyOut: 5, refType: 'DO', refId: do_doc.id } });
 

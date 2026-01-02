@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { FinancialYearService } from "../services/financialYear.service";
+import { FinancialYearService } from "../services/financial-year.service";
 import { VoucherService } from "../services/voucher.service";
 import { JournalService } from "../services/journal.service";
 import { AccountService } from "../services/account.service";

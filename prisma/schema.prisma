@@ -486,6 +486,7 @@ model Warehouse {
   deliveryOrders  DeliveryOrder[]
   salesInvoices   SalesInvoice[]
   salesOrders     SalesOrder[]
+  salesReturns    SalesReturn[]
 }
 
 // --------------------------------------
@@ -773,6 +774,7 @@ model SalesOrder {
   quote         SalesQuotation?    @relation(fields: [quoteId], references: [id])
   items         SalesOrderItem[]
   deliveryOrders DeliveryOrder[]
+  invoices       SalesInvoice[]
 
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
@@ -869,6 +871,7 @@ model SalesInvoiceItem {
   product       Product            @relation(fields: [productId], references: [id])
   soItem        SalesOrderItem?    @relation(fields: [soItemId], references: [id])
   taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
+  returnItems   SalesReturnItem[]
 }
 
 model SalesReturn {

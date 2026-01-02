@@ -40,12 +40,13 @@ export type SalesInvoiceMinAggregateOutputType = {
   id: string | null
   invoiceNo: string | null
   customerId: string | null
+  orderId: string | null
+  doId: string | null
   warehouseId: string | null
   date: Date | null
   dueDate: Date | null
   totalAmount: runtime.Decimal | null
   taxAmount: runtime.Decimal | null
-  doId: string | null
   journalEntryId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -55,12 +56,13 @@ export type SalesInvoiceMaxAggregateOutputType = {
   id: string | null
   invoiceNo: string | null
   customerId: string | null
+  orderId: string | null
+  doId: string | null
   warehouseId: string | null
   date: Date | null
   dueDate: Date | null
   totalAmount: runtime.Decimal | null
   taxAmount: runtime.Decimal | null
-  doId: string | null
   journalEntryId: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -70,12 +72,13 @@ export type SalesInvoiceCountAggregateOutputType = {
   id: number
   invoiceNo: number
   customerId: number
+  orderId: number
+  doId: number
   warehouseId: number
   date: number
   dueDate: number
   totalAmount: number
   taxAmount: number
-  doId: number
   journalEntryId: number
   createdAt: number
   updatedAt: number
@@ -97,12 +100,13 @@ export type SalesInvoiceMinAggregateInputType = {
   id?: true
   invoiceNo?: true
   customerId?: true
+  orderId?: true
+  doId?: true
   warehouseId?: true
   date?: true
   dueDate?: true
   totalAmount?: true
   taxAmount?: true
-  doId?: true
   journalEntryId?: true
   createdAt?: true
   updatedAt?: true
@@ -112,12 +116,13 @@ export type SalesInvoiceMaxAggregateInputType = {
   id?: true
   invoiceNo?: true
   customerId?: true
+  orderId?: true
+  doId?: true
   warehouseId?: true
   date?: true
   dueDate?: true
   totalAmount?: true
   taxAmount?: true
-  doId?: true
   journalEntryId?: true
   createdAt?: true
   updatedAt?: true
@@ -127,12 +132,13 @@ export type SalesInvoiceCountAggregateInputType = {
   id?: true
   invoiceNo?: true
   customerId?: true
+  orderId?: true
+  doId?: true
   warehouseId?: true
   date?: true
   dueDate?: true
   totalAmount?: true
   taxAmount?: true
-  doId?: true
   journalEntryId?: true
   createdAt?: true
   updatedAt?: true
@@ -229,12 +235,13 @@ export type SalesInvoiceGroupByOutputType = {
   id: string
   invoiceNo: string
   customerId: string
+  orderId: string | null
+  doId: string | null
   warehouseId: string | null
   date: Date
   dueDate: Date | null
   totalAmount: runtime.Decimal
   taxAmount: runtime.Decimal
-  doId: string | null
   journalEntryId: string | null
   createdAt: Date
   updatedAt: Date
@@ -267,18 +274,20 @@ export type SalesInvoiceWhereInput = {
   id?: Prisma.StringFilter<"SalesInvoice"> | string
   invoiceNo?: Prisma.StringFilter<"SalesInvoice"> | string
   customerId?: Prisma.StringFilter<"SalesInvoice"> | string
+  orderId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
+  doId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
   warehouseId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
   date?: Prisma.DateTimeFilter<"SalesInvoice"> | Date | string
   dueDate?: Prisma.DateTimeNullableFilter<"SalesInvoice"> | Date | string | null
   totalAmount?: Prisma.DecimalFilter<"SalesInvoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFilter<"SalesInvoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
   journalEntryId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
   createdAt?: Prisma.DateTimeFilter<"SalesInvoice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"SalesInvoice"> | Date | string
   customer?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
-  warehouse?: Prisma.XOR<Prisma.WarehouseNullableScalarRelationFilter, Prisma.WarehouseWhereInput> | null
+  order?: Prisma.XOR<Prisma.SalesOrderNullableScalarRelationFilter, Prisma.SalesOrderWhereInput> | null
   do?: Prisma.XOR<Prisma.DeliveryOrderNullableScalarRelationFilter, Prisma.DeliveryOrderWhereInput> | null
+  warehouse?: Prisma.XOR<Prisma.WarehouseNullableScalarRelationFilter, Prisma.WarehouseWhereInput> | null
   journalEntry?: Prisma.XOR<Prisma.JournalEntryNullableScalarRelationFilter, Prisma.JournalEntryWhereInput> | null
   items?: Prisma.SalesInvoiceItemListRelationFilter
   returns?: Prisma.SalesReturnListRelationFilter
@@ -288,18 +297,20 @@ export type SalesInvoiceOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   invoiceNo?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
+  orderId?: Prisma.SortOrderInput | Prisma.SortOrder
+  doId?: Prisma.SortOrderInput | Prisma.SortOrder
   warehouseId?: Prisma.SortOrderInput | Prisma.SortOrder
   date?: Prisma.SortOrder
   dueDate?: Prisma.SortOrderInput | Prisma.SortOrder
   totalAmount?: Prisma.SortOrder
   taxAmount?: Prisma.SortOrder
-  doId?: Prisma.SortOrderInput | Prisma.SortOrder
   journalEntryId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   customer?: Prisma.CustomerOrderByWithRelationInput
-  warehouse?: Prisma.WarehouseOrderByWithRelationInput
+  order?: Prisma.SalesOrderOrderByWithRelationInput
   do?: Prisma.DeliveryOrderOrderByWithRelationInput
+  warehouse?: Prisma.WarehouseOrderByWithRelationInput
   journalEntry?: Prisma.JournalEntryOrderByWithRelationInput
   items?: Prisma.SalesInvoiceItemOrderByRelationAggregateInput
   returns?: Prisma.SalesReturnOrderByRelationAggregateInput
@@ -313,17 +324,19 @@ export type SalesInvoiceWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.SalesInvoiceWhereInput[]
   NOT?: Prisma.SalesInvoiceWhereInput | Prisma.SalesInvoiceWhereInput[]
   customerId?: Prisma.StringFilter<"SalesInvoice"> | string
+  orderId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
+  doId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
   warehouseId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
   date?: Prisma.DateTimeFilter<"SalesInvoice"> | Date | string
   dueDate?: Prisma.DateTimeNullableFilter<"SalesInvoice"> | Date | string | null
   totalAmount?: Prisma.DecimalFilter<"SalesInvoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFilter<"SalesInvoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
   createdAt?: Prisma.DateTimeFilter<"SalesInvoice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"SalesInvoice"> | Date | string
   customer?: Prisma.XOR<Prisma.CustomerScalarRelationFilter, Prisma.CustomerWhereInput>
-  warehouse?: Prisma.XOR<Prisma.WarehouseNullableScalarRelationFilter, Prisma.WarehouseWhereInput> | null
+  order?: Prisma.XOR<Prisma.SalesOrderNullableScalarRelationFilter, Prisma.SalesOrderWhereInput> | null
   do?: Prisma.XOR<Prisma.DeliveryOrderNullableScalarRelationFilter, Prisma.DeliveryOrderWhereInput> | null
+  warehouse?: Prisma.XOR<Prisma.WarehouseNullableScalarRelationFilter, Prisma.WarehouseWhereInput> | null
   journalEntry?: Prisma.XOR<Prisma.JournalEntryNullableScalarRelationFilter, Prisma.JournalEntryWhereInput> | null
   items?: Prisma.SalesInvoiceItemListRelationFilter
   returns?: Prisma.SalesReturnListRelationFilter
@@ -333,12 +346,13 @@ export type SalesInvoiceOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   invoiceNo?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
+  orderId?: Prisma.SortOrderInput | Prisma.SortOrder
+  doId?: Prisma.SortOrderInput | Prisma.SortOrder
   warehouseId?: Prisma.SortOrderInput | Prisma.SortOrder
   date?: Prisma.SortOrder
   dueDate?: Prisma.SortOrderInput | Prisma.SortOrder
   totalAmount?: Prisma.SortOrder
   taxAmount?: Prisma.SortOrder
-  doId?: Prisma.SortOrderInput | Prisma.SortOrder
   journalEntryId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -356,12 +370,13 @@ export type SalesInvoiceScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"SalesInvoice"> | string
   invoiceNo?: Prisma.StringWithAggregatesFilter<"SalesInvoice"> | string
   customerId?: Prisma.StringWithAggregatesFilter<"SalesInvoice"> | string
+  orderId?: Prisma.StringNullableWithAggregatesFilter<"SalesInvoice"> | string | null
+  doId?: Prisma.StringNullableWithAggregatesFilter<"SalesInvoice"> | string | null
   warehouseId?: Prisma.StringNullableWithAggregatesFilter<"SalesInvoice"> | string | null
   date?: Prisma.DateTimeWithAggregatesFilter<"SalesInvoice"> | Date | string
   dueDate?: Prisma.DateTimeNullableWithAggregatesFilter<"SalesInvoice"> | Date | string | null
   totalAmount?: Prisma.DecimalWithAggregatesFilter<"SalesInvoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalWithAggregatesFilter<"SalesInvoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: Prisma.StringNullableWithAggregatesFilter<"SalesInvoice"> | string | null
   journalEntryId?: Prisma.StringNullableWithAggregatesFilter<"SalesInvoice"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"SalesInvoice"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"SalesInvoice"> | Date | string
@@ -377,8 +392,9 @@ export type SalesInvoiceCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   customer: Prisma.CustomerCreateNestedOneWithoutInvoicesInput
-  warehouse?: Prisma.WarehouseCreateNestedOneWithoutSalesInvoicesInput
+  order?: Prisma.SalesOrderCreateNestedOneWithoutInvoicesInput
   do?: Prisma.DeliveryOrderCreateNestedOneWithoutInvoicesInput
+  warehouse?: Prisma.WarehouseCreateNestedOneWithoutSalesInvoicesInput
   journalEntry?: Prisma.JournalEntryCreateNestedOneWithoutSalesInvoiceInput
   items?: Prisma.SalesInvoiceItemCreateNestedManyWithoutInvoiceInput
   returns?: Prisma.SalesReturnCreateNestedManyWithoutInvoiceInput
@@ -388,12 +404,13 @@ export type SalesInvoiceUncheckedCreateInput = {
   id?: string
   invoiceNo: string
   customerId: string
+  orderId?: string | null
+  doId?: string | null
   warehouseId?: string | null
   date: Date | string
   dueDate?: Date | string | null
   totalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: string | null
   journalEntryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -411,8 +428,9 @@ export type SalesInvoiceUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneRequiredWithoutInvoicesNestedInput
-  warehouse?: Prisma.WarehouseUpdateOneWithoutSalesInvoicesNestedInput
+  order?: Prisma.SalesOrderUpdateOneWithoutInvoicesNestedInput
   do?: Prisma.DeliveryOrderUpdateOneWithoutInvoicesNestedInput
+  warehouse?: Prisma.WarehouseUpdateOneWithoutSalesInvoicesNestedInput
   journalEntry?: Prisma.JournalEntryUpdateOneWithoutSalesInvoiceNestedInput
   items?: Prisma.SalesInvoiceItemUpdateManyWithoutInvoiceNestedInput
   returns?: Prisma.SalesReturnUpdateManyWithoutInvoiceNestedInput
@@ -422,12 +440,13 @@ export type SalesInvoiceUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   warehouseId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   totalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   journalEntryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -439,12 +458,13 @@ export type SalesInvoiceCreateManyInput = {
   id?: string
   invoiceNo: string
   customerId: string
+  orderId?: string | null
+  doId?: string | null
   warehouseId?: string | null
   date: Date | string
   dueDate?: Date | string | null
   totalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: string | null
   journalEntryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -465,12 +485,13 @@ export type SalesInvoiceUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   warehouseId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   totalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   journalEntryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -495,12 +516,13 @@ export type SalesInvoiceCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   invoiceNo?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
+  orderId?: Prisma.SortOrder
+  doId?: Prisma.SortOrder
   warehouseId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   dueDate?: Prisma.SortOrder
   totalAmount?: Prisma.SortOrder
   taxAmount?: Prisma.SortOrder
-  doId?: Prisma.SortOrder
   journalEntryId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -515,12 +537,13 @@ export type SalesInvoiceMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   invoiceNo?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
+  orderId?: Prisma.SortOrder
+  doId?: Prisma.SortOrder
   warehouseId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   dueDate?: Prisma.SortOrder
   totalAmount?: Prisma.SortOrder
   taxAmount?: Prisma.SortOrder
-  doId?: Prisma.SortOrder
   journalEntryId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -530,12 +553,13 @@ export type SalesInvoiceMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   invoiceNo?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
+  orderId?: Prisma.SortOrder
+  doId?: Prisma.SortOrder
   warehouseId?: Prisma.SortOrder
   date?: Prisma.SortOrder
   dueDate?: Prisma.SortOrder
   totalAmount?: Prisma.SortOrder
   taxAmount?: Prisma.SortOrder
-  doId?: Prisma.SortOrder
   journalEntryId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -667,6 +691,48 @@ export type SalesInvoiceUncheckedUpdateOneWithoutJournalEntryNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.SalesInvoiceUpdateToOneWithWhereWithoutJournalEntryInput, Prisma.SalesInvoiceUpdateWithoutJournalEntryInput>, Prisma.SalesInvoiceUncheckedUpdateWithoutJournalEntryInput>
 }
 
+export type SalesInvoiceCreateNestedManyWithoutOrderInput = {
+  create?: Prisma.XOR<Prisma.SalesInvoiceCreateWithoutOrderInput, Prisma.SalesInvoiceUncheckedCreateWithoutOrderInput> | Prisma.SalesInvoiceCreateWithoutOrderInput[] | Prisma.SalesInvoiceUncheckedCreateWithoutOrderInput[]
+  connectOrCreate?: Prisma.SalesInvoiceCreateOrConnectWithoutOrderInput | Prisma.SalesInvoiceCreateOrConnectWithoutOrderInput[]
+  createMany?: Prisma.SalesInvoiceCreateManyOrderInputEnvelope
+  connect?: Prisma.SalesInvoiceWhereUniqueInput | Prisma.SalesInvoiceWhereUniqueInput[]
+}
+
+export type SalesInvoiceUncheckedCreateNestedManyWithoutOrderInput = {
+  create?: Prisma.XOR<Prisma.SalesInvoiceCreateWithoutOrderInput, Prisma.SalesInvoiceUncheckedCreateWithoutOrderInput> | Prisma.SalesInvoiceCreateWithoutOrderInput[] | Prisma.SalesInvoiceUncheckedCreateWithoutOrderInput[]
+  connectOrCreate?: Prisma.SalesInvoiceCreateOrConnectWithoutOrderInput | Prisma.SalesInvoiceCreateOrConnectWithoutOrderInput[]
+  createMany?: Prisma.SalesInvoiceCreateManyOrderInputEnvelope
+  connect?: Prisma.SalesInvoiceWhereUniqueInput | Prisma.SalesInvoiceWhereUniqueInput[]
+}
+
+export type SalesInvoiceUpdateManyWithoutOrderNestedInput = {
+  create?: Prisma.XOR<Prisma.SalesInvoiceCreateWithoutOrderInput, Prisma.SalesInvoiceUncheckedCreateWithoutOrderInput> | Prisma.SalesInvoiceCreateWithoutOrderInput[] | Prisma.SalesInvoiceUncheckedCreateWithoutOrderInput[]
+  connectOrCreate?: Prisma.SalesInvoiceCreateOrConnectWithoutOrderInput | Prisma.SalesInvoiceCreateOrConnectWithoutOrderInput[]
+  upsert?: Prisma.SalesInvoiceUpsertWithWhereUniqueWithoutOrderInput | Prisma.SalesInvoiceUpsertWithWhereUniqueWithoutOrderInput[]
+  createMany?: Prisma.SalesInvoiceCreateManyOrderInputEnvelope
+  set?: Prisma.SalesInvoiceWhereUniqueInput | Prisma.SalesInvoiceWhereUniqueInput[]
+  disconnect?: Prisma.SalesInvoiceWhereUniqueInput | Prisma.SalesInvoiceWhereUniqueInput[]
+  delete?: Prisma.SalesInvoiceWhereUniqueInput | Prisma.SalesInvoiceWhereUniqueInput[]
+  connect?: Prisma.SalesInvoiceWhereUniqueInput | Prisma.SalesInvoiceWhereUniqueInput[]
+  update?: Prisma.SalesInvoiceUpdateWithWhereUniqueWithoutOrderInput | Prisma.SalesInvoiceUpdateWithWhereUniqueWithoutOrderInput[]
+  updateMany?: Prisma.SalesInvoiceUpdateManyWithWhereWithoutOrderInput | Prisma.SalesInvoiceUpdateManyWithWhereWithoutOrderInput[]
+  deleteMany?: Prisma.SalesInvoiceScalarWhereInput | Prisma.SalesInvoiceScalarWhereInput[]
+}
+
+export type SalesInvoiceUncheckedUpdateManyWithoutOrderNestedInput = {
+  create?: Prisma.XOR<Prisma.SalesInvoiceCreateWithoutOrderInput, Prisma.SalesInvoiceUncheckedCreateWithoutOrderInput> | Prisma.SalesInvoiceCreateWithoutOrderInput[] | Prisma.SalesInvoiceUncheckedCreateWithoutOrderInput[]
+  connectOrCreate?: Prisma.SalesInvoiceCreateOrConnectWithoutOrderInput | Prisma.SalesInvoiceCreateOrConnectWithoutOrderInput[]
+  upsert?: Prisma.SalesInvoiceUpsertWithWhereUniqueWithoutOrderInput | Prisma.SalesInvoiceUpsertWithWhereUniqueWithoutOrderInput[]
+  createMany?: Prisma.SalesInvoiceCreateManyOrderInputEnvelope
+  set?: Prisma.SalesInvoiceWhereUniqueInput | Prisma.SalesInvoiceWhereUniqueInput[]
+  disconnect?: Prisma.SalesInvoiceWhereUniqueInput | Prisma.SalesInvoiceWhereUniqueInput[]
+  delete?: Prisma.SalesInvoiceWhereUniqueInput | Prisma.SalesInvoiceWhereUniqueInput[]
+  connect?: Prisma.SalesInvoiceWhereUniqueInput | Prisma.SalesInvoiceWhereUniqueInput[]
+  update?: Prisma.SalesInvoiceUpdateWithWhereUniqueWithoutOrderInput | Prisma.SalesInvoiceUpdateWithWhereUniqueWithoutOrderInput[]
+  updateMany?: Prisma.SalesInvoiceUpdateManyWithWhereWithoutOrderInput | Prisma.SalesInvoiceUpdateManyWithWhereWithoutOrderInput[]
+  deleteMany?: Prisma.SalesInvoiceScalarWhereInput | Prisma.SalesInvoiceScalarWhereInput[]
+}
+
 export type SalesInvoiceCreateNestedManyWithoutDoInput = {
   create?: Prisma.XOR<Prisma.SalesInvoiceCreateWithoutDoInput, Prisma.SalesInvoiceUncheckedCreateWithoutDoInput> | Prisma.SalesInvoiceCreateWithoutDoInput[] | Prisma.SalesInvoiceUncheckedCreateWithoutDoInput[]
   connectOrCreate?: Prisma.SalesInvoiceCreateOrConnectWithoutDoInput | Prisma.SalesInvoiceCreateOrConnectWithoutDoInput[]
@@ -729,10 +795,12 @@ export type SalesInvoiceCreateNestedOneWithoutReturnsInput = {
   connect?: Prisma.SalesInvoiceWhereUniqueInput
 }
 
-export type SalesInvoiceUpdateOneRequiredWithoutReturnsNestedInput = {
+export type SalesInvoiceUpdateOneWithoutReturnsNestedInput = {
   create?: Prisma.XOR<Prisma.SalesInvoiceCreateWithoutReturnsInput, Prisma.SalesInvoiceUncheckedCreateWithoutReturnsInput>
   connectOrCreate?: Prisma.SalesInvoiceCreateOrConnectWithoutReturnsInput
   upsert?: Prisma.SalesInvoiceUpsertWithoutReturnsInput
+  disconnect?: Prisma.SalesInvoiceWhereInput | boolean
+  delete?: Prisma.SalesInvoiceWhereInput | boolean
   connect?: Prisma.SalesInvoiceWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.SalesInvoiceUpdateToOneWithWhereWithoutReturnsInput, Prisma.SalesInvoiceUpdateWithoutReturnsInput>, Prisma.SalesInvoiceUncheckedUpdateWithoutReturnsInput>
 }
@@ -746,8 +814,9 @@ export type SalesInvoiceCreateWithoutCustomerInput = {
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   createdAt?: Date | string
   updatedAt?: Date | string
-  warehouse?: Prisma.WarehouseCreateNestedOneWithoutSalesInvoicesInput
+  order?: Prisma.SalesOrderCreateNestedOneWithoutInvoicesInput
   do?: Prisma.DeliveryOrderCreateNestedOneWithoutInvoicesInput
+  warehouse?: Prisma.WarehouseCreateNestedOneWithoutSalesInvoicesInput
   journalEntry?: Prisma.JournalEntryCreateNestedOneWithoutSalesInvoiceInput
   items?: Prisma.SalesInvoiceItemCreateNestedManyWithoutInvoiceInput
   returns?: Prisma.SalesReturnCreateNestedManyWithoutInvoiceInput
@@ -756,12 +825,13 @@ export type SalesInvoiceCreateWithoutCustomerInput = {
 export type SalesInvoiceUncheckedCreateWithoutCustomerInput = {
   id?: string
   invoiceNo: string
+  orderId?: string | null
+  doId?: string | null
   warehouseId?: string | null
   date: Date | string
   dueDate?: Date | string | null
   totalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: string | null
   journalEntryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -802,12 +872,13 @@ export type SalesInvoiceScalarWhereInput = {
   id?: Prisma.StringFilter<"SalesInvoice"> | string
   invoiceNo?: Prisma.StringFilter<"SalesInvoice"> | string
   customerId?: Prisma.StringFilter<"SalesInvoice"> | string
+  orderId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
+  doId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
   warehouseId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
   date?: Prisma.DateTimeFilter<"SalesInvoice"> | Date | string
   dueDate?: Prisma.DateTimeNullableFilter<"SalesInvoice"> | Date | string | null
   totalAmount?: Prisma.DecimalFilter<"SalesInvoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFilter<"SalesInvoice"> | runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
   journalEntryId?: Prisma.StringNullableFilter<"SalesInvoice"> | string | null
   createdAt?: Prisma.DateTimeFilter<"SalesInvoice"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"SalesInvoice"> | Date | string
@@ -823,6 +894,7 @@ export type SalesInvoiceCreateWithoutWarehouseInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   customer: Prisma.CustomerCreateNestedOneWithoutInvoicesInput
+  order?: Prisma.SalesOrderCreateNestedOneWithoutInvoicesInput
   do?: Prisma.DeliveryOrderCreateNestedOneWithoutInvoicesInput
   journalEntry?: Prisma.JournalEntryCreateNestedOneWithoutSalesInvoiceInput
   items?: Prisma.SalesInvoiceItemCreateNestedManyWithoutInvoiceInput
@@ -833,11 +905,12 @@ export type SalesInvoiceUncheckedCreateWithoutWarehouseInput = {
   id?: string
   invoiceNo: string
   customerId: string
+  orderId?: string | null
+  doId?: string | null
   date: Date | string
   dueDate?: Date | string | null
   totalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: string | null
   journalEntryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -881,8 +954,9 @@ export type SalesInvoiceCreateWithoutJournalEntryInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   customer: Prisma.CustomerCreateNestedOneWithoutInvoicesInput
-  warehouse?: Prisma.WarehouseCreateNestedOneWithoutSalesInvoicesInput
+  order?: Prisma.SalesOrderCreateNestedOneWithoutInvoicesInput
   do?: Prisma.DeliveryOrderCreateNestedOneWithoutInvoicesInput
+  warehouse?: Prisma.WarehouseCreateNestedOneWithoutSalesInvoicesInput
   items?: Prisma.SalesInvoiceItemCreateNestedManyWithoutInvoiceInput
   returns?: Prisma.SalesReturnCreateNestedManyWithoutInvoiceInput
 }
@@ -891,12 +965,13 @@ export type SalesInvoiceUncheckedCreateWithoutJournalEntryInput = {
   id?: string
   invoiceNo: string
   customerId: string
+  orderId?: string | null
+  doId?: string | null
   warehouseId?: string | null
   date: Date | string
   dueDate?: Date | string | null
   totalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   items?: Prisma.SalesInvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
@@ -929,8 +1004,9 @@ export type SalesInvoiceUpdateWithoutJournalEntryInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneRequiredWithoutInvoicesNestedInput
-  warehouse?: Prisma.WarehouseUpdateOneWithoutSalesInvoicesNestedInput
+  order?: Prisma.SalesOrderUpdateOneWithoutInvoicesNestedInput
   do?: Prisma.DeliveryOrderUpdateOneWithoutInvoicesNestedInput
+  warehouse?: Prisma.WarehouseUpdateOneWithoutSalesInvoicesNestedInput
   items?: Prisma.SalesInvoiceItemUpdateManyWithoutInvoiceNestedInput
   returns?: Prisma.SalesReturnUpdateManyWithoutInvoiceNestedInput
 }
@@ -939,16 +1015,77 @@ export type SalesInvoiceUncheckedUpdateWithoutJournalEntryInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   warehouseId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   totalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   items?: Prisma.SalesInvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
   returns?: Prisma.SalesReturnUncheckedUpdateManyWithoutInvoiceNestedInput
+}
+
+export type SalesInvoiceCreateWithoutOrderInput = {
+  id?: string
+  invoiceNo: string
+  date: Date | string
+  dueDate?: Date | string | null
+  totalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  customer: Prisma.CustomerCreateNestedOneWithoutInvoicesInput
+  do?: Prisma.DeliveryOrderCreateNestedOneWithoutInvoicesInput
+  warehouse?: Prisma.WarehouseCreateNestedOneWithoutSalesInvoicesInput
+  journalEntry?: Prisma.JournalEntryCreateNestedOneWithoutSalesInvoiceInput
+  items?: Prisma.SalesInvoiceItemCreateNestedManyWithoutInvoiceInput
+  returns?: Prisma.SalesReturnCreateNestedManyWithoutInvoiceInput
+}
+
+export type SalesInvoiceUncheckedCreateWithoutOrderInput = {
+  id?: string
+  invoiceNo: string
+  customerId: string
+  doId?: string | null
+  warehouseId?: string | null
+  date: Date | string
+  dueDate?: Date | string | null
+  totalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  journalEntryId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  items?: Prisma.SalesInvoiceItemUncheckedCreateNestedManyWithoutInvoiceInput
+  returns?: Prisma.SalesReturnUncheckedCreateNestedManyWithoutInvoiceInput
+}
+
+export type SalesInvoiceCreateOrConnectWithoutOrderInput = {
+  where: Prisma.SalesInvoiceWhereUniqueInput
+  create: Prisma.XOR<Prisma.SalesInvoiceCreateWithoutOrderInput, Prisma.SalesInvoiceUncheckedCreateWithoutOrderInput>
+}
+
+export type SalesInvoiceCreateManyOrderInputEnvelope = {
+  data: Prisma.SalesInvoiceCreateManyOrderInput | Prisma.SalesInvoiceCreateManyOrderInput[]
+  skipDuplicates?: boolean
+}
+
+export type SalesInvoiceUpsertWithWhereUniqueWithoutOrderInput = {
+  where: Prisma.SalesInvoiceWhereUniqueInput
+  update: Prisma.XOR<Prisma.SalesInvoiceUpdateWithoutOrderInput, Prisma.SalesInvoiceUncheckedUpdateWithoutOrderInput>
+  create: Prisma.XOR<Prisma.SalesInvoiceCreateWithoutOrderInput, Prisma.SalesInvoiceUncheckedCreateWithoutOrderInput>
+}
+
+export type SalesInvoiceUpdateWithWhereUniqueWithoutOrderInput = {
+  where: Prisma.SalesInvoiceWhereUniqueInput
+  data: Prisma.XOR<Prisma.SalesInvoiceUpdateWithoutOrderInput, Prisma.SalesInvoiceUncheckedUpdateWithoutOrderInput>
+}
+
+export type SalesInvoiceUpdateManyWithWhereWithoutOrderInput = {
+  where: Prisma.SalesInvoiceScalarWhereInput
+  data: Prisma.XOR<Prisma.SalesInvoiceUpdateManyMutationInput, Prisma.SalesInvoiceUncheckedUpdateManyWithoutOrderInput>
 }
 
 export type SalesInvoiceCreateWithoutDoInput = {
@@ -961,6 +1098,7 @@ export type SalesInvoiceCreateWithoutDoInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   customer: Prisma.CustomerCreateNestedOneWithoutInvoicesInput
+  order?: Prisma.SalesOrderCreateNestedOneWithoutInvoicesInput
   warehouse?: Prisma.WarehouseCreateNestedOneWithoutSalesInvoicesInput
   journalEntry?: Prisma.JournalEntryCreateNestedOneWithoutSalesInvoiceInput
   items?: Prisma.SalesInvoiceItemCreateNestedManyWithoutInvoiceInput
@@ -971,6 +1109,7 @@ export type SalesInvoiceUncheckedCreateWithoutDoInput = {
   id?: string
   invoiceNo: string
   customerId: string
+  orderId?: string | null
   warehouseId?: string | null
   date: Date | string
   dueDate?: Date | string | null
@@ -1019,8 +1158,9 @@ export type SalesInvoiceCreateWithoutItemsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   customer: Prisma.CustomerCreateNestedOneWithoutInvoicesInput
-  warehouse?: Prisma.WarehouseCreateNestedOneWithoutSalesInvoicesInput
+  order?: Prisma.SalesOrderCreateNestedOneWithoutInvoicesInput
   do?: Prisma.DeliveryOrderCreateNestedOneWithoutInvoicesInput
+  warehouse?: Prisma.WarehouseCreateNestedOneWithoutSalesInvoicesInput
   journalEntry?: Prisma.JournalEntryCreateNestedOneWithoutSalesInvoiceInput
   returns?: Prisma.SalesReturnCreateNestedManyWithoutInvoiceInput
 }
@@ -1029,12 +1169,13 @@ export type SalesInvoiceUncheckedCreateWithoutItemsInput = {
   id?: string
   invoiceNo: string
   customerId: string
+  orderId?: string | null
+  doId?: string | null
   warehouseId?: string | null
   date: Date | string
   dueDate?: Date | string | null
   totalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: string | null
   journalEntryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1067,8 +1208,9 @@ export type SalesInvoiceUpdateWithoutItemsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneRequiredWithoutInvoicesNestedInput
-  warehouse?: Prisma.WarehouseUpdateOneWithoutSalesInvoicesNestedInput
+  order?: Prisma.SalesOrderUpdateOneWithoutInvoicesNestedInput
   do?: Prisma.DeliveryOrderUpdateOneWithoutInvoicesNestedInput
+  warehouse?: Prisma.WarehouseUpdateOneWithoutSalesInvoicesNestedInput
   journalEntry?: Prisma.JournalEntryUpdateOneWithoutSalesInvoiceNestedInput
   returns?: Prisma.SalesReturnUpdateManyWithoutInvoiceNestedInput
 }
@@ -1077,12 +1219,13 @@ export type SalesInvoiceUncheckedUpdateWithoutItemsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   warehouseId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   totalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   journalEntryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1099,8 +1242,9 @@ export type SalesInvoiceCreateWithoutReturnsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   customer: Prisma.CustomerCreateNestedOneWithoutInvoicesInput
-  warehouse?: Prisma.WarehouseCreateNestedOneWithoutSalesInvoicesInput
+  order?: Prisma.SalesOrderCreateNestedOneWithoutInvoicesInput
   do?: Prisma.DeliveryOrderCreateNestedOneWithoutInvoicesInput
+  warehouse?: Prisma.WarehouseCreateNestedOneWithoutSalesInvoicesInput
   journalEntry?: Prisma.JournalEntryCreateNestedOneWithoutSalesInvoiceInput
   items?: Prisma.SalesInvoiceItemCreateNestedManyWithoutInvoiceInput
 }
@@ -1109,12 +1253,13 @@ export type SalesInvoiceUncheckedCreateWithoutReturnsInput = {
   id?: string
   invoiceNo: string
   customerId: string
+  orderId?: string | null
+  doId?: string | null
   warehouseId?: string | null
   date: Date | string
   dueDate?: Date | string | null
   totalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: string | null
   journalEntryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1147,8 +1292,9 @@ export type SalesInvoiceUpdateWithoutReturnsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneRequiredWithoutInvoicesNestedInput
-  warehouse?: Prisma.WarehouseUpdateOneWithoutSalesInvoicesNestedInput
+  order?: Prisma.SalesOrderUpdateOneWithoutInvoicesNestedInput
   do?: Prisma.DeliveryOrderUpdateOneWithoutInvoicesNestedInput
+  warehouse?: Prisma.WarehouseUpdateOneWithoutSalesInvoicesNestedInput
   journalEntry?: Prisma.JournalEntryUpdateOneWithoutSalesInvoiceNestedInput
   items?: Prisma.SalesInvoiceItemUpdateManyWithoutInvoiceNestedInput
 }
@@ -1157,12 +1303,13 @@ export type SalesInvoiceUncheckedUpdateWithoutReturnsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   warehouseId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   totalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   journalEntryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1172,12 +1319,13 @@ export type SalesInvoiceUncheckedUpdateWithoutReturnsInput = {
 export type SalesInvoiceCreateManyCustomerInput = {
   id?: string
   invoiceNo: string
+  orderId?: string | null
+  doId?: string | null
   warehouseId?: string | null
   date: Date | string
   dueDate?: Date | string | null
   totalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: string | null
   journalEntryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1192,8 +1340,9 @@ export type SalesInvoiceUpdateWithoutCustomerInput = {
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  warehouse?: Prisma.WarehouseUpdateOneWithoutSalesInvoicesNestedInput
+  order?: Prisma.SalesOrderUpdateOneWithoutInvoicesNestedInput
   do?: Prisma.DeliveryOrderUpdateOneWithoutInvoicesNestedInput
+  warehouse?: Prisma.WarehouseUpdateOneWithoutSalesInvoicesNestedInput
   journalEntry?: Prisma.JournalEntryUpdateOneWithoutSalesInvoiceNestedInput
   items?: Prisma.SalesInvoiceItemUpdateManyWithoutInvoiceNestedInput
   returns?: Prisma.SalesReturnUpdateManyWithoutInvoiceNestedInput
@@ -1202,12 +1351,13 @@ export type SalesInvoiceUpdateWithoutCustomerInput = {
 export type SalesInvoiceUncheckedUpdateWithoutCustomerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   warehouseId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   totalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   journalEntryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1218,12 +1368,13 @@ export type SalesInvoiceUncheckedUpdateWithoutCustomerInput = {
 export type SalesInvoiceUncheckedUpdateManyWithoutCustomerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   warehouseId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   totalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   journalEntryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1233,11 +1384,12 @@ export type SalesInvoiceCreateManyWarehouseInput = {
   id?: string
   invoiceNo: string
   customerId: string
+  orderId?: string | null
+  doId?: string | null
   date: Date | string
   dueDate?: Date | string | null
   totalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: string | null
   journalEntryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1253,6 +1405,7 @@ export type SalesInvoiceUpdateWithoutWarehouseInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneRequiredWithoutInvoicesNestedInput
+  order?: Prisma.SalesOrderUpdateOneWithoutInvoicesNestedInput
   do?: Prisma.DeliveryOrderUpdateOneWithoutInvoicesNestedInput
   journalEntry?: Prisma.JournalEntryUpdateOneWithoutSalesInvoiceNestedInput
   items?: Prisma.SalesInvoiceItemUpdateManyWithoutInvoiceNestedInput
@@ -1263,11 +1416,12 @@ export type SalesInvoiceUncheckedUpdateWithoutWarehouseInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   totalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   journalEntryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1279,11 +1433,76 @@ export type SalesInvoiceUncheckedUpdateManyWithoutWarehouseInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   totalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  journalEntryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type SalesInvoiceCreateManyOrderInput = {
+  id?: string
+  invoiceNo: string
+  customerId: string
+  doId?: string | null
+  warehouseId?: string | null
+  date: Date | string
+  dueDate?: Date | string | null
+  totalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  journalEntryId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type SalesInvoiceUpdateWithoutOrderInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  customer?: Prisma.CustomerUpdateOneRequiredWithoutInvoicesNestedInput
+  do?: Prisma.DeliveryOrderUpdateOneWithoutInvoicesNestedInput
+  warehouse?: Prisma.WarehouseUpdateOneWithoutSalesInvoicesNestedInput
+  journalEntry?: Prisma.JournalEntryUpdateOneWithoutSalesInvoiceNestedInput
+  items?: Prisma.SalesInvoiceItemUpdateManyWithoutInvoiceNestedInput
+  returns?: Prisma.SalesReturnUpdateManyWithoutInvoiceNestedInput
+}
+
+export type SalesInvoiceUncheckedUpdateWithoutOrderInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
+  customerId?: Prisma.StringFieldUpdateOperationsInput | string
   doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  warehouseId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  journalEntryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  items?: Prisma.SalesInvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput
+  returns?: Prisma.SalesReturnUncheckedUpdateManyWithoutInvoiceNestedInput
+}
+
+export type SalesInvoiceUncheckedUpdateManyWithoutOrderInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
+  customerId?: Prisma.StringFieldUpdateOperationsInput | string
+  doId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  warehouseId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   journalEntryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1293,6 +1512,7 @@ export type SalesInvoiceCreateManyDoInput = {
   id?: string
   invoiceNo: string
   customerId: string
+  orderId?: string | null
   warehouseId?: string | null
   date: Date | string
   dueDate?: Date | string | null
@@ -1313,6 +1533,7 @@ export type SalesInvoiceUpdateWithoutDoInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneRequiredWithoutInvoicesNestedInput
+  order?: Prisma.SalesOrderUpdateOneWithoutInvoicesNestedInput
   warehouse?: Prisma.WarehouseUpdateOneWithoutSalesInvoicesNestedInput
   journalEntry?: Prisma.JournalEntryUpdateOneWithoutSalesInvoiceNestedInput
   items?: Prisma.SalesInvoiceItemUpdateManyWithoutInvoiceNestedInput
@@ -1323,6 +1544,7 @@ export type SalesInvoiceUncheckedUpdateWithoutDoInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   warehouseId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1339,6 +1561,7 @@ export type SalesInvoiceUncheckedUpdateManyWithoutDoInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceNo?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   warehouseId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   date?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   dueDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1393,18 +1616,20 @@ export type SalesInvoiceSelect<ExtArgs extends runtime.Types.Extensions.Internal
   id?: boolean
   invoiceNo?: boolean
   customerId?: boolean
+  orderId?: boolean
+  doId?: boolean
   warehouseId?: boolean
   date?: boolean
   dueDate?: boolean
   totalAmount?: boolean
   taxAmount?: boolean
-  doId?: boolean
   journalEntryId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
-  warehouse?: boolean | Prisma.SalesInvoice$warehouseArgs<ExtArgs>
+  order?: boolean | Prisma.SalesInvoice$orderArgs<ExtArgs>
   do?: boolean | Prisma.SalesInvoice$doArgs<ExtArgs>
+  warehouse?: boolean | Prisma.SalesInvoice$warehouseArgs<ExtArgs>
   journalEntry?: boolean | Prisma.SalesInvoice$journalEntryArgs<ExtArgs>
   items?: boolean | Prisma.SalesInvoice$itemsArgs<ExtArgs>
   returns?: boolean | Prisma.SalesInvoice$returnsArgs<ExtArgs>
@@ -1415,18 +1640,20 @@ export type SalesInvoiceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   id?: boolean
   invoiceNo?: boolean
   customerId?: boolean
+  orderId?: boolean
+  doId?: boolean
   warehouseId?: boolean
   date?: boolean
   dueDate?: boolean
   totalAmount?: boolean
   taxAmount?: boolean
-  doId?: boolean
   journalEntryId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
-  warehouse?: boolean | Prisma.SalesInvoice$warehouseArgs<ExtArgs>
+  order?: boolean | Prisma.SalesInvoice$orderArgs<ExtArgs>
   do?: boolean | Prisma.SalesInvoice$doArgs<ExtArgs>
+  warehouse?: boolean | Prisma.SalesInvoice$warehouseArgs<ExtArgs>
   journalEntry?: boolean | Prisma.SalesInvoice$journalEntryArgs<ExtArgs>
 }, ExtArgs["result"]["salesInvoice"]>
 
@@ -1434,18 +1661,20 @@ export type SalesInvoiceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   id?: boolean
   invoiceNo?: boolean
   customerId?: boolean
+  orderId?: boolean
+  doId?: boolean
   warehouseId?: boolean
   date?: boolean
   dueDate?: boolean
   totalAmount?: boolean
   taxAmount?: boolean
-  doId?: boolean
   journalEntryId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
-  warehouse?: boolean | Prisma.SalesInvoice$warehouseArgs<ExtArgs>
+  order?: boolean | Prisma.SalesInvoice$orderArgs<ExtArgs>
   do?: boolean | Prisma.SalesInvoice$doArgs<ExtArgs>
+  warehouse?: boolean | Prisma.SalesInvoice$warehouseArgs<ExtArgs>
   journalEntry?: boolean | Prisma.SalesInvoice$journalEntryArgs<ExtArgs>
 }, ExtArgs["result"]["salesInvoice"]>
 
@@ -1453,22 +1682,24 @@ export type SalesInvoiceSelectScalar = {
   id?: boolean
   invoiceNo?: boolean
   customerId?: boolean
+  orderId?: boolean
+  doId?: boolean
   warehouseId?: boolean
   date?: boolean
   dueDate?: boolean
   totalAmount?: boolean
   taxAmount?: boolean
-  doId?: boolean
   journalEntryId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type SalesInvoiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "invoiceNo" | "customerId" | "warehouseId" | "date" | "dueDate" | "totalAmount" | "taxAmount" | "doId" | "journalEntryId" | "createdAt" | "updatedAt", ExtArgs["result"]["salesInvoice"]>
+export type SalesInvoiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "invoiceNo" | "customerId" | "orderId" | "doId" | "warehouseId" | "date" | "dueDate" | "totalAmount" | "taxAmount" | "journalEntryId" | "createdAt" | "updatedAt", ExtArgs["result"]["salesInvoice"]>
 export type SalesInvoiceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
-  warehouse?: boolean | Prisma.SalesInvoice$warehouseArgs<ExtArgs>
+  order?: boolean | Prisma.SalesInvoice$orderArgs<ExtArgs>
   do?: boolean | Prisma.SalesInvoice$doArgs<ExtArgs>
+  warehouse?: boolean | Prisma.SalesInvoice$warehouseArgs<ExtArgs>
   journalEntry?: boolean | Prisma.SalesInvoice$journalEntryArgs<ExtArgs>
   items?: boolean | Prisma.SalesInvoice$itemsArgs<ExtArgs>
   returns?: boolean | Prisma.SalesInvoice$returnsArgs<ExtArgs>
@@ -1476,14 +1707,16 @@ export type SalesInvoiceInclude<ExtArgs extends runtime.Types.Extensions.Interna
 }
 export type SalesInvoiceIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
-  warehouse?: boolean | Prisma.SalesInvoice$warehouseArgs<ExtArgs>
+  order?: boolean | Prisma.SalesInvoice$orderArgs<ExtArgs>
   do?: boolean | Prisma.SalesInvoice$doArgs<ExtArgs>
+  warehouse?: boolean | Prisma.SalesInvoice$warehouseArgs<ExtArgs>
   journalEntry?: boolean | Prisma.SalesInvoice$journalEntryArgs<ExtArgs>
 }
 export type SalesInvoiceIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   customer?: boolean | Prisma.CustomerDefaultArgs<ExtArgs>
-  warehouse?: boolean | Prisma.SalesInvoice$warehouseArgs<ExtArgs>
+  order?: boolean | Prisma.SalesInvoice$orderArgs<ExtArgs>
   do?: boolean | Prisma.SalesInvoice$doArgs<ExtArgs>
+  warehouse?: boolean | Prisma.SalesInvoice$warehouseArgs<ExtArgs>
   journalEntry?: boolean | Prisma.SalesInvoice$journalEntryArgs<ExtArgs>
 }
 
@@ -1491,8 +1724,9 @@ export type $SalesInvoicePayload<ExtArgs extends runtime.Types.Extensions.Intern
   name: "SalesInvoice"
   objects: {
     customer: Prisma.$CustomerPayload<ExtArgs>
-    warehouse: Prisma.$WarehousePayload<ExtArgs> | null
+    order: Prisma.$SalesOrderPayload<ExtArgs> | null
     do: Prisma.$DeliveryOrderPayload<ExtArgs> | null
+    warehouse: Prisma.$WarehousePayload<ExtArgs> | null
     journalEntry: Prisma.$JournalEntryPayload<ExtArgs> | null
     items: Prisma.$SalesInvoiceItemPayload<ExtArgs>[]
     returns: Prisma.$SalesReturnPayload<ExtArgs>[]
@@ -1501,12 +1735,13 @@ export type $SalesInvoicePayload<ExtArgs extends runtime.Types.Extensions.Intern
     id: string
     invoiceNo: string
     customerId: string
+    orderId: string | null
+    doId: string | null
     warehouseId: string | null
     date: Date
     dueDate: Date | null
     totalAmount: runtime.Decimal
     taxAmount: runtime.Decimal
-    doId: string | null
     journalEntryId: string | null
     createdAt: Date
     updatedAt: Date
@@ -1905,8 +2140,9 @@ readonly fields: SalesInvoiceFieldRefs;
 export interface Prisma__SalesInvoiceClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   customer<T extends Prisma.CustomerDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CustomerDefaultArgs<ExtArgs>>): Prisma.Prisma__CustomerClient<runtime.Types.Result.GetResult<Prisma.$CustomerPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-  warehouse<T extends Prisma.SalesInvoice$warehouseArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SalesInvoice$warehouseArgs<ExtArgs>>): Prisma.Prisma__WarehouseClient<runtime.Types.Result.GetResult<Prisma.$WarehousePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  order<T extends Prisma.SalesInvoice$orderArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SalesInvoice$orderArgs<ExtArgs>>): Prisma.Prisma__SalesOrderClient<runtime.Types.Result.GetResult<Prisma.$SalesOrderPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   do<T extends Prisma.SalesInvoice$doArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SalesInvoice$doArgs<ExtArgs>>): Prisma.Prisma__DeliveryOrderClient<runtime.Types.Result.GetResult<Prisma.$DeliveryOrderPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  warehouse<T extends Prisma.SalesInvoice$warehouseArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SalesInvoice$warehouseArgs<ExtArgs>>): Prisma.Prisma__WarehouseClient<runtime.Types.Result.GetResult<Prisma.$WarehousePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   journalEntry<T extends Prisma.SalesInvoice$journalEntryArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SalesInvoice$journalEntryArgs<ExtArgs>>): Prisma.Prisma__JournalEntryClient<runtime.Types.Result.GetResult<Prisma.$JournalEntryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   items<T extends Prisma.SalesInvoice$itemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SalesInvoice$itemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SalesInvoiceItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   returns<T extends Prisma.SalesInvoice$returnsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SalesInvoice$returnsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SalesReturnPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -1942,12 +2178,13 @@ export interface SalesInvoiceFieldRefs {
   readonly id: Prisma.FieldRef<"SalesInvoice", 'String'>
   readonly invoiceNo: Prisma.FieldRef<"SalesInvoice", 'String'>
   readonly customerId: Prisma.FieldRef<"SalesInvoice", 'String'>
+  readonly orderId: Prisma.FieldRef<"SalesInvoice", 'String'>
+  readonly doId: Prisma.FieldRef<"SalesInvoice", 'String'>
   readonly warehouseId: Prisma.FieldRef<"SalesInvoice", 'String'>
   readonly date: Prisma.FieldRef<"SalesInvoice", 'DateTime'>
   readonly dueDate: Prisma.FieldRef<"SalesInvoice", 'DateTime'>
   readonly totalAmount: Prisma.FieldRef<"SalesInvoice", 'Decimal'>
   readonly taxAmount: Prisma.FieldRef<"SalesInvoice", 'Decimal'>
-  readonly doId: Prisma.FieldRef<"SalesInvoice", 'String'>
   readonly journalEntryId: Prisma.FieldRef<"SalesInvoice", 'String'>
   readonly createdAt: Prisma.FieldRef<"SalesInvoice", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"SalesInvoice", 'DateTime'>
@@ -2347,22 +2584,22 @@ export type SalesInvoiceDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.
 }
 
 /**
- * SalesInvoice.warehouse
+ * SalesInvoice.order
  */
-export type SalesInvoice$warehouseArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+export type SalesInvoice$orderArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
-   * Select specific fields to fetch from the Warehouse
+   * Select specific fields to fetch from the SalesOrder
    */
-  select?: Prisma.WarehouseSelect<ExtArgs> | null
+  select?: Prisma.SalesOrderSelect<ExtArgs> | null
   /**
-   * Omit specific fields from the Warehouse
+   * Omit specific fields from the SalesOrder
    */
-  omit?: Prisma.WarehouseOmit<ExtArgs> | null
+  omit?: Prisma.SalesOrderOmit<ExtArgs> | null
   /**
    * Choose, which related nodes to fetch as well
    */
-  include?: Prisma.WarehouseInclude<ExtArgs> | null
-  where?: Prisma.WarehouseWhereInput
+  include?: Prisma.SalesOrderInclude<ExtArgs> | null
+  where?: Prisma.SalesOrderWhereInput
 }
 
 /**
@@ -2382,6 +2619,25 @@ export type SalesInvoice$doArgs<ExtArgs extends runtime.Types.Extensions.Interna
    */
   include?: Prisma.DeliveryOrderInclude<ExtArgs> | null
   where?: Prisma.DeliveryOrderWhereInput
+}
+
+/**
+ * SalesInvoice.warehouse
+ */
+export type SalesInvoice$warehouseArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Warehouse
+   */
+  select?: Prisma.WarehouseSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Warehouse
+   */
+  omit?: Prisma.WarehouseOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.WarehouseInclude<ExtArgs> | null
+  where?: Prisma.WarehouseWhereInput
 }
 
 /**

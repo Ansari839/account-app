@@ -15,7 +15,7 @@ export class SettingsController {
     static async getGlobalSettings(req: Request) {
         try {
             // In a real app, maybe restrict to Admin
-            const settings = await GlobalSettingsService.getAll();
+            const settings = await GlobalSettingsService.listAll();
             return NextResponse.json({ success: true, data: settings });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });

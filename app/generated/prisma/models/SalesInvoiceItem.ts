@@ -44,6 +44,8 @@ export type SalesInvoiceItemMinAggregateOutputType = {
   id: string | null
   invoiceId: string | null
   productId: string | null
+  soItemId: string | null
+  doItemId: string | null
   qty: runtime.Decimal | null
   rate: runtime.Decimal | null
   taxCodeId: string | null
@@ -55,6 +57,8 @@ export type SalesInvoiceItemMaxAggregateOutputType = {
   id: string | null
   invoiceId: string | null
   productId: string | null
+  soItemId: string | null
+  doItemId: string | null
   qty: runtime.Decimal | null
   rate: runtime.Decimal | null
   taxCodeId: string | null
@@ -66,6 +70,8 @@ export type SalesInvoiceItemCountAggregateOutputType = {
   id: number
   invoiceId: number
   productId: number
+  soItemId: number
+  doItemId: number
   qty: number
   rate: number
   taxCodeId: number
@@ -93,6 +99,8 @@ export type SalesInvoiceItemMinAggregateInputType = {
   id?: true
   invoiceId?: true
   productId?: true
+  soItemId?: true
+  doItemId?: true
   qty?: true
   rate?: true
   taxCodeId?: true
@@ -104,6 +112,8 @@ export type SalesInvoiceItemMaxAggregateInputType = {
   id?: true
   invoiceId?: true
   productId?: true
+  soItemId?: true
+  doItemId?: true
   qty?: true
   rate?: true
   taxCodeId?: true
@@ -115,6 +125,8 @@ export type SalesInvoiceItemCountAggregateInputType = {
   id?: true
   invoiceId?: true
   productId?: true
+  soItemId?: true
+  doItemId?: true
   qty?: true
   rate?: true
   taxCodeId?: true
@@ -213,6 +225,8 @@ export type SalesInvoiceItemGroupByOutputType = {
   id: string
   invoiceId: string
   productId: string
+  soItemId: string | null
+  doItemId: string | null
   qty: runtime.Decimal
   rate: runtime.Decimal
   taxCodeId: string | null
@@ -247,6 +261,8 @@ export type SalesInvoiceItemWhereInput = {
   id?: Prisma.StringFilter<"SalesInvoiceItem"> | string
   invoiceId?: Prisma.StringFilter<"SalesInvoiceItem"> | string
   productId?: Prisma.StringFilter<"SalesInvoiceItem"> | string
+  soItemId?: Prisma.StringNullableFilter<"SalesInvoiceItem"> | string | null
+  doItemId?: Prisma.StringNullableFilter<"SalesInvoiceItem"> | string | null
   qty?: Prisma.DecimalFilter<"SalesInvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFilter<"SalesInvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: Prisma.StringNullableFilter<"SalesInvoiceItem"> | string | null
@@ -254,13 +270,17 @@ export type SalesInvoiceItemWhereInput = {
   total?: Prisma.DecimalFilter<"SalesInvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   invoice?: Prisma.XOR<Prisma.SalesInvoiceScalarRelationFilter, Prisma.SalesInvoiceWhereInput>
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
+  soItem?: Prisma.XOR<Prisma.SalesOrderItemNullableScalarRelationFilter, Prisma.SalesOrderItemWhereInput> | null
   taxCode?: Prisma.XOR<Prisma.TaxCodeNullableScalarRelationFilter, Prisma.TaxCodeWhereInput> | null
+  returnItems?: Prisma.SalesReturnItemListRelationFilter
 }
 
 export type SalesInvoiceItemOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  soItemId?: Prisma.SortOrderInput | Prisma.SortOrder
+  doItemId?: Prisma.SortOrderInput | Prisma.SortOrder
   qty?: Prisma.SortOrder
   rate?: Prisma.SortOrder
   taxCodeId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -268,7 +288,9 @@ export type SalesInvoiceItemOrderByWithRelationInput = {
   total?: Prisma.SortOrder
   invoice?: Prisma.SalesInvoiceOrderByWithRelationInput
   product?: Prisma.ProductOrderByWithRelationInput
+  soItem?: Prisma.SalesOrderItemOrderByWithRelationInput
   taxCode?: Prisma.TaxCodeOrderByWithRelationInput
+  returnItems?: Prisma.SalesReturnItemOrderByRelationAggregateInput
 }
 
 export type SalesInvoiceItemWhereUniqueInput = Prisma.AtLeast<{
@@ -278,6 +300,8 @@ export type SalesInvoiceItemWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.SalesInvoiceItemWhereInput | Prisma.SalesInvoiceItemWhereInput[]
   invoiceId?: Prisma.StringFilter<"SalesInvoiceItem"> | string
   productId?: Prisma.StringFilter<"SalesInvoiceItem"> | string
+  soItemId?: Prisma.StringNullableFilter<"SalesInvoiceItem"> | string | null
+  doItemId?: Prisma.StringNullableFilter<"SalesInvoiceItem"> | string | null
   qty?: Prisma.DecimalFilter<"SalesInvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFilter<"SalesInvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: Prisma.StringNullableFilter<"SalesInvoiceItem"> | string | null
@@ -285,13 +309,17 @@ export type SalesInvoiceItemWhereUniqueInput = Prisma.AtLeast<{
   total?: Prisma.DecimalFilter<"SalesInvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   invoice?: Prisma.XOR<Prisma.SalesInvoiceScalarRelationFilter, Prisma.SalesInvoiceWhereInput>
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
+  soItem?: Prisma.XOR<Prisma.SalesOrderItemNullableScalarRelationFilter, Prisma.SalesOrderItemWhereInput> | null
   taxCode?: Prisma.XOR<Prisma.TaxCodeNullableScalarRelationFilter, Prisma.TaxCodeWhereInput> | null
+  returnItems?: Prisma.SalesReturnItemListRelationFilter
 }, "id">
 
 export type SalesInvoiceItemOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  soItemId?: Prisma.SortOrderInput | Prisma.SortOrder
+  doItemId?: Prisma.SortOrderInput | Prisma.SortOrder
   qty?: Prisma.SortOrder
   rate?: Prisma.SortOrder
   taxCodeId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -311,6 +339,8 @@ export type SalesInvoiceItemScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"SalesInvoiceItem"> | string
   invoiceId?: Prisma.StringWithAggregatesFilter<"SalesInvoiceItem"> | string
   productId?: Prisma.StringWithAggregatesFilter<"SalesInvoiceItem"> | string
+  soItemId?: Prisma.StringNullableWithAggregatesFilter<"SalesInvoiceItem"> | string | null
+  doItemId?: Prisma.StringNullableWithAggregatesFilter<"SalesInvoiceItem"> | string | null
   qty?: Prisma.DecimalWithAggregatesFilter<"SalesInvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalWithAggregatesFilter<"SalesInvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: Prisma.StringNullableWithAggregatesFilter<"SalesInvoiceItem"> | string | null
@@ -320,52 +350,66 @@ export type SalesInvoiceItemScalarWhereWithAggregatesInput = {
 
 export type SalesInvoiceItemCreateInput = {
   id?: string
+  doItemId?: string | null
   qty: runtime.Decimal | runtime.DecimalJsLike | number | string
   rate: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   invoice: Prisma.SalesInvoiceCreateNestedOneWithoutItemsInput
   product: Prisma.ProductCreateNestedOneWithoutSalesInvoiceItemsInput
+  soItem?: Prisma.SalesOrderItemCreateNestedOneWithoutInvoiceItemsInput
   taxCode?: Prisma.TaxCodeCreateNestedOneWithoutSalesInvoiceItemsInput
+  returnItems?: Prisma.SalesReturnItemCreateNestedManyWithoutInvoiceItemInput
 }
 
 export type SalesInvoiceItemUncheckedCreateInput = {
   id?: string
   invoiceId: string
   productId: string
+  soItemId?: string | null
+  doItemId?: string | null
   qty: runtime.Decimal | runtime.DecimalJsLike | number | string
   rate: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: string | null
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  returnItems?: Prisma.SalesReturnItemUncheckedCreateNestedManyWithoutInvoiceItemInput
 }
 
 export type SalesInvoiceItemUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   invoice?: Prisma.SalesInvoiceUpdateOneRequiredWithoutItemsNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutSalesInvoiceItemsNestedInput
+  soItem?: Prisma.SalesOrderItemUpdateOneWithoutInvoiceItemsNestedInput
   taxCode?: Prisma.TaxCodeUpdateOneWithoutSalesInvoiceItemsNestedInput
+  returnItems?: Prisma.SalesReturnItemUpdateManyWithoutInvoiceItemNestedInput
 }
 
 export type SalesInvoiceItemUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  soItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  returnItems?: Prisma.SalesReturnItemUncheckedUpdateManyWithoutInvoiceItemNestedInput
 }
 
 export type SalesInvoiceItemCreateManyInput = {
   id?: string
   invoiceId: string
   productId: string
+  soItemId?: string | null
+  doItemId?: string | null
   qty: runtime.Decimal | runtime.DecimalJsLike | number | string
   rate: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: string | null
@@ -375,6 +419,7 @@ export type SalesInvoiceItemCreateManyInput = {
 
 export type SalesInvoiceItemUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -385,6 +430,8 @@ export type SalesInvoiceItemUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  soItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -406,6 +453,8 @@ export type SalesInvoiceItemCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  soItemId?: Prisma.SortOrder
+  doItemId?: Prisma.SortOrder
   qty?: Prisma.SortOrder
   rate?: Prisma.SortOrder
   taxCodeId?: Prisma.SortOrder
@@ -424,6 +473,8 @@ export type SalesInvoiceItemMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  soItemId?: Prisma.SortOrder
+  doItemId?: Prisma.SortOrder
   qty?: Prisma.SortOrder
   rate?: Prisma.SortOrder
   taxCodeId?: Prisma.SortOrder
@@ -435,6 +486,8 @@ export type SalesInvoiceItemMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   invoiceId?: Prisma.SortOrder
   productId?: Prisma.SortOrder
+  soItemId?: Prisma.SortOrder
+  doItemId?: Prisma.SortOrder
   qty?: Prisma.SortOrder
   rate?: Prisma.SortOrder
   taxCodeId?: Prisma.SortOrder
@@ -447,6 +500,11 @@ export type SalesInvoiceItemSumOrderByAggregateInput = {
   rate?: Prisma.SortOrder
   taxAmount?: Prisma.SortOrder
   total?: Prisma.SortOrder
+}
+
+export type SalesInvoiceItemNullableScalarRelationFilter = {
+  is?: Prisma.SalesInvoiceItemWhereInput | null
+  isNot?: Prisma.SalesInvoiceItemWhereInput | null
 }
 
 export type SalesInvoiceItemCreateNestedManyWithoutTaxCodeInput = {
@@ -533,6 +591,48 @@ export type SalesInvoiceItemUncheckedUpdateManyWithoutProductNestedInput = {
   deleteMany?: Prisma.SalesInvoiceItemScalarWhereInput | Prisma.SalesInvoiceItemScalarWhereInput[]
 }
 
+export type SalesInvoiceItemCreateNestedManyWithoutSoItemInput = {
+  create?: Prisma.XOR<Prisma.SalesInvoiceItemCreateWithoutSoItemInput, Prisma.SalesInvoiceItemUncheckedCreateWithoutSoItemInput> | Prisma.SalesInvoiceItemCreateWithoutSoItemInput[] | Prisma.SalesInvoiceItemUncheckedCreateWithoutSoItemInput[]
+  connectOrCreate?: Prisma.SalesInvoiceItemCreateOrConnectWithoutSoItemInput | Prisma.SalesInvoiceItemCreateOrConnectWithoutSoItemInput[]
+  createMany?: Prisma.SalesInvoiceItemCreateManySoItemInputEnvelope
+  connect?: Prisma.SalesInvoiceItemWhereUniqueInput | Prisma.SalesInvoiceItemWhereUniqueInput[]
+}
+
+export type SalesInvoiceItemUncheckedCreateNestedManyWithoutSoItemInput = {
+  create?: Prisma.XOR<Prisma.SalesInvoiceItemCreateWithoutSoItemInput, Prisma.SalesInvoiceItemUncheckedCreateWithoutSoItemInput> | Prisma.SalesInvoiceItemCreateWithoutSoItemInput[] | Prisma.SalesInvoiceItemUncheckedCreateWithoutSoItemInput[]
+  connectOrCreate?: Prisma.SalesInvoiceItemCreateOrConnectWithoutSoItemInput | Prisma.SalesInvoiceItemCreateOrConnectWithoutSoItemInput[]
+  createMany?: Prisma.SalesInvoiceItemCreateManySoItemInputEnvelope
+  connect?: Prisma.SalesInvoiceItemWhereUniqueInput | Prisma.SalesInvoiceItemWhereUniqueInput[]
+}
+
+export type SalesInvoiceItemUpdateManyWithoutSoItemNestedInput = {
+  create?: Prisma.XOR<Prisma.SalesInvoiceItemCreateWithoutSoItemInput, Prisma.SalesInvoiceItemUncheckedCreateWithoutSoItemInput> | Prisma.SalesInvoiceItemCreateWithoutSoItemInput[] | Prisma.SalesInvoiceItemUncheckedCreateWithoutSoItemInput[]
+  connectOrCreate?: Prisma.SalesInvoiceItemCreateOrConnectWithoutSoItemInput | Prisma.SalesInvoiceItemCreateOrConnectWithoutSoItemInput[]
+  upsert?: Prisma.SalesInvoiceItemUpsertWithWhereUniqueWithoutSoItemInput | Prisma.SalesInvoiceItemUpsertWithWhereUniqueWithoutSoItemInput[]
+  createMany?: Prisma.SalesInvoiceItemCreateManySoItemInputEnvelope
+  set?: Prisma.SalesInvoiceItemWhereUniqueInput | Prisma.SalesInvoiceItemWhereUniqueInput[]
+  disconnect?: Prisma.SalesInvoiceItemWhereUniqueInput | Prisma.SalesInvoiceItemWhereUniqueInput[]
+  delete?: Prisma.SalesInvoiceItemWhereUniqueInput | Prisma.SalesInvoiceItemWhereUniqueInput[]
+  connect?: Prisma.SalesInvoiceItemWhereUniqueInput | Prisma.SalesInvoiceItemWhereUniqueInput[]
+  update?: Prisma.SalesInvoiceItemUpdateWithWhereUniqueWithoutSoItemInput | Prisma.SalesInvoiceItemUpdateWithWhereUniqueWithoutSoItemInput[]
+  updateMany?: Prisma.SalesInvoiceItemUpdateManyWithWhereWithoutSoItemInput | Prisma.SalesInvoiceItemUpdateManyWithWhereWithoutSoItemInput[]
+  deleteMany?: Prisma.SalesInvoiceItemScalarWhereInput | Prisma.SalesInvoiceItemScalarWhereInput[]
+}
+
+export type SalesInvoiceItemUncheckedUpdateManyWithoutSoItemNestedInput = {
+  create?: Prisma.XOR<Prisma.SalesInvoiceItemCreateWithoutSoItemInput, Prisma.SalesInvoiceItemUncheckedCreateWithoutSoItemInput> | Prisma.SalesInvoiceItemCreateWithoutSoItemInput[] | Prisma.SalesInvoiceItemUncheckedCreateWithoutSoItemInput[]
+  connectOrCreate?: Prisma.SalesInvoiceItemCreateOrConnectWithoutSoItemInput | Prisma.SalesInvoiceItemCreateOrConnectWithoutSoItemInput[]
+  upsert?: Prisma.SalesInvoiceItemUpsertWithWhereUniqueWithoutSoItemInput | Prisma.SalesInvoiceItemUpsertWithWhereUniqueWithoutSoItemInput[]
+  createMany?: Prisma.SalesInvoiceItemCreateManySoItemInputEnvelope
+  set?: Prisma.SalesInvoiceItemWhereUniqueInput | Prisma.SalesInvoiceItemWhereUniqueInput[]
+  disconnect?: Prisma.SalesInvoiceItemWhereUniqueInput | Prisma.SalesInvoiceItemWhereUniqueInput[]
+  delete?: Prisma.SalesInvoiceItemWhereUniqueInput | Prisma.SalesInvoiceItemWhereUniqueInput[]
+  connect?: Prisma.SalesInvoiceItemWhereUniqueInput | Prisma.SalesInvoiceItemWhereUniqueInput[]
+  update?: Prisma.SalesInvoiceItemUpdateWithWhereUniqueWithoutSoItemInput | Prisma.SalesInvoiceItemUpdateWithWhereUniqueWithoutSoItemInput[]
+  updateMany?: Prisma.SalesInvoiceItemUpdateManyWithWhereWithoutSoItemInput | Prisma.SalesInvoiceItemUpdateManyWithWhereWithoutSoItemInput[]
+  deleteMany?: Prisma.SalesInvoiceItemScalarWhereInput | Prisma.SalesInvoiceItemScalarWhereInput[]
+}
+
 export type SalesInvoiceItemCreateNestedManyWithoutInvoiceInput = {
   create?: Prisma.XOR<Prisma.SalesInvoiceItemCreateWithoutInvoiceInput, Prisma.SalesInvoiceItemUncheckedCreateWithoutInvoiceInput> | Prisma.SalesInvoiceItemCreateWithoutInvoiceInput[] | Prisma.SalesInvoiceItemUncheckedCreateWithoutInvoiceInput[]
   connectOrCreate?: Prisma.SalesInvoiceItemCreateOrConnectWithoutInvoiceInput | Prisma.SalesInvoiceItemCreateOrConnectWithoutInvoiceInput[]
@@ -575,24 +675,46 @@ export type SalesInvoiceItemUncheckedUpdateManyWithoutInvoiceNestedInput = {
   deleteMany?: Prisma.SalesInvoiceItemScalarWhereInput | Prisma.SalesInvoiceItemScalarWhereInput[]
 }
 
+export type SalesInvoiceItemCreateNestedOneWithoutReturnItemsInput = {
+  create?: Prisma.XOR<Prisma.SalesInvoiceItemCreateWithoutReturnItemsInput, Prisma.SalesInvoiceItemUncheckedCreateWithoutReturnItemsInput>
+  connectOrCreate?: Prisma.SalesInvoiceItemCreateOrConnectWithoutReturnItemsInput
+  connect?: Prisma.SalesInvoiceItemWhereUniqueInput
+}
+
+export type SalesInvoiceItemUpdateOneWithoutReturnItemsNestedInput = {
+  create?: Prisma.XOR<Prisma.SalesInvoiceItemCreateWithoutReturnItemsInput, Prisma.SalesInvoiceItemUncheckedCreateWithoutReturnItemsInput>
+  connectOrCreate?: Prisma.SalesInvoiceItemCreateOrConnectWithoutReturnItemsInput
+  upsert?: Prisma.SalesInvoiceItemUpsertWithoutReturnItemsInput
+  disconnect?: Prisma.SalesInvoiceItemWhereInput | boolean
+  delete?: Prisma.SalesInvoiceItemWhereInput | boolean
+  connect?: Prisma.SalesInvoiceItemWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.SalesInvoiceItemUpdateToOneWithWhereWithoutReturnItemsInput, Prisma.SalesInvoiceItemUpdateWithoutReturnItemsInput>, Prisma.SalesInvoiceItemUncheckedUpdateWithoutReturnItemsInput>
+}
+
 export type SalesInvoiceItemCreateWithoutTaxCodeInput = {
   id?: string
+  doItemId?: string | null
   qty: runtime.Decimal | runtime.DecimalJsLike | number | string
   rate: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   invoice: Prisma.SalesInvoiceCreateNestedOneWithoutItemsInput
   product: Prisma.ProductCreateNestedOneWithoutSalesInvoiceItemsInput
+  soItem?: Prisma.SalesOrderItemCreateNestedOneWithoutInvoiceItemsInput
+  returnItems?: Prisma.SalesReturnItemCreateNestedManyWithoutInvoiceItemInput
 }
 
 export type SalesInvoiceItemUncheckedCreateWithoutTaxCodeInput = {
   id?: string
   invoiceId: string
   productId: string
+  soItemId?: string | null
+  doItemId?: string | null
   qty: runtime.Decimal | runtime.DecimalJsLike | number | string
   rate: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  returnItems?: Prisma.SalesReturnItemUncheckedCreateNestedManyWithoutInvoiceItemInput
 }
 
 export type SalesInvoiceItemCreateOrConnectWithoutTaxCodeInput = {
@@ -628,6 +750,8 @@ export type SalesInvoiceItemScalarWhereInput = {
   id?: Prisma.StringFilter<"SalesInvoiceItem"> | string
   invoiceId?: Prisma.StringFilter<"SalesInvoiceItem"> | string
   productId?: Prisma.StringFilter<"SalesInvoiceItem"> | string
+  soItemId?: Prisma.StringNullableFilter<"SalesInvoiceItem"> | string | null
+  doItemId?: Prisma.StringNullableFilter<"SalesInvoiceItem"> | string | null
   qty?: Prisma.DecimalFilter<"SalesInvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFilter<"SalesInvoiceItem"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: Prisma.StringNullableFilter<"SalesInvoiceItem"> | string | null
@@ -637,22 +761,28 @@ export type SalesInvoiceItemScalarWhereInput = {
 
 export type SalesInvoiceItemCreateWithoutProductInput = {
   id?: string
+  doItemId?: string | null
   qty: runtime.Decimal | runtime.DecimalJsLike | number | string
   rate: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   invoice: Prisma.SalesInvoiceCreateNestedOneWithoutItemsInput
+  soItem?: Prisma.SalesOrderItemCreateNestedOneWithoutInvoiceItemsInput
   taxCode?: Prisma.TaxCodeCreateNestedOneWithoutSalesInvoiceItemsInput
+  returnItems?: Prisma.SalesReturnItemCreateNestedManyWithoutInvoiceItemInput
 }
 
 export type SalesInvoiceItemUncheckedCreateWithoutProductInput = {
   id?: string
   invoiceId: string
+  soItemId?: string | null
+  doItemId?: string | null
   qty: runtime.Decimal | runtime.DecimalJsLike | number | string
   rate: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: string | null
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  returnItems?: Prisma.SalesReturnItemUncheckedCreateNestedManyWithoutInvoiceItemInput
 }
 
 export type SalesInvoiceItemCreateOrConnectWithoutProductInput = {
@@ -681,24 +811,82 @@ export type SalesInvoiceItemUpdateManyWithWhereWithoutProductInput = {
   data: Prisma.XOR<Prisma.SalesInvoiceItemUpdateManyMutationInput, Prisma.SalesInvoiceItemUncheckedUpdateManyWithoutProductInput>
 }
 
-export type SalesInvoiceItemCreateWithoutInvoiceInput = {
+export type SalesInvoiceItemCreateWithoutSoItemInput = {
   id?: string
+  doItemId?: string | null
   qty: runtime.Decimal | runtime.DecimalJsLike | number | string
   rate: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  invoice: Prisma.SalesInvoiceCreateNestedOneWithoutItemsInput
   product: Prisma.ProductCreateNestedOneWithoutSalesInvoiceItemsInput
   taxCode?: Prisma.TaxCodeCreateNestedOneWithoutSalesInvoiceItemsInput
+  returnItems?: Prisma.SalesReturnItemCreateNestedManyWithoutInvoiceItemInput
 }
 
-export type SalesInvoiceItemUncheckedCreateWithoutInvoiceInput = {
+export type SalesInvoiceItemUncheckedCreateWithoutSoItemInput = {
   id?: string
+  invoiceId: string
   productId: string
+  doItemId?: string | null
   qty: runtime.Decimal | runtime.DecimalJsLike | number | string
   rate: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: string | null
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  returnItems?: Prisma.SalesReturnItemUncheckedCreateNestedManyWithoutInvoiceItemInput
+}
+
+export type SalesInvoiceItemCreateOrConnectWithoutSoItemInput = {
+  where: Prisma.SalesInvoiceItemWhereUniqueInput
+  create: Prisma.XOR<Prisma.SalesInvoiceItemCreateWithoutSoItemInput, Prisma.SalesInvoiceItemUncheckedCreateWithoutSoItemInput>
+}
+
+export type SalesInvoiceItemCreateManySoItemInputEnvelope = {
+  data: Prisma.SalesInvoiceItemCreateManySoItemInput | Prisma.SalesInvoiceItemCreateManySoItemInput[]
+  skipDuplicates?: boolean
+}
+
+export type SalesInvoiceItemUpsertWithWhereUniqueWithoutSoItemInput = {
+  where: Prisma.SalesInvoiceItemWhereUniqueInput
+  update: Prisma.XOR<Prisma.SalesInvoiceItemUpdateWithoutSoItemInput, Prisma.SalesInvoiceItemUncheckedUpdateWithoutSoItemInput>
+  create: Prisma.XOR<Prisma.SalesInvoiceItemCreateWithoutSoItemInput, Prisma.SalesInvoiceItemUncheckedCreateWithoutSoItemInput>
+}
+
+export type SalesInvoiceItemUpdateWithWhereUniqueWithoutSoItemInput = {
+  where: Prisma.SalesInvoiceItemWhereUniqueInput
+  data: Prisma.XOR<Prisma.SalesInvoiceItemUpdateWithoutSoItemInput, Prisma.SalesInvoiceItemUncheckedUpdateWithoutSoItemInput>
+}
+
+export type SalesInvoiceItemUpdateManyWithWhereWithoutSoItemInput = {
+  where: Prisma.SalesInvoiceItemScalarWhereInput
+  data: Prisma.XOR<Prisma.SalesInvoiceItemUpdateManyMutationInput, Prisma.SalesInvoiceItemUncheckedUpdateManyWithoutSoItemInput>
+}
+
+export type SalesInvoiceItemCreateWithoutInvoiceInput = {
+  id?: string
+  doItemId?: string | null
+  qty: runtime.Decimal | runtime.DecimalJsLike | number | string
+  rate: runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  product: Prisma.ProductCreateNestedOneWithoutSalesInvoiceItemsInput
+  soItem?: Prisma.SalesOrderItemCreateNestedOneWithoutInvoiceItemsInput
+  taxCode?: Prisma.TaxCodeCreateNestedOneWithoutSalesInvoiceItemsInput
+  returnItems?: Prisma.SalesReturnItemCreateNestedManyWithoutInvoiceItemInput
+}
+
+export type SalesInvoiceItemUncheckedCreateWithoutInvoiceInput = {
+  id?: string
+  productId: string
+  soItemId?: string | null
+  doItemId?: string | null
+  qty: runtime.Decimal | runtime.DecimalJsLike | number | string
+  rate: runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxCodeId?: string | null
+  taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  returnItems?: Prisma.SalesReturnItemUncheckedCreateNestedManyWithoutInvoiceItemInput
 }
 
 export type SalesInvoiceItemCreateOrConnectWithoutInvoiceInput = {
@@ -727,10 +915,80 @@ export type SalesInvoiceItemUpdateManyWithWhereWithoutInvoiceInput = {
   data: Prisma.XOR<Prisma.SalesInvoiceItemUpdateManyMutationInput, Prisma.SalesInvoiceItemUncheckedUpdateManyWithoutInvoiceInput>
 }
 
+export type SalesInvoiceItemCreateWithoutReturnItemsInput = {
+  id?: string
+  doItemId?: string | null
+  qty: runtime.Decimal | runtime.DecimalJsLike | number | string
+  rate: runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  invoice: Prisma.SalesInvoiceCreateNestedOneWithoutItemsInput
+  product: Prisma.ProductCreateNestedOneWithoutSalesInvoiceItemsInput
+  soItem?: Prisma.SalesOrderItemCreateNestedOneWithoutInvoiceItemsInput
+  taxCode?: Prisma.TaxCodeCreateNestedOneWithoutSalesInvoiceItemsInput
+}
+
+export type SalesInvoiceItemUncheckedCreateWithoutReturnItemsInput = {
+  id?: string
+  invoiceId: string
+  productId: string
+  soItemId?: string | null
+  doItemId?: string | null
+  qty: runtime.Decimal | runtime.DecimalJsLike | number | string
+  rate: runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxCodeId?: string | null
+  taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+}
+
+export type SalesInvoiceItemCreateOrConnectWithoutReturnItemsInput = {
+  where: Prisma.SalesInvoiceItemWhereUniqueInput
+  create: Prisma.XOR<Prisma.SalesInvoiceItemCreateWithoutReturnItemsInput, Prisma.SalesInvoiceItemUncheckedCreateWithoutReturnItemsInput>
+}
+
+export type SalesInvoiceItemUpsertWithoutReturnItemsInput = {
+  update: Prisma.XOR<Prisma.SalesInvoiceItemUpdateWithoutReturnItemsInput, Prisma.SalesInvoiceItemUncheckedUpdateWithoutReturnItemsInput>
+  create: Prisma.XOR<Prisma.SalesInvoiceItemCreateWithoutReturnItemsInput, Prisma.SalesInvoiceItemUncheckedCreateWithoutReturnItemsInput>
+  where?: Prisma.SalesInvoiceItemWhereInput
+}
+
+export type SalesInvoiceItemUpdateToOneWithWhereWithoutReturnItemsInput = {
+  where?: Prisma.SalesInvoiceItemWhereInput
+  data: Prisma.XOR<Prisma.SalesInvoiceItemUpdateWithoutReturnItemsInput, Prisma.SalesInvoiceItemUncheckedUpdateWithoutReturnItemsInput>
+}
+
+export type SalesInvoiceItemUpdateWithoutReturnItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  invoice?: Prisma.SalesInvoiceUpdateOneRequiredWithoutItemsNestedInput
+  product?: Prisma.ProductUpdateOneRequiredWithoutSalesInvoiceItemsNestedInput
+  soItem?: Prisma.SalesOrderItemUpdateOneWithoutInvoiceItemsNestedInput
+  taxCode?: Prisma.TaxCodeUpdateOneWithoutSalesInvoiceItemsNestedInput
+}
+
+export type SalesInvoiceItemUncheckedUpdateWithoutReturnItemsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
+  soItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxCodeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+}
+
 export type SalesInvoiceItemCreateManyTaxCodeInput = {
   id?: string
   invoiceId: string
   productId: string
+  soItemId?: string | null
+  doItemId?: string | null
   qty: runtime.Decimal | runtime.DecimalJsLike | number | string
   rate: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -739,28 +997,36 @@ export type SalesInvoiceItemCreateManyTaxCodeInput = {
 
 export type SalesInvoiceItemUpdateWithoutTaxCodeInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   invoice?: Prisma.SalesInvoiceUpdateOneRequiredWithoutItemsNestedInput
   product?: Prisma.ProductUpdateOneRequiredWithoutSalesInvoiceItemsNestedInput
+  soItem?: Prisma.SalesOrderItemUpdateOneWithoutInvoiceItemsNestedInput
+  returnItems?: Prisma.SalesReturnItemUpdateManyWithoutInvoiceItemNestedInput
 }
 
 export type SalesInvoiceItemUncheckedUpdateWithoutTaxCodeInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  soItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  returnItems?: Prisma.SalesReturnItemUncheckedUpdateManyWithoutInvoiceItemNestedInput
 }
 
 export type SalesInvoiceItemUncheckedUpdateManyWithoutTaxCodeInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  soItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -770,6 +1036,8 @@ export type SalesInvoiceItemUncheckedUpdateManyWithoutTaxCodeInput = {
 export type SalesInvoiceItemCreateManyProductInput = {
   id?: string
   invoiceId: string
+  soItemId?: string | null
+  doItemId?: string | null
   qty: runtime.Decimal | runtime.DecimalJsLike | number | string
   rate: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: string | null
@@ -779,17 +1047,35 @@ export type SalesInvoiceItemCreateManyProductInput = {
 
 export type SalesInvoiceItemUpdateWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   invoice?: Prisma.SalesInvoiceUpdateOneRequiredWithoutItemsNestedInput
+  soItem?: Prisma.SalesOrderItemUpdateOneWithoutInvoiceItemsNestedInput
   taxCode?: Prisma.TaxCodeUpdateOneWithoutSalesInvoiceItemsNestedInput
+  returnItems?: Prisma.SalesReturnItemUpdateManyWithoutInvoiceItemNestedInput
 }
 
 export type SalesInvoiceItemUncheckedUpdateWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
+  soItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxCodeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  returnItems?: Prisma.SalesReturnItemUncheckedUpdateManyWithoutInvoiceItemNestedInput
+}
+
+export type SalesInvoiceItemUncheckedUpdateManyWithoutProductInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
+  soItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -797,9 +1083,49 @@ export type SalesInvoiceItemUncheckedUpdateWithoutProductInput = {
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
-export type SalesInvoiceItemUncheckedUpdateManyWithoutProductInput = {
+export type SalesInvoiceItemCreateManySoItemInput = {
+  id?: string
+  invoiceId: string
+  productId: string
+  doItemId?: string | null
+  qty: runtime.Decimal | runtime.DecimalJsLike | number | string
+  rate: runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxCodeId?: string | null
+  taxAmount?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+}
+
+export type SalesInvoiceItemUpdateWithoutSoItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  invoice?: Prisma.SalesInvoiceUpdateOneRequiredWithoutItemsNestedInput
+  product?: Prisma.ProductUpdateOneRequiredWithoutSalesInvoiceItemsNestedInput
+  taxCode?: Prisma.TaxCodeUpdateOneWithoutSalesInvoiceItemsNestedInput
+  returnItems?: Prisma.SalesReturnItemUpdateManyWithoutInvoiceItemNestedInput
+}
+
+export type SalesInvoiceItemUncheckedUpdateWithoutSoItemInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  taxCodeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  returnItems?: Prisma.SalesReturnItemUncheckedUpdateManyWithoutInvoiceItemNestedInput
+}
+
+export type SalesInvoiceItemUncheckedUpdateManyWithoutSoItemInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  invoiceId?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -810,6 +1136,8 @@ export type SalesInvoiceItemUncheckedUpdateManyWithoutProductInput = {
 export type SalesInvoiceItemCreateManyInvoiceInput = {
   id?: string
   productId: string
+  soItemId?: string | null
+  doItemId?: string | null
   qty: runtime.Decimal | runtime.DecimalJsLike | number | string
   rate: runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: string | null
@@ -819,27 +1147,35 @@ export type SalesInvoiceItemCreateManyInvoiceInput = {
 
 export type SalesInvoiceItemUpdateWithoutInvoiceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   product?: Prisma.ProductUpdateOneRequiredWithoutSalesInvoiceItemsNestedInput
+  soItem?: Prisma.SalesOrderItemUpdateOneWithoutInvoiceItemsNestedInput
   taxCode?: Prisma.TaxCodeUpdateOneWithoutSalesInvoiceItemsNestedInput
+  returnItems?: Prisma.SalesReturnItemUpdateManyWithoutInvoiceItemNestedInput
 }
 
 export type SalesInvoiceItemUncheckedUpdateWithoutInvoiceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  soItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   taxAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  returnItems?: Prisma.SalesReturnItemUncheckedUpdateManyWithoutInvoiceItemNestedInput
 }
 
 export type SalesInvoiceItemUncheckedUpdateManyWithoutInvoiceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   productId?: Prisma.StringFieldUpdateOperationsInput | string
+  soItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  doItemId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   qty?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   taxCodeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -847,12 +1183,43 @@ export type SalesInvoiceItemUncheckedUpdateManyWithoutInvoiceInput = {
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
 }
 
+
+/**
+ * Count Type SalesInvoiceItemCountOutputType
+ */
+
+export type SalesInvoiceItemCountOutputType = {
+  returnItems: number
+}
+
+export type SalesInvoiceItemCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  returnItems?: boolean | SalesInvoiceItemCountOutputTypeCountReturnItemsArgs
+}
+
+/**
+ * SalesInvoiceItemCountOutputType without action
+ */
+export type SalesInvoiceItemCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SalesInvoiceItemCountOutputType
+   */
+  select?: Prisma.SalesInvoiceItemCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * SalesInvoiceItemCountOutputType without action
+ */
+export type SalesInvoiceItemCountOutputTypeCountReturnItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SalesReturnItemWhereInput
+}
 
 
 export type SalesInvoiceItemSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   invoiceId?: boolean
   productId?: boolean
+  soItemId?: boolean
+  doItemId?: boolean
   qty?: boolean
   rate?: boolean
   taxCodeId?: boolean
@@ -860,13 +1227,18 @@ export type SalesInvoiceItemSelect<ExtArgs extends runtime.Types.Extensions.Inte
   total?: boolean
   invoice?: boolean | Prisma.SalesInvoiceDefaultArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  soItem?: boolean | Prisma.SalesInvoiceItem$soItemArgs<ExtArgs>
   taxCode?: boolean | Prisma.SalesInvoiceItem$taxCodeArgs<ExtArgs>
+  returnItems?: boolean | Prisma.SalesInvoiceItem$returnItemsArgs<ExtArgs>
+  _count?: boolean | Prisma.SalesInvoiceItemCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["salesInvoiceItem"]>
 
 export type SalesInvoiceItemSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   invoiceId?: boolean
   productId?: boolean
+  soItemId?: boolean
+  doItemId?: boolean
   qty?: boolean
   rate?: boolean
   taxCodeId?: boolean
@@ -874,6 +1246,7 @@ export type SalesInvoiceItemSelectCreateManyAndReturn<ExtArgs extends runtime.Ty
   total?: boolean
   invoice?: boolean | Prisma.SalesInvoiceDefaultArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  soItem?: boolean | Prisma.SalesInvoiceItem$soItemArgs<ExtArgs>
   taxCode?: boolean | Prisma.SalesInvoiceItem$taxCodeArgs<ExtArgs>
 }, ExtArgs["result"]["salesInvoiceItem"]>
 
@@ -881,6 +1254,8 @@ export type SalesInvoiceItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Ty
   id?: boolean
   invoiceId?: boolean
   productId?: boolean
+  soItemId?: boolean
+  doItemId?: boolean
   qty?: boolean
   rate?: boolean
   taxCodeId?: boolean
@@ -888,6 +1263,7 @@ export type SalesInvoiceItemSelectUpdateManyAndReturn<ExtArgs extends runtime.Ty
   total?: boolean
   invoice?: boolean | Prisma.SalesInvoiceDefaultArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  soItem?: boolean | Prisma.SalesInvoiceItem$soItemArgs<ExtArgs>
   taxCode?: boolean | Prisma.SalesInvoiceItem$taxCodeArgs<ExtArgs>
 }, ExtArgs["result"]["salesInvoiceItem"]>
 
@@ -895,6 +1271,8 @@ export type SalesInvoiceItemSelectScalar = {
   id?: boolean
   invoiceId?: boolean
   productId?: boolean
+  soItemId?: boolean
+  doItemId?: boolean
   qty?: boolean
   rate?: boolean
   taxCodeId?: boolean
@@ -902,20 +1280,25 @@ export type SalesInvoiceItemSelectScalar = {
   total?: boolean
 }
 
-export type SalesInvoiceItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "invoiceId" | "productId" | "qty" | "rate" | "taxCodeId" | "taxAmount" | "total", ExtArgs["result"]["salesInvoiceItem"]>
+export type SalesInvoiceItemOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "invoiceId" | "productId" | "soItemId" | "doItemId" | "qty" | "rate" | "taxCodeId" | "taxAmount" | "total", ExtArgs["result"]["salesInvoiceItem"]>
 export type SalesInvoiceItemInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   invoice?: boolean | Prisma.SalesInvoiceDefaultArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  soItem?: boolean | Prisma.SalesInvoiceItem$soItemArgs<ExtArgs>
   taxCode?: boolean | Prisma.SalesInvoiceItem$taxCodeArgs<ExtArgs>
+  returnItems?: boolean | Prisma.SalesInvoiceItem$returnItemsArgs<ExtArgs>
+  _count?: boolean | Prisma.SalesInvoiceItemCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type SalesInvoiceItemIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   invoice?: boolean | Prisma.SalesInvoiceDefaultArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  soItem?: boolean | Prisma.SalesInvoiceItem$soItemArgs<ExtArgs>
   taxCode?: boolean | Prisma.SalesInvoiceItem$taxCodeArgs<ExtArgs>
 }
 export type SalesInvoiceItemIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   invoice?: boolean | Prisma.SalesInvoiceDefaultArgs<ExtArgs>
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
+  soItem?: boolean | Prisma.SalesInvoiceItem$soItemArgs<ExtArgs>
   taxCode?: boolean | Prisma.SalesInvoiceItem$taxCodeArgs<ExtArgs>
 }
 
@@ -924,12 +1307,16 @@ export type $SalesInvoiceItemPayload<ExtArgs extends runtime.Types.Extensions.In
   objects: {
     invoice: Prisma.$SalesInvoicePayload<ExtArgs>
     product: Prisma.$ProductPayload<ExtArgs>
+    soItem: Prisma.$SalesOrderItemPayload<ExtArgs> | null
     taxCode: Prisma.$TaxCodePayload<ExtArgs> | null
+    returnItems: Prisma.$SalesReturnItemPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     invoiceId: string
     productId: string
+    soItemId: string | null
+    doItemId: string | null
     qty: runtime.Decimal
     rate: runtime.Decimal
     taxCodeId: string | null
@@ -1331,7 +1718,9 @@ export interface Prisma__SalesInvoiceItemClient<T, Null = never, ExtArgs extends
   readonly [Symbol.toStringTag]: "PrismaPromise"
   invoice<T extends Prisma.SalesInvoiceDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SalesInvoiceDefaultArgs<ExtArgs>>): Prisma.Prisma__SalesInvoiceClient<runtime.Types.Result.GetResult<Prisma.$SalesInvoicePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   product<T extends Prisma.ProductDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ProductDefaultArgs<ExtArgs>>): Prisma.Prisma__ProductClient<runtime.Types.Result.GetResult<Prisma.$ProductPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  soItem<T extends Prisma.SalesInvoiceItem$soItemArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SalesInvoiceItem$soItemArgs<ExtArgs>>): Prisma.Prisma__SalesOrderItemClient<runtime.Types.Result.GetResult<Prisma.$SalesOrderItemPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   taxCode<T extends Prisma.SalesInvoiceItem$taxCodeArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SalesInvoiceItem$taxCodeArgs<ExtArgs>>): Prisma.Prisma__TaxCodeClient<runtime.Types.Result.GetResult<Prisma.$TaxCodePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  returnItems<T extends Prisma.SalesInvoiceItem$returnItemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SalesInvoiceItem$returnItemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SalesReturnItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1364,6 +1753,8 @@ export interface SalesInvoiceItemFieldRefs {
   readonly id: Prisma.FieldRef<"SalesInvoiceItem", 'String'>
   readonly invoiceId: Prisma.FieldRef<"SalesInvoiceItem", 'String'>
   readonly productId: Prisma.FieldRef<"SalesInvoiceItem", 'String'>
+  readonly soItemId: Prisma.FieldRef<"SalesInvoiceItem", 'String'>
+  readonly doItemId: Prisma.FieldRef<"SalesInvoiceItem", 'String'>
   readonly qty: Prisma.FieldRef<"SalesInvoiceItem", 'Decimal'>
   readonly rate: Prisma.FieldRef<"SalesInvoiceItem", 'Decimal'>
   readonly taxCodeId: Prisma.FieldRef<"SalesInvoiceItem", 'String'>
@@ -1765,6 +2156,25 @@ export type SalesInvoiceItemDeleteManyArgs<ExtArgs extends runtime.Types.Extensi
 }
 
 /**
+ * SalesInvoiceItem.soItem
+ */
+export type SalesInvoiceItem$soItemArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SalesOrderItem
+   */
+  select?: Prisma.SalesOrderItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SalesOrderItem
+   */
+  omit?: Prisma.SalesOrderItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SalesOrderItemInclude<ExtArgs> | null
+  where?: Prisma.SalesOrderItemWhereInput
+}
+
+/**
  * SalesInvoiceItem.taxCode
  */
 export type SalesInvoiceItem$taxCodeArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1781,6 +2191,30 @@ export type SalesInvoiceItem$taxCodeArgs<ExtArgs extends runtime.Types.Extension
    */
   include?: Prisma.TaxCodeInclude<ExtArgs> | null
   where?: Prisma.TaxCodeWhereInput
+}
+
+/**
+ * SalesInvoiceItem.returnItems
+ */
+export type SalesInvoiceItem$returnItemsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SalesReturnItem
+   */
+  select?: Prisma.SalesReturnItemSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SalesReturnItem
+   */
+  omit?: Prisma.SalesReturnItemOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SalesReturnItemInclude<ExtArgs> | null
+  where?: Prisma.SalesReturnItemWhereInput
+  orderBy?: Prisma.SalesReturnItemOrderByWithRelationInput | Prisma.SalesReturnItemOrderByWithRelationInput[]
+  cursor?: Prisma.SalesReturnItemWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SalesReturnItemScalarFieldEnum | Prisma.SalesReturnItemScalarFieldEnum[]
 }
 
 /**

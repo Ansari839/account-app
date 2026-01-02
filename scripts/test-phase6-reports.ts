@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { ReportService } from "../services/report.service";
-import { FinancialYearService } from "../services/financialYear.service";
+import { FinancialYearService } from "../services/financial-year.service";
 import { JournalService } from "../services/journal.service";
 import { AccountService } from "../services/account.service";
 import { AccountType, VoucherType } from "@/app/generated/prisma/client";
@@ -41,6 +41,9 @@ async function runTest() {
         await prisma.warehouse.deleteMany({});
         await prisma.financialYear.deleteMany({});
         await prisma.voucherSequence.deleteMany({});
+
+        const company = await prisma.company.findFirst();
+        if (!company) throw new Error("No company found");
 
         const bank = await AccountService.createAccount({ name: "Bank", type: AccountType.ASSET, isPosting: true });
         const sales = await AccountService.createAccount({ name: "Sales", type: AccountType.INCOME, isPosting: true });
@@ -95,33 +98,33 @@ async function runTest() {
 
         // 3. Verify P&L
         console.log("--- Verifying P&L ---");
-        const pl = await ReportService.getProfitLoss(new Date("2025-01-01"), new Date("2025-01-31"));
+        const pl = await ReportService.getProfitLoss(company.id, new Date("2025-01-01"), new Date("2025-01-31"));
         console.log(`📊 Net Profit: ${pl.netProfit} (Expected 500)`);
 
         // 4. Verify Balance Sheet
         console.log("--- Verifying Balance Sheet ---");
-        const bs = await ReportService.getBalanceSheet(new Date("2025-12-31"));
+        const bs = await ReportService.getBalanceSheet(company.id, new Date("2025-12-31"));
         console.log(`🏢 Total Assets: ${bs.totalAssets} (Expected 2600)`); // 600 bank + 2000 receivables
 
         // 5. Verify Cash Flow
         console.log("--- Verifying Cash Flow ---");
-        const cf = await ReportService.getCashFlow(new Date("2025-01-01"), new Date("2025-01-31"));
+        const cf = await ReportService.getCashFlow(company.id, new Date("2025-01-01"), new Date("2025-01-31"));
         console.log(`💵 Net Cash Flow: ${cf.netCashFlow} (Expected 600)`);
 
         // 6. Verify Aging
         console.log("--- Verifying Aging (AR) ---");
-        const aging = await ReportService.getAgingReport(AccountType.ASSET, new Date("2025-01-31"));
+        const aging = await ReportService.getAgingReport(company.id, AccountType.ASSET, new Date("2025-01-31"));
         const arAging = aging.find(a => a.accountName === "Accounts Receivable");
         console.log(`⏳ Aging Bucket (90+): ${arAging.buckets["90+"]} (Expected 2000)`);
 
         // 7. Verify Dashboard Stats
         console.log("--- Verifying Dashboard Stats ---");
-        const stats = await ReportService.getDashboardStats();
+        const stats = await ReportService.getDashboardStats(company.id);
         console.log(`📈 Monthly Sales: ${stats.monthlySales}`);
 
         // 8. Verify Tax Summary
         console.log("--- Verifying Tax Summary ---");
-        const taxSum = await ReportService.getTaxSummary(new Date("2025-01-01"), new Date("2025-01-31"));
+        const taxSum = await ReportService.getTaxSummary(company.id, new Date("2025-01-01"), new Date("2025-01-31"));
         console.log(`📝 Output Tax: ${taxSum.find(t => t.name === "Output Tax")?.netTax} (Expected 100)`);
 
         console.log("\n🎉 Phase 6 Reports & Analytics Verification Success!");

@@ -331,7 +331,7 @@ export class ReportService {
     /**
      * Stock Ledger
      */
-    static async getStockLedger(companyId: string, productId: string, warehouseId?: string, startDate?: Date, endDate?: Date) {
+    static async getStockLedger(companyId: string, productId: string, warehouseId?: string | undefined, startDate?: Date, endDate?: Date) {
         const where: any = { productId };
         if (warehouseId) where.warehouseId = warehouseId;
         if (startDate || endDate) {
