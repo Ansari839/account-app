@@ -8,8 +8,13 @@ const menuItems = [
     { name: 'Dashboard', icon: '📊', path: '/finance/dashboard' },
     { name: 'Chart of Accounts', icon: '🗂️', path: '/finance/coa' },
     { name: 'Vouchers', icon: '📝', path: '/finance/vouchers', sub: ['Journal', 'Payment', 'Receipt'] },
+    {
+        name: 'Purchase',
+        icon: '🛒',
+        path: '/finance/purchase',
+        sub: ['orders', 'grn', 'invoices']
+    },
     { name: 'Sales', icon: '📈', path: '/sales/invoices', sub: ['Order', 'Invoice', 'Return'] },
-    { name: 'Purchase', icon: '🛒', path: '/purchase/invoices', sub: ['Order', 'Invoice', 'Return'] },
     { name: 'Inventory', icon: '📦', path: '/inventory', sub: ['Products', 'Categories', 'Warehouses'] },
     { name: 'Reports', icon: '📜', path: '/finance/reports', sub: ['P&L', 'Balance Sheet', 'Ledger', 'Aging'] },
     { name: 'Settings', icon: '⚙️', path: '/admin/settings' },
@@ -79,7 +84,7 @@ export default function Sidebar() {
                                                     ? 'text-white'
                                                     : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}
                                             >
-                                                {sub}
+                                                {sub.charAt(0).toUpperCase() + sub.slice(1)}
                                             </Link>
                                         );
                                     })}
