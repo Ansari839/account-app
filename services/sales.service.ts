@@ -145,7 +145,7 @@ export class SalesService {
                         create: data.items.map(item => ({
                             productId: item.productId,
                             orderItemId: item.orderItemId,
-                            qtyShipped: item.qtyShipped
+                            qty: item.qtyShipped
                         }))
                     }
                 },
@@ -379,15 +379,21 @@ export class SalesService {
                     returnNo: `SR-${Date.now()}`,
                     invoiceId: data.invoiceId,
                     customerId: originalInvoice.customerId,
+                    warehouseId: originalInvoice.warehouseId || (await tx.warehouse.findFirst({ where: { isDefault: true } }))?.id || "",
                     date: data.date,
                     totalAmount: returnTotalAmount,
-                    taxAmount: returnTax,
                     remarks: data.remarks,
                     items: {
                         create: returnItemsData
                     }
                 },
                 include: { items: { include: { product: true } } }
+            });
+
+            // Fetch items with product details
+            const returnItems = await tx.salesReturnItem.findMany({
+                where: { returnId: salesReturn.id },
+                include: { product: true }
             });
 
             // 4. Update Stock Ledger (Qty In)
@@ -424,7 +430,7 @@ export class SalesService {
                 narration: `Sales Return ${salesReturn.returnNo} for INV ${originalInvoice.invoiceNo}`
             });
 
-            for (const item of salesReturn.items) {
+            for (const item of returnItems) {
                 // 2. Sales Debit (Reversal)
                 jvLines.push({
                     accountId: item.product.salesAccountId!,

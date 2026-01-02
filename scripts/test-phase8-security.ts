@@ -5,7 +5,7 @@ import { ABACService } from "../services/abac.service";
 import { AuditService } from "../services/audit.service";
 import { JournalService } from "../services/journal.service";
 import { AccountService } from "../services/account.service";
-import { FinancialYearService } from "../services/financialYear.service";
+import { FinancialYearService } from "../services/financial-year.service";
 import { AccountType, VoucherType } from "@/app/generated/prisma/client";
 import prisma from "../lib/prisma";
 
