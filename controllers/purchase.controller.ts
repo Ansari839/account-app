@@ -107,6 +107,34 @@ export class PurchaseController {
 
             const body = await req.json();
 
+            // If supplierId is an Account ID, find or create corresponding Supplier
+            let supplierId = body.supplierId;
+
+            // Check if this is an Account ID (not a Supplier ID)
+            const account = await prisma.account.findUnique({ where: { id: body.supplierId } });
+
+            if (account) {
+                // This is an Account, find or create Supplier
+                let supplier = await prisma.supplier.findFirst({
+                    where: { payableAccountId: account.id }
+                });
+
+                if (!supplier) {
+                    // Create new Supplier from Account
+                    const supplierCount = await prisma.supplier.count() + 1;
+                    supplier = await prisma.supplier.create({
+                        data: {
+                            code: `SUP-${supplierCount.toString().padStart(4, '0')}`,
+                            name: account.name,
+                            currencyCode: 'PKR', // Default currency
+                            payableAccountId: account.id
+                        }
+                    });
+                }
+
+                supplierId = supplier.id;
+            }
+
             // Generate PO Number
             const count = await prisma.purchaseOrder.count() + 1;
             const poNo = `PO-${new Date().getFullYear()}-${count.toString().padStart(4, '0')}`;
@@ -114,7 +142,7 @@ export class PurchaseController {
             const order = await prisma.purchaseOrder.create({
                 data: {
                     poNo,
-                    supplierId: body.supplierId,
+                    supplierId,
                     warehouseId: body.warehouseId,
                     date: new Date(body.date),
                     expectedDate: body.expectedDate ? new Date(body.expectedDate) : null,
@@ -130,6 +158,10 @@ export class PurchaseController {
                             invoicedQty: 0
                         }))
                     }
+                },
+                include: {
+                    supplier: true,
+                    items: { include: { product: true } }
                 }
             });
 

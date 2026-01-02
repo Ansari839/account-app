@@ -43,13 +43,21 @@ export default function PurchaseOrdersPage() {
 
     const fetchDropdowns = async () => {
         try {
-            const [supRes, whRes, prodRes] = await Promise.all([
-                authenticatedFetch('/api/finance/parties/suppliers'),
+            const [accRes, whRes, prodRes] = await Promise.all([
+                authenticatedFetch('/api/accounts?type=LIABILITY'), // Fetch Accounts Payable
                 authenticatedFetch('/api/inventory/warehouses'),
                 authenticatedFetch('/api/inventory/products')
             ]);
 
-            if (supRes.ok) setSuppliers((await supRes.json()).data);
+            if (accRes.ok) {
+                const response = await accRes.json();
+                const accounts = response.accounts || response.data || [];
+                console.log('Accounts loaded:', accounts);
+                // Filter for posting accounts under LIABILITY (Accounts Payable)
+                const payableAccounts = accounts.filter((a: any) => a.isPosting);
+                console.log('Filtered payable accounts:', payableAccounts);
+                setSuppliers(payableAccounts);
+            }
             if (whRes.ok) setWarehouses((await whRes.json()).data);
             if (prodRes.ok) setProducts((await prodRes.json()).data);
         } catch (e) { console.error(e); }
@@ -58,7 +66,7 @@ export default function PurchaseOrdersPage() {
     const addItem = () => {
         setFormData({
             ...formData,
-            items: [...formData.items, { productId: '', qty: 1, rate: 0, total: 0 }]
+            items: [...formData.items, { productId: '', qty: 1, rate: '', total: 0 }]
         });
     };
 
@@ -113,8 +121,8 @@ export default function PurchaseOrdersPage() {
             header: 'Status',
             accessor: (row) => (
                 <span className={`px-2 py-1 rounded text-xs font-bold ${row.status === 'CLOSED' ? 'bg-green-100 text-green-700' :
-                        row.status === 'OPEN' ? 'bg-blue-100 text-blue-700' :
-                            'bg-slate-100 text-slate-700'
+                    row.status === 'OPEN' ? 'bg-blue-100 text-blue-700' :
+                        'bg-slate-100 text-slate-700'
                     }`}>
                     {row.status}
                 </span>
@@ -185,15 +193,15 @@ export default function PurchaseOrdersPage() {
                             {/* HEADER */}
                             <div className="grid grid-cols-3 gap-4">
                                 <div>
-                                    <label className="block text-sm font-bold mb-1">Supplier</label>
+                                    <label className="block text-sm font-bold mb-1">Account (Payable)</label>
                                     <select
                                         className="w-full p-2 border rounded-lg dark:bg-slate-800"
                                         required
                                         value={formData.supplierId}
                                         onChange={e => setFormData({ ...formData, supplierId: e.target.value })}
                                     >
-                                        <option value="">Select Supplier</option>
-                                        {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        <option value="">Select Account</option>
+                                        {suppliers.map(s => <option key={s.id} value={s.id}>{s.code} - {s.name}</option>)}
                                     </select>
                                 </div>
                                 <div>
