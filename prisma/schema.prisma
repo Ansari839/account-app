@@ -596,6 +596,7 @@ model PurchaseOrder {
   warehouse     Warehouse          @relation(fields: [warehouseId], references: [id])
   items         PurchaseOrderItem[]
   grns          GRN[]
+  invoices      PurchaseInvoice[]  // Direct link
 
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
@@ -606,6 +607,8 @@ model PurchaseOrderItem {
   poId          String
   productId     String
   qty           Decimal
+  receivedQty   Decimal            @default(0.0)
+  invoicedQty   Decimal            @default(0.0)
   rate          Decimal
   taxCodeId     String?
   taxAmount     Decimal            @default(0.0)
@@ -614,7 +617,8 @@ model PurchaseOrderItem {
   po            PurchaseOrder      @relation(fields: [poId], references: [id])
   product       Product            @relation(fields: [productId], references: [id])
   taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
-  grnItems       GRNItem[]
+  grnItems      GRNItem[]
+  invoiceItems  PurchaseInvoiceItem[] // Direct link
 }
 
 model GRN {
@@ -663,6 +667,7 @@ model PurchaseInvoice {
 
   supplier      Supplier           @relation(fields: [supplierId], references: [id])
   grn           GRN?               @relation(fields: [grnId], references: [id])
+  po            PurchaseOrder?     @relation(fields: [poId], references: [id])
   journalEntry  JournalEntry?      @relation(fields: [journalEntryId], references: [id])
   items         PurchaseInvoiceItem[]
 
@@ -674,6 +679,8 @@ model PurchaseInvoiceItem {
   id            String             @id @default(uuid())
   invoiceId     String
   productId     String
+  poItemId      String?           // Track against PO line
+  grnItemId     String?           // Track against GRN line
   qty           Decimal
   rate          Decimal
   taxCodeId     String?
@@ -682,6 +689,7 @@ model PurchaseInvoiceItem {
 
   invoice       PurchaseInvoice    @relation(fields: [invoiceId], references: [id])
   product       Product            @relation(fields: [productId], references: [id])
+  poItem        PurchaseOrderItem? @relation(fields: [poItemId], references: [id])
   taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
 }
 
@@ -775,6 +783,8 @@ model SalesOrderItem {
   orderId       String
   productId     String
   qty           Decimal
+  fulfilledQty  Decimal            @default(0.0) // How many shipped/DO created
+  invoicedQty   Decimal            @default(0.0) // How many billed
   rate          Decimal
   taxCodeId     String?
   taxAmount     Decimal            @default(0.0)
@@ -784,6 +794,7 @@ model SalesOrderItem {
   product       Product            @relation(fields: [productId], references: [id])
   taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
   doItems       DeliveryOrderItem[]
+  invoiceItems  SalesInvoiceItem[] // Direct link
 }
 
 model DeliveryOrder {
@@ -809,30 +820,31 @@ model DeliveryOrderItem {
   id            String             @id @default(uuid())
   doId          String
   productId     String
-  orderItemId   String?
-  qtyShipped    Decimal
-  qtyReturned   Decimal            @default(0.0)
+  soItemId      String?           // Link back to SO Line
+  qty           Decimal
 
   do            DeliveryOrder      @relation(fields: [doId], references: [id])
   product       Product            @relation(fields: [productId], references: [id])
-  orderItem     SalesOrderItem?    @relation(fields: [orderItemId], references: [id])
+  soItem        SalesOrderItem?    @relation(fields: [soItemId], references: [id])
 }
 
 model SalesInvoice {
   id            String             @id @default(uuid())
   invoiceNo     String             @unique
   customerId    String
-  warehouseId   String?
+  orderId       String?            // Link to SO
+  doId          String?            // Link to DO
+  warehouseId   String?            // Added for relation
   date          DateTime
   dueDate       DateTime?
   totalAmount   Decimal
   taxAmount     Decimal            @default(0.0)
-  doId          String?
   journalEntryId String?           @unique
 
   customer      Customer           @relation(fields: [customerId], references: [id])
-  warehouse     Warehouse?         @relation(fields: [warehouseId], references: [id])
+  order         SalesOrder?        @relation(fields: [orderId], references: [id])
   do            DeliveryOrder?     @relation(fields: [doId], references: [id])
+  warehouse     Warehouse?         @relation(fields: [warehouseId], references: [id])
   journalEntry  JournalEntry?      @relation(fields: [journalEntryId], references: [id])
   items         SalesInvoiceItem[]
   returns       SalesReturn[]
@@ -845,6 +857,8 @@ model SalesInvoiceItem {
   id            String             @id @default(uuid())
   invoiceId     String
   productId     String
+  soItemId      String?           // Link back to SO Line
+  doItemId      String?           // Link back to DO Line
   qty           Decimal
   rate          Decimal
   taxCodeId     String?
@@ -853,25 +867,27 @@ model SalesInvoiceItem {
 
   invoice       SalesInvoice       @relation(fields: [invoiceId], references: [id])
   product       Product            @relation(fields: [productId], references: [id])
+  soItem        SalesOrderItem?    @relation(fields: [soItemId], references: [id])
   taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
 }
 
 model SalesReturn {
   id            String             @id @default(uuid())
   returnNo      String             @unique
-  invoiceId     String
+  invoiceId     String?
   customerId    String
+  warehouseId   String
   date          DateTime
-  totalAmount   Decimal
-  taxAmount     Decimal            @default(0.0)
+  totalAmount   Decimal            @default(0.0)
   journalEntryId String?           @unique
   remarks       String?
 
-  invoice       SalesInvoice       @relation(fields: [invoiceId], references: [id])
+  invoice       SalesInvoice?      @relation(fields: [invoiceId], references: [id])
   customer      Customer           @relation(fields: [customerId], references: [id])
+  warehouse     Warehouse          @relation(fields: [warehouseId], references: [id])
   journalEntry  JournalEntry?      @relation(fields: [journalEntryId], references: [id])
   items         SalesReturnItem[]
-
+  
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 }
@@ -880,6 +896,7 @@ model SalesReturnItem {
   id            String             @id @default(uuid())
   returnId      String
   productId     String
+  invoiceItemId String?
   qty           Decimal
   rate          Decimal
   taxCodeId     String?
@@ -888,8 +905,11 @@ model SalesReturnItem {
 
   return        SalesReturn        @relation(fields: [returnId], references: [id])
   product       Product            @relation(fields: [productId], references: [id])
+  invoiceItem   SalesInvoiceItem?  @relation(fields: [invoiceItemId], references: [id])
   taxCode       TaxCode?           @relation(fields: [taxCodeId], references: [id])
 }
+
+
 
 model VoucherSequence {
   id        String      @id @default(uuid())
