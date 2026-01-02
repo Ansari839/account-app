@@ -9,8 +9,10 @@ export class ReportService {
         // 1. Get Opening Balance (sum of all before startDate)
         const opening = await prisma.journalLine.aggregate({
             where: {
-                accountId,
-                account: { companyId },
+                OR: [
+                    { accountId, account: { companyId } },
+                    { accountId, account: { companyId: null } }
+                ],
                 entry: {
                     date: { lt: startDate },
                     status: true
@@ -19,13 +21,20 @@ export class ReportService {
             _sum: { debit: true, credit: true }
         });
 
-        const openingBalance = (opening._sum.debit?.toNumber() || 0) - (opening._sum.credit?.toNumber() || 0);
+        const account = await prisma.account.findUnique({ where: { id: accountId } });
+        const initialOpening = account?.openingBalance?.toNumber() || 0;
+        const initialType = account?.openingBalanceType || 'DR';
+
+        const openingBalance = (initialType === 'DR' ? initialOpening : -initialOpening) +
+            (opening._sum.debit?.toNumber() || 0) - (opening._sum.credit?.toNumber() || 0);
 
         // 2. Get Transactions
         const transactions = await prisma.journalLine.findMany({
             where: {
-                accountId,
-                account: { companyId },
+                OR: [
+                    { accountId, account: { companyId } },
+                    { accountId, account: { companyId: null } }
+                ],
                 entry: {
                     date: { gte: startDate, lte: endDate },
                     status: true
@@ -51,34 +60,45 @@ export class ReportService {
     }
 
     /**
-     * Trial Balance
+     * Trial Balance - Professional view (includes all accounts, must equal)
      */
     static async getTrialBalance(companyId: string, endDate: Date) {
+        // 1. Get transaction balances for ALL accounts
         const balances = await prisma.journalLine.groupBy({
             by: ['accountId'],
             where: {
-                account: { companyId },
-                entry: {
-                    date: { lte: endDate },
-                    status: true
-                }
+                OR: [
+                    { account: { companyId } },
+                    { account: { companyId: null } }
+                ],
+                entry: { date: { lte: endDate }, status: true }
             },
             _sum: { debit: true, credit: true }
         });
 
-        const accounts = await prisma.account.findMany({ where: { companyId } });
+        // 2. Fetch all accounts related to the company or global scope
+        const accounts = await prisma.account.findMany({
+            where: {
+                OR: [{ companyId }, { companyId: null }]
+            }
+        });
 
-        const report = balances.map(b => {
-            const acc = accounts.find(a => a.id === b.accountId);
-            const net = (b._sum.debit?.toNumber() || 0) - (b._sum.credit?.toNumber() || 0);
+        const report = accounts.map(acc => {
+            const b = balances.find(item => item.accountId === acc.id);
+            const debits = b?._sum.debit?.toNumber() || 0;
+            const credits = b?._sum.credit?.toNumber() || 0;
+            const opening = acc.openingBalance?.toNumber() || 0;
+
+            const net = (acc.openingBalanceType === 'DR' ? opening : -opening) + debits - credits;
+
             return {
-                accountCode: acc?.code,
-                accountName: acc?.name,
-                type: acc?.type,
+                accountCode: acc.code,
+                accountName: acc.name,
+                type: acc.type,
                 debit: net > 0 ? net : 0,
                 credit: net < 0 ? Math.abs(net) : 0
             };
-        }).filter(r => r.debit !== 0 || r.credit !== 0);
+        }).filter(r => Math.abs(r.debit) > 0.001 || Math.abs(r.credit) > 0.001);
 
         return report;
     }
@@ -110,7 +130,10 @@ export class ReportService {
         const balances = await prisma.journalLine.groupBy({
             by: ['accountId'],
             where: {
-                account: { companyId },
+                OR: [
+                    { account: { companyId } },
+                    { account: { companyId: null } }
+                ],
                 entry: {
                     date: { gte: startDate, lte: endDate },
                     status: true
@@ -120,7 +143,10 @@ export class ReportService {
         });
 
         const accounts = await prisma.account.findMany({
-            where: { companyId, type: { in: [AccountType.INCOME, AccountType.EXPENSE] } }
+            where: {
+                OR: [{ companyId }, { companyId: null }],
+                type: { in: [AccountType.INCOME, AccountType.EXPENSE] }
+            }
         });
 
         const incomeLines: any[] = [];
@@ -201,42 +227,108 @@ export class ReportService {
     }
 
     /**
-     * Balance Sheet
+     * Balance Sheet - Professional Hierarchical View
      */
     static async getBalanceSheet(companyId: string, endDate: Date) {
-        const balances = await prisma.journalLine.groupBy({
+        // 1. Fetch all accounts related to the company/global BS (Asset, Liability, Equity)
+        const allAccounts = await prisma.account.findMany({
+            where: {
+                OR: [{ companyId }, { companyId: null }],
+                type: { in: [AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY] }
+            },
+            orderBy: { level: 'desc' } // Work from leaves upwards
+        });
+
+        // 2. Get transaction balances for all posting accounts
+        const postingBalances = await prisma.journalLine.groupBy({
             by: ['accountId'],
             where: {
-                account: { companyId },
-                entry: {
-                    date: { lte: endDate },
-                    status: true
-                }
+                OR: [
+                    { account: { companyId } },
+                    { account: { companyId: null } }
+                ],
+                entry: { date: { lte: endDate }, status: true }
             },
             _sum: { debit: true, credit: true }
         });
 
-        const accounts = await prisma.account.findMany({
-            where: { companyId, type: { in: [AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY] } }
-        });
+        // 3. Map to compute net balances for each account (including roll-ups)
+        const accountBalances = new Map<string, number>();
 
+        // Phase A: Identify individual posting balances
+        for (const acc of allAccounts) {
+            const b = postingBalances.find(item => item.accountId === acc.id);
+            const debits = b?._sum.debit?.toNumber() || 0;
+            const credits = b?._sum.credit?.toNumber() || 0;
+            const opening = acc.openingBalance?.toNumber() || 0;
+            // Net Debit = Opening(DR) + Debits - Credits
+            const netDebit = (acc.openingBalanceType === 'DR' ? opening : -opening) + debits - credits;
+            accountBalances.set(acc.id, netDebit);
+        }
+
+        // Phase B: Roll up balances to parents
+        for (const acc of allAccounts) {
+            if (acc.parentId) {
+                const childBalance = accountBalances.get(acc.id) || 0;
+                const parentBalance = accountBalances.get(acc.parentId) || 0;
+                accountBalances.set(acc.parentId, parentBalance + childBalance);
+            }
+        }
+
+        // 4. Calculate Net Profit (Income - Expense) to date
+        const plBalances = await prisma.journalLine.groupBy({
+            by: ['accountId'],
+            where: {
+                OR: [
+                    { account: { companyId, type: { in: [AccountType.INCOME, AccountType.EXPENSE] } } },
+                    { account: { companyId: null, type: { in: [AccountType.INCOME, AccountType.EXPENSE] } } }
+                ],
+                entry: { date: { lte: endDate }, status: true }
+            },
+            _sum: { debit: true, credit: true }
+        });
+        const incomeExpenseAccounts = await prisma.account.findMany({
+            where: {
+                OR: [{ companyId }, { companyId: null }],
+                type: { in: [AccountType.INCOME, AccountType.EXPENSE] }
+            }
+        });
+        let currentPeriodProfit = 0;
+        for (const b of plBalances) {
+            const acc = incomeExpenseAccounts.find(a => a.id === b.accountId);
+            if (!acc) continue;
+            const net = (b._sum.debit?.toNumber() || 0) - (b._sum.credit?.toNumber() || 0);
+            if (acc.type === AccountType.INCOME) currentPeriodProfit += (-net);
+            else currentPeriodProfit -= net;
+        }
+
+        // 5. Construct the final report using Level 1 parents (Summary Accounts)
         const assets: any[] = [];
         const liabilities: any[] = [];
         const equity: any[] = [];
 
-        for (const b of balances) {
-            const acc = accounts.find(a => a.id === b.accountId);
-            if (!acc) continue;
+        const reportAccounts = allAccounts.filter(acc => acc.level === 1);
 
-            const net = (b._sum.debit?.toNumber() || 0) - (b._sum.credit?.toNumber() || 0);
+        for (const acc of reportAccounts) {
+            const balance = accountBalances.get(acc.id) || 0;
+            if (Math.abs(balance) < 0.001) continue;
 
             if (acc.type === AccountType.ASSET) {
-                assets.push({ name: acc.name, code: acc.code, amount: net });
+                assets.push({ name: acc.name, code: acc.code, amount: balance });
             } else if (acc.type === AccountType.LIABILITY) {
-                liabilities.push({ name: acc.name, code: acc.code, amount: Math.abs(net) });
+                liabilities.push({ name: acc.name, code: acc.code, amount: -balance });
             } else if (acc.type === AccountType.EQUITY) {
-                equity.push({ name: acc.name, code: acc.code, amount: Math.abs(net) });
+                equity.push({ name: acc.name, code: acc.code, amount: -balance });
             }
+        }
+
+        // Add Current Period P&L to Equity
+        if (Math.abs(currentPeriodProfit) > 0.001) {
+            equity.push({
+                name: "Current Year Profit / (Loss)",
+                code: "PL-CUR",
+                amount: currentPeriodProfit
+            });
         }
 
         return {
@@ -299,9 +391,6 @@ export class ReportService {
      * Stock Summary
      */
     static async getStockSummary(companyId: string, warehouseId?: string) {
-        // Since Product/Warehouse/StockLedger are currently global, we filter by linked account where possible, 
-        // but for now we'll just filter Products that are associated with the company's accounts if possible.
-        // Actually, in the current schema, Product is global. We will return all products but only for the relevant warehouse.
         const where: any = {};
         if (warehouseId) where.warehouseId = warehouseId;
 
@@ -311,7 +400,6 @@ export class ReportService {
             _sum: { qtyIn: true, qtyOut: true }
         });
 
-        // Optimization: only find products involved in these ledger entries
         const products = await prisma.product.findMany();
         const warehouses = await prisma.warehouse.findMany();
 

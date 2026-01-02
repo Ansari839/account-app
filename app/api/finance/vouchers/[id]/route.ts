@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { JournalEntry } from '@prisma/client';
+import { JournalEntry, PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { AuthUtils } from '@/lib/auth-utils';

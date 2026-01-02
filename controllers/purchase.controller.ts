@@ -403,6 +403,7 @@ export class PurchaseController {
                         }
 
                         // 4. Create Stock Ledger Entry (Increase Stock)
+                        const poItem = item.poItemId ? await tx.purchaseOrderItem.findUnique({ where: { id: item.poItemId } }) : null;
                         await tx.stockLedger.create({
                             data: {
                                 productId: item.productId,
@@ -410,6 +411,7 @@ export class PurchaseController {
                                 date: new Date(date),
                                 qtyIn: item.qtyReceived,
                                 qtyOut: 0,
+                                costRate: poItem ? Number(poItem.rate) : 0,
                                 refType: 'GRN',
                                 refId: grn.id
                             }
@@ -705,6 +707,7 @@ export class PurchaseController {
                                 date: new Date(date),
                                 qtyIn: item.qty,
                                 qtyOut: 0,
+                                costRate: Number(item.rate),
                                 refType: 'INVOICE',
                                 refId: invoice.id
                             }
@@ -736,13 +739,14 @@ export class PurchaseController {
                 lines.push({
                     accountId: supplier.payableAccountId,
                     credit: totalAmount,
-                    debit: 0
+                    debit: 0,
+                    narration: `Purchase Invoice ${invoiceNo} - Total payable to ${supplier.name}`
                 });
 
                 // Debit Purchase/Inventory Accounts
                 for (const item of items) {
                     const product = await tx.product.findUnique({ where: { id: item.productId } });
-                    const purchaseAccount = product?.purchaseAccountId || product?.inventoryAccountId;
+                    const purchaseAccount = product?.inventoryAccountId || product?.purchaseAccountId;
 
                     if (!purchaseAccount) {
                         throw new Error(`Product '${product?.name || item.productId}' is not linked to a Purchase or Inventory Account. Please check product settings.`);
@@ -751,7 +755,8 @@ export class PurchaseController {
                     lines.push({
                         accountId: purchaseAccount,
                         credit: 0,
-                        debit: Number(item.qty) * Number(item.rate)
+                        debit: Number(item.qty) * Number(item.rate),
+                        narration: `Purchase of ${product?.name} (${item.qty} @ ${item.rate})`
                     });
                 }
 
@@ -761,7 +766,7 @@ export class PurchaseController {
                         date: new Date(date),
                         type: 'PURCHASE',
                         reference: invoiceNo,
-                        narration: `Purchase Invoice ${invoiceNo} ${poId ? 'against PO' : ''}`,
+                        narration: `Purchase Invoice ${invoiceNo} for ${supplier.name} ${poId ? 'against PO' : ''}`,
                         lines: { create: lines },
                         purchaseInvoice: { connect: { id: invoice.id } }
                     }
