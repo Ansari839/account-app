@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { Prisma, AccountType } from "@/app/generated/prisma/client";
+import { Prisma, AccountType } from "@prisma/client";
 
 export class ReportService {
     /**

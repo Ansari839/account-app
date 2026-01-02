@@ -1,6 +1,6 @@
 
 import 'dotenv/config';
-import { AccountType } from '../app/generated/prisma/client';
+import { AccountType } from '@prisma/client';
 import { AccountService } from '../services/account.service';
 import { PartyService } from '../services/party.service';
 import { ProductService } from '../services/product.service';

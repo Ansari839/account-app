@@ -1,6 +1,5 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -485,6 +484,7 @@ model Warehouse {
 
   deliveryOrders  DeliveryOrder[]
   salesInvoices   SalesInvoice[]
+  purchaseInvoices PurchaseInvoice[]
   salesOrders     SalesOrder[]
   salesReturns    SalesReturn[]
 }
@@ -664,11 +664,13 @@ model PurchaseInvoice {
   taxAmount     Decimal            @default(0.0)
   grnId         String?
   poId          String?
+  warehouseId   String?
   journalEntryId String?           @unique
 
   supplier      Supplier           @relation(fields: [supplierId], references: [id])
   grn           GRN?               @relation(fields: [grnId], references: [id])
   po            PurchaseOrder?     @relation(fields: [poId], references: [id])
+  warehouse     Warehouse?         @relation(fields: [warehouseId], references: [id])
   journalEntry  JournalEntry?      @relation(fields: [journalEntryId], references: [id])
   items         PurchaseInvoiceItem[]
 

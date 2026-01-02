@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { VoucherType, Prisma } from "@/app/generated/prisma/client";
+import { VoucherType, Prisma, JournalEntry } from '@prisma/client';
 
 export class VoucherService {
     /**

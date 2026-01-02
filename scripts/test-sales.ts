@@ -7,7 +7,7 @@ import { SalesService } from "../services/sales.service";
 import { PurchaseService } from "../services/purchase.service"; // Need this for costing (last purchase)
 import { JournalService } from "../services/journal.service";
 import prisma from "../lib/prisma";
-import { AccountType } from "@/app/generated/prisma/client";
+import { AccountType } from "@prisma/client";
 
 async function runTest() {
     console.log("🚀 Starting Sales Module Verification...");

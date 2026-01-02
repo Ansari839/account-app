@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { VoucherType, Prisma } from "@/app/generated/prisma/client";
+import { VoucherType, Prisma } from "@prisma/client";
 import { VoucherService } from "./voucher.service";
 import { FinancialYearService } from "./financial-year.service";
 import { AccountingControlService } from "./accountingControl.service";

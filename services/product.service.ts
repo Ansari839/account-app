@@ -1,6 +1,6 @@
 
 import prisma from "../lib/prisma";
-import { Product } from '@/app/generated/prisma/client';
+import { Product } from '@prisma/client';
 import { AccountService } from "./account.service";
 
 export class ProductService {

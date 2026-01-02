@@ -4,7 +4,7 @@ import { JournalService } from "../services/journal.service";
 import { AccountService } from "../services/account.service";
 import { ReportService } from "../services/report.service";
 import { GlobalSettingsService } from "../services/settings.service";
-import { AccountType, VoucherType } from "@/app/generated/prisma/client";
+import { AccountType, VoucherType } from "@prisma/client";
 import prisma from "../lib/prisma";
 
 async function runTest() {

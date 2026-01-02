@@ -121,10 +121,18 @@ export class PurchaseController {
 
                 if (!supplier) {
                     // Create new Supplier from Account
-                    const supplierCount = await prisma.supplier.count() + 1;
+                    const lastSupplier = await prisma.supplier.findFirst({
+                        where: { code: { startsWith: 'SUP-' } },
+                        orderBy: { code: 'desc' }
+                    });
+                    let nextSupSeq = 1;
+                    if (lastSupplier) {
+                        const lastNum = parseInt(lastSupplier.code.split('-')[1]);
+                        if (!isNaN(lastNum)) nextSupSeq = lastNum + 1;
+                    }
                     supplier = await prisma.supplier.create({
                         data: {
-                            code: `SUP-${supplierCount.toString().padStart(4, '0')}`,
+                            code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
                             name: account.name,
                             currencyCode: 'PKR', // Default currency
                             payableAccountId: account.id
@@ -136,8 +144,17 @@ export class PurchaseController {
             }
 
             // Generate PO Number
-            const count = await prisma.purchaseOrder.count() + 1;
-            const poNo = `PO-${new Date().getFullYear()}-${count.toString().padStart(4, '0')}`;
+            const lastPo = await prisma.purchaseOrder.findFirst({
+                where: { poNo: { startsWith: `PO-${new Date().getFullYear()}-` } },
+                orderBy: { poNo: 'desc' }
+            });
+            let nextPoSeq = 1;
+            if (lastPo) {
+                const parts = lastPo.poNo.split('-');
+                const lastSeq = parseInt(parts[parts.length - 1]);
+                if (!isNaN(lastSeq)) nextPoSeq = lastSeq + 1;
+            }
+            const poNo = `PO-${new Date().getFullYear()}-${nextPoSeq.toString().padStart(4, '0')}`;
 
             const order = await prisma.purchaseOrder.create({
                 data: {
@@ -288,8 +305,18 @@ export class PurchaseController {
             const { poId, supplierId, warehouseId, date, items } = body;
 
             // Generate GRN Number
-            const count = await prisma.gRN.count() + 1;
-            const grnNo = `GRN-${new Date().getFullYear()}-${count.toString().padStart(4, '0')}`;
+            // Generate GRN Number
+            const lastGrn = await prisma.gRN.findFirst({
+                where: { grnNo: { startsWith: `GRN-${new Date().getFullYear()}-` } },
+                orderBy: { grnNo: 'desc' }
+            });
+            let nextGrnSeq = 1;
+            if (lastGrn) {
+                const parts = lastGrn.grnNo.split('-');
+                const lastSeq = parseInt(parts[parts.length - 1]);
+                if (!isNaN(lastSeq)) nextGrnSeq = lastSeq + 1;
+            }
+            const grnNo = `GRN-${new Date().getFullYear()}-${nextGrnSeq.toString().padStart(4, '0')}`;
 
             // Transaction to ensure atomic updates
             const result = await prisma.$transaction(async (tx) => {
@@ -318,7 +345,52 @@ export class PurchaseController {
                     }
                 });
 
-                // 2. Update PO Items (receivedQty) & Create Stock Ledger
+                // 2. Handle Over-fulfillment (Addendum PO)
+                if (poId) {
+                    for (const item of validItems) {
+                        if (item.poItemId) {
+                            const poItem = await tx.purchaseOrderItem.findUnique({ where: { id: item.poItemId } });
+                            if (poItem) {
+                                const remaining = Number(poItem.qty) - Number(poItem.receivedQty);
+                                if (Number(item.qtyReceived) > remaining) {
+                                    const excess = Number(item.qtyReceived) - remaining;
+                                    const lastAddendum = await tx.purchaseOrder.findFirst({
+                                        where: { poNo: { startsWith: `PO-ADD-${new Date().getFullYear()}-` } },
+                                        orderBy: { poNo: 'desc' }
+                                    });
+                                    let nextAddendumSeq = 1;
+                                    if (lastAddendum) {
+                                        const parts = lastAddendum.poNo.split('-');
+                                        const lastSeq = parseInt(parts[parts.length - 1]);
+                                        if (!isNaN(lastSeq)) nextAddendumSeq = lastSeq + 1;
+                                    }
+                                    const addendumNo = `PO-ADD-${new Date().getFullYear()}-${nextAddendumSeq}`;
+                                    await tx.purchaseOrder.create({
+                                        data: {
+                                            poNo: addendumNo,
+                                            supplierId,
+                                            date: new Date(),
+                                            status: 'OPEN',
+                                            totalAmount: excess * Number(poItem.rate),
+                                            items: {
+                                                create: [{
+                                                    productId: item.productId,
+                                                    qty: excess,
+                                                    rate: poItem.rate,
+                                                    total: excess * Number(poItem.rate),
+                                                    invoicedQty: 0,
+                                                    receivedQty: 0
+                                                }]
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3. Update PO Items (receivedQty) & Create Stock Ledger
                 for (const item of validItems) {
                     if (item.qtyReceived > 0) {
                         if (item.poItemId) {
@@ -330,7 +402,7 @@ export class PurchaseController {
                             });
                         }
 
-                        // 3. Create Stock Ledger Entry (Increase Stock)
+                        // 4. Create Stock Ledger Entry (Increase Stock)
                         await tx.stockLedger.create({
                             data: {
                                 productId: item.productId,
@@ -440,8 +512,272 @@ export class PurchaseController {
         }
     }
 
+
     /**
-     * Update GRN (Simple implementation: Delete items and recreate if safe)
+     * Get Single Purchase Invoice Detail
+     */
+    static async getInvoice(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const invoice = await prisma.purchaseInvoice.findUnique({
+                where: { id },
+                include: {
+                    supplier: true,
+                    po: true,
+                    grn: true,
+                    journalEntry: { include: { lines: { include: { account: true } } } },
+                    items: {
+                        include: { product: true, poItem: true }
+                    }
+                }
+            });
+
+            if (!invoice) return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 });
+            return NextResponse.json({ success: true, data: invoice });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Delete Purchase Invoice
+     */
+    static async deleteInvoice(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const invoice = await prisma.purchaseInvoice.findUnique({
+                where: { id },
+                include: { items: true }
+            });
+
+            if (!invoice) return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 });
+
+            await prisma.$transaction(async (tx) => {
+                // 1. Revert invoiced quantities in PO items
+                for (const item of invoice.items) {
+                    if (item.poItemId) {
+                        await tx.purchaseOrderItem.update({
+                            where: { id: item.poItemId },
+                            data: { invoicedQty: { decrement: item.qty } }
+                        });
+                    }
+                }
+
+                // 2. Delete Journal Entry
+                if (invoice.journalEntryId) {
+                    await tx.journalLine.deleteMany({ where: { entryId: invoice.journalEntryId } });
+                    await tx.journalEntry.delete({ where: { id: invoice.journalEntryId } });
+                }
+
+                // 3. Delete Items and Invoice
+                await tx.purchaseInvoiceItem.deleteMany({ where: { invoiceId: id } });
+                await tx.purchaseInvoice.delete({ where: { id } });
+            });
+
+            return NextResponse.json({ success: true });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Create Purchase Invoice
+     */
+    static async createPurchaseInvoice(req: Request) {
+        try {
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const body = await req.json();
+            const { poId, grnId, supplierId, warehouseId, date, dueDate, items } = body;
+
+            // 1. Fetch Setting: GRN Mandatory
+            const setting = await prisma.globalSetting.findFirst({
+                where: { key: 'INVENTORY_GRN_MANDATORY' }
+            });
+            const grnMandatory = setting?.value === 'true';
+
+            if (grnMandatory && !grnId) {
+                return NextResponse.json({ success: false, error: "GRN is mandatory for creating Purchase Invoices." }, { status: 400 });
+            }
+
+            // Generate Invoice Number
+            const lastInvoice = await prisma.purchaseInvoice.findFirst({
+                where: { invoiceNo: { startsWith: `PI-${new Date().getFullYear()}-` } },
+                orderBy: { invoiceNo: 'desc' }
+            });
+            let nextInvoiceSeq = 1;
+            if (lastInvoice) {
+                const parts = lastInvoice.invoiceNo.split('-');
+                const lastSeq = parseInt(parts[parts.length - 1]);
+                if (!isNaN(lastSeq)) nextInvoiceSeq = lastSeq + 1;
+            }
+            const invoiceNo = `PI-${new Date().getFullYear()}-${nextInvoiceSeq.toString().padStart(4, '0')}`;
+
+            const result = await prisma.$transaction(async (tx) => {
+                const totalAmount = items.reduce((sum: number, item: any) => sum + (Number(item.qty || 0) * Number(item.rate || 0)), 0);
+
+                // 2. Handle Over-fulfillment (Addendum PO)
+                // If any item qty > PO remaining qty, create an Addendum PO
+                if (poId) {
+                    for (const item of items) {
+                        if (item.poItemId) {
+                            const poItem = await tx.purchaseOrderItem.findUnique({ where: { id: item.poItemId } });
+                            if (poItem) {
+                                const remaining = Number(poItem.qty) - Number(poItem.invoicedQty);
+                                if (Number(item.qty) > remaining) {
+                                    const excess = Number(item.qty) - remaining;
+                                    // Create Addendum PO
+                                    const lastAddendum = await tx.purchaseOrder.findFirst({
+                                        where: { poNo: { startsWith: `PO-ADD-${new Date().getFullYear()}-` } },
+                                        orderBy: { poNo: 'desc' }
+                                    });
+                                    let nextAddendumSeq = 1;
+                                    if (lastAddendum) {
+                                        const parts = lastAddendum.poNo.split('-');
+                                        const lastSeq = parseInt(parts[parts.length - 1]);
+                                        if (!isNaN(lastSeq)) nextAddendumSeq = lastSeq + 1;
+                                    }
+                                    const addendumNo = `PO-ADD-${new Date().getFullYear()}-${nextAddendumSeq}`;
+                                    const addendumPo = await tx.purchaseOrder.create({
+                                        data: {
+                                            poNo: addendumNo,
+                                            supplierId,
+                                            date: new Date(),
+                                            status: 'OPEN',
+                                            totalAmount: excess * Number(item.rate),
+                                            items: {
+                                                create: [{
+                                                    productId: item.productId,
+                                                    qty: excess,
+                                                    rate: item.rate,
+                                                    total: excess * Number(item.rate),
+                                                    invoicedQty: 0,
+                                                    receivedQty: 0
+                                                }]
+                                            }
+                                        }
+                                    });
+                                    // Note: In a real system, you might want to link this back or notify
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3. Create Invoice
+                const invoice = await tx.purchaseInvoice.create({
+                    data: {
+                        invoiceNo,
+                        supplierId,
+                        poId: poId || undefined,
+                        grnId: grnId || undefined,
+                        warehouseId: warehouseId || undefined,
+                        date: new Date(date),
+                        dueDate: dueDate ? new Date(dueDate) : null,
+                        totalAmount,
+                        items: {
+                            create: items.map((item: any) => ({
+                                productId: item.productId,
+                                poItemId: item.poItemId,
+                                grnItemId: item.grnItemId,
+                                qty: item.qty,
+                                rate: item.rate,
+                                total: Number(item.qty) * Number(item.rate)
+                            }))
+                        }
+                    }
+                });
+
+                // 3.1 Handle Stock for Direct Invoices (No GRN)
+                if (!grnId && warehouseId) {
+                    for (const item of items) {
+                        await tx.stockLedger.create({
+                            data: {
+                                productId: item.productId,
+                                warehouseId,
+                                date: new Date(date),
+                                qtyIn: item.qty,
+                                qtyOut: 0,
+                                refType: 'INVOICE',
+                                refId: invoice.id
+                            }
+                        });
+                    }
+                }
+
+                // 4. Update PO Items (invoicedQty)
+                for (const item of items) {
+                    if (item.poItemId) {
+                        await tx.purchaseOrderItem.update({
+                            where: { id: item.poItemId },
+                            data: { invoicedQty: { increment: item.qty } }
+                        });
+                    }
+                }
+
+                // 5. Create Journal Entry
+                const supplier = await tx.supplier.findUnique({ where: { id: supplierId } });
+                if (!supplier?.payableAccountId) {
+                    throw new Error(`Supplier '${supplier?.name || supplierId}' is not linked to a Payable Account. Please check supplier settings.`);
+                }
+
+                const journalNo = `JV-${invoiceNo}`;
+
+                // Group items by their purchase account
+                const lines = [];
+                // Credit Supplier (Payable)
+                lines.push({
+                    accountId: supplier.payableAccountId,
+                    credit: totalAmount,
+                    debit: 0
+                });
+
+                // Debit Purchase/Inventory Accounts
+                for (const item of items) {
+                    const product = await tx.product.findUnique({ where: { id: item.productId } });
+                    const purchaseAccount = product?.purchaseAccountId || product?.inventoryAccountId;
+
+                    if (!purchaseAccount) {
+                        throw new Error(`Product '${product?.name || item.productId}' is not linked to a Purchase or Inventory Account. Please check product settings.`);
+                    }
+
+                    lines.push({
+                        accountId: purchaseAccount,
+                        credit: 0,
+                        debit: Number(item.qty) * Number(item.rate)
+                    });
+                }
+
+                await tx.journalEntry.create({
+                    data: {
+                        number: journalNo,
+                        date: new Date(date),
+                        type: 'PURCHASE',
+                        reference: invoiceNo,
+                        narration: `Purchase Invoice ${invoiceNo} ${poId ? 'against PO' : ''}`,
+                        lines: { create: lines },
+                        purchaseInvoice: { connect: { id: invoice.id } }
+                    }
+                });
+
+                return invoice;
+            });
+
+            return NextResponse.json({ success: true, data: result });
+        } catch (error: any) {
+            console.error("Create PI Error:", error);
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+    /**
+     * Update GRN (reverts old stock/PO and applies new)
      */
     static async updateGRN(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
@@ -460,13 +796,13 @@ export class PurchaseController {
             if (!existing) return NextResponse.json({ success: false, error: "GRN not found" }, { status: 404 });
 
             // Check if invoiced
-            const invoicedCount = await prisma.purchaseInvoiceItem.count({
+            const invoiced = await prisma.purchaseInvoiceItem.count({
                 where: { grnItemId: { in: existing.items.map(i => i.id) } }
             });
-            if (invoicedCount > 0) return NextResponse.json({ success: false, error: "Cannot edit invoiced GRN" }, { status: 400 });
+            if (invoiced > 0) return NextResponse.json({ success: false, error: "Cannot edit GRN that is already invoiced" }, { status: 400 });
 
-            await prisma.$transaction(async (tx) => {
-                // 1. Revert previous state
+            const result = await prisma.$transaction(async (tx) => {
+                // 1. Revert Old Stock & PO Quantities
                 for (const item of existing.items) {
                     if (item.poItemId) {
                         await tx.purchaseOrderItem.update({
@@ -474,39 +810,45 @@ export class PurchaseController {
                             data: { receivedQty: { decrement: item.qtyReceived } }
                         });
                     }
+                    // Delete old stock entries for this GRN
                     await tx.stockLedger.deleteMany({
-                        where: { refType: 'GRN', refId: id }
+                        where: { refType: 'GRN', refId: id, productId: item.productId }
                     });
                 }
+
+                // 2. Delete existing items
                 await tx.gRNItem.deleteMany({ where: { grnId: id } });
 
-                // 2. Update Header
+                // 3. Update Header
                 await tx.gRN.update({
                     where: { id },
                     data: {
                         date: new Date(date),
-                        warehouseId,
-                        items: {
-                            create: items.map((item: any) => ({
-                                productId: item.productId,
-                                poItemId: item.poItemId,
-                                qtyReceived: item.qtyReceived,
-                                qtyRejected: item.qtyRejected
-                            }))
-                        }
+                        warehouseId
                     }
                 });
 
-                // 3. Apply new state
-                for (const item of items) {
-                    if (Number(item.qtyReceived) > 0) {
-                        if (item.poItemId) {
-                            await tx.purchaseOrderItem.update({
-                                where: { id: item.poItemId },
-                                data: { receivedQty: { increment: item.qtyReceived } }
-                            });
+                // 4. Create New Items & Apply Stock/PO
+                const validItems = items.filter((item: any) => (Number(item.qtyReceived) > 0 || Number(item.qtyRejected) > 0));
+                for (const item of validItems) {
+                    await tx.gRNItem.create({
+                        data: {
+                            grnId: id,
+                            productId: item.productId,
+                            poItemId: item.poItemId,
+                            qtyReceived: item.qtyReceived,
+                            qtyRejected: item.qtyRejected
                         }
+                    });
 
+                    if (item.poItemId) {
+                        await tx.purchaseOrderItem.update({
+                            where: { id: item.poItemId },
+                            data: { receivedQty: { increment: item.qtyReceived } }
+                        });
+                    }
+
+                    if (Number(item.qtyReceived) > 0) {
                         await tx.stockLedger.create({
                             data: {
                                 productId: item.productId,
@@ -522,112 +864,130 @@ export class PurchaseController {
                 }
             });
 
-            return NextResponse.json({ success: true });
+            return NextResponse.json({ success: true, data: result });
         } catch (error: any) {
+            console.error("Update GRN Error:", error);
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         }
     }
 
     /**
-     * Create Purchase Invoice
+     * Update Purchase Invoice
      */
-    static async createPurchaseInvoice(req: Request) {
+    static async updatePurchaseInvoice(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
+            const { id } = await params;
             const user = await getAuthUser(req);
             if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const body = await req.json();
-            const { poId, grnId, supplierId, date, dueDate, items } = body;
+            const { date, dueDate, warehouseId, items } = body;
 
-            // Generate Invoice Number
-            const count = await prisma.purchaseInvoice.count() + 1;
-            const invoiceNo = `PI-${new Date().getFullYear()}-${count.toString().padStart(4, '0')}`;
+            const existing = await prisma.purchaseInvoice.findUnique({
+                where: { id },
+                include: { items: true, journalEntry: true }
+            });
+
+            if (!existing) return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 });
 
             const result = await prisma.$transaction(async (tx) => {
-                const totalAmount = items.reduce((sum: number, item: any) => sum + (item.qty * item.rate), 0);
-
-                // 1. Create Invoice
-                const invoice = await tx.purchaseInvoice.create({
-                    data: {
-                        invoiceNo,
-                        supplierId,
-                        poId: poId || undefined,
-                        grnId: grnId || undefined,
-                        date: new Date(date),
-                        dueDate: dueDate ? new Date(dueDate) : null,
-                        totalAmount,
-                        items: {
-                            create: items.map((item: any) => ({
-                                productId: item.productId,
-                                poItemId: item.poItemId,
-                                grnItemId: item.grnItemId,
-                                qty: item.qty,
-                                rate: item.rate,
-                                total: item.qty * item.rate
-                            }))
-                        }
-                    }
-                });
-
-                // 2. Update PO Items (invoicedQty) - if linked to PO
-                for (const item of items) {
+                // 1. Revert PO Invoiced Quantities
+                for (const item of existing.items) {
                     if (item.poItemId) {
                         await tx.purchaseOrderItem.update({
                             where: { id: item.poItemId },
+                            data: { invoicedQty: { decrement: item.qty } }
+                        });
+                    }
+                }
+
+                // 2. Delete old items & stock ledger (if direct)
+                await tx.purchaseInvoiceItem.deleteMany({ where: { invoiceId: id } });
+                await tx.stockLedger.deleteMany({ where: { refType: 'INVOICE', refId: id } });
+
+                // 3. Update Header
+                const totalAmount = items.reduce((sum: number, item: any) => sum + (Number(item.qty || 0) * Number(item.rate || 0)), 0);
+                const invoice = await tx.purchaseInvoice.update({
+                    where: { id },
+                    data: {
+                        date: new Date(date),
+                        dueDate: dueDate ? new Date(dueDate) : null,
+                        warehouseId: warehouseId || null,
+                        totalAmount
+                    }
+                });
+
+                // 4. Create New Items
+                for (const item of items) {
+                    await tx.purchaseInvoiceItem.create({
+                        data: {
+                            invoiceId: id,
+                            productId: item.productId,
+                            poItemId: item.poItemId,
+                            grnItemId: item.grnItemId,
+                            qty: item.qty,
+                            rate: item.rate,
+                            total: Number(item.qty) * Number(item.rate)
+                        }
+                    });
+
+                    if (item.poItemId) {
+                        await tx.purchaseOrderItem.update({
+                            where: { id: item.poItemId },
+                            data: { invoicedQty: { increment: item.qty } }
+                        });
+                    }
+                }
+
+                // 4.1 Handle Stock for Direct Invoices (No GRN)
+                if (!existing.grnId && warehouseId) {
+                    for (const item of items) {
+                        await tx.stockLedger.create({
                             data: {
-                                invoicedQty: { increment: item.qty }
+                                productId: item.productId,
+                                warehouseId,
+                                date: new Date(date),
+                                qtyIn: item.qty,
+                                qtyOut: 0,
+                                refType: 'INVOICE',
+                                refId: id
                             }
                         });
                     }
                 }
 
-                // 3. Create Journal Entry (AP)
-                // Credit Supplier (Payable)
-                // Fetch Supplier to get Payable Account
-                const supplier = await tx.supplier.findUnique({ where: { id: supplierId } });
+                // 5. Update Journal Entry
+                if (existing.journalEntryId) {
+                    await tx.journalLine.deleteMany({ where: { entryId: existing.journalEntryId } });
 
-                if (!supplier?.payableAccountId) {
-                    // Fallback or warning? For now proceed but this is a config issue
-                    console.warn("Supplier missing payable account", supplierId);
-                }
+                    const supplier = await tx.supplier.findUnique({ where: { id: existing.supplierId } });
+                    const lines = [];
+                    lines.push({ accountId: supplier?.payableAccountId || '', credit: totalAmount, debit: 0 });
 
-                await tx.journalEntry.create({
-                    data: {
-                        number: `JV-${invoiceNo}`,
-                        date: new Date(date),
-                        type: 'PURCHASE',
-                        reference: invoiceNo,
-                        narration: `Purchase Invoice ${invoiceNo}`,
-                        lines: {
-                            create: [
-                                {
-                                    // Credit Supplier
-                                    accountId: supplier?.payableAccountId || '', // WARNING: Needs verification
-                                    credit: totalAmount,
-                                    debit: 0
-                                },
-                                {
-                                    // Debit Purchase (Placeholder - typically would be Inventory or Expense)
-                                    // ideally sum up by product category accounts
-                                    // For now, let's assume we have a "Purchase Account" on the first product or use a global default
-                                    // FIXME: Use proper Purchase/Inventory Account from Product
-                                    accountId: supplier?.payableAccountId || '', // FIXME: BAD Placeholder
-                                    credit: 0,
-                                    debit: totalAmount
-                                }
-                            ]
-                        },
-                        purchaseInvoice: { connect: { id: invoice.id } }
+                    for (const item of items) {
+                        const product = await tx.product.findUnique({ where: { id: item.productId } });
+                        lines.push({
+                            accountId: product?.purchaseAccountId || product?.inventoryAccountId || '',
+                            credit: 0,
+                            debit: Number(item.qty) * Number(item.rate)
+                        });
                     }
-                });
+
+                    await tx.journalEntry.update({
+                        where: { id: existing.journalEntryId },
+                        data: {
+                            date: new Date(date),
+                            lines: { create: lines }
+                        }
+                    });
+                }
 
                 return invoice;
             });
 
             return NextResponse.json({ success: true, data: result });
-
         } catch (error: any) {
-            console.error("Create PI Error:", error);
+            console.error("Update PI Error:", error);
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         }
     }

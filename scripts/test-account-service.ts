@@ -2,7 +2,7 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient, AccountType } from '../app/generated/prisma/client';
+import { PrismaClient, AccountType } from '@prisma/client';
 import { AccountService } from '../services/account.service';
 import { PartyService } from '../services/party.service';
 

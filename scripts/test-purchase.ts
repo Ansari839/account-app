@@ -6,7 +6,7 @@ import { WarehouseService } from "../services/warehouse.service";
 import { PurchaseService } from "../services/purchase.service";
 import { JournalService } from "../services/journal.service";
 import prisma from "../lib/prisma";
-import { AccountType } from "@/app/generated/prisma/client";
+import { AccountType } from "@prisma/client";
 
 async function runTest() {
     console.log("🚀 Starting Purchase Module Verification...");

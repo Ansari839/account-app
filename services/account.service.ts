@@ -1,6 +1,6 @@
 
 import prisma from "../lib/prisma";
-import { Account, AccountType } from '@/app/generated/prisma/client';
+import { Account, AccountType } from '@prisma/client';
 
 export class AccountService {
     /**

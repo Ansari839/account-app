@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { JournalService } from "./journal.service";
 import { GlobalSettingsService } from "./settings.service";
-import { Prisma } from "@/app/generated/prisma/client";
+import { PurchaseOrder, GRN, PurchaseInvoice } from '@prisma/client';
 
 export interface PurchaseRequestInput {
     reqNo: string;

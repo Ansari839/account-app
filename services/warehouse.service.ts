@@ -1,6 +1,6 @@
 
 import prisma from "../lib/prisma";
-import { Warehouse } from '@/app/generated/prisma/client';
+import { Warehouse } from '@prisma/client';
 
 export class WarehouseService {
     /**
