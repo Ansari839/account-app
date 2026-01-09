@@ -267,7 +267,9 @@ export class ReportService {
         }
 
         // Phase B: Roll up balances to parents
-        for (const acc of allAccounts) {
+        // Sort by level descending to ensure children are processed before parents
+        const sortedForRollup = [...allAccounts].sort((a, b) => (b.level || 0) - (a.level || 0));
+        for (const acc of sortedForRollup) {
             if (acc.parentId) {
                 const childBalance = accountBalances.get(acc.id) || 0;
                 const parentBalance = accountBalances.get(acc.parentId) || 0;

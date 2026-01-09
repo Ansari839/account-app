@@ -22,6 +22,10 @@ export default function ReportViewer() {
     const [accounts, setAccounts] = useState<any[]>([]);
     const [selectedAccount, setSelectedAccount] = useState<string>(searchParams.get('accountId') || '');
 
+    // Stock Specific State
+    const [products, setProducts] = useState<any[]>([]);
+    const [selectedProduct, setSelectedProduct] = useState<string>(searchParams.get('productId') || '');
+
     // Default Dates
     const [dateRange, setDateRange] = useState({ start: '2025-01-01', end: '2026-12-31' });
 
@@ -44,15 +48,38 @@ export default function ReportViewer() {
         }
     }, [reportPath]);
 
+    // Fetch Products for Dropdown
+    useEffect(() => {
+        if (reportPath === 'stock-ledger') {
+            authenticatedFetch('/api/inventory/products')
+                .then(res => res.json())
+                .then(json => {
+                    const list = json.data || [];
+                    if (Array.isArray(list)) {
+                        const flat = list.map((p: any) => ({
+                            value: p.id,
+                            label: `${p.code} - ${p.name}`
+                        }));
+                        setProducts(flat);
+                    }
+                });
+        }
+    }, [reportPath]);
+
+    // Handle initial search params for product
+    useEffect(() => {
+        const prodId = searchParams.get('productId');
+        if (prodId) setSelectedProduct(prodId);
+    }, [searchParams]);
+
     // Auto-fetch logic
     useEffect(() => {
         // If it's a ledger, we need an account. If not provided, don't fetch yet.
         if (reportPath === 'ledger' && !selectedAccount) return;
+        if (reportPath === 'stock-ledger' && !selectedProduct) return;
 
         fetchData();
-    }, [reportPath, selectedAccount]);
-    // Note: We don't auto-fetch on date change to let user "Apply" manually, 
-    // unless you want real-time updates. Let's stick to manual "Apply" or initial load.
+    }, [reportPath, selectedAccount, selectedProduct]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -66,6 +93,14 @@ export default function ReportViewer() {
                     return;
                 }
                 url += `&accountId=${selectedAccount}`;
+            }
+
+            if (reportPath === 'stock-ledger') {
+                if (!selectedProduct) {
+                    setLoading(false);
+                    return;
+                }
+                url += `&productId=${selectedProduct}`;
             }
 
             const res = await authenticatedFetch(url);
@@ -96,6 +131,14 @@ export default function ReportViewer() {
             return (
                 <div className="bg-white/50 dark:bg-slate-900/30 backdrop-blur-sm border border-slate-200/60 dark:border-slate-800/60 rounded-3xl p-12 text-center h-64 flex flex-col items-center justify-center">
                     <p className="text-slate-500 font-medium text-lg">Select an account above to view its ledger.</p>
+                </div>
+            );
+        }
+
+        if (reportPath === 'stock-ledger' && !selectedProduct) {
+            return (
+                <div className="bg-white/50 dark:bg-slate-900/30 backdrop-blur-sm border border-slate-200/60 dark:border-slate-800/60 rounded-3xl p-12 text-center h-64 flex flex-col items-center justify-center">
+                    <p className="text-slate-500 font-medium text-lg">Select a product above to view its stock ledger.</p>
                 </div>
             );
         }
@@ -291,7 +334,21 @@ export default function ReportViewer() {
             const rowWithIds = data.map((r: any, i: number) => ({ ...r, id: `si-${i}` }));
             const columns: Column<any>[] = [
                 { header: 'Product Code', accessor: (row: any) => row.productCode },
-                { header: 'Product Name', accessor: (row: any) => row.productName },
+                {
+                    header: 'Product Name',
+                    accessor: (row: any) => (
+                        <button
+                            onClick={(e) => {
+                                e.preventDefault();
+                                setSelectedProduct(row.id);
+                                router.push(`/finance/reports/stock-ledger?productId=${row.id}`);
+                            }}
+                            className="text-indigo-600 hover:underline font-bold text-left"
+                        >
+                            {row.productName}
+                        </button>
+                    )
+                },
                 { header: 'Category', accessor: (row: any) => row.category },
                 { header: 'Unit', accessor: (row: any) => row.unit },
                 { header: 'Current Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-bold text-emerald-600">{row.stock}</span> : <span className="text-rose-500 font-bold">{row.stock}</span> },
@@ -417,6 +474,23 @@ export default function ReportViewer() {
 
                 {/* Report Parameters Section - SCREEN ONLY */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 print:hidden">
+                    {/* Product Selection - Only for Stock Ledger */}
+                    {reportPath === 'stock-ledger' && (
+                        <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl md:col-span-1">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Select Product</p>
+                            <Combobox
+                                options={products}
+                                value={selectedProduct}
+                                onChange={(val) => {
+                                    setSelectedProduct(val);
+                                    router.push(`/finance/reports/stock-ledger?productId=${val}`);
+                                }}
+                                placeholder="Search product..."
+                                className="w-full"
+                            />
+                        </div>
+                    )}
+
                     {/* Account Selection - Only for Ledger */}
                     {reportPath === 'ledger' && (
                         <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl md:col-span-1">
