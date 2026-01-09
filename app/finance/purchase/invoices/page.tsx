@@ -92,8 +92,12 @@ export default function PurchaseInvoicesPage() {
             const res = await authenticatedFetch(endpoint);
             const json = await res.json();
             if (json.success) {
-                console.log('Sources loaded:', json.data);
-                setSources(json.data);
+                let data = json.data;
+                if (type === "GRN") {
+                    // Filter out already billed GRNs
+                    data = data.filter((g: any) => !g.invoices || g.invoices.length === 0);
+                }
+                setSources(data);
             }
         } catch (e) {
             console.error(e);

@@ -183,6 +183,12 @@ export default function GRNPage() {
         { header: 'Supplier', accessor: (row) => row.supplier?.name },
         { header: 'Warehouse', accessor: (row) => row.warehouse?.name },
         {
+            header: 'Status',
+            accessor: (row) => row.invoices?.length > 0
+                ? <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">BILLED</span>
+                : <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-xs font-bold">UNBILLED</span>
+        },
+        {
             header: 'Items Rec.',
             accessor: (row) => row.items?.length || 0
         },

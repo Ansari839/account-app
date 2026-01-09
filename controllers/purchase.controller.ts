@@ -86,7 +86,10 @@ export class PurchaseController {
                 },
                 include: {
                     supplier: true,
-                    items: true
+                    items: { include: { product: true } },
+                    invoices: { select: { id: true, invoiceNo: true } },
+                    warehouse: true,
+                    po: { select: { poNo: true } }
                 },
                 orderBy: { date: 'desc' }
             });
