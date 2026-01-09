@@ -302,42 +302,94 @@ export class ReportService {
             else currentPeriodProfit -= net;
         }
 
-        // 5. Construct the final report using Level 1 parents (Summary Accounts)
-        const assets: any[] = [];
-        const liabilities: any[] = [];
-        const equity: any[] = [];
+        // --------------------------------------------------------------------------
+        // CONDENSED REPORT CONSTRUCTION (Apple Inc. Style)
+        // --------------------------------------------------------------------------
+        const buildSection = (type: AccountType) => {
+            // Get Groups (Level 1 Parents) e.g., Current Assets
+            const groups = allAccounts
+                .filter(a => a.type === type && a.level === 1)
+                .sort((a, b) => a.code.localeCompare(b.code));
 
-        const reportAccounts = allAccounts.filter(acc => acc.level === 1);
+            const resultGroups: any[] = [];
 
-        for (const acc of reportAccounts) {
-            const balance = accountBalances.get(acc.id) || 0;
-            if (Math.abs(balance) < 0.001) continue;
+            for (const group of groups) {
+                const groupBalance = accountBalances.get(group.id) || 0;
 
-            if (acc.type === AccountType.ASSET) {
-                assets.push({ name: acc.name, code: acc.code, amount: balance });
-            } else if (acc.type === AccountType.LIABILITY) {
-                liabilities.push({ name: acc.name, code: acc.code, amount: -balance });
-            } else if (acc.type === AccountType.EQUITY) {
-                equity.push({ name: acc.name, code: acc.code, amount: -balance });
+                // Find L2 Children (Items) e.g. Cash, AR
+                const items = allAccounts
+                    .filter(a => a.parentId === group.id && a.type === type && a.level === 2)
+                    .sort((a, b) => a.code.localeCompare(b.code))
+                    .map(a => {
+                        const bal = accountBalances.get(a.id) || 0;
+                        return {
+                            name: a.name,
+                            code: a.code,
+                            amount: (type === AccountType.ASSET) ? bal : -bal,
+                            level: a.level
+                        };
+                    })
+                    .filter(i => Math.abs(i.amount) > 0.001);
+
+                // If group has children items, add as a group
+                if (items.length > 0) {
+                    resultGroups.push({
+                        name: group.name,
+                        items,
+                        total: (type === AccountType.ASSET) ? groupBalance : -groupBalance
+                    });
+                }
             }
-        }
 
-        // Add Current Period P&L to Equity
+            return resultGroups;
+        };
+
+        const assetSection = buildSection(AccountType.ASSET);
+        const liabilitySection = buildSection(AccountType.LIABILITY);
+
+        // Equity is usually flat Level 1
+        const equityItems = allAccounts
+            .filter(a => a.type === AccountType.EQUITY && a.level === 1)
+            .map(a => {
+                const bal = accountBalances.get(a.id) || 0;
+                return {
+                    name: a.name,
+                    code: a.code,
+                    amount: -bal,
+                    level: a.level
+                };
+            })
+            .filter(i => Math.abs(i.amount) > 0.001);
+
         if (Math.abs(currentPeriodProfit) > 0.001) {
-            equity.push({
+            equityItems.push({
                 name: "Current Year Profit / (Loss)",
                 code: "PL-CUR",
-                amount: currentPeriodProfit
+                amount: currentPeriodProfit,
+                level: 1
             });
         }
 
+        // Calculate Totals strictly from Level 1
+        const totalAssets = allAccounts
+            .filter(a => a.type === AccountType.ASSET && a.level === 1)
+            .reduce((sum, a) => sum + (accountBalances.get(a.id) || 0), 0);
+
+        const totalLiabilities = allAccounts
+            .filter(a => a.type === AccountType.LIABILITY && a.level === 1)
+            .reduce((sum, a) => sum + -(accountBalances.get(a.id) || 0), 0);
+
+        const totalEquity = allAccounts
+            .filter(a => a.type === AccountType.EQUITY && a.level === 1)
+            .reduce((sum, a) => sum + -(accountBalances.get(a.id) || 0), 0) + currentPeriodProfit;
+
         return {
-            assets,
-            liabilities,
-            equity,
-            totalAssets: assets.reduce((s, a) => s + a.amount, 0),
-            totalLiabilities: liabilities.reduce((s, l) => s + l.amount, 0),
-            totalEquity: equity.reduce((s, e) => s + e.amount, 0)
+            assetSection,
+            liabilitySection,
+            equityItems,
+            totalAssets,
+            totalLiabilities,
+            totalEquity
         };
     }
 
@@ -419,19 +471,60 @@ export class ReportService {
     /**
      * Stock Ledger
      */
+    /**
+     * Item-wise Stock Report (Aggregated across warehouses)
+     */
+    static async getStockItemWise(companyId: string) {
+        const summary = await prisma.stockLedger.groupBy({
+            by: ['productId'],
+            _sum: { qtyIn: true, qtyOut: true }
+        });
+
+        const products = await prisma.product.findMany({
+            include: { baseUnit: true, category: true }
+        });
+
+        return summary.map(s => {
+            const prod = products.find(p => p.id === s.productId);
+            const stock = (s._sum.qtyIn?.toNumber() || 0) - (s._sum.qtyOut?.toNumber() || 0);
+            return {
+                id: s.productId,
+                productName: prod?.name,
+                productCode: prod?.code,
+                category: prod?.category?.name || '-',
+                unit: prod?.baseUnit?.name || '-',
+                stock
+            };
+        });
+    }
+
+    /**
+     * Stock Ledger
+     */
     static async getStockLedger(companyId: string, productId: string, warehouseId?: string | undefined, startDate?: Date, endDate?: Date) {
         const where: any = { productId };
         if (warehouseId) where.warehouseId = warehouseId;
         if (startDate || endDate) {
             where.createdAt = {};
-            if (startDate) where.createdAt.gte = startDate;
-            if (endDate) where.createdAt.lte = endDate;
+            if (startDate) where.date = { gte: startDate }; // Changed from createdAt to date
+            if (endDate) where.date = { lte: endDate };
         }
 
-        return await prisma.stockLedger.findMany({
+        const entries = await prisma.stockLedger.findMany({
             where,
-            orderBy: { createdAt: 'asc' },
+            orderBy: { date: 'asc' }, // Changed from createdAt to date
             include: { product: true, warehouse: true }
+        });
+
+        let balance = 0;
+        return entries.map(e => {
+            const inward = e.qtyIn?.toNumber() || 0;
+            const outward = e.qtyOut?.toNumber() || 0;
+            balance += (inward - outward);
+            return {
+                ...e,
+                balance
+            };
         });
     }
 

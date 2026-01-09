@@ -206,71 +206,97 @@ export default function ReportViewer() {
 
         // --- BALANCE SHEET ---
         if (reportPath === 'balance-sheet') {
-            const assets = data.assets || [];
-            const liabilities = data.liabilities || [];
-            const equity = data.equity || [];
+            const assetGroups = data.assetSection || [];
+            const liabilityGroups = data.liabilitySection || [];
+            const equityItems = (data.equityItems || []).map((r: any, i: number) => ({ ...r, id: `eq-${i}` }));
 
-            const assetsWithIds = assets.map((r: any, i: number) => ({ ...r, id: `asset-${i}` }));
-            const liabilitiesWithIds = liabilities.map((r: any, i: number) => ({ ...r, id: `liab-${i}` }));
-            const equityWithIds = equity.map((r: any, i: number) => ({ ...r, id: `eq-` + i }));
+            const totalAssets = Number(data.totalAssets || 0);
+            const totalLiabilities = Number(data.totalLiabilities || 0);
+            const totalEquity = Number(data.totalEquity || 0);
+
+            const renderGroup = (group: any, idx: number, prefix: string) => (
+                <div key={idx} className="mb-6">
+                    <h4 className="text-sm font-bold uppercase text-slate-500 border-b border-slate-200 dark:border-slate-700 pb-1 mb-2">
+                        {group.name}
+                    </h4>
+                    <DataTable
+                        data={group.items.map((r: any, i: number) => ({ ...r, id: `${prefix}-${idx}-${i}` }))}
+                        columns={[
+                            { header: 'Account', accessor: (r: any) => r.name },
+                            { header: 'Amount', accessor: (r: any) => Number(r.amount).toLocaleString(undefined, { minimumFractionDigits: 2 }) }
+                        ]}
+                    />
+                    <div className="flex justify-between font-bold text-sm mt-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded">
+                        <span>Total {group.name}</span>
+                        <span>{Number(group.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                </div>
+            );
 
             return (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 font-mono text-sm">
                     {/* ASSETS */}
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-indigo-500 uppercase tracking-tight">Assets</h3>
-                        <DataTable
-                            data={assetsWithIds}
-                            columns={[
-                                { header: 'Account', accessor: (r: any) => r.name },
-                                { header: 'Amount', accessor: (r: any) => `${Number(r.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` }
-                            ]}
-                        />
-                        <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex justify-between font-bold">
-                            <span>Total Assets</span>
-                            <span>{Number(data.totalAssets || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <div>
+                        <h3 className="text-xl font-bold bg-slate-100 dark:bg-slate-800 p-3 rounded-lg mb-6 text-center">ASSETS</h3>
+
+                        {assetGroups.map((g: any, i: number) => renderGroup(g, i, 'ast'))}
+
+                        <div className="flex justify-between items-center text-lg font-black bg-indigo-600 text-white p-4 rounded-xl mt-8 shadow-lg shadow-indigo-500/30">
+                            <span>TOTAL ASSETS</span>
+                            <span>{totalAssets.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
                     </div>
 
                     {/* LIABILITIES & EQUITY */}
-                    <div className="space-y-8">
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-slate-500 uppercase tracking-tight">Liabilities</h3>
-                            <DataTable
-                                data={liabilitiesWithIds}
-                                columns={[
-                                    { header: 'Account', accessor: (r: any) => r.name },
-                                    { header: 'Amount', accessor: (r: any) => `${Number(r.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` }
-                                ]}
-                            />
-                            <div className="p-4 bg-slate-500/10 border border-slate-500/20 rounded-xl flex justify-between font-bold">
-                                <span>Total Liabilities</span>
-                                <span>{Number(data.totalLiabilities || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                            </div>
+                    <div>
+                        <h3 className="text-xl font-bold bg-slate-100 dark:bg-slate-800 p-3 rounded-lg mb-6 text-center">LIABILITIES & EQUITY</h3>
+
+                        {/* Liabilities Groups */}
+                        {liabilityGroups.map((g: any, i: number) => renderGroup(g, i, 'liab'))}
+
+                        <div className="flex justify-between font-bold text-sm mt-2 mb-8 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded">
+                            <span>Total Liabilities</span>
+                            <span>{totalLiabilities.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
 
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-emerald-500 uppercase tracking-tight">Equity</h3>
+                        {/* Equity Section (Flat) */}
+                        <div className="mb-6">
+                            <h4 className="text-sm font-bold uppercase text-slate-500 border-b border-slate-200 dark:border-slate-700 pb-1 mb-2">
+                                Shareholders' Equity
+                            </h4>
                             <DataTable
-                                data={equityWithIds}
+                                data={equityItems}
                                 columns={[
                                     { header: 'Account', accessor: (r: any) => r.name },
-                                    { header: 'Amount', accessor: (r: any) => `${Number(r.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` }
+                                    { header: 'Amount', accessor: (r: any) => Number(r.amount).toLocaleString(undefined, { minimumFractionDigits: 2 }) }
                                 ]}
                             />
-                            <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex justify-between font-bold">
+                            <div className="flex justify-between font-bold text-sm mt-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded">
                                 <span>Total Equity</span>
-                                <span>{Number(data.totalEquity || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                <span>{totalEquity.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
                         </div>
 
-                        <div className="p-6 bg-slate-800 text-white rounded-2xl flex justify-between items-center shadow-lg">
-                            <span className="text-lg font-bold">Total Liab + Equity</span>
-                            <span className="text-2xl font-bold">{((data.totalLiabilities || 0) + (data.totalEquity || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        <div className="flex justify-between items-center text-lg font-black bg-slate-800 text-white p-4 rounded-xl mt-8 shadow-lg">
+                            <span>TOTAL LIAB. & EQUITY</span>
+                            <span>{(totalLiabilities + totalEquity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
                     </div>
                 </div>
             );
+        }
+
+        // --- STOCK ITEM WISE ---
+        if (reportPath === 'stock-item-wise') {
+            const rowWithIds = data.map((r: any, i: number) => ({ ...r, id: `si-${i}` }));
+            const columns: Column<any>[] = [
+                { header: 'Product Code', accessor: (row: any) => row.productCode },
+                { header: 'Product Name', accessor: (row: any) => row.productName },
+                { header: 'Category', accessor: (row: any) => row.category },
+                { header: 'Unit', accessor: (row: any) => row.unit },
+                { header: 'Current Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-bold text-emerald-600">{row.stock}</span> : <span className="text-rose-500 font-bold">{row.stock}</span> },
+            ];
+            return <DataTable data={rowWithIds} columns={columns} />;
         }
 
         // --- GENERAL LEDGER ---
@@ -321,6 +347,22 @@ export default function ReportViewer() {
                     <DataTable data={rows} columns={columns} />
                 </div>
             );
+        }
+
+        // --- STOCK LEDGER ---
+        if (reportPath === 'stock-ledger') {
+            const rowWithIds = data.map((r: any, i: number) => ({ ...r, id: `sl-${i}` }));
+            const columns: Column<any>[] = [
+                { header: 'Date', accessor: (row: any) => new Date(row.date || row.createdAt).toLocaleDateString() },
+                { header: 'Product', accessor: (row: any) => row.product?.name },
+                { header: 'Warehouse', accessor: (row: any) => row.warehouse?.name },
+                { header: 'Ref Type', accessor: (row: any) => <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded">{row.refType}</span> },
+                { header: 'Ref ID', accessor: (row: any) => <span className="text-xs font-mono">{row.refId}</span> },
+                { header: 'In', accessor: (row: any) => row.qtyIn > 0 ? <span className="font-bold text-emerald-600">{row.qtyIn}</span> : '-' },
+                { header: 'Out', accessor: (row: any) => row.qtyOut > 0 ? <span className="font-bold text-rose-500">{row.qtyOut}</span> : '-' },
+                { header: 'Balance', accessor: (row: any) => <span className="font-bold font-mono">{row.balance}</span> },
+            ];
+            return <DataTable data={rowWithIds} columns={columns} />;
         }
 
         // Generic fallback for JSON data

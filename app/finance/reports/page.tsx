@@ -29,6 +29,7 @@ const reportGroups = [
         icon: '📦',
         reports: [
             { name: 'Stock Summary', path: '/finance/reports/stock-summary', desc: 'Warehouse stock levels' },
+            { name: 'Stock Item Wise', path: '/finance/reports/stock-item-wise', desc: 'Consolidated item stock' },
             { name: 'Stock Ledger', path: '/finance/reports/stock-ledger', desc: 'Item-wise movement audit' },
             { name: 'Tax Summary', path: '/finance/reports/tax-summary', desc: 'Collected vs paid tax' },
         ]

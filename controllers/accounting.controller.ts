@@ -150,6 +150,21 @@ export class AccountingController {
     }
 
     /**
+     * Get Stock Item Wise
+     */
+    static async getStockItemWise(req: Request) {
+        try {
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const data = await ReportService.getStockItemWise(user.companyId);
+            return NextResponse.json({ success: true, data });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
      * Get Dashboard Stats
      */
     static async getDashboardStats(req: Request) {

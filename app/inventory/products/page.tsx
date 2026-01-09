@@ -13,6 +13,14 @@ interface ProductVariant {
     price?: number;
 }
 
+interface Account {
+    id: string;
+    code: string;
+    name: string;
+    type: string;
+    isPosting: boolean;
+}
+
 interface Product {
     id: string;
     code: string;
@@ -23,6 +31,10 @@ interface Product {
     baseUnit?: { name: string };
     variants?: ProductVariant[];
     openingStock?: number;
+    inventoryAccountId?: string;
+    cogsAccountId?: string;
+    salesAccountId?: string;
+    purchaseAccountId?: string;
 }
 
 export default function ProductsPage() {
@@ -34,12 +46,14 @@ export default function ProductsPage() {
 
     // Form State
     const [formData, setFormData] = useState<any>({
-        code: '', name: '', categoryId: '', baseUnitId: '', variants: []
+        code: '', name: '', categoryId: '', baseUnitId: '', variants: [],
+        inventoryAccountId: '', cogsAccountId: '', salesAccountId: '', purchaseAccountId: ''
     });
 
     // Dropdown Data
     const [categories, setCategories] = useState<any[]>([]);
     const [units, setUnits] = useState<any[]>([]);
+    const [accounts, setAccounts] = useState<any[]>([]);
 
     useEffect(() => {
         fetchProducts();
@@ -58,9 +72,10 @@ export default function ProductsPage() {
 
     const fetchDropdowns = async () => {
         try {
-            const [catRes, unitRes] = await Promise.all([
+            const [catRes, unitRes, accRes] = await Promise.all([
                 authenticatedFetch('/api/inventory/categories'),
-                authenticatedFetch('/api/admin/units')
+                authenticatedFetch('/api/admin/units'),
+                authenticatedFetch('/api/accounts')
             ]);
 
             if (catRes.ok) {
@@ -70,6 +85,13 @@ export default function ProductsPage() {
             if (unitRes.ok) {
                 const unitJson = await unitRes.json();
                 if (unitJson.success) setUnits(unitJson.data);
+            }
+            if (accRes.ok) {
+                const accJson = await accRes.json();
+                // Check if wrapper exists or direct array
+                // The API seems to return { accounts: [...] }
+                const accData = accJson.accounts || accJson.data || [];
+                setAccounts(accData);
             }
         } catch (error) {
             console.error("Error fetching dropdowns:", error);
@@ -99,18 +121,39 @@ export default function ProductsPage() {
             : '/api/inventory/products';
         const method = editingId ? 'PUT' : 'POST';
 
-        const res = await authenticatedFetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-        });
+        const payload = {
+            ...formData,
+            categoryId: formData.categoryId || null,
+            baseUnitId: formData.baseUnitId || null,
+            inventoryAccountId: formData.inventoryAccountId || null,
+            cogsAccountId: formData.cogsAccountId || null,
+            salesAccountId: formData.salesAccountId || null,
+            purchaseAccountId: formData.purchaseAccountId || null,
+            variants: formData.variants?.map((v: any) => ({
+                ...v,
+                price: Number(v.price) || 0
+            }))
+        };
 
-        if (res.ok) {
-            setIsModalOpen(false);
-            setEditingId(null);
-            fetchProducts();
-        } else {
-            alert("Failed to save product");
+        try {
+            const res = await authenticatedFetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const json = await res.json();
+
+            if (res.ok && json.success) {
+                setIsModalOpen(false);
+                setEditingId(null);
+                fetchProducts();
+            } else {
+                alert(json.error || "Failed to save product");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("An error occurred while saving the product");
         }
     };
 
@@ -121,7 +164,11 @@ export default function ProductsPage() {
             name: prod.name,
             categoryId: prod.categoryId || '',
             baseUnitId: prod.baseUnitId || '',
-            variants: prod.variants || []
+            variants: prod.variants || [],
+            inventoryAccountId: prod.inventoryAccountId || '',
+            cogsAccountId: prod.cogsAccountId || '',
+            salesAccountId: prod.salesAccountId || '',
+            purchaseAccountId: prod.purchaseAccountId || ''
         });
         setIsModalOpen(true);
     };
@@ -154,7 +201,10 @@ export default function ProductsPage() {
                 <button
                     onClick={() => {
                         setEditingId(null);
-                        setFormData({ code: '', name: '', categoryId: '', baseUnitId: '', variants: [] });
+                        setFormData({
+                            code: '', name: '', categoryId: '', baseUnitId: '', variants: [],
+                            inventoryAccountId: '', cogsAccountId: '', salesAccountId: '', purchaseAccountId: ''
+                        });
                         setIsModalOpen(true);
                     }}
                     className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 font-bold"
@@ -225,6 +275,68 @@ export default function ProductsPage() {
                                     </select>
                                 </div>
                             </div>
+
+                            {/* ACCOUNTING SECTION */}
+                            <div className="border-t pt-4 mt-4">
+                                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-3">
+                                    Accounting Configuration
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1 text-slate-500">Inventory Account (Asset)</label>
+                                        <select
+                                            className="w-full p-2 border rounded-lg dark:bg-slate-800 text-sm"
+                                            value={formData.inventoryAccountId || ''}
+                                            onChange={e => setFormData({ ...formData, inventoryAccountId: e.target.value })}
+                                        >
+                                            <option value="">None (Non-inventory)</option>
+                                            {accounts.filter(a => a.type === 'ASSET' && a.isPosting).map(a => (
+                                                <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1 text-slate-500">Purchase Account (Expense)</label>
+                                        <select
+                                            className="w-full p-2 border rounded-lg dark:bg-slate-800 text-sm"
+                                            value={formData.purchaseAccountId || ''}
+                                            onChange={e => setFormData({ ...formData, purchaseAccountId: e.target.value })}
+                                        >
+                                            <option value="">Select Purchase Account</option>
+                                            {accounts.filter(a => (a.type === 'EXPENSE' || a.type === 'ASSET') && a.isPosting).map(a => (
+                                                <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1 text-slate-500">Sales Account (Income)</label>
+                                        <select
+                                            className="w-full p-2 border rounded-lg dark:bg-slate-800 text-sm"
+                                            value={formData.salesAccountId || ''}
+                                            onChange={e => setFormData({ ...formData, salesAccountId: e.target.value })}
+                                        >
+                                            <option value="">Select Sales Account</option>
+                                            {accounts.filter(a => a.type === 'INCOME' && a.isPosting).map(a => (
+                                                <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1 text-slate-500">COGS Account (Expense)</label>
+                                        <select
+                                            className="w-full p-2 border rounded-lg dark:bg-slate-800 text-sm"
+                                            value={formData.cogsAccountId || ''}
+                                            onChange={e => setFormData({ ...formData, cogsAccountId: e.target.value })}
+                                        >
+                                            <option value="">Select COGS Account</option>
+                                            {accounts.filter(a => a.type === 'EXPENSE' && a.isPosting).map(a => (
+                                                <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
 
                             {/* VARIANTS SECTION */}
                             <div className="border-t pt-6">
