@@ -32,12 +32,11 @@ export default function VoucherCreatePage() {
 
     // Load Accounts
     useEffect(() => {
-        authenticatedFetch('/api/accounts')
+        authenticatedFetch('/api/accounts?isPosting=true')
             .then(res => res.json())
             .then(json => {
                 if (json.accounts) {
-                    const postingAccounts = json.accounts.filter((acc: any) => acc._count?.children === 0);
-                    setAccounts(postingAccounts);
+                    setAccounts(json.accounts);
                 }
             });
     }, []);

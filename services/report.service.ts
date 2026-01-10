@@ -126,8 +126,21 @@ export class ReportService {
     /**
      * Profit & Loss Statement
      */
+    /**
+     * Profit & Loss Statement - Professional Hierarchical View
+     */
     static async getProfitLoss(companyId: string, startDate: Date, endDate: Date) {
-        const balances = await prisma.journalLine.groupBy({
+        // 1. Fetch all Income/Expense accounts (Posting & Non-Posting)
+        const allAccounts = await prisma.account.findMany({
+            where: {
+                OR: [{ companyId }, { companyId: null }],
+                type: { in: [AccountType.INCOME, AccountType.EXPENSE] }
+            },
+            orderBy: { level: 'desc' } // Work from leaves upwards
+        });
+
+        // 2. Get transaction balances for all posting accounts within the date range
+        const postingBalances = await prisma.journalLine.groupBy({
             by: ['accountId'],
             where: {
                 OR: [
@@ -142,37 +155,106 @@ export class ReportService {
             _sum: { debit: true, credit: true }
         });
 
-        const accounts = await prisma.account.findMany({
-            where: {
-                OR: [{ companyId }, { companyId: null }],
-                type: { in: [AccountType.INCOME, AccountType.EXPENSE] }
-            }
-        });
+        // 3. Map to compute net balances for each account (including roll-ups)
+        const accountBalances = new Map<string, number>();
 
-        const incomeLines: any[] = [];
-        const expenseLines: any[] = [];
-        let totalIncome = 0;
-        let totalExpense = 0;
+        // Phase A: Identify individual posting balances
+        for (const acc of allAccounts) {
+            const b = postingBalances.find(item => item.accountId === acc.id);
+            const debits = b?._sum.debit?.toNumber() || 0;
+            const credits = b?._sum.credit?.toNumber() || 0;
 
-        for (const b of balances) {
-            const acc = accounts.find(a => a.id === b.accountId);
-            if (!acc) continue;
-
-            const net = (b._sum.debit?.toNumber() || 0) - (b._sum.credit?.toNumber() || 0);
-
+            // For P&L:
+            // INCOME: Credit is positive, Debit is negative (Credit - Debit)
+            // EXPENSE: Debit is positive, Credit is negative (Debit - Credit)
+            let net = 0;
             if (acc.type === AccountType.INCOME) {
-                const val = Math.abs(net);
-                incomeLines.push({ name: acc.name, code: acc.code, amount: val });
-                totalIncome += val;
+                net = credits - debits;
             } else {
-                expenseLines.push({ name: acc.name, code: acc.code, amount: net });
-                totalExpense += net;
+                net = debits - credits;
+            }
+
+            accountBalances.set(acc.id, net);
+        }
+
+        // Phase B: Roll up balances to parents
+        // Sorted by level desc ensures children are processed before parents
+        for (const acc of allAccounts) {
+            if (acc.parentId) {
+                const childBalance = accountBalances.get(acc.id) || 0;
+                const parentBalance = accountBalances.get(acc.parentId) || 0;
+                accountBalances.set(acc.parentId, parentBalance + childBalance);
             }
         }
 
+        // 4. Construct the Report Structure
+        const buildSection = (type: AccountType) => {
+            // Get Groups (Level 1 Parents) e.g., Operating Income, COGS
+            // Note: Adjust level filter if your root accounts are at Level 0
+            const groups = allAccounts
+                .filter(a => a.type === type && a.level === 0)
+                .sort((a, b) => a.code.localeCompare(b.code));
+
+            const resultGroups: any[] = [];
+            const ungroupedItems: any[] = [];
+
+            // Helper to build recursive tree
+            const buildTree = (parentId: string): any[] => {
+                return allAccounts
+                    .filter(a => a.parentId === parentId)
+                    .sort((a, b) => a.code.localeCompare(b.code))
+                    .map(a => {
+                        const bal = accountBalances.get(a.id) || 0;
+                        const children = buildTree(a.id);
+                        if (Math.abs(bal) < 0.001) return null; // Hide zero balance items
+
+                        return {
+                            name: a.name,
+                            code: a.code,
+                            amount: bal,
+                            level: a.level,
+                            isPosting: a.isPosting,
+                            children: children.length > 0 ? children : undefined
+                        };
+                    })
+                    .filter(item => item !== null);
+            };
+
+            for (const group of groups) {
+                const groupBalance = accountBalances.get(group.id) || 0;
+                if (Math.abs(groupBalance) < 0.001) continue;
+
+                const children = buildTree(group.id);
+
+                resultGroups.push({
+                    name: group.name,
+                    code: group.code,
+                    amount: groupBalance,
+                    level: group.level,
+                    isPosting: group.isPosting,
+                    children
+                });
+            }
+
+            return resultGroups;
+        };
+
+        const incomeSection = buildSection(AccountType.INCOME);
+        const expenseSection = buildSection(AccountType.EXPENSE);
+
+        // Calculate Grand Totals
+        // Use Level 0 accounts for strict summation to avoid double counting
+        const totalIncome = allAccounts
+            .filter(a => a.type === AccountType.INCOME && a.level === 0)
+            .reduce((sum, a) => sum + (accountBalances.get(a.id) || 0), 0);
+
+        const totalExpense = allAccounts
+            .filter(a => a.type === AccountType.EXPENSE && a.level === 0)
+            .reduce((sum, a) => sum + (accountBalances.get(a.id) || 0), 0);
+
         return {
-            income: incomeLines,
-            expense: expenseLines,
+            income: incomeSection,
+            expense: expenseSection,
             totalIncome,
             totalExpense,
             netProfit: totalIncome - totalExpense

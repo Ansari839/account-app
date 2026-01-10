@@ -20,6 +20,7 @@ const accountSchema = z.object({
         if (val === '' || val === null || val === undefined) return null;
         return String(val);
     }, z.string().nullable().optional()),
+    isPosting: z.boolean().optional().default(true),
     openingBalance: z.preprocess((val) => Number(val) || 0, z.number().default(0)),
     openingBalanceType: z.enum(['DR', 'CR']).default('DR'),
 });
@@ -73,8 +74,18 @@ export async function GET(request: Request) {
             return NextResponse.json({ nextCode });
         }
 
+        const isPosting = searchParams.get('isPosting');
+
+        const where: any = { companyId: user.companyId };
+        if (isPosting === 'true') where.isPosting = true;
+        if (isPosting === 'false') where.isPosting = false;
+
+        // Extended filtering (optional)
+        const type = searchParams.get('type');
+        if (type) where.type = type;
+
         const accounts = await prisma.account.findMany({
-            where: { companyId: user.companyId },
+            where,
             include: {
                 parent: { select: { name: true, code: true } },
                 _count: { select: { children: true } }
@@ -99,6 +110,14 @@ export async function POST(req: Request) {
         const body = await req.json();
         const validatedData = accountSchema.parse(body);
 
+        // Validation: Parent cannot be a posting account
+        if (validatedData.parentId) {
+            const parent = await prisma.account.findUnique({ where: { id: validatedData.parentId } });
+            if (parent?.isPosting) {
+                return NextResponse.json({ error: 'Parent account cannot be a posting account. Please convert parent to group first.' }, { status: 400 });
+            }
+        }
+
         let typeVal = validatedData.type;
         if (typeVal === 'REVENUE') typeVal = 'INCOME' as any;
 
@@ -110,6 +129,7 @@ export async function POST(req: Request) {
                 description: validatedData.description,
                 parentId: validatedData.parentId,
                 companyId: user.companyId,
+                isPosting: validatedData.isPosting,
                 openingBalance: validatedData.openingBalance,
                 openingBalanceType: validatedData.openingBalanceType,
             },
@@ -121,12 +141,9 @@ export async function POST(req: Request) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: 'Invalid data', details: error.issues }, { status: 400 });
         }
-
-        // Handle Prisma Unique Constraint Error
         if ((error as any).code === 'P2002') {
             return NextResponse.json({ error: 'Account code already exists. Please choose a unique code.' }, { status: 409 });
         }
-
         return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
     }
 }
@@ -139,9 +156,40 @@ export async function PATCH(req: Request) {
 
     try {
         const body = await req.json();
-        const { id, code, name, type, description, parentId, openingBalance, openingBalanceType } = body;
+        const { id, code, name, type, description, parentId, isPosting, openingBalance, openingBalanceType } = body;
 
         if (!id) return NextResponse.json({ error: 'Account ID is required' }, { status: 400 });
+
+        const existingAccount = await prisma.account.findUnique({
+            where: { id, companyId: user.companyId }
+        });
+        if (!existingAccount) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+
+        // Logic Check 1: Changing from Group (Non-Posting) to Posting (Leaf)
+        // Allowed ONLY if it has no children
+        if (isPosting === true && existingAccount.isPosting === false) {
+            const childCount = await prisma.account.count({ where: { parentId: id } });
+            if (childCount > 0) {
+                return NextResponse.json({ error: 'Cannot change to Posting account because it has sub-accounts.' }, { status: 400 });
+            }
+        }
+
+        // Logic Check 2: Changing from Posting (Leaf) to Group (Non-Posting)
+        // Allowed ONLY if it has no transactions (journal lines)
+        if (isPosting === false && existingAccount.isPosting === true) {
+            const txCount = await prisma.journalLine.count({ where: { accountId: id } });
+            if (txCount > 0) {
+                return NextResponse.json({ error: 'Cannot change to Group account because it has existing transactions.' }, { status: 400 });
+            }
+        }
+
+        // Logic Check 3: Moving to a new parent
+        if (parentId && parentId !== existingAccount.parentId) {
+            const newParent = await prisma.account.findUnique({ where: { id: parentId } });
+            if (newParent?.isPosting) {
+                return NextResponse.json({ error: 'Selected parent is a Posting account. Parent must be a Group account.' }, { status: 400 });
+            }
+        }
 
         let typeVal = type;
         if (typeVal === 'REVENUE') typeVal = 'INCOME';
@@ -154,6 +202,7 @@ export async function PATCH(req: Request) {
                 type: typeVal,
                 description,
                 parentId: parentId || null,
+                isPosting: typeof isPosting === 'boolean' ? isPosting : existingAccount.isPosting,
                 openingBalance: Number(openingBalance) || 0,
                 openingBalanceType: openingBalanceType || 'DR',
             },

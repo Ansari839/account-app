@@ -18,6 +18,7 @@ interface Account {
     parentId: string | null;
     openingBalance?: number | string;
     openingBalanceType?: 'DR' | 'CR';
+    isPosting: boolean;
     children?: Account[];
     _count?: { children: number };
 }
@@ -36,6 +37,7 @@ export default function ChartOfAccountsPage() {
         type: 'EXPENSE' as any,
         description: '',
         parentId: '',
+        isPosting: true,
         openingBalance: '0',
         openingBalanceType: 'DR' as 'DR' | 'CR'
     });
@@ -178,6 +180,18 @@ export default function ChartOfAccountsPage() {
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{node.type}</p>
                     </div>
 
+                    <div className="mr-4">
+                        {node.isPosting ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                Posting
+                            </span>
+                        ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-500/10 text-slate-500 border border-slate-500/20">
+                                Group
+                            </span>
+                        )}
+                    </div>
+
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
                         <button
                             onClick={() => {
@@ -189,6 +203,7 @@ export default function ChartOfAccountsPage() {
                                     type: node.type,
                                     description: node.description || '',
                                     parentId: node.parentId || '',
+                                    isPosting: node.isPosting,
                                     openingBalance: node.openingBalance?.toString() || '0',
                                     openingBalanceType: node.openingBalanceType || 'DR' as any
                                 });
@@ -208,6 +223,7 @@ export default function ChartOfAccountsPage() {
                                     type: node.type,
                                     description: '',
                                     parentId: node.id,
+                                    isPosting: true,
                                     openingBalance: '0',
                                     openingBalanceType: 'DR'
                                 });
@@ -253,7 +269,7 @@ export default function ChartOfAccountsPage() {
                         <button
                             onClick={() => {
                                 setEditingAccount(null);
-                                setFormData({ id: '', code: '', name: '', type: 'ASSET', description: '', parentId: '', openingBalance: '0', openingBalanceType: 'DR' });
+                                setFormData({ id: '', code: '', name: '', type: 'ASSET', description: '', parentId: '', isPosting: true, openingBalance: '0', openingBalanceType: 'DR' });
                                 setShowModal(true);
                             }}
                             className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all flex items-center gap-2"
@@ -384,6 +400,24 @@ export default function ChartOfAccountsPage() {
                                             <option key={a.id} value={a.id}>({a.code}) {a.name}</option>
                                         ))}
                                     </select>
+                                </div>
+                                <div className="space-y-4 pt-2">
+                                    <label className="flex items-center gap-3 cursor-pointer group">
+                                        <div className="relative">
+                                            <input
+                                                type="checkbox"
+                                                className="peer sr-only"
+                                                checked={formData.isPosting}
+                                                onChange={e => setFormData({ ...formData, isPosting: e.target.checked })}
+                                            />
+                                            <div className="w-10 h-6 bg-slate-200 dark:bg-slate-800 rounded-full peer-checked:bg-indigo-600 transition-colors"></div>
+                                            <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4"></div>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Is Posting Account?</p>
+                                            <p className="text-[10px] text-slate-500">Allow transactions to be posted to this account</p>
+                                        </div>
+                                    </label>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">

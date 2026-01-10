@@ -45,7 +45,7 @@ export default function PurchaseOrdersPage() {
     const fetchDropdowns = async () => {
         try {
             const [accRes, whRes, prodRes] = await Promise.all([
-                authenticatedFetch('/api/accounts?type=LIABILITY'), // Fetch Accounts Payable
+                authenticatedFetch('/api/accounts?type=LIABILITY&isPosting=true'), // Fetch Accounts Payable (Posting Only)
                 authenticatedFetch('/api/inventory/warehouses'),
                 authenticatedFetch('/api/inventory/products')
             ]);
@@ -53,11 +53,7 @@ export default function PurchaseOrdersPage() {
             if (accRes.ok) {
                 const response = await accRes.json();
                 const accounts = response.accounts || response.data || [];
-                console.log('Accounts loaded:', accounts);
-                // Filter for posting accounts under LIABILITY (Accounts Payable)
-                const payableAccounts = accounts.filter((a: any) => a.isPosting);
-                console.log('Filtered payable accounts:', payableAccounts);
-                setSuppliers(payableAccounts);
+                setSuppliers(accounts);
             }
             if (whRes.ok) setWarehouses((await whRes.json()).data);
             if (prodRes.ok) setProducts((await prodRes.json()).data);
