@@ -313,21 +313,55 @@ export class PurchaseService {
      * Creates a Purchase Return, updates Stock, and generates reversal JV
      */
     static async createReturn(data: {
-        purchaseInvoiceId: string,
-        date: Date,
-        remarks?: string,
-        items: { productId: string, qty: number, rate: number }[]
+        purchaseInvoiceId?: string;
+        supplierId: string;
+        warehouseId: string;
+        date: Date;
+        remarks?: string;
+        items: {
+            productId: string;
+            qty: number;
+            rate: number;
+        }[];
     }) {
         return await prisma.$transaction(async (tx) => {
-            const invoice = await tx.purchaseInvoice.findUnique({
-                where: { id: data.purchaseInvoiceId },
-                include: { supplier: true }
-            });
-            if (!invoice) throw new Error("Purchase Invoice not found.");
+            // 1. Validate & Fetch Data
+            let invoice;
+            if (data.purchaseInvoiceId) {
+                invoice = await tx.purchaseInvoice.findUnique({
+                    where: { id: data.purchaseInvoiceId },
+                    include: {
+                        supplier: { include: { payableAccount: true } },
+                        items: true
+                    }
+                });
+                if (!invoice) throw new Error("Purchase Invoice not found.");
+            }
 
-            // 1. Calculate reversal impact
+            const supplier = invoice?.supplier || await tx.supplier.findUnique({ where: { id: data.supplierId }, include: { payableAccount: true } });
+            if (!supplier) throw new Error("Supplier not found.");
+            if (!supplier.payableAccount) throw new Error("Supplier Payable Account not configured.");
+
+            const warehouse = await tx.warehouse.findUnique({ where: { id: data.warehouseId } });
+            if (!warehouse) throw new Error("Warehouse not found.");
+
+            // 2. Generate Return No
+            const lastReturn = await tx.purchaseReturn.findFirst({
+                where: { returnNo: { startsWith: `PRT-${new Date().getFullYear()}-` } },
+                orderBy: { returnNo: 'desc' }
+            });
+            let nextSeq = 1;
+            if (lastReturn) {
+                const parts = lastReturn.returnNo.split('-');
+                const lastSeq = parseInt(parts[parts.length - 1]);
+                if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
+            }
+            const returnNo = `PRT-${new Date().getFullYear()}-${nextSeq.toString().padStart(4, '0')}`;
+
+            // 3. Process Items
             const journalLines = [];
             let totalReturnAmount = 0;
+            const returnItemsData = [];
 
             for (const item of data.items) {
                 const subtotal = item.qty * item.rate;
@@ -341,44 +375,37 @@ export class PurchaseService {
                 journalLines.push({
                     accountId: creditAccount,
                     credit: subtotal,
-                    narration: `Purchase Return for ${invoice.invoiceNo}`
+                    narration: `Purchase Return - ${product?.name}`
                 });
 
-                // Stock Out
-                // Fetch default warehouse for stock out
-                const defaultWH = await tx.warehouse.findFirst({ where: { isDefault: true } });
-                if (!defaultWH) throw new Error("No default warehouse found for return stock move.");
+                // Prepare Item Data
+                const originalItem = invoice?.items.find(i => i.productId === item.productId);
 
-                await tx.stockLedger.create({
-                    data: {
-                        productId: item.productId,
-                        warehouseId: defaultWH.id,
-                        date: data.date,
-                        qtyIn: 0,
-                        qtyOut: item.qty,
-                        costRate: item.rate,
-                        refType: "RETURN",
-                        refId: invoice.id // Referencing the invoice it's returning against
-                    }
+                returnItemsData.push({
+                    productId: item.productId,
+                    invoiceItemId: originalItem?.id,
+                    qty: item.qty,
+                    rate: item.rate,
+                    total: subtotal
                 });
             }
 
             // DR Supplier (reversal)
             journalLines.push({
-                accountId: invoice.supplier.payableAccountId!,
+                accountId: supplier.payableAccountId!,
                 debit: totalReturnAmount,
-                narration: `Debit to ${invoice.supplier.name} for Return of ${invoice.invoiceNo}`
+                narration: `Debit to ${supplier.name} for Return`
             });
 
-            // 2. Create Reversal Journal Entry
+            // 4. Create Reversal Journal Entry
             const voucherNo = `PRRTV-${Date.now()}`;
-            await tx.journalEntry.create({
+            const journalEntry = await tx.journalEntry.create({
                 data: {
                     number: voucherNo,
                     date: data.date,
-                    type: "JOURNAL",
-                    reference: invoice.invoiceNo,
-                    narration: `Purchase Return for Invoice ${invoice.invoiceNo}. ${data.remarks || ""}`,
+                    type: "PURCHASE_RETURN",
+                    reference: returnNo,
+                    narration: `Purchase Return ${returnNo} from ${supplier.name}. ${data.remarks || ""}`,
                     lines: {
                         create: journalLines.map(line => ({
                             accountId: line.accountId,
@@ -390,7 +417,40 @@ export class PurchaseService {
                 }
             });
 
-            return { success: true, amount: totalReturnAmount };
+            // 5. Create Purchase Return Record
+            const purchaseReturn = await tx.purchaseReturn.create({
+                data: {
+                    returnNo,
+                    date: data.date,
+                    supplierId: supplier.id,
+                    warehouseId: warehouse.id,
+                    invoiceId: invoice?.id,
+                    totalAmount: totalReturnAmount,
+                    journalEntryId: journalEntry.id,
+                    remarks: data.remarks,
+                    items: {
+                        create: returnItemsData
+                    }
+                }
+            });
+
+            // 6. Stock Out (Re-insert with correct RefID)
+            for (const item of data.items) {
+                await tx.stockLedger.create({
+                    data: {
+                        productId: item.productId,
+                        warehouseId: warehouse.id,
+                        date: data.date,
+                        qtyIn: 0,
+                        qtyOut: item.qty,
+                        costRate: item.rate,
+                        refType: "RETURN",
+                        refId: purchaseReturn.id
+                    }
+                });
+            }
+
+            return purchaseReturn;
         });
     }
 }

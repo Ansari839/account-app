@@ -44,4 +44,13 @@ export const AuthUtils = {
             return null;
         }
     },
+
+    /**
+     * Extracts token from Request and verifies it.
+     */
+    async getAuthUser(req: Request) {
+        const token = req.headers.get("Authorization")?.split(" ")[1];
+        if (!token) return null;
+        return this.verifyToken(token);
+    }
 };

@@ -12,7 +12,7 @@ const menuItems = [
         name: 'Purchase',
         icon: '🛒',
         path: '/finance/purchase',
-        sub: ['orders', 'grn', 'invoices']
+        sub: ['orders', 'grn', 'invoices', 'returns']
     },
     { name: 'Sales', icon: '📈', path: '/sales/invoices', sub: ['Order', 'Invoice', 'Return'] },
     { name: 'Inventory', icon: '📦', path: '/inventory', sub: ['Products', 'Categories', 'Warehouses'] },

@@ -15,6 +15,11 @@ interface DataTableProps<T> {
     onRowClick?: (item: T) => void;
     actions?: (item: T) => React.ReactNode;
     isLoading?: boolean;
+    pagination?: {
+        currentPage: number;
+        totalPages: number;
+        onPageChange: (page: number) => void;
+    };
 }
 
 export default function DataTable<T extends { id: string | number }>({
@@ -23,7 +28,8 @@ export default function DataTable<T extends { id: string | number }>({
     searchPlaceholder = "Search records...",
     onRowClick,
     actions,
-    isLoading = false
+    isLoading = false,
+    pagination
 }: DataTableProps<T>) {
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -104,6 +110,31 @@ export default function DataTable<T extends { id: string | number }>({
                     </table>
                 </div>
             </div>
+
+            {/* Pagination */}
+            {pagination && pagination.totalPages > 1 && (
+                <div className="flex items-center justify-between px-2 py-4">
+                    <div className="text-sm text-slate-500">
+                        Page <span className="font-bold text-slate-900 dark:text-white">{pagination.currentPage}</span> of <span className="font-bold text-slate-900 dark:text-white">{pagination.totalPages}</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
+                            disabled={pagination.currentPage <= 1}
+                            className="px-4 py-2 text-sm font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            Previous
+                        </button>
+                        <button
+                            onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
+                            disabled={pagination.currentPage >= pagination.totalPages}
+                            className="px-4 py-2 text-sm font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

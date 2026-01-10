@@ -414,7 +414,32 @@ export default function ReportViewer() {
                 { header: 'Product', accessor: (row: any) => row.product?.name },
                 { header: 'Warehouse', accessor: (row: any) => row.warehouse?.name },
                 { header: 'Ref Type', accessor: (row: any) => <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded">{row.refType}</span> },
-                { header: 'Ref ID', accessor: (row: any) => <span className="text-xs font-mono">{row.refId}</span> },
+                {
+                    header: 'Ref No',
+                    accessor: (row: any) => {
+                        let link = '#';
+                        // GRN
+                        if (row.refType === 'GRN') link = `/finance/purchase/grn/${row.refId}`;
+
+                        // PURCHASE (Handle both 'PURCHASE' and 'INVOICE' as Purchase Invoice)
+                        if (row.refType === 'PURCHASE' || row.refType === 'INVOICE') link = `/finance/purchase/invoices/${row.refId}`;
+
+                        // RETURN
+                        if (row.refType === 'RETURN') link = `/finance/purchase/returns/${row.refId}`;
+
+                        // SALES (Handle 'SALE' and 'SALES_INVOICE')
+                        if (row.refType === 'SALE' || row.refType === 'SALES_INVOICE') link = `/finance/sales/invoices/${row.refId}`;
+
+                        return (
+                            <button
+                                onClick={() => router.push(link)}
+                                className="text-indigo-600 hover:underline font-bold text-xs font-mono"
+                            >
+                                {row.refNo || row.refId}
+                            </button>
+                        );
+                    }
+                },
                 { header: 'In', accessor: (row: any) => row.qtyIn > 0 ? <span className="font-bold text-emerald-600">{row.qtyIn}</span> : '-' },
                 { header: 'Out', accessor: (row: any) => row.qtyOut > 0 ? <span className="font-bold text-rose-500">{row.qtyOut}</span> : '-' },
                 { header: 'Balance', accessor: (row: any) => <span className="font-bold font-mono">{row.balance}</span> },

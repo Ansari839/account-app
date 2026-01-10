@@ -911,7 +911,12 @@ export class PurchaseController {
 
                 // 2. Delete old items & stock ledger (if direct)
                 await tx.purchaseInvoiceItem.deleteMany({ where: { invoiceId: id } });
-                await tx.stockLedger.deleteMany({ where: { refType: 'INVOICE', refId: id } });
+                await tx.stockLedger.deleteMany({
+                    where: {
+                        refType: { in: ['INVOICE', 'PURCHASE'] },
+                        refId: id
+                    }
+                });
 
                 // 3. Update Header
                 const totalAmount = items.reduce((sum: number, item: any) => sum + (Number(item.qty || 0) * Number(item.rate || 0)), 0);

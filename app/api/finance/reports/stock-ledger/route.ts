@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
             startDate ? new Date(startDate) : undefined,
             endDate ? new Date(endDate) : undefined
         );
-        return NextResponse.json(data);
+        return NextResponse.json({ success: true, data });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

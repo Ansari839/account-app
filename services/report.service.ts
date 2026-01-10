@@ -600,13 +600,54 @@ export class ReportService {
             include: { product: true, warehouse: true }
         });
 
+        // Collect Ref IDs for batch fetching
+        const grnIds = entries.filter(e => e.refType === 'GRN').map(e => e.refId);
+        const piIds = entries.filter(e => ['PURCHASE', 'INVOICE'].includes(e.refType)).map(e => e.refId);
+        const siIds = entries.filter(e => ['SALE', 'SALES_INVOICE'].includes(e.refType)).map(e => e.refId);
+        const returnIds = entries.filter(e => e.refType === 'RETURN').map(e => e.refId);
+
+        // Fetch Metadata
+        const grns = await prisma.gRN.findMany({
+            where: { id: { in: grnIds } },
+            select: { id: true, grnNo: true }
+        });
+        const purchaseInvoices = await prisma.purchaseInvoice.findMany({
+            where: { id: { in: piIds } },
+            select: { id: true, invoiceNo: true }
+        });
+        const salesInvoices = await prisma.salesInvoice.findMany({
+            where: { id: { in: siIds } },
+            select: { id: true, invoiceNo: true }
+        });
+        const purchaseReturns = await prisma.purchaseReturn.findMany({
+            where: { id: { in: returnIds } },
+            select: { id: true, returnNo: true }
+        });
+
         let balance = 0;
         return entries.map(e => {
             const inward = e.qtyIn?.toNumber() || 0;
             const outward = e.qtyOut?.toNumber() || 0;
             balance += (inward - outward);
+
+            let refNo = e.refId;
+            if (e.refType === 'GRN') refNo = grns.find(g => g.id === e.refId)?.grnNo || e.refId;
+
+            if (['PURCHASE', 'INVOICE'].includes(e.refType)) {
+                refNo = purchaseInvoices.find(p => p.id === e.refId)?.invoiceNo || e.refId;
+            }
+
+            if (e.refType === 'RETURN') {
+                refNo = purchaseReturns.find(r => r.id === e.refId)?.returnNo || e.refId;
+            }
+
+            if (['SALE', 'SALES_INVOICE'].includes(e.refType)) {
+                refNo = salesInvoices.find(s => s.id === e.refId)?.invoiceNo || e.refId;
+            }
+
             return {
                 ...e,
+                refNo,
                 balance
             };
         });

@@ -171,11 +171,13 @@ async function runTest() {
         console.log("--- Testing Purchase Return ---");
         const prt = await PurchaseService.createReturn({
             purchaseInvoiceId: invoice.id,
+            supplierId: supplier.id,
+            warehouseId: wh.id,
             date: new Date(),
             remarks: "Faulty unit",
             items: [{ productId: laptop.id, qty: 1, rate: 100000 }]
         });
-        console.log("✅ Purchase Return Processed:", prt.success ? "Success" : "Failed", "Amount:", prt.amount);
+        console.log("✅ Purchase Return Processed:", prt.returnNo, "Amount:", prt.totalAmount.toString());
 
         console.log("\n🎉 Purchase Module Verification Complete!");
 
