@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { authenticatedFetch } from '@/lib/api-client';
 import DataTable, { Column } from '@/components/DataTable';
+import Combobox from '@/components/Combobox';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 
@@ -151,6 +152,11 @@ export default function PurchaseOrdersPage() {
         setIsModalOpen(true);
     };
 
+    const supplierOptions = suppliers.map(s => ({
+        value: s.id,
+        label: `${s.code} - ${s.name}`
+    }));
+
     const columns: Column<any>[] = [
         { header: 'PO #', accessor: 'poNo' },
         { header: 'Date', accessor: (row) => format(new Date(row.date), 'dd/MM/yyyy') },
@@ -256,16 +262,14 @@ export default function PurchaseOrdersPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-bold mb-1 text-slate-600 dark:text-slate-400">Account (Payable)</label>
-                                    <select
-                                        className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl dark:bg-slate-800/50 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
-                                        required
+                                    <Combobox
+                                        options={supplierOptions}
                                         value={formData.supplierId}
-                                        onChange={e => setFormData({ ...formData, supplierId: e.target.value })}
+                                        onChange={(val) => setFormData({ ...formData, supplierId: val })}
+                                        placeholder="Select Account..."
+                                        className="w-full"
                                         disabled={isEditing}
-                                    >
-                                        <option value="">Select Account</option>
-                                        {suppliers.map(s => <option key={s.id} value={s.id}>{s.code} - {s.name}</option>)}
-                                    </select>
+                                    />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
