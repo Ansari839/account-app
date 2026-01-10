@@ -201,9 +201,25 @@ export default function ProductsPage() {
                 <button
                     onClick={() => {
                         setEditingId(null);
+
+                        // Default Accounting Config
+                        const salesAcc = accounts.find(a => (a.name === 'Sales' || a.name === 'Sales Account') && a.type === 'INCOME' && a.isPosting);
+                        const inventoryAcc = accounts.find(a => (a.name === 'Inventory' || a.name === 'Inventory Asset') && a.type === 'ASSET' && a.isPosting);
+                        const cogsAcc = accounts.find(a => (a.name === 'Cost of Goods Sold' || a.name === 'COGS') && a.type === 'EXPENSE' && a.isPosting);
+                        const purchaseAcc = accounts.find(a => (a.name === 'Purchases' || a.name === 'Purchase Account') && a.type === 'EXPENSE' && a.isPosting);
+
+                        // Fallback logic if exact names not found
+                        const defaultSales = salesAcc || accounts.find(a => a.type === 'INCOME' && a.isPosting);
+                        const defaultInventory = inventoryAcc || accounts.find(a => a.type === 'ASSET' && a.name.includes('Inventory') && a.isPosting);
+                        const defaultCogs = cogsAcc || accounts.find(a => a.type === 'EXPENSE' && (a.name.includes('Cost of') || a.name.includes('COGS')) && a.isPosting);
+                        const defaultPurchase = purchaseAcc || defaultCogs || accounts.find(a => a.type === 'EXPENSE' && a.isPosting);
+
                         setFormData({
                             code: '', name: '', categoryId: '', baseUnitId: '', variants: [],
-                            inventoryAccountId: '', cogsAccountId: '', salesAccountId: '', purchaseAccountId: ''
+                            inventoryAccountId: defaultInventory?.id || '',
+                            cogsAccountId: defaultCogs?.id || '',
+                            salesAccountId: defaultSales?.id || '',
+                            purchaseAccountId: defaultPurchase?.id || ''
                         });
                         setIsModalOpen(true);
                     }}
