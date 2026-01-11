@@ -25,20 +25,31 @@ export default function GRNPage() {
     });
 
     const [pos, setPos] = useState<any[]>([]);
+    const [suppliers, setSuppliers] = useState<any[]>([]);
     const [warehouses, setWarehouses] = useState<any[]>([]);
+    const [products, setProducts] = useState<any[]>([]);
+    const [units, setUnits] = useState<any[]>([]);
     const [selectedPO, setSelectedPO] = useState<any>(null);
 
     useEffect(() => {
         fetchGRNs();
         fetchOpenPOs();
-        fetchWarehouses();
+        fetchDropdowns();
     }, []);
 
-    const fetchWarehouses = async () => {
+    const fetchDropdowns = async () => {
         try {
-            const res = await authenticatedFetch('/api/inventory/warehouses');
-            const json = await res.json();
-            if (json.success) setWarehouses(json.data);
+            const [supRes, whRes, prodRes, unitRes] = await Promise.all([
+                authenticatedFetch('/api/finance/parties/suppliers'),
+                authenticatedFetch('/api/inventory/warehouses'),
+                authenticatedFetch('/api/inventory/products'),
+                authenticatedFetch('/api/inventory/units'),
+            ]);
+
+            if (supRes.ok) setSuppliers((await supRes.json()).data || []);
+            if (whRes.ok) setWarehouses((await whRes.json()).data || []);
+            if (prodRes.ok) setProducts((await prodRes.json()).data || []);
+            if (unitRes.ok) setUnits((await unitRes.json()).data || []);
         } catch (e) { console.error(e); }
     };
 
@@ -73,13 +84,28 @@ export default function GRNPage() {
             items: po.items.map((item: any) => ({
                 productId: item.productId,
                 productName: item.product?.name,
+                unitId: item.unitId,
                 poItemId: item.id,
                 qtyOrdered: item.qty,
                 qtyReceivedPrior: item.receivedQty || 0,
                 qtyReceived: Math.max(0, item.qty - (item.receivedQty || 0)), // Default to remaining
-                qtyRejected: 0
+                qtyRejected: 0,
+                rate: item.rate
             }))
         });
+    };
+
+    const addItem = () => {
+        setFormData({
+            ...formData,
+            items: [...formData.items, { productId: '', unitId: '', qtyReceived: 1, qtyRejected: 0 }]
+        });
+    };
+
+    const removeItem = (index: number) => {
+        const newItems = [...formData.items];
+        newItems.splice(index, 1);
+        setFormData({ ...formData, items: newItems });
     };
 
     const updateItem = (index: number, field: string, value: any) => {
@@ -142,11 +168,13 @@ export default function GRNPage() {
         const items = grn.items.map((it: any) => ({
             productId: it.productId,
             productName: it.product?.name,
+            unitId: it.unitId,
             poItemId: it.poItemId,
-            qtyOrdered: 999999, // Hack or fetch PO
-            qtyReceivedPrior: 0,
+            qtyOrdered: it.poItem?.qty || 999999,
+            qtyReceivedPrior: (it.poItem?.receivedQty || 0) - (it.qtyReceived || 0),
             qtyReceived: Number(it.qtyReceived || 0),
-            qtyRejected: Number(it.qtyRejected || 0)
+            qtyRejected: Number(it.qtyRejected || 0),
+            rate: Number(it.rate || 0)
         }));
 
         setFormData({
@@ -277,13 +305,41 @@ export default function GRNPage() {
                                         className="w-full p-2 border rounded-lg dark:bg-slate-800"
                                         value={formData.poId}
                                         onChange={(e) => handleSelectPO(e.target.value)}
-                                        required
                                         disabled={isEditing}
                                     >
-                                        <option value="">Select PO</option>
+                                        <option value="">Direct GRN (No PO)</option>
                                         {pos.map(p => <option key={p.id} value={p.id}>{p.poNo} - {p.supplier?.name}</option>)}
                                     </select>
                                 </div>
+                                {!formData.poId && (
+                                    <div>
+                                        <label className="block text-sm font-bold mb-1">Supplier</label>
+                                        <select
+                                            className="w-full p-2 border rounded-lg dark:bg-slate-800"
+                                            value={formData.supplierId}
+                                            onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                                            required
+                                        >
+                                            <option value="">Select Supplier</option>
+                                            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        </select>
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="block text-sm font-bold mb-1">Warehouse</label>
+                                    <select
+                                        className="w-full p-2 border rounded-lg dark:bg-slate-800 bg-white font-bold"
+                                        required
+                                        value={formData.warehouseId}
+                                        onChange={e => setFormData({ ...formData, warehouseId: e.target.value })}
+                                    >
+                                        <option value="">Choose Warehouse</option>
+                                        {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {!selectedPO && (
                                 <div>
                                     <label className="block text-sm font-bold mb-1">Date</label>
                                     <input
@@ -294,50 +350,67 @@ export default function GRNPage() {
                                         onChange={e => setFormData({ ...formData, date: e.target.value })}
                                     />
                                 </div>
-                            </div>
+                            )}
 
                             {selectedPO && (
-                                <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-6">
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Supplier</p>
-                                        <p className="font-bold text-slate-700 dark:text-slate-200">{selectedPO.supplier?.name}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Select Warehouse</p>
-                                        <select
-                                            className="w-full p-2 border rounded-lg dark:bg-slate-800 bg-white font-bold"
-                                            required
-                                            value={formData.warehouseId}
-                                            onChange={e => setFormData({ ...formData, warehouseId: e.target.value })}
-                                        >
-                                            <option value="">Choose Warehouse</option>
-                                            {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                        </select>
-                                    </div>
+                                <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">PO Details</p>
+                                    <p className="font-bold text-slate-700 dark:text-slate-200">{selectedPO.poNo} - {selectedPO.supplier?.name}</p>
                                 </div>
                             )}
 
                             {/* ITEMS */}
                             <div>
-                                <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-2">Receive Items</h3>
+                                <div className="flex justify-between items-center mb-2">
+                                    <h3 className="font-bold text-slate-700 dark:text-slate-300">Receive Items</h3>
+                                    {!formData.poId && (
+                                        <button type="button" onClick={addItem} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded font-bold hover:bg-indigo-100">
+                                            + Add Item
+                                        </button>
+                                    )}
+                                </div>
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-slate-100 dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-300">
                                         <tr>
                                             <th className="p-3">Product</th>
-                                            <th className="p-3">Ordered</th>
-                                            <th className="p-3">Prev. Rec</th>
+                                            <th className="p-3 w-32">Unit</th>
+                                            {formData.poId && <th className="p-3">Ordered</th>}
+                                            {formData.poId && <th className="p-3">Prev. Rec</th>}
                                             <th className="p-3 w-32">Receive Now</th>
                                             <th className="p-3 w-32">Rejected</th>
+                                            {!formData.poId && <th className="p-3 w-10"></th>}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                                         {formData.items.map((item: any, i: number) => (
                                             <tr key={i} className={item.qtyReceived > 0 ? 'bg-indigo-50/10' : ''}>
                                                 <td className="p-2">
-                                                    <span className="font-medium">{item.productName}</span>
+                                                    {formData.poId ? (
+                                                        <span className="font-medium">{item.productName}</span>
+                                                    ) : (
+                                                        <select
+                                                            className="w-full p-2 border rounded dark:bg-slate-800"
+                                                            value={item.productId}
+                                                            onChange={e => updateItem(i, 'productId', e.target.value)}
+                                                            required
+                                                        >
+                                                            <option value="">Select Product</option>
+                                                            {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                        </select>
+                                                    )}
                                                 </td>
-                                                <td className="p-2 opacity-70">{item.qtyOrdered}</td>
-                                                <td className="p-2 opacity-70">{item.qtyReceivedPrior}</td>
+                                                <td className="p-2">
+                                                    <select
+                                                        className="w-full p-2 border rounded dark:bg-slate-800"
+                                                        value={item.unitId}
+                                                        onChange={e => updateItem(i, 'unitId', e.target.value)}
+                                                    >
+                                                        <option value="">Unit</option>
+                                                        {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                                    </select>
+                                                </td>
+                                                {formData.poId && <td className="p-2 opacity-70">{item.qtyOrdered}</td>}
+                                                {formData.poId && <td className="p-2 opacity-70">{item.qtyReceivedPrior}</td>}
                                                 <td className="p-2">
                                                     <input
                                                         type="number"
@@ -345,9 +418,20 @@ export default function GRNPage() {
                                                         value={item.qtyReceived || 0}
                                                         onChange={e => updateItem(i, 'qtyReceived', parseFloat(e.target.value) || 0)}
                                                         min="0"
-                                                        max={item.qtyOrdered - item.qtyReceivedPrior}
+                                                        max={formData.poId ? (item.qtyOrdered - item.qtyReceivedPrior) : undefined}
                                                     />
                                                 </td>
+                                                {!formData.poId && (
+                                                    <td className="p-2">
+                                                        <input
+                                                            type="number"
+                                                            className="w-full p-2 border rounded dark:bg-slate-800"
+                                                            value={item.rate || 0}
+                                                            onChange={e => updateItem(i, 'rate', parseFloat(e.target.value) || 0)}
+                                                            min="0"
+                                                        />
+                                                    </td>
+                                                )}
                                                 <td className="p-2">
                                                     <input
                                                         type="number"
@@ -357,6 +441,11 @@ export default function GRNPage() {
                                                         min="0"
                                                     />
                                                 </td>
+                                                {!formData.poId && (
+                                                    <td className="p-2 text-center">
+                                                        <button type="button" onClick={() => removeItem(i)} className="text-slate-400 hover:text-red-500">✕</button>
+                                                    </td>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>

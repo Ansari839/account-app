@@ -97,6 +97,14 @@ export default function ChartOfAccountsPage() {
         setExpandedIds(next);
     };
 
+    const toggleAllExpand = () => {
+        if (expandedIds.size > accounts.length / 2) {
+            setExpandedIds(new Set());
+        } else {
+            setExpandedIds(new Set(accounts.map(a => a.id)));
+        }
+    };
+
     const handleSaveAccount = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -142,7 +150,43 @@ export default function ChartOfAccountsPage() {
         }
     };
 
-    const tree = buildTree(accounts);
+    const getFilteredAccounts = () => {
+        if (!searchTerm) return accounts;
+
+        const term = searchTerm.toLowerCase();
+        const matches = accounts.filter(a =>
+            a.name.toLowerCase().includes(term) ||
+            a.code.toLowerCase().includes(term) ||
+            a.type.toLowerCase().includes(term)
+        );
+
+        const resultIds = new Set<string>();
+        matches.forEach(match => {
+            resultIds.add(match.id);
+            // Add all parents
+            let parentId = match.parentId;
+            while (parentId) {
+                const parent = accounts.find(a => a.id === parentId);
+                if (parent && !resultIds.has(parentId)) {
+                    resultIds.add(parentId);
+                    parentId = parent.parentId;
+                } else {
+                    break;
+                }
+            }
+        });
+
+        return accounts.filter(a => resultIds.has(a.id));
+    };
+
+    const filteredAccounts = getFilteredAccounts();
+    const tree = buildTree(filteredAccounts);
+
+    useEffect(() => {
+        if (searchTerm) {
+            setExpandedIds(new Set(filteredAccounts.map(a => a.id)));
+        }
+    }, [searchTerm, accounts]);
 
     const renderNode = (node: Account, depth: number = 0) => {
         const isExpanded = expandedIds.has(node.id);
@@ -262,9 +306,12 @@ export default function ChartOfAccountsPage() {
                         <p className="text-slate-500 mt-1 uppercase text-[10px] font-bold tracking-widest">Financial Structure & Hierarchy</p>
                     </div>
                     <div className="flex gap-3">
-                        <button className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2">
+                        <button
+                            onClick={toggleAllExpand}
+                            className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2"
+                        >
                             <Layers size={16} />
-                            Full Expand
+                            {expandedIds.size > accounts.length / 2 ? 'Collapse All' : 'Full Expand'}
                         </button>
                         <button
                             onClick={() => {

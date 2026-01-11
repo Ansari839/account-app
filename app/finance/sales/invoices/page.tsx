@@ -8,7 +8,7 @@ import Combobox from "@/components/Combobox";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 
-export default function PurchaseInvoicesPage() {
+export default function SalesInvoicesPage() {
     const router = useRouter();
 
     const [invoices, setInvoices] = useState<any[]>([]);
@@ -17,17 +17,17 @@ export default function PurchaseInvoicesPage() {
 
     const [sources, setSources] = useState<any[]>([]);
     const [selectedSource, setSelectedSource] = useState<any>(null);
-    const [suppliers, setSuppliers] = useState<any[]>([]);
+    const [customers, setCustomers] = useState<any[]>([]);
     const [warehouses, setWarehouses] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
     const [units, setUnits] = useState<any[]>([]);
-    const [isGrnMandatory, setIsGrnMandatory] = useState(false);
+    const [isDoMandatory, setIsDoMandatory] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editId, setEditId] = useState("");
     const [formData, setFormData] = useState<any>({
-        sourceType: "PO", // PO | GRN | DIRECT
+        sourceType: "SO", // SO | DO | DIRECT
         sourceId: "",
-        supplierId: "",
+        customerId: "",
         warehouseId: "",
         date: new Date().toISOString().split("T")[0],
         dueDate: "",
@@ -43,7 +43,7 @@ export default function PurchaseInvoicesPage() {
     const fetchInvoices = async () => {
         setLoading(true);
         try {
-            const res = await authenticatedFetch("/api/finance/purchase/invoices");
+            const res = await authenticatedFetch("/api/finance/sales/invoices");
             const json = await res.json();
             if (json.success) setInvoices(json.data);
         } catch (e) {
@@ -57,10 +57,10 @@ export default function PurchaseInvoicesPage() {
             const res = await authenticatedFetch("/api/settings/inventory");
             const json = await res.json();
             if (json.success) {
-                const mandatory = json.data.INVENTORY_GRN_MANDATORY === "true";
-                setIsGrnMandatory(mandatory);
+                const mandatory = json.data.DO_MANDATORY === "true";
+                setIsDoMandatory(mandatory);
                 if (mandatory) {
-                    setFormData((p: any) => ({ ...p, sourceType: "GRN" }));
+                    setFormData((p: any) => ({ ...p, sourceType: "DO" }));
                 }
             }
         } catch (e) {
@@ -70,30 +70,14 @@ export default function PurchaseInvoicesPage() {
 
     const fetchDropdowns = async () => {
         try {
-            const [supRes, accRes, whRes, prodRes, unitRes] = await Promise.all([
-                authenticatedFetch("/api/finance/parties/suppliers"),
-                authenticatedFetch('/api/accounts?isPosting=true'),
+            const [custRes, whRes, prodRes, unitRes] = await Promise.all([
+                authenticatedFetch("/api/finance/parties/customers"),
                 authenticatedFetch("/api/inventory/warehouses"),
                 authenticatedFetch("/api/inventory/products"),
                 authenticatedFetch("/api/inventory/units"),
             ]);
 
-            const sups = supRes.ok ? (await supRes.json()).data || [] : [];
-            const accs = accRes.ok ? (await accRes.json()).accounts || [] : [];
-
-            // Combine and unique by ID
-            const combined = [...sups];
-            const existingIds = new Set(sups.map((s: any) => s.id));
-
-            accs.forEach((a: any) => {
-                if (!existingIds.has(a.id)) {
-                    combined.push(a);
-                    existingIds.add(a.id);
-                }
-            });
-
-            setSuppliers(combined);
-
+            if (custRes.ok) setCustomers((await custRes.json()).data || []);
             if (whRes.ok) setWarehouses((await whRes.json()).data || []);
             if (prodRes.ok) setProducts((await prodRes.json()).data || []);
             if (unitRes.ok) setUnits((await unitRes.json()).data || []);
@@ -105,17 +89,17 @@ export default function PurchaseInvoicesPage() {
     const fetchSources = async (type: string) => {
         try {
             const endpoint =
-                type === "PO"
-                    ? "/api/finance/purchase/orders?status=OPEN"
-                    : "/api/finance/purchase/grn";
+                type === "SO"
+                    ? "/api/finance/sales/orders"
+                    : "/api/finance/sales/delivery-notes";
 
             const res = await authenticatedFetch(endpoint);
             const json = await res.json();
             if (json.success) {
                 let data = json.data;
-                if (type === "GRN") {
-                    // Filter out already billed GRNs
-                    data = data.filter((g: any) => !g.invoices || g.invoices.length === 0);
+                if (type === "DO") {
+                    // Filter out already billed DOs
+                    data = data.filter((d: any) => !d.invoices || d.invoices.length === 0);
                 }
                 setSources(data);
             }
@@ -138,14 +122,14 @@ export default function PurchaseInvoicesPage() {
 
         let items: any[] = [];
 
-        if (formData.sourceType === "PO") {
+        if (formData.sourceType === "SO") {
             items = source.items.map((item: any) => {
                 const available = item.qty - (item.invoicedQty || 0);
                 return {
                     productId: item.productId,
                     productName: item.product?.name,
                     unitId: item.unitId,
-                    poItemId: item.id,
+                    soItemId: item.id,
                     qtyAvailable: available,
                     qty: Math.max(0, available),
                     rate: item.rate,
@@ -157,19 +141,20 @@ export default function PurchaseInvoicesPage() {
                 productId: item.productId,
                 productName: item.product?.name,
                 unitId: item.unitId,
-                grnItemId: item.id,
-                poItemId: item.poItemId,
-                qtyAvailable: item.qtyReceived,
-                qty: item.qtyReceived,
-                rate: item.poItem?.rate || 0,
-                total: item.qtyReceived * (item.poItem?.rate || 0),
+                doItemId: item.id,
+                soItemId: item.soItemId,
+                qtyAvailable: item.qty,
+                qty: item.qty,
+                rate: item.soItem?.rate || 0,
+                total: item.qty * (item.soItem?.rate || 0),
             }));
         }
 
         setFormData({
             ...formData,
             sourceId: id,
-            supplierId: source.supplierId,
+            customerId: source.customerId,
+            warehouseId: source.warehouseId || "",
             items,
         });
     };
@@ -204,7 +189,8 @@ export default function PurchaseInvoicesPage() {
         if (field === "productId") {
             const prod = products.find(p => p.id === value);
             item.productName = prod?.name || "";
-            item.rate = Number(prod?.purchasePrice || 0);
+            item.rate = Number(prod?.sellingPrice || 0);
+            item.unitId = prod?.baseUnitId || "";
         }
 
         item.total = Number(item.qty || 0) * Number(item.rate || 0);
@@ -215,23 +201,13 @@ export default function PurchaseInvoicesPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Over-fulfillment check (only for PO/GRN)
-        if (formData.sourceType !== "DIRECT") {
-            const overFullfilled = formData.items.some((it: any) => it.qty > it.qtyAvailable);
-            if (overFullfilled) {
-                if (!confirm("One or more items exceed the remaining PO/GRN quantity. An 'Addendum PO' will be automatically created for the excess. Proceed?")) {
-                    return;
-                }
-            }
-        }
-
         const payload = {
             ...formData,
-            poId: formData.sourceType === "PO" ? formData.sourceId : undefined,
-            grnId: formData.sourceType === "GRN" ? formData.sourceId : undefined,
+            orderId: formData.sourceType === "SO" ? formData.sourceId : undefined,
+            doId: formData.sourceType === "DO" ? formData.sourceId : undefined,
         };
 
-        const url = isEditing ? `/api/finance/purchase/invoices/${editId}` : "/api/finance/purchase/invoices";
+        const url = isEditing ? `/api/finance/sales/invoices/${editId}` : "/api/finance/sales/invoices";
         const method = isEditing ? "PUT" : "POST";
 
         const res = await authenticatedFetch(url, {
@@ -245,9 +221,9 @@ export default function PurchaseInvoicesPage() {
             setIsEditing(false);
             setEditId("");
             setFormData({
-                sourceType: isGrnMandatory ? "GRN" : "PO",
+                sourceType: isDoMandatory ? "DO" : "SO",
                 sourceId: "",
-                supplierId: "",
+                customerId: "",
                 warehouseId: "",
                 date: new Date().toISOString().split("T")[0],
                 dueDate: "",
@@ -270,8 +246,8 @@ export default function PurchaseInvoicesPage() {
             productId: it.productId,
             productName: it.product?.name,
             unitId: it.unitId,
-            poItemId: it.poItemId,
-            grnItemId: it.grnItemId,
+            soItemId: it.soItemId,
+            doItemId: it.doItemId,
             qtyAvailable: 999999, // Hack for edit mode
             qty: Number(it.qty || 0),
             rate: Number(it.rate || 0),
@@ -279,9 +255,9 @@ export default function PurchaseInvoicesPage() {
         }));
 
         setFormData({
-            sourceType: invoice.poId ? "PO" : invoice.grnId ? "GRN" : "DIRECT",
-            sourceId: invoice.poId || invoice.grnId || "",
-            supplierId: invoice.supplierId,
+            sourceType: invoice.orderId ? "SO" : invoice.doId ? "DO" : "DIRECT",
+            sourceId: invoice.orderId || invoice.doId || "",
+            customerId: invoice.customerId,
             warehouseId: invoice.warehouseId || "",
             date: invoice.date.split("T")[0],
             dueDate: invoice.dueDate ? invoice.dueDate.split("T")[0] : "",
@@ -291,10 +267,10 @@ export default function PurchaseInvoicesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this invoice? Linked journal entries and quantities will be reverted.")) return;
+        if (!confirm("Are you sure you want to delete this invoice? Linked journal entries and stock will be reverted.")) return;
 
         try {
-            const res = await authenticatedFetch(`/api/finance/purchase/invoices/${id}`, { method: 'DELETE' });
+            const res = await authenticatedFetch(`/api/finance/sales/invoices/${id}`, { method: 'DELETE' });
             if (res.ok) {
                 fetchInvoices();
             } else {
@@ -312,7 +288,7 @@ export default function PurchaseInvoicesPage() {
             header: "Date",
             accessor: (row) => format(new Date(row.date), "dd/MM/yyyy"),
         },
-        { header: "Supplier", accessor: (row) => row.supplier?.name },
+        { header: "Customer", accessor: (row) => row.customer?.name },
         {
             header: "Amount",
             accessor: (row) => Number(row.totalAmount || 0).toFixed(2),
@@ -320,10 +296,10 @@ export default function PurchaseInvoicesPage() {
         {
             header: "Ref",
             accessor: (row) =>
-                row.po
-                    ? `PO: ${row.po.poNo}`
-                    : row.grn
-                        ? `GRN: ${row.grn.grnNo}`
+                row.order
+                    ? `SO: ${row.order.orderNo}`
+                    : row.do
+                        ? `DN: ${row.do.doNo}`
                         : "-",
         },
         {
@@ -331,7 +307,7 @@ export default function PurchaseInvoicesPage() {
             accessor: (row) => (
                 <div className="flex gap-2">
                     <button
-                        onClick={() => router.push(`/finance/purchase/invoices/${row.id}`)}
+                        onClick={() => router.push(`/finance/sales/invoices/${row.id}`)}
                         className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
                         title="View/Print"
                     >
@@ -362,10 +338,10 @@ export default function PurchaseInvoicesPage() {
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h2 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">
-                        {isEditing ? "Edit Invoice" : "Purchase Invoices"}
+                        {isEditing ? "Edit Sales Invoice" : "Sales Invoices"}
                     </h2>
                     <p className="text-slate-500">
-                        Manage bills to be paid to suppliers.
+                        Manage billings and receivables from customers.
                     </p>
                 </div>
                 <button
@@ -373,9 +349,9 @@ export default function PurchaseInvoicesPage() {
                         setIsEditing(false);
                         setEditId("");
                         setFormData({
-                            sourceType: isGrnMandatory ? "GRN" : "PO",
+                            sourceType: isDoMandatory ? "DO" : "SO",
                             sourceId: "",
-                            supplierId: "",
+                            customerId: "",
                             warehouseId: "",
                             date: new Date().toISOString().split("T")[0],
                             dueDate: "",
@@ -396,7 +372,7 @@ export default function PurchaseInvoicesPage() {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
                     <div className="bg-white dark:bg-slate-900 w-[900px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
                         <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900 z-10">
-                            <h2 className="text-xl font-bold">New Purchase Invoice</h2>
+                            <h2 className="text-xl font-bold">{isEditing ? "Edit Sales Invoice" : "New Sales Invoice"}</h2>
                             <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-red-500">✕</button>
                         </div>
 
@@ -409,26 +385,26 @@ export default function PurchaseInvoicesPage() {
                                         <input
                                             type="radio"
                                             name="sourceType"
-                                            value="PO"
-                                            checked={formData.sourceType === "PO"}
-                                            onChange={() => setFormData({ ...formData, sourceType: "PO", sourceId: "", items: [] })}
-                                            disabled={isGrnMandatory}
+                                            value="SO"
+                                            checked={formData.sourceType === "SO"}
+                                            onChange={() => setFormData({ ...formData, sourceType: "SO", sourceId: "", items: [] })}
+                                            disabled={isDoMandatory}
                                             className="accent-indigo-600"
                                         />
-                                        <span className={isGrnMandatory ? "text-slate-400" : ""}>From Purchase Order</span>
+                                        <span className={isDoMandatory ? "text-slate-400" : ""}>From Sales Order</span>
                                     </label>
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input
                                             type="radio"
                                             name="sourceType"
-                                            value="GRN"
-                                            checked={formData.sourceType === "GRN"}
-                                            onChange={() => setFormData({ ...formData, sourceType: "GRN", sourceId: "", items: [] })}
+                                            value="DO"
+                                            checked={formData.sourceType === "DO"}
+                                            onChange={() => setFormData({ ...formData, sourceType: "DO", sourceId: "", items: [] })}
                                             className="accent-indigo-600"
                                         />
-                                        <span>From GRN</span>
+                                        <span>From Delivery Note</span>
                                     </label>
-                                    {!isGrnMandatory && (
+                                    {!isDoMandatory && (
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input
                                                 type="radio"
@@ -449,12 +425,12 @@ export default function PurchaseInvoicesPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-bold mb-1">
-                                            Select {formData.sourceType === "PO" ? "Purchase Order" : "GRN"}
+                                            Select {formData.sourceType === "SO" ? "Sales Order" : "Delivery Note"}
                                         </label>
                                         <Combobox
                                             options={sources.map(s => ({
                                                 value: s.id,
-                                                label: `${formData.sourceType === "PO" ? s.poNo : s.grnNo} - ${s.supplier?.name || "Unknown"}`
+                                                label: `${formData.sourceType === "SO" ? s.orderNo : s.doNo} - ${s.customer?.name || "Unknown"}`
                                             }))}
                                             value={formData.sourceId}
                                             onChange={(val) => handleSelectSource(val)}
@@ -477,15 +453,15 @@ export default function PurchaseInvoicesPage() {
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-bold mb-1">Supplier / Account</label>
+                                            <label className="block text-sm font-bold mb-1">Customer / Receivable Account</label>
                                             <Combobox
-                                                options={suppliers.map(s => ({
-                                                    value: s.id,
-                                                    label: s.code ? `(${s.code}) ${s.name}` : s.name
+                                                options={customers.map(c => ({
+                                                    value: c.id,
+                                                    label: c.code ? `(${c.code}) ${c.name}` : c.name
                                                 }))}
-                                                value={formData.supplierId}
-                                                onChange={(val) => setFormData({ ...formData, supplierId: val })}
-                                                placeholder="Select Supplier or Account..."
+                                                value={formData.customerId}
+                                                onChange={(val) => setFormData({ ...formData, customerId: val })}
+                                                placeholder="Select Customer..."
                                             />
                                         </div>
                                         <div>
@@ -544,7 +520,7 @@ export default function PurchaseInvoicesPage() {
                                         <tr>
                                             <th className="p-3 text-left">Product</th>
                                             <th className="p-3 w-32">Unit</th>
-                                            {formData.sourceType !== "DIRECT" && <th className="p-3 text-right">Available</th>}
+                                            {formData.sourceType !== "DIRECT" && <th className="p-3 text-right">Aval. Qty</th>}
                                             <th className="p-3 text-right w-32">Qty</th>
                                             <th className="p-3 text-right w-40">Rate</th>
                                             <th className="p-3 text-right w-40">Total</th>

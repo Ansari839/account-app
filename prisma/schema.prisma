@@ -60,6 +60,15 @@ model Unit {
   products        Product[]
   conversionsFrom UnitConversion[] @relation("FromUnit")
   conversionsTo   UnitConversion[] @relation("ToUnit")
+  poItems         PurchaseOrderItem[]
+  grnItems        GRNItem[]
+  invoiceItems    PurchaseInvoiceItem[]
+  returnItems     PurchaseReturnItem[]
+  salesQuoteItems SalesQuotationItem[]
+  salesOrderItems SalesOrderItem[]
+  doItems         DeliveryOrderItem[]
+  salesInvItems   SalesInvoiceItem[]
+  salesRetItems   SalesReturnItem[]
 }
 
 model TaxCode {
@@ -468,9 +477,11 @@ model PurchaseReturnItem {
   taxAmount     Decimal              @default(0.0)
   total         Decimal
   invoiceItem   PurchaseInvoiceItem? @relation(fields: [invoiceItemId], references: [id])
+  unitId        String?
   product       Product              @relation(fields: [productId], references: [id])
   return        PurchaseReturn       @relation(fields: [returnId], references: [id])
   taxCode       TaxCode?             @relation(fields: [taxCodeId], references: [id])
+  unit          Unit?                @relation(fields: [unitId], references: [id])
 }
 
 model PurchaseOrderItem {
@@ -486,9 +497,11 @@ model PurchaseOrderItem {
   receivedQty  Decimal               @default(0.0)
   grnItems     GRNItem[]
   invoiceItems PurchaseInvoiceItem[]
+  unitId       String?
   po           PurchaseOrder         @relation(fields: [poId], references: [id], onDelete: Cascade)
   product      Product               @relation(fields: [productId], references: [id])
   taxCode      TaxCode?              @relation(fields: [taxCodeId], references: [id])
+  unit         Unit?                 @relation(fields: [unitId], references: [id])
 }
 
 model GRN {
@@ -515,9 +528,12 @@ model GRNItem {
   poItemId    String?
   qtyReceived Decimal
   qtyRejected Decimal            @default(0.0)
+  rate        Decimal            @default(0.0)
+  unitId      String?
   grn         GRN                @relation(fields: [grnId], references: [id])
   poItem      PurchaseOrderItem? @relation(fields: [poItemId], references: [id])
   product     Product            @relation(fields: [productId], references: [id])
+  unit        Unit?              @relation(fields: [unitId], references: [id])
 }
 
 model PurchaseInvoice {
@@ -554,11 +570,13 @@ model PurchaseInvoiceItem {
   total       Decimal
   grnItemId   String?
   poItemId    String?
+  unitId      String?
   invoice     PurchaseInvoice      @relation(fields: [invoiceId], references: [id])
   poItem      PurchaseOrderItem?   @relation(fields: [poItemId], references: [id])
   product     Product              @relation(fields: [productId], references: [id])
   taxCode     TaxCode?             @relation(fields: [taxCodeId], references: [id])
   returnItems PurchaseReturnItem[]
+  unit        Unit?                @relation(fields: [unitId], references: [id])
 }
 
 model PurchaseRequest {
@@ -606,6 +624,8 @@ model SalesQuotationItem {
   taxCodeId String?
   taxAmount Decimal        @default(0.0)
   total     Decimal
+  unitId    String?
+  unit      Unit?          @relation(fields: [unitId], references: [id])
   product   Product        @relation(fields: [productId], references: [id])
   quote     SalesQuotation @relation(fields: [quoteId], references: [id])
   taxCode   TaxCode?       @relation(fields: [taxCodeId], references: [id])
@@ -644,6 +664,8 @@ model SalesOrderItem {
   invoicedQty  Decimal             @default(0.0)
   doItems      DeliveryOrderItem[]
   invoiceItems SalesInvoiceItem[]
+  unitId       String?
+  unit         Unit?               @relation(fields: [unitId], references: [id])
   order        SalesOrder          @relation(fields: [orderId], references: [id])
   product      Product             @relation(fields: [productId], references: [id])
   taxCode      TaxCode?            @relation(fields: [taxCodeId], references: [id])
@@ -672,6 +694,8 @@ model DeliveryOrderItem {
   productId String
   qty       Decimal
   soItemId  String?
+  unitId    String?
+  unit      Unit?           @relation(fields: [unitId], references: [id])
   do        DeliveryOrder   @relation(fields: [doId], references: [id])
   product   Product         @relation(fields: [productId], references: [id])
   soItem    SalesOrderItem? @relation(fields: [soItemId], references: [id])
@@ -711,6 +735,8 @@ model SalesInvoiceItem {
   total       Decimal
   doItemId    String?
   soItemId    String?
+  unitId      String?
+  unit        Unit?             @relation(fields: [unitId], references: [id])
   invoice     SalesInvoice      @relation(fields: [invoiceId], references: [id])
   product     Product           @relation(fields: [productId], references: [id])
   soItem      SalesOrderItem?   @relation(fields: [soItemId], references: [id])
@@ -747,6 +773,8 @@ model SalesReturnItem {
   taxAmount     Decimal           @default(0.0)
   total         Decimal
   invoiceItemId String?
+  unitId        String?
+  unit          Unit?             @relation(fields: [unitId], references: [id])
   invoiceItem   SalesInvoiceItem? @relation(fields: [invoiceItemId], references: [id])
   product       Product           @relation(fields: [productId], references: [id])
   return        SalesReturn       @relation(fields: [returnId], references: [id])

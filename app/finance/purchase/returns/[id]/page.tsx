@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation"; // Correct import for App Router
 import MainLayout from "@/components/MainLayout";
+import { authenticatedFetch } from "@/lib/api-client";
 import { ArrowLeft, Printer } from "lucide-react";
 
 export default function PurchaseReturnDetailPage() {
@@ -24,7 +25,7 @@ export default function PurchaseReturnDetailPage() {
 
     const fetchReturn = async () => {
         try {
-            const res = await fetch(`/api/finance/purchase/returns/${id}`);
+            const res = await authenticatedFetch(`/api/finance/purchase/returns/${id}`);
             const json = await res.json();
             if (json.success) {
                 setData(json.data);

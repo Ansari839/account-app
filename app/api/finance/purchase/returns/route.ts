@@ -19,12 +19,30 @@ export async function GET(req: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '20');
         const search = searchParams.get('search') || '';
 
-        const where: any = {};
+        const where: any = {
+            supplier: {
+                payableAccount: {
+                    companyId: user.companyId
+                }
+            }
+        };
+
         if (search) {
-            where.OR = [
-                { returnNo: { contains: search, mode: 'insensitive' } },
-                { supplier: { name: { contains: search, mode: 'insensitive' } } },
-                { invoice: { invoiceNo: { contains: search, mode: 'insensitive' } } }
+            where.AND = [
+                {
+                    supplier: {
+                        payableAccount: {
+                            companyId: user.companyId
+                        }
+                    }
+                },
+                {
+                    OR: [
+                        { returnNo: { contains: search, mode: 'insensitive' } },
+                        { supplier: { name: { contains: search, mode: 'insensitive' } } },
+                        { invoice: { invoiceNo: { contains: search, mode: 'insensitive' } } }
+                    ]
+                }
             ];
         }
 

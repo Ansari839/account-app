@@ -86,7 +86,7 @@ export class PurchaseController {
                 },
                 include: {
                     supplier: true,
-                    items: { include: { product: true } },
+                    items: { include: { product: true, unit: true } },
                     invoices: { select: { id: true, invoiceNo: true } },
                     warehouse: true,
                     po: { select: { poNo: true } }
@@ -171,6 +171,7 @@ export class PurchaseController {
                     items: {
                         create: body.items.map((item: any) => ({
                             productId: item.productId,
+                            unitId: item.unitId || null,
                             qty: Number(item.qty || 0),
                             rate: Number(item.rate || 0),
                             total: Number(item.qty || 0) * Number(item.rate || 0),
@@ -181,7 +182,7 @@ export class PurchaseController {
                 },
                 include: {
                     supplier: true,
-                    items: { include: { product: true } }
+                    items: { include: { product: true, unit: true } }
                 }
             });
 
@@ -206,9 +207,9 @@ export class PurchaseController {
                 include: {
                     supplier: true,
                     warehouse: true,
-                    items: { include: { product: true } },
+                    items: { include: { product: true, unit: true } },
                     grns: {
-                        include: { items: true }
+                        include: { items: { include: { product: true, unit: true } } }
                     },
                     invoices: {
                         include: { items: true }
@@ -251,6 +252,7 @@ export class PurchaseController {
                         items: {
                             create: body.items.map((item: any) => ({
                                 productId: item.productId,
+                                unitId: item.unitId || null,
                                 qty: Number(item.qty || 0),
                                 rate: Number(item.rate || 0),
                                 total: Number(item.qty || 0) * Number(item.rate || 0),
@@ -259,7 +261,7 @@ export class PurchaseController {
                             }))
                         }
                     },
-                    include: { items: true }
+                    include: { items: { include: { product: true, unit: true } } }
                 });
             });
 
@@ -333,16 +335,18 @@ export class PurchaseController {
                 const grn = await tx.gRN.create({
                     data: {
                         grnNo,
-                        poId,
+                        poId: poId || null,
                         supplierId,
-                        warehouseId,
+                        warehouseId: warehouseId || null,
                         date: new Date(date),
                         items: {
                             create: validItems.map((item: any) => ({
                                 productId: item.productId,
-                                poItemId: item.poItemId,
+                                unitId: item.unitId || null,
+                                poItemId: item.poItemId || null,
                                 qtyReceived: item.qtyReceived,
-                                qtyRejected: item.qtyRejected
+                                qtyRejected: item.qtyRejected,
+                                rate: Number(item.rate || 0)
                             }))
                         }
                     }
@@ -378,6 +382,7 @@ export class PurchaseController {
                                             items: {
                                                 create: [{
                                                     productId: item.productId,
+                                                    unitId: item.unitId || null,
                                                     qty: excess,
                                                     rate: poItem.rate,
                                                     total: excess * Number(poItem.rate),
@@ -414,7 +419,7 @@ export class PurchaseController {
                                 date: new Date(date),
                                 qtyIn: item.qtyReceived,
                                 qtyOut: 0,
-                                costRate: poItem ? Number(poItem.rate) : 0,
+                                costRate: item.rate ? Number(item.rate) : (poItem ? Number(poItem.rate) : 0),
                                 refType: 'GRN',
                                 refId: grn.id
                             }
@@ -448,7 +453,7 @@ export class PurchaseController {
                     warehouse: true,
                     po: true,
                     items: {
-                        include: { product: true, poItem: true }
+                        include: { product: true, poItem: true, unit: true }
                     }
                 }
             });
@@ -535,7 +540,7 @@ export class PurchaseController {
                     grn: true,
                     journalEntry: { include: { lines: { include: { account: true } } } },
                     items: {
-                        include: { product: true, poItem: true }
+                        include: { product: true, poItem: true, unit: true }
                     }
                 }
             });
@@ -600,7 +605,37 @@ export class PurchaseController {
             if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const body = await req.json();
-            const { poId, grnId, supplierId, warehouseId, date, dueDate, items } = body;
+            const { poId, grnId, warehouseId, date, dueDate, items } = body;
+            let supplierId = body.supplierId;
+
+            // Resolve Account ID to Supplier ID (Same logic as createOrder)
+            const account = await prisma.account.findUnique({ where: { id: supplierId } });
+            if (account) {
+                let supplier = await prisma.supplier.findFirst({
+                    where: { payableAccountId: account.id }
+                });
+
+                if (!supplier) {
+                    const lastSupplier = await prisma.supplier.findFirst({
+                        where: { code: { startsWith: 'SUP-' } },
+                        orderBy: { code: 'desc' }
+                    });
+                    let nextSupSeq = 1;
+                    if (lastSupplier) {
+                        const lastNum = parseInt(lastSupplier.code.split('-')[1]);
+                        if (!isNaN(lastNum)) nextSupSeq = lastNum + 1;
+                    }
+                    supplier = await prisma.supplier.create({
+                        data: {
+                            code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
+                            name: account.name,
+                            currencyCode: 'PKR',
+                            payableAccountId: account.id
+                        }
+                    });
+                }
+                supplierId = supplier.id;
+            }
 
             // 1. Fetch Setting: GRN Mandatory
             const setting = await prisma.globalSetting.findFirst({
@@ -660,6 +695,7 @@ export class PurchaseController {
                                             items: {
                                                 create: [{
                                                     productId: item.productId,
+                                                    unitId: item.unitId || null,
                                                     qty: excess,
                                                     rate: item.rate,
                                                     total: excess * Number(item.rate),
@@ -681,17 +717,18 @@ export class PurchaseController {
                     data: {
                         invoiceNo,
                         supplierId,
-                        poId: poId || undefined,
-                        grnId: grnId || undefined,
-                        warehouseId: warehouseId || undefined,
+                        poId: poId || null,
+                        grnId: grnId || null,
+                        warehouseId: warehouseId || null,
                         date: new Date(date),
                         dueDate: dueDate ? new Date(dueDate) : null,
                         totalAmount,
                         items: {
                             create: items.map((item: any) => ({
                                 productId: item.productId,
-                                poItemId: item.poItemId,
-                                grnItemId: item.grnItemId,
+                                unitId: item.unitId || null,
+                                poItemId: item.poItemId || null,
+                                grnItemId: item.grnItemId || null,
                                 qty: item.qty,
                                 rate: item.rate,
                                 total: Number(item.qty) * Number(item.rate)
@@ -843,9 +880,11 @@ export class PurchaseController {
                         data: {
                             grnId: id,
                             productId: item.productId,
+                            unitId: item.unitId || null,
                             poItemId: item.poItemId,
                             qtyReceived: item.qtyReceived,
-                            qtyRejected: item.qtyRejected
+                            qtyRejected: item.qtyRejected,
+                            rate: Number(item.rate || 0)
                         }
                     });
 
@@ -936,8 +975,9 @@ export class PurchaseController {
                         data: {
                             invoiceId: id,
                             productId: item.productId,
-                            poItemId: item.poItemId,
-                            grnItemId: item.grnItemId,
+                            unitId: item.unitId || null,
+                            poItemId: item.poItemId || null,
+                            grnItemId: item.grnItemId || null,
                             qty: item.qty,
                             rate: item.rate,
                             total: Number(item.qty) * Number(item.rate)

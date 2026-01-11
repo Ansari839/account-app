@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function LegacySalesInvoicesRedirect() {
+export default function LegacySalesRedirect() {
     const router = useRouter();
 
     useEffect(() => {

@@ -14,7 +14,7 @@ const menuItems = [
         path: '/finance/purchase',
         sub: ['orders', 'grn', 'invoices', 'returns']
     },
-    { name: 'Sales', icon: '📈', path: '/sales/invoices', sub: ['Order', 'Invoice', 'Return'] },
+    { name: 'Sales', icon: '📈', path: '/finance/sales', sub: ['orders', 'delivery-notes', 'invoices', 'returns'] },
     { name: 'Inventory', icon: '📦', path: '/inventory', sub: ['Products', 'Categories', 'Warehouses'] },
     { name: 'Reports', icon: '📜', path: '/finance/reports', sub: ['P&L', 'Balance Sheet', 'Ledger', 'Aging'] },
     { name: 'Settings', icon: '⚙️', path: '/admin/settings' },

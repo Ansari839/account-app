@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import MainLayout from "@/components/MainLayout";
+import { authenticatedFetch } from "@/lib/api-client";
 import { Plus, Search, Eye } from "lucide-react";
 import debounce from "lodash/debounce";
 import DataTable, { Column } from "@/components/DataTable";
@@ -23,7 +24,7 @@ export default function PurchaseReturnsPage() {
                 limit: pagination.limit.toString(),
                 search
             });
-            const res = await fetch(`/api/finance/purchase/returns?${params}`);
+            const res = await authenticatedFetch(`/api/finance/purchase/returns?${params}`);
             const json = await res.json();
             if (json.success) {
                 setReturns(json.data);

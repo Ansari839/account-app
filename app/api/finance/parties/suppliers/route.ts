@@ -15,8 +15,13 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
         }
 
-        // Fetch suppliers from Supplier table
+        // Fetch suppliers from Supplier table filtered by company
         const suppliers = await prisma.supplier.findMany({
+            where: {
+                payableAccount: {
+                    companyId: user.companyId
+                }
+            },
             orderBy: { name: 'asc' }
         });
         return NextResponse.json({ success: true, data: suppliers });

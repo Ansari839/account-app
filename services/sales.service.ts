@@ -10,6 +10,7 @@ export interface SalesQuotationInput {
     validUntil?: Date;
     items: {
         productId: string;
+        unitId?: string;
         qty: number;
         rate: number;
         taxCodeId?: string;
@@ -25,6 +26,7 @@ export interface SalesOrderInput {
     quoteId?: string;
     items: {
         productId: string;
+        unitId?: string;
         qty: number;
         rate: number;
         taxCodeId?: string;
@@ -40,6 +42,7 @@ export interface DeliveryOrderInput {
     remarks?: string;
     items: {
         productId: string;
+        unitId?: string;
         orderItemId?: string;
         qtyShipped: number;
     }[];
@@ -54,6 +57,7 @@ export interface SalesInvoiceInput {
     doId?: string;
     items: {
         productId: string;
+        unitId?: string;
         qty: number;
         rate: number;
         taxCodeId?: string;
@@ -71,6 +75,7 @@ export class SalesService {
             totalAmount += total;
             return {
                 productId: item.productId,
+                unitId: item.unitId || null,
                 qty: item.qty,
                 rate: item.rate,
                 taxCodeId: item.taxCodeId,
@@ -103,6 +108,7 @@ export class SalesService {
             totalAmount += total;
             return {
                 productId: item.productId,
+                unitId: item.unitId || null,
                 qty: item.qty,
                 rate: item.rate,
                 taxCodeId: item.taxCodeId,
@@ -131,6 +137,10 @@ export class SalesService {
      * Creates a Delivery Order (DO) and updates Stock Ledger
      */
     static async createDO(data: DeliveryOrderInput) {
+        // 0. Validate Stock Availability
+        const { StockService } = await import("./stock.service");
+        await StockService.validateStockAvailability(data.warehouseId, data.items.map(i => ({ productId: i.productId, qty: i.qtyShipped })));
+
         return await prisma.$transaction(async (tx) => {
             // 1. Create DO
             const deliveryOrder = await tx.deliveryOrder.create({
@@ -144,7 +154,8 @@ export class SalesService {
                     items: {
                         create: data.items.map(item => ({
                             productId: item.productId,
-                            orderItemId: item.orderItemId,
+                            unitId: item.unitId || null,
+                            soItemId: item.orderItemId || null,
                             qty: item.qtyShipped
                         }))
                     }
@@ -181,6 +192,12 @@ export class SalesService {
             throw new Error("Delivery Order is mandatory for Sales Invoicing.");
         }
 
+        // Validate stock if no DO is used
+        if (!data.doId && data.warehouseId) {
+            const { StockService } = await import("./stock.service");
+            await StockService.validateStockAvailability(data.warehouseId, data.items);
+        }
+
         return await prisma.$transaction(async (tx) => {
             // 2. Calculate Totals and Tax
             let subtotal = 0;
@@ -202,6 +219,7 @@ export class SalesService {
 
                 invoiceItemsData.push({
                     productId: item.productId,
+                    unitId: item.unitId || null,
                     qty: item.qty,
                     rate: item.rate,
                     taxCodeId: item.taxCodeId,
@@ -219,8 +237,8 @@ export class SalesService {
                     customerId: data.customerId,
                     warehouseId: data.warehouseId,
                     date: data.date,
-                    dueDate: data.dueDate,
-                    doId: data.doId,
+                    dueDate: data.dueDate ? new Date(data.dueDate) : null,
+                    doId: data.doId || null,
                     totalAmount: totalAmount,
                     taxAmount: totalTax,
                     items: {
@@ -329,10 +347,12 @@ export class SalesService {
         invoiceId: string;
         date: Date;
         remarks?: string;
+        warehouseId?: string;
         items: {
             productId: string;
             qty: number;
             rate: number;
+            unitId?: string;
         }[];
     }) {
         return await prisma.$transaction(async (tx) => {
@@ -344,6 +364,9 @@ export class SalesService {
 
             if (!originalInvoice) throw new Error("Original Sales Invoice not found.");
 
+            const warehouseId = data.warehouseId || originalInvoice.warehouseId || (await tx.warehouse.findFirst({ where: { isDefault: true } }))?.id;
+            if (!warehouseId) throw new Error("Warehouse is required for return.");
+
             // 2. Calculate Return Totals
             let returnSubtotal = 0;
             let returnTax = 0;
@@ -353,7 +376,7 @@ export class SalesService {
                 const origItem = originalInvoice.items.find(i => i.productId === item.productId);
                 if (!origItem) throw new Error(`Product ${item.productId} not found in original invoice.`);
 
-                const total = item.qty * item.rate;
+                const total = Number(item.qty) * Number(item.rate);
                 returnSubtotal += total;
 
                 let taxAmount = 0;
@@ -364,10 +387,12 @@ export class SalesService {
 
                 returnItemsData.push({
                     productId: item.productId,
+                    unitId: item.unitId || origItem.unitId,
                     qty: item.qty,
                     rate: item.rate,
                     taxAmount: taxAmount,
-                    total: total + taxAmount
+                    total: total + taxAmount,
+                    invoiceItemId: origItem.id
                 });
             }
 
@@ -379,8 +404,8 @@ export class SalesService {
                     returnNo: `SR-${Date.now()}`,
                     invoiceId: data.invoiceId,
                     customerId: originalInvoice.customerId,
-                    warehouseId: originalInvoice.warehouseId || (await tx.warehouse.findFirst({ where: { isDefault: true } }))?.id || "",
-                    date: data.date,
+                    warehouseId: warehouseId,
+                    date: new Date(data.date),
                     totalAmount: returnTotalAmount,
                     remarks: data.remarks,
                     items: {
@@ -390,20 +415,13 @@ export class SalesService {
                 include: { items: { include: { product: true } } }
             });
 
-            // Fetch items with product details
-            const returnItems = await tx.salesReturnItem.findMany({
-                where: { returnId: salesReturn.id },
-                include: { product: true }
-            });
-
             // 4. Update Stock Ledger (Qty In)
-            // Note: Returns increase stock
             for (const item of data.items) {
                 await tx.stockLedger.create({
                     data: {
                         productId: item.productId,
-                        warehouseId: originalInvoice.warehouseId || (await tx.warehouse.findFirst({ where: { isDefault: true } }))?.id || "",
-                        date: data.date,
+                        warehouseId: warehouseId,
+                        date: new Date(data.date),
                         qtyIn: item.qty,
                         qtyOut: 0,
                         refType: "SALES_RETURN",
@@ -413,13 +431,6 @@ export class SalesService {
             }
 
             // 5. Generate Reversal Journal Entry
-            // Reversal Lines:
-            // 1. DR Sales Revenue
-            // 2. DR Output Tax
-            // 3. CR Accounts Receivable (Customer)
-            // 4. DR Inventory (Re-entry)
-            // 5. CR COGS (Reversal)
-
             const jvLines = [];
 
             // 1. AR Credit
@@ -430,7 +441,7 @@ export class SalesService {
                 narration: `Sales Return ${salesReturn.returnNo} for INV ${originalInvoice.invoiceNo}`
             });
 
-            for (const item of returnItems) {
+            for (const item of salesReturn.items) {
                 // 2. Sales Debit (Reversal)
                 jvLines.push({
                     accountId: item.product.salesAccountId!,
@@ -451,7 +462,6 @@ export class SalesService {
                 }
 
                 // 4 & 5. Inventory/COGS Reversal
-                // Find last purchase for costing reversal
                 const lastPurchase = await tx.purchaseInvoiceItem.findFirst({
                     where: { productId: item.productId },
                     orderBy: { invoice: { date: 'desc' } }

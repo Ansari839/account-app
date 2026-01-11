@@ -27,6 +27,7 @@ export default function PurchaseOrdersPage() {
     const [suppliers, setSuppliers] = useState<any[]>([]);
     const [warehouses, setWarehouses] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
+    const [units, setUnits] = useState<any[]>([]);
 
     useEffect(() => {
         fetchOrders();
@@ -45,10 +46,11 @@ export default function PurchaseOrdersPage() {
 
     const fetchDropdowns = async () => {
         try {
-            const [accRes, whRes, prodRes] = await Promise.all([
+            const [accRes, whRes, prodRes, unitRes] = await Promise.all([
                 authenticatedFetch('/api/accounts?type=LIABILITY&isPosting=true'), // Fetch Accounts Payable (Posting Only)
                 authenticatedFetch('/api/inventory/warehouses'),
-                authenticatedFetch('/api/inventory/products')
+                authenticatedFetch('/api/inventory/products'),
+                authenticatedFetch('/api/inventory/units'),
             ]);
 
             if (accRes.ok) {
@@ -58,13 +60,14 @@ export default function PurchaseOrdersPage() {
             }
             if (whRes.ok) setWarehouses((await whRes.json()).data);
             if (prodRes.ok) setProducts((await prodRes.json()).data);
+            if (unitRes.ok) setUnits((await unitRes.json()).data);
         } catch (e) { console.error(e); }
     };
 
     const addItem = () => {
         setFormData({
             ...formData,
-            items: [...formData.items, { productId: '', qty: 1, rate: '', total: 0 }]
+            items: [...formData.items, { productId: '', unitId: '', qty: 1, rate: '', total: 0 }]
         });
     };
 
@@ -142,6 +145,7 @@ export default function PurchaseOrdersPage() {
             items: order.items.map((it: any) => ({
                 id: it.id,
                 productId: it.productId,
+                unitId: it.unitId,
                 qty: Number(it.qty),
                 rate: Number(it.rate),
                 total: Number(it.total),
@@ -306,6 +310,7 @@ export default function PurchaseOrdersPage() {
                                     <thead className="bg-slate-100 dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-300">
                                         <tr>
                                             <th className="p-3">Product</th>
+                                            <th className="p-3 w-32">Unit</th>
                                             <th className="p-3 w-32">Qty</th>
                                             <th className="p-3 w-32">Rate</th>
                                             <th className="p-3 w-32">Total</th>
@@ -324,6 +329,16 @@ export default function PurchaseOrdersPage() {
                                                     >
                                                         <option value="">Select Product</option>
                                                         {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
+                                                    </select>
+                                                </td>
+                                                <td className="p-2">
+                                                    <select
+                                                        className="w-full p-2 border rounded dark:bg-slate-800"
+                                                        value={item.unitId}
+                                                        onChange={e => updateItem(i, 'unitId', e.target.value)}
+                                                    >
+                                                        <option value="">Unit</option>
+                                                        {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                                                     </select>
                                                 </td>
                                                 <td className="p-2">
@@ -357,7 +372,7 @@ export default function PurchaseOrdersPage() {
                                     </tbody>
                                     <tfoot className="bg-slate-50 dark:bg-slate-800 font-bold">
                                         <tr>
-                                            <td colSpan={3} className="p-3 text-right">Total Amount:</td>
+                                            <td colSpan={4} className="p-3 text-right">Total Amount:</td>
                                             <td className="p-3 text-right">
                                                 {formData.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0).toFixed(2)}
                                             </td>

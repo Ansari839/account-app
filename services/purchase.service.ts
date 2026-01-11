@@ -16,6 +16,7 @@ export interface PurchaseRequestInput {
 
 export interface POItemInput {
     productId: string;
+    unitId?: string;
     qty: number;
     rate: number;
     taxCodeId?: string;
@@ -32,9 +33,11 @@ export interface POInput {
 
 export interface GRNItemInput {
     productId: string;
+    unitId?: string;
     poItemId?: string;
     qtyReceived: number;
     qtyRejected?: number;
+    rate?: number;
 }
 
 export interface GRNInput {
@@ -49,6 +52,7 @@ export interface GRNInput {
 
 export interface InvoiceItemInput {
     productId: string;
+    unitId?: string;
     qty: number;
     rate: number;
     taxCodeId?: string;
@@ -96,6 +100,7 @@ export class PurchaseService {
             totalAmount += total;
             return {
                 productId: item.productId,
+                unitId: item.unitId || null,
                 qty: item.qty,
                 rate: item.rate,
                 taxCodeId: item.taxCodeId,
@@ -136,9 +141,11 @@ export class PurchaseService {
                     items: {
                         create: data.items.map(item => ({
                             productId: item.productId,
-                            poItemId: item.poItemId,
+                            unitId: item.unitId || null,
+                            poItemId: item.poItemId || null,
                             qtyReceived: item.qtyReceived,
-                            qtyRejected: item.qtyRejected || 0
+                            qtyRejected: item.qtyRejected || 0,
+                            rate: item.rate || 0
                         }))
                     }
                 },
@@ -154,7 +161,7 @@ export class PurchaseService {
                         date: data.date,
                         qtyIn: item.qtyReceived,
                         qtyOut: 0,
-                        costRate: 0, // Valuation logic later
+                        costRate: item.rate || 0,
                         refType: "GRN",
                         refId: grn.id
                     }
@@ -223,6 +230,7 @@ export class PurchaseService {
 
                 invoiceItems.push({
                     productId: item.productId,
+                    unitId: item.unitId || null,
                     qty: item.qty,
                     rate: item.rate,
                     taxCodeId: item.taxCodeId,
@@ -320,10 +328,15 @@ export class PurchaseService {
         remarks?: string;
         items: {
             productId: string;
+            unitId?: string;
             qty: number;
             rate: number;
         }[];
     }) {
+        // 0. Validate Stock Availability
+        const { StockService } = await import("./stock.service");
+        await StockService.validateStockAvailability(data.warehouseId, data.items);
+
         return await prisma.$transaction(async (tx) => {
             // 1. Validate & Fetch Data
             let invoice;
@@ -383,7 +396,8 @@ export class PurchaseService {
 
                 returnItemsData.push({
                     productId: item.productId,
-                    invoiceItemId: originalItem?.id,
+                    unitId: item.unitId || null,
+                    invoiceItemId: originalItem?.id || null,
                     qty: item.qty,
                     rate: item.rate,
                     total: subtotal

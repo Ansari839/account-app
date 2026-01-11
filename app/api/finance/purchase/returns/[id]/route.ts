@@ -9,8 +9,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const user = await AuthUtils.getAuthUser(req);
         if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
-        const purchaseReturn = await prisma.purchaseReturn.findUnique({
-            where: { id },
+        const purchaseReturn = await prisma.purchaseReturn.findFirst({
+            where: {
+                id,
+                supplier: {
+                    payableAccount: {
+                        companyId: user.companyId
+                    }
+                }
+            },
             include: {
                 supplier: true,
                 warehouse: true,

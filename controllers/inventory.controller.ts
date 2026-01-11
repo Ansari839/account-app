@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { ProductService } from '../services/product.service';
 import { WarehouseService } from '../services/warehouse.service';
 import { CategoryService } from '../services/category.service';
+import { UnitService } from '../services/unit.service';
 
 export class InventoryController {
     // --- PRODUCTS ---
@@ -116,6 +117,45 @@ export class InventoryController {
     static async deleteCategory(id: string) {
         try {
             await CategoryService.delete(id);
+            return NextResponse.json({ success: true });
+        } catch (e: any) {
+            return NextResponse.json({ success: false, error: e.message }, { status: 400 });
+        }
+    }
+
+    // --- UNITS ---
+    static async listUnits() {
+        try {
+            const data = await UnitService.getAllUnits();
+            return NextResponse.json({ success: true, data });
+        } catch (e: any) {
+            return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+        }
+    }
+
+    static async createUnit(req: Request) {
+        try {
+            const body = await req.json();
+            const data = await UnitService.createUnit(body);
+            return NextResponse.json({ success: true, data });
+        } catch (e: any) {
+            return NextResponse.json({ success: false, error: e.message }, { status: 400 });
+        }
+    }
+
+    static async updateUnit(req: Request, id: string) {
+        try {
+            const body = await req.json();
+            const data = await UnitService.updateUnit(id, body);
+            return NextResponse.json({ success: true, data });
+        } catch (e: any) {
+            return NextResponse.json({ success: false, error: e.message }, { status: 400 });
+        }
+    }
+
+    static async deleteUnit(id: string) {
+        try {
+            await UnitService.deleteUnit(id);
             return NextResponse.json({ success: true });
         } catch (e: any) {
             return NextResponse.json({ success: false, error: e.message }, { status: 400 });
