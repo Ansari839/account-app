@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { authenticatedFetch } from '@/lib/api-client';
 import DataTable, { Column } from '@/components/DataTable';
+import Combobox from '@/components/Combobox';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 
@@ -39,14 +40,29 @@ export default function GRNPage() {
 
     const fetchDropdowns = async () => {
         try {
-            const [supRes, whRes, prodRes, unitRes] = await Promise.all([
+            const [supRes, accRes, whRes, prodRes, unitRes] = await Promise.all([
                 authenticatedFetch('/api/finance/parties/suppliers'),
+                authenticatedFetch('/api/accounts?type=LIABILITY&isPosting=true'),
                 authenticatedFetch('/api/inventory/warehouses'),
                 authenticatedFetch('/api/inventory/products'),
                 authenticatedFetch('/api/inventory/units'),
             ]);
 
-            if (supRes.ok) setSuppliers((await supRes.json()).data || []);
+            const sups = supRes.ok ? (await supRes.json()).data || [] : [];
+            const accs = accRes.ok ? (await accRes.json()).accounts || [] : [];
+
+            // Combine and unique by ID
+            const combined = [...sups];
+            const existingIds = new Set(sups.map((s: any) => s.id));
+
+            accs.forEach((a: any) => {
+                if (!existingIds.has(a.id)) {
+                    combined.push(a);
+                    existingIds.add(a.id);
+                }
+            });
+
+            if (supRes.ok) setSuppliers(combined);
             if (whRes.ok) setWarehouses((await whRes.json()).data || []);
             if (prodRes.ok) setProducts((await prodRes.json()).data || []);
             if (unitRes.ok) setUnits((await unitRes.json()).data || []);
@@ -314,15 +330,15 @@ export default function GRNPage() {
                                 {!formData.poId && (
                                     <div>
                                         <label className="block text-sm font-bold mb-1">Supplier</label>
-                                        <select
-                                            className="w-full p-2 border rounded-lg dark:bg-slate-800"
+                                        <Combobox
+                                            options={suppliers.map(s => ({
+                                                value: s.id,
+                                                label: s.code ? `(${s.code}) ${s.name}` : s.name
+                                            }))}
                                             value={formData.supplierId}
-                                            onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                                            required
-                                        >
-                                            <option value="">Select Supplier</option>
-                                            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                        </select>
+                                            onChange={(val) => setFormData({ ...formData, supplierId: val })}
+                                            placeholder="Select Supplier..."
+                                        />
                                     </div>
                                 )}
                                 <div>

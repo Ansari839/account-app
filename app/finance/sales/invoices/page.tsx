@@ -70,14 +70,29 @@ export default function SalesInvoicesPage() {
 
     const fetchDropdowns = async () => {
         try {
-            const [custRes, whRes, prodRes, unitRes] = await Promise.all([
+            const [custRes, accRes, whRes, prodRes, unitRes] = await Promise.all([
                 authenticatedFetch("/api/finance/parties/customers"),
+                authenticatedFetch('/api/accounts?type=ASSET&isPosting=true'),
                 authenticatedFetch("/api/inventory/warehouses"),
                 authenticatedFetch("/api/inventory/products"),
                 authenticatedFetch("/api/inventory/units"),
             ]);
 
-            if (custRes.ok) setCustomers((await custRes.json()).data || []);
+            const custs = custRes.ok ? (await custRes.json()).data || [] : [];
+            const accs = accRes.ok ? (await accRes.json()).accounts || [] : [];
+
+            // Combine and unique by ID
+            const combined = [...custs];
+            const existingIds = new Set(custs.map((c: any) => c.id));
+
+            accs.forEach((a: any) => {
+                if (!existingIds.has(a.id)) {
+                    combined.push(a);
+                    existingIds.add(a.id);
+                }
+            });
+
+            if (custRes.ok) setCustomers(combined);
             if (whRes.ok) setWarehouses((await whRes.json()).data || []);
             if (prodRes.ok) setProducts((await prodRes.json()).data || []);
             if (unitRes.ok) setUnits((await unitRes.json()).data || []);
@@ -430,7 +445,7 @@ export default function SalesInvoicesPage() {
                                         <Combobox
                                             options={sources.map(s => ({
                                                 value: s.id,
-                                                label: `${formData.sourceType === "SO" ? s.orderNo : s.doNo} - ${s.customer?.name || "Unknown"}`
+                                                label: `${formData.sourceType === "SO" ? s.orderNo : s.doNo} - ${s.customer?.name || "Unknown"} (${s.customer?.code || ""})`
                                             }))}
                                             value={formData.sourceId}
                                             onChange={(val) => handleSelectSource(val)}

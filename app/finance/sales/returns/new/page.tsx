@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,18 +7,18 @@ import MainLayout from "@/components/MainLayout";
 import Combobox from "@/components/Combobox";
 import { ArrowLeft, Save, Trash2, Plus } from "lucide-react";
 
-export default function CreatePurchaseReturnPage() {
+export default function CreateSalesReturnPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
 
     // Master Data
-    const [suppliers, setSuppliers] = useState<any[]>([]);
+    const [customers, setCustomers] = useState<any[]>([]);
     const [warehouses, setWarehouses] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
 
     // Form State
     const [formData, setFormData] = useState({
-        supplierId: "",
+        customerId: "",
         warehouseId: "",
         date: new Date().toISOString().split('T')[0],
         remarks: "",
@@ -32,19 +31,19 @@ export default function CreatePurchaseReturnPage() {
 
     const fetchMasterData = async () => {
         try {
-            const [supRes, accRes, whRes, prodRes] = await Promise.all([
-                authenticatedFetch("/api/finance/parties/suppliers"),
-                authenticatedFetch('/api/accounts?type=LIABILITY&isPosting=true'),
+            const [custRes, accRes, whRes, prodRes] = await Promise.all([
+                authenticatedFetch("/api/finance/parties/customers"),
+                authenticatedFetch('/api/accounts?type=ASSET&isPosting=true'),
                 authenticatedFetch("/api/inventory/warehouses"),
                 authenticatedFetch("/api/inventory/products")
             ]);
 
-            const sups = supRes.ok ? (await supRes.json()).data || [] : [];
+            const custs = custRes.ok ? (await custRes.json()).data || [] : [];
             const accs = accRes.ok ? (await accRes.json()).accounts || [] : [];
 
             // Combine and unique by ID
-            const combined = [...sups];
-            const existingIds = new Set(sups.map((s: any) => s.id));
+            const combined = [...custs];
+            const existingIds = new Set(custs.map((c: any) => c.id));
 
             accs.forEach((a: any) => {
                 if (!existingIds.has(a.id)) {
@@ -53,7 +52,7 @@ export default function CreatePurchaseReturnPage() {
                 }
             });
 
-            setSuppliers(combined);
+            setCustomers(combined);
 
             if (whRes.ok) {
                 const json = await whRes.json();
@@ -65,7 +64,7 @@ export default function CreatePurchaseReturnPage() {
                 if (Array.isArray(json.data)) {
                     setProducts(json.data);
                 } else if (json.data && Array.isArray(json.data.products)) {
-                    setProducts(json.data.products); // Handle potential paginated structure
+                    setProducts(json.data.products);
                 } else {
                     setProducts(json.data || []);
                 }
@@ -78,14 +77,12 @@ export default function CreatePurchaseReturnPage() {
 
     const handleItemChange = (index: number, field: string, value: any) => {
         const newItems = [...formData.items];
-        // @ts-ignore
         const item = { ...newItems[index], [field]: value };
 
         if (field === 'productId') {
             const product = products.find(p => p.id === value);
             if (product) {
-                // Determine rate (use purchasePrice or costPrice)
-                item.rate = Number(product.purchasePrice || product.costPrice || 0);
+                item.rate = Number(product.salePrice || 0);
             }
         }
 
@@ -110,8 +107,8 @@ export default function CreatePurchaseReturnPage() {
 
     const handleSubmit = async () => {
         // Validate
-        if (!formData.supplierId || !formData.warehouseId) {
-            alert("Please select Supplier and Warehouse");
+        if (!formData.customerId || !formData.warehouseId) {
+            alert("Please select Customer and Warehouse");
             return;
         }
 
@@ -123,10 +120,10 @@ export default function CreatePurchaseReturnPage() {
 
         setLoading(true);
         try {
-            const res = await authenticatedFetch("/api/finance/purchase/returns", {
+            const res = await authenticatedFetch("/api/finance/sales/returns", {
                 method: "POST",
                 body: JSON.stringify({
-                    supplierId: formData.supplierId,
+                    customerId: formData.customerId,
                     warehouseId: formData.warehouseId,
                     date: formData.date,
                     remarks: formData.remarks,
@@ -139,7 +136,7 @@ export default function CreatePurchaseReturnPage() {
             });
             const json = await res.json();
             if (json.success) {
-                router.push(`/finance/purchase/returns/${json.data.id}`);
+                router.push(`/finance/sales/returns/${json.data.id}`);
             } else {
                 alert(json.error || "Failed to create return");
             }
@@ -163,28 +160,34 @@ export default function CreatePurchaseReturnPage() {
                             <ArrowLeft size={20} />
                         </button>
                         <div>
-                            <h1 className="text-2xl font-bold text-slate-800">New Purchase Return / Debit Note</h1>
-                            <p className="text-slate-500 text-sm">Directly return items to supplier</p>
+                            <h1 className="text-2xl font-bold text-slate-800">New Sales Return / Credit Note</h1>
+                            <p className="text-slate-500 text-sm">Directly return items from customer</p>
                         </div>
                     </div>
+                    <button
+                        onClick={() => router.push("/finance/sales/returns")}
+                        className="text-sm font-bold text-slate-500 hover:text-slate-800 px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-all"
+                    >
+                        Close Form
+                    </button>
                 </div>
 
                 {/* Form Container */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    {/* Top Section: Supplier / Warehouse / Date */}
+                    {/* Top Section: Customer / Warehouse / Date */}
                     <div className="p-6 border-b border-slate-100 bg-slate-50/50">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {/* Supplier */}
+                            {/* Customer */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Supplier</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Customer / Account</label>
                                 <Combobox
-                                    options={suppliers.map(s => ({
-                                        value: s.id,
-                                        label: s.code ? `(${s.code}) ${s.name}` : s.name
+                                    options={customers.map(c => ({
+                                        value: c.id,
+                                        label: c.code ? `(${c.code}) ${c.name}` : c.name
                                     }))}
-                                    value={formData.supplierId}
-                                    onChange={(val) => setFormData({ ...formData, supplierId: val })}
-                                    placeholder="Select Supplier..."
+                                    value={formData.customerId}
+                                    onChange={(val) => setFormData({ ...formData, customerId: val })}
+                                    placeholder="Select Customer..."
                                 />
                             </div>
 

@@ -46,14 +46,29 @@ export default function SalesOrdersPage() {
 
     const fetchDropdowns = async () => {
         try {
-            const [custRes, whRes, prodRes, unitRes] = await Promise.all([
+            const [custRes, accRes, whRes, prodRes, unitRes] = await Promise.all([
                 authenticatedFetch("/api/finance/parties/customers"),
+                authenticatedFetch('/api/accounts?type=ASSET&isPosting=true'),
                 authenticatedFetch("/api/inventory/warehouses"),
                 authenticatedFetch("/api/inventory/products"),
                 authenticatedFetch("/api/inventory/units"),
             ]);
 
-            if (custRes.ok) setCustomers((await custRes.json()).data || []);
+            const custs = custRes.ok ? (await custRes.json()).data || [] : [];
+            const accs = accRes.ok ? (await accRes.json()).accounts || [] : [];
+
+            // Combine and unique by ID
+            const combined = [...custs];
+            const existingIds = new Set(custs.map((c: any) => c.id));
+
+            accs.forEach((a: any) => {
+                if (!existingIds.has(a.id)) {
+                    combined.push(a);
+                    existingIds.add(a.id);
+                }
+            });
+
+            if (custRes.ok) setCustomers(combined);
             if (whRes.ok) setWarehouses((await whRes.json()).data || []);
             if (prodRes.ok) setProducts((await prodRes.json()).data || []);
             if (unitRes.ok) setUnits((await unitRes.json()).data || []);
@@ -189,7 +204,10 @@ export default function SalesOrdersPage() {
                                 <div>
                                     <label className="block text-sm font-bold mb-1">Customer</label>
                                     <Combobox
-                                        options={customers.map(c => ({ value: c.id, label: c.name }))}
+                                        options={customers.map(c => ({
+                                            value: c.id,
+                                            label: c.code ? `(${c.code}) ${c.name}` : c.name
+                                        }))}
                                         value={formData.customerId}
                                         onChange={(val) => setFormData({ ...formData, customerId: val })}
                                         placeholder="Select Customer..."

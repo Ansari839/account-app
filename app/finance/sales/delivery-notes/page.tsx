@@ -13,6 +13,7 @@ export default function DeliveryNotesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [orders, setOrders] = useState<any[]>([]);
+    const [customers, setCustomers] = useState<any[]>([]);
     const [warehouses, setWarehouses] = useState<any[]>([]);
     const [units, setUnits] = useState<any[]>([]);
     const [formData, setFormData] = useState<any>({
@@ -44,13 +45,32 @@ export default function DeliveryNotesPage() {
 
     const fetchDropdowns = async () => {
         try {
-            const [soRes, whRes, unitRes] = await Promise.all([
+            const [soRes, custRes, accRes, whRes, unitRes] = await Promise.all([
                 authenticatedFetch("/api/finance/sales/orders?status=OPEN"),
+                authenticatedFetch("/api/finance/parties/customers"),
+                authenticatedFetch('/api/accounts?type=ASSET&isPosting=true'),
                 authenticatedFetch("/api/inventory/warehouses"),
                 authenticatedFetch("/api/inventory/units"),
             ]);
 
             if (soRes.ok) setOrders((await soRes.json()).data || []);
+
+            const custs = custRes.ok ? (await custRes.json()).data || [] : [];
+            const accs = accRes.ok ? (await accRes.json()).accounts || [] : [];
+
+            // Combine and unique by ID
+            const combined = [...custs];
+            const existingIds = new Set(custs.map((c: any) => c.id));
+
+            accs.forEach((a: any) => {
+                if (!existingIds.has(a.id)) {
+                    combined.push(a);
+                    existingIds.add(a.id);
+                }
+            });
+
+            setCustomers(combined);
+
             if (whRes.ok) setWarehouses((await whRes.json()).data || []);
             if (unitRes.ok) setUnits((await unitRes.json()).data || []);
         } catch (e) {
@@ -154,10 +174,23 @@ export default function DeliveryNotesPage() {
                                 <div>
                                     <label className="block text-sm font-bold mb-1">Select Sales Order</label>
                                     <Combobox
-                                        options={orders.map(o => ({ value: o.id, label: `${o.orderNo} - ${o.customer?.name}` }))}
+                                        options={orders.map(o => ({ value: o.id, label: `${o.orderNo} - ${o.customer?.name} (${o.customer?.code || ''})` }))}
                                         value={formData.orderId}
                                         onChange={(val) => handleSelectOrder(val)}
                                         placeholder="Select Order..."
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-bold mb-1">Customer / Account</label>
+                                    <Combobox
+                                        options={customers.map(c => ({
+                                            value: c.id,
+                                            label: c.code ? `(${c.code}) ${c.name}` : c.name
+                                        }))}
+                                        value={formData.customerId}
+                                        onChange={(val) => setFormData({ ...formData, customerId: val })}
+                                        placeholder="Select Customer..."
+                                        disabled={!!formData.orderId}
                                     />
                                 </div>
                                 <div>

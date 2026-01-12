@@ -29,7 +29,7 @@ export class SalesController {
                 include: {
                     customer: true,
                     warehouse: true,
-                    items: { include: { product: true, unit: true } }
+                    items: { include: { product: true } }
                 },
                 orderBy: { date: 'desc' }
             });
@@ -60,7 +60,7 @@ export class SalesController {
                 include: {
                     customer: true,
                     warehouse: true,
-                    items: { include: { product: true, unit: true } }
+                    items: { include: { product: true } }
                 },
                 orderBy: { date: 'desc' }
             });
@@ -90,7 +90,7 @@ export class SalesController {
                 include: {
                     customer: true,
                     warehouse: true,
-                    items: { include: { product: true, unit: true } },
+                    items: { include: { product: true } },
                     order: { select: { orderNo: true } }
                 },
                 orderBy: { date: 'desc' }
@@ -210,7 +210,7 @@ export class SalesController {
                     customer: true,
                     warehouse: true,
                     invoice: { select: { invoiceNo: true } },
-                    items: { include: { product: true, unit: true } }
+                    items: { include: { product: true } }
                 },
                 orderBy: { date: 'desc' }
             });
