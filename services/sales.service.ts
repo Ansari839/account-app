@@ -423,7 +423,8 @@ export class SalesService {
             const returnItemsData = [];
 
             for (const item of data.items) {
-                const origItem = originalInvoice.items.find(i => i.productId === item.productId);
+                // @ts-ignore
+                const origItem = originalInvoice.items.find(i => i.productId === item.productId && i.variantId === (item.variantId || null));
                 if (!origItem) throw new Error(`Product ${item.productId} not found in original invoice.`);
 
                 const total = Number(item.qty) * Number(item.rate);
@@ -503,7 +504,8 @@ export class SalesService {
                 });
 
                 // 3. Tax Debit (Reversal)
-                const origItem = originalInvoice.items.find(i => i.productId === item.productId);
+                // @ts-ignore
+                const origItem = originalInvoice.items.find(i => i.productId === item.productId && i.variantId === (item.variantId || null));
                 if (origItem?.taxCodeId && origItem.taxCode?.accountId) {
                     jvLines.push({
                         accountId: origItem.taxCode.accountId,

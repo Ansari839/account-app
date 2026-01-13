@@ -449,7 +449,9 @@ export class PurchaseService {
                 });
 
                 // Prepare Item Data
-                const originalItem = invoice?.items.find(i => i.productId === item.productId);
+                // Prepare Item Data
+                // @ts-ignore
+                const originalItem = invoice?.items.find(i => i.productId === item.productId && i.variantId === (item.variantId || null));
 
                 returnItemsData.push({
                     productId: item.productId,
