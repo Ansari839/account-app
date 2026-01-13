@@ -1,9 +1,21 @@
 
 import prisma from "../lib/prisma";
-import { Product } from '@prisma/client';
+import { Account, AccountType, Product } from '@prisma/client';
 import { AccountService } from "./account.service";
 
 export class ProductService {
+    /**
+     * Helper to find a default account by name and type
+     */
+    private static async findDefaultAccount(name: string, type: AccountType) {
+        return prisma.account.findFirst({
+            where: {
+                name: { contains: name, mode: 'insensitive' },
+                type: type,
+                isPosting: true
+            }
+        });
+    }
 
     /**
      * Create a new Product with GL Mappings and Variants
@@ -26,6 +38,32 @@ export class ProductService {
             const count = await prisma.product.count();
             data.code = `PROD-${(count + 1).toString().padStart(4, '0')}`;
         }
+
+        // --- Assign Default Accounts if Missing ---
+        if (!data.inventoryAccountId) {
+            const def = await this.findDefaultAccount('Inventory', 'ASSET');
+            if (def) data.inventoryAccountId = def.id;
+        }
+        if (!data.cogsAccountId) {
+            const def = await this.findDefaultAccount('Cost of Goods Sold', 'EXPENSE');
+            if (def) data.cogsAccountId = def.id;
+        }
+        if (!data.salesAccountId) {
+            const def = await this.findDefaultAccount('Sales', 'INCOME');
+            if (def) data.salesAccountId = def.id;
+        }
+        if (!data.purchaseAccountId) {
+            // Priority 1: Purchase Account, Priority 2: COGS, Priority 3: Inventory
+            const def = await this.findDefaultAccount('Purchase', 'EXPENSE');
+            if (def) {
+                data.purchaseAccountId = def.id;
+            } else if (data.cogsAccountId) {
+                data.purchaseAccountId = data.cogsAccountId;
+            } else if (data.inventoryAccountId) {
+                data.purchaseAccountId = data.inventoryAccountId;
+            }
+        }
+
         // Validate Account Mappings (If provided)
         const accountsToValidate = [
             { id: data.inventoryAccountId, name: 'Inventory Account' },

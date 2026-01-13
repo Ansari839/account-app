@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from "@/lib/prisma";
 import { AuthUtils } from '@/lib/auth-utils';
+import { AccountType } from '@prisma/client';
 
 async function getAuthUser(req: Request) {
     const token = req.headers.get('Authorization')?.split(' ')[1];
@@ -9,6 +10,18 @@ async function getAuthUser(req: Request) {
 }
 
 export class PurchaseController {
+    /**
+     * Helper to find a default account by name and type
+     */
+    private static async findDefaultAccount(name: string, type: AccountType) {
+        return prisma.account.findFirst({
+            where: {
+                name: { contains: name, mode: 'insensitive' },
+                type: type,
+                isPosting: true
+            }
+        });
+    }
     /**
      * List Purchase Invoices (Filtered by Company via Supplier -> Account)
      */
@@ -786,10 +799,17 @@ export class PurchaseController {
                 // Debit Purchase/Inventory Accounts
                 for (const item of items) {
                     const product = await tx.product.findUnique({ where: { id: item.productId } });
-                    const purchaseAccount = product?.inventoryAccountId || product?.purchaseAccountId;
+                    let purchaseAccount = product?.inventoryAccountId || product?.purchaseAccountId;
 
                     if (!purchaseAccount) {
-                        throw new Error(`Product '${product?.name || item.productId}' is not linked to a Purchase or Inventory Account. Please check product settings.`);
+                        // Fallback to default Inventory or Purchase account
+                        const defInv = await this.findDefaultAccount('Inventory', 'ASSET');
+                        const defPur = await this.findDefaultAccount('Purchase', 'EXPENSE');
+                        purchaseAccount = defInv?.id || defPur?.id;
+
+                        if (!purchaseAccount) {
+                            throw new Error(`Product '${product?.name || item.productId}' is not linked to a Purchase or Inventory Account and no default accounts were found.`);
+                        }
                     }
 
                     lines.push({
@@ -1019,8 +1039,16 @@ export class PurchaseController {
 
                     for (const item of items) {
                         const product = await tx.product.findUnique({ where: { id: item.productId } });
+                        let pAcc = product?.purchaseAccountId || product?.inventoryAccountId;
+
+                        if (!pAcc) {
+                            const defInv = await this.findDefaultAccount('Inventory', 'ASSET');
+                            const defPur = await this.findDefaultAccount('Purchase', 'EXPENSE');
+                            pAcc = defInv?.id || defPur?.id || '';
+                        }
+
                         lines.push({
-                            accountId: product?.purchaseAccountId || product?.inventoryAccountId || '',
+                            accountId: pAcc,
                             credit: 0,
                             debit: Number(item.qty) * Number(item.rate)
                         });
