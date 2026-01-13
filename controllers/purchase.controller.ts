@@ -27,7 +27,7 @@ export class PurchaseController {
                 },
                 include: {
                     supplier: true,
-                    items: true
+                    items: { include: { product: true, unit: true } }
                 },
                 orderBy: { date: 'desc' }
             });
@@ -57,7 +57,7 @@ export class PurchaseController {
                 },
                 include: {
                     supplier: true,
-                    items: true
+                    items: { include: { product: true, unit: true } }
                 },
                 orderBy: { date: 'desc' }
             });
