@@ -10,6 +10,7 @@ export interface SalesQuotationInput {
     validUntil?: Date;
     items: {
         productId: string;
+        variantId?: string;
         unitId?: string;
         qty: number;
         rate: number;
@@ -26,6 +27,7 @@ export interface SalesOrderInput {
     quoteId?: string;
     items: {
         productId: string;
+        variantId?: string;
         unitId?: string;
         qty: number;
         rate: number;
@@ -42,6 +44,7 @@ export interface DeliveryOrderInput {
     remarks?: string;
     items: {
         productId: string;
+        variantId?: string;
         unitId?: string;
         orderItemId?: string;
         qtyShipped: number;
@@ -57,6 +60,7 @@ export interface SalesInvoiceInput {
     doId?: string;
     items: {
         productId: string;
+        variantId?: string;
         unitId?: string;
         qty: number;
         rate: number;
@@ -66,35 +70,59 @@ export interface SalesInvoiceInput {
 
 export class SalesService {
     /**
+     * Resolves customer from ID or Account ID
+     */
+    private static async resolveCustomer(tx: any, customerId: string) {
+        let customer = await tx.customer.findUnique({
+            where: { id: customerId },
+            include: { receivableAccount: true }
+        });
+
+        if (!customer) {
+            customer = await tx.customer.findFirst({
+                where: { receivableAccountId: customerId },
+                include: { receivableAccount: true }
+            });
+        }
+        return customer;
+    }
+
+    /**
      * Creates a Sales Quotation (No inventory/accounting impact)
      */
     static async createQuotation(data: SalesQuotationInput) {
-        let totalAmount = 0;
-        const items = data.items.map(item => {
-            const total = item.qty * item.rate;
-            totalAmount += total;
-            return {
-                productId: item.productId,
-                unitId: item.unitId || null,
-                qty: item.qty,
-                rate: item.rate,
-                taxCodeId: item.taxCodeId,
-                total: total
-            };
-        });
+        return await prisma.$transaction(async (tx) => {
+            const customer = await this.resolveCustomer(tx, data.customerId);
+            if (!customer) throw new Error("Customer not found.");
 
-        return await prisma.salesQuotation.create({
-            data: {
-                quoteNo: data.quoteNo,
-                customerId: data.customerId,
-                date: data.date,
-                validUntil: data.validUntil,
-                totalAmount: totalAmount,
-                items: {
-                    create: items
-                }
-            },
-            include: { items: true }
+            let totalAmount = 0;
+            const items = data.items.map(item => {
+                const total = item.qty * item.rate;
+                totalAmount += total;
+                return {
+                    productId: item.productId,
+                    variantId: item.variantId || null,
+                    unitId: item.unitId || null,
+                    qty: item.qty,
+                    rate: item.rate,
+                    taxCodeId: item.taxCodeId,
+                    total: total
+                };
+            });
+
+            return await tx.salesQuotation.create({
+                data: {
+                    quoteNo: data.quoteNo,
+                    customerId: customer.id,
+                    date: data.date,
+                    validUntil: data.validUntil,
+                    totalAmount: totalAmount,
+                    items: {
+                        create: items
+                    }
+                },
+                include: { items: true }
+            });
         });
     }
 
@@ -102,34 +130,40 @@ export class SalesService {
      * Creates a Sales Order (No inventory/accounting impact yet)
      */
     static async createOrder(data: SalesOrderInput) {
-        let totalAmount = 0;
-        const items = data.items.map(item => {
-            const total = item.qty * item.rate;
-            totalAmount += total;
-            return {
-                productId: item.productId,
-                unitId: item.unitId || null,
-                qty: item.qty,
-                rate: item.rate,
-                taxCodeId: item.taxCodeId,
-                total: total
-            };
-        });
+        return await prisma.$transaction(async (tx) => {
+            const customer = await this.resolveCustomer(tx, data.customerId);
+            if (!customer) throw new Error("Customer not found.");
 
-        return await prisma.salesOrder.create({
-            data: {
-                orderNo: data.orderNo,
-                customerId: data.customerId,
-                warehouseId: data.warehouseId,
-                date: data.date,
-                expectedDate: data.expectedDate,
-                quoteId: data.quoteId,
-                totalAmount: totalAmount,
-                items: {
-                    create: items
-                }
-            },
-            include: { items: true }
+            let totalAmount = 0;
+            const items = data.items.map(item => {
+                const total = item.qty * item.rate;
+                totalAmount += total;
+                return {
+                    productId: item.productId,
+                    variantId: item.variantId || null,
+                    unitId: item.unitId || null,
+                    qty: item.qty,
+                    rate: item.rate,
+                    taxCodeId: item.taxCodeId,
+                    total: total
+                };
+            });
+
+            return await tx.salesOrder.create({
+                data: {
+                    orderNo: data.orderNo,
+                    customerId: customer.id,
+                    warehouseId: data.warehouseId,
+                    date: data.date,
+                    expectedDate: data.expectedDate,
+                    quoteId: data.quoteId,
+                    totalAmount: totalAmount,
+                    items: {
+                        create: items
+                    }
+                },
+                include: { items: true }
+            });
         });
     }
 
@@ -139,21 +173,25 @@ export class SalesService {
     static async createDO(data: DeliveryOrderInput) {
         // 0. Validate Stock Availability
         const { StockService } = await import("./stock.service");
-        await StockService.validateStockAvailability(data.warehouseId, data.items.map(i => ({ productId: i.productId, qty: i.qtyShipped })));
+        await StockService.validateStockAvailability(data.warehouseId, data.items.map(i => ({ productId: i.productId, variantId: i.variantId, qty: i.qtyShipped })));
 
         return await prisma.$transaction(async (tx) => {
+            const customer = await this.resolveCustomer(tx, data.customerId);
+            if (!customer) throw new Error("Customer not found.");
+
             // 1. Create DO
             const deliveryOrder = await tx.deliveryOrder.create({
                 data: {
                     doNo: data.doNo,
                     orderId: data.orderId,
-                    customerId: data.customerId,
+                    customerId: customer.id,
                     warehouseId: data.warehouseId,
                     date: data.date,
                     remarks: data.remarks,
                     items: {
                         create: data.items.map(item => ({
                             productId: item.productId,
+                            variantId: item.variantId || null,
                             unitId: item.unitId || null,
                             soItemId: item.orderItemId || null,
                             qty: item.qtyShipped
@@ -168,6 +206,7 @@ export class SalesService {
                 await tx.stockLedger.create({
                     data: {
                         productId: item.productId,
+                        variantId: item.variantId || null,
                         warehouseId: data.warehouseId,
                         date: data.date,
                         qtyOut: item.qtyShipped,
@@ -219,6 +258,7 @@ export class SalesService {
 
                 invoiceItemsData.push({
                     productId: item.productId,
+                    variantId: item.variantId || null,
                     unitId: item.unitId || null,
                     qty: item.qty,
                     rate: item.rate,
@@ -230,11 +270,15 @@ export class SalesService {
 
             const totalAmount = subtotal + totalTax;
 
+            // Fetch customer carefully
+            const customer = await this.resolveCustomer(tx, data.customerId);
+            if (!customer) throw new Error("Customer not found.");
+
             // 3. Create Sales Invoice
             const invoice = await tx.salesInvoice.create({
                 data: {
                     invoiceNo: data.invoiceNo,
-                    customerId: data.customerId,
+                    customerId: customer.id,
                     warehouseId: data.warehouseId,
                     date: data.date,
                     dueDate: data.dueDate ? new Date(data.dueDate) : null,
@@ -254,6 +298,7 @@ export class SalesService {
                     await tx.stockLedger.create({
                         data: {
                             productId: item.productId,
+                            variantId: item.variantId || null,
                             warehouseId: data.warehouseId,
                             date: data.date,
                             qtyOut: item.qty,
@@ -298,7 +343,11 @@ export class SalesService {
 
                 // 4 & 5. COGS / Inventory
                 const lastPurchase = await tx.purchaseInvoiceItem.findFirst({
-                    where: { productId: item.productId },
+                    where: {
+                        productId: item.productId,
+                        // @ts-ignore
+                        variantId: item.variantId ? { equals: item.variantId } : null
+                    },
                     orderBy: { invoice: { date: 'desc' } }
                 });
                 const costRate = lastPurchase ? Number(lastPurchase.rate) : 0;
@@ -350,6 +399,7 @@ export class SalesService {
         warehouseId?: string;
         items: {
             productId: string;
+            variantId?: string;
             qty: number;
             rate: number;
             unitId?: string;
@@ -387,6 +437,7 @@ export class SalesService {
 
                 returnItemsData.push({
                     productId: item.productId,
+                    variantId: item.variantId || null,
                     unitId: item.unitId || origItem.unitId,
                     qty: item.qty,
                     rate: item.rate,
@@ -420,6 +471,7 @@ export class SalesService {
                 await tx.stockLedger.create({
                     data: {
                         productId: item.productId,
+                        variantId: item.variantId || null,
                         warehouseId: warehouseId,
                         date: new Date(data.date),
                         qtyIn: item.qty,
@@ -463,7 +515,11 @@ export class SalesService {
 
                 // 4 & 5. Inventory/COGS Reversal
                 const lastPurchase = await tx.purchaseInvoiceItem.findFirst({
-                    where: { productId: item.productId },
+                    where: {
+                        productId: item.productId,
+                        // @ts-ignore
+                        variantId: item.variantId ? { equals: item.variantId } : null
+                    },
                     orderBy: { invoice: { date: 'desc' } }
                 });
                 const costRate = lastPurchase ? Number(lastPurchase.rate) : 0;

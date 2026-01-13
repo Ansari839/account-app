@@ -346,6 +346,17 @@ model ProductVariant {
   updatedAt    DateTime      @updatedAt
   product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   stockEntries StockLedger[]
+
+  purchaseRequestItems PurchaseRequestItem[]
+  purchaseOrderItems   PurchaseOrderItem[]
+  grnItems            GRNItem[]
+  invoiceItems         PurchaseInvoiceItem[]
+  purchaseReturnItems  PurchaseReturnItem[]
+  salesQuotationItems  SalesQuotationItem[]
+  salesOrderItems      SalesOrderItem[]
+  deliveryOrderItems   DeliveryOrderItem[]
+  salesInvoiceItems    SalesInvoiceItem[]
+  salesReturnItems     SalesReturnItem[]
 }
 
 model Warehouse {
@@ -470,6 +481,7 @@ model PurchaseReturnItem {
   id            String               @id @default(uuid())
   returnId      String
   productId     String
+  variantId     String?
   invoiceItemId String?
   qty           Decimal
   rate          Decimal
@@ -479,6 +491,7 @@ model PurchaseReturnItem {
   invoiceItem   PurchaseInvoiceItem? @relation(fields: [invoiceItemId], references: [id])
   unitId        String?
   product       Product              @relation(fields: [productId], references: [id])
+  variant       ProductVariant?      @relation(fields: [variantId], references: [id])
   return        PurchaseReturn       @relation(fields: [returnId], references: [id])
   taxCode       TaxCode?             @relation(fields: [taxCodeId], references: [id])
   unit          Unit?                @relation(fields: [unitId], references: [id])
@@ -488,6 +501,7 @@ model PurchaseOrderItem {
   id           String                @id @default(uuid())
   poId         String
   productId    String
+  variantId    String?
   qty          Decimal
   rate         Decimal
   taxCodeId    String?
@@ -500,6 +514,7 @@ model PurchaseOrderItem {
   unitId       String?
   po           PurchaseOrder         @relation(fields: [poId], references: [id], onDelete: Cascade)
   product      Product               @relation(fields: [productId], references: [id])
+  variant      ProductVariant?       @relation(fields: [variantId], references: [id])
   taxCode      TaxCode?              @relation(fields: [taxCodeId], references: [id])
   unit         Unit?                 @relation(fields: [unitId], references: [id])
 }
@@ -525,6 +540,7 @@ model GRNItem {
   id          String             @id @default(uuid())
   grnId       String
   productId   String
+  variantId   String?
   poItemId    String?
   qtyReceived Decimal
   qtyRejected Decimal            @default(0.0)
@@ -533,6 +549,7 @@ model GRNItem {
   grn         GRN                @relation(fields: [grnId], references: [id])
   poItem      PurchaseOrderItem? @relation(fields: [poItemId], references: [id])
   product     Product            @relation(fields: [productId], references: [id])
+  variant     ProductVariant?    @relation(fields: [variantId], references: [id])
   unit        Unit?              @relation(fields: [unitId], references: [id])
 }
 
@@ -563,20 +580,22 @@ model PurchaseInvoiceItem {
   id          String               @id @default(uuid())
   invoiceId   String
   productId   String
-  qty         Decimal
-  rate        Decimal
-  taxCodeId   String?
-  taxAmount   Decimal              @default(0.0)
-  total       Decimal
-  grnItemId   String?
-  poItemId    String?
-  unitId      String?
-  invoice     PurchaseInvoice      @relation(fields: [invoiceId], references: [id])
-  poItem      PurchaseOrderItem?   @relation(fields: [poItemId], references: [id])
-  product     Product              @relation(fields: [productId], references: [id])
-  taxCode     TaxCode?             @relation(fields: [taxCodeId], references: [id])
-  returnItems PurchaseReturnItem[]
-  unit        Unit?                @relation(fields: [unitId], references: [id])
+  variantId   String?
+  qty           Decimal
+  rate          Decimal
+  taxCodeId     String?
+  taxAmount     Decimal              @default(0.0)
+  total         Decimal
+  grnItemId     String?
+  poItemId      String?
+  unitId        String?
+  invoice       PurchaseInvoice      @relation(fields: [invoiceId], references: [id])
+  poItem        PurchaseOrderItem?   @relation(fields: [poItemId], references: [id])
+  product       Product              @relation(fields: [productId], references: [id])
+  variant       ProductVariant?      @relation(fields: [variantId], references: [id])
+  taxCode       TaxCode?             @relation(fields: [taxCodeId], references: [id])
+  returnItems   PurchaseReturnItem[]
+  unit          Unit?                @relation(fields: [unitId], references: [id])
 }
 
 model PurchaseRequest {
@@ -594,9 +613,11 @@ model PurchaseRequestItem {
   id          String          @id @default(uuid())
   requestId   String
   productId   String
+  variantId   String?
   qty         Decimal
   description String?
   product     Product         @relation(fields: [productId], references: [id])
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
   request     PurchaseRequest @relation(fields: [requestId], references: [id])
 }
 
@@ -619,6 +640,7 @@ model SalesQuotationItem {
   id        String         @id @default(uuid())
   quoteId   String
   productId String
+  variantId String?
   qty       Decimal
   rate      Decimal
   taxCodeId String?
@@ -627,6 +649,7 @@ model SalesQuotationItem {
   unitId    String?
   unit      Unit?          @relation(fields: [unitId], references: [id])
   product   Product        @relation(fields: [productId], references: [id])
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
   quote     SalesQuotation @relation(fields: [quoteId], references: [id])
   taxCode   TaxCode?       @relation(fields: [taxCodeId], references: [id])
 }
@@ -655,6 +678,7 @@ model SalesOrderItem {
   id           String              @id @default(uuid())
   orderId      String
   productId    String
+  variantId    String?
   qty          Decimal
   rate         Decimal
   taxCodeId    String?
@@ -668,6 +692,7 @@ model SalesOrderItem {
   unit         Unit?               @relation(fields: [unitId], references: [id])
   order        SalesOrder          @relation(fields: [orderId], references: [id])
   product      Product             @relation(fields: [productId], references: [id])
+  variant      ProductVariant?     @relation(fields: [variantId], references: [id])
   taxCode      TaxCode?            @relation(fields: [taxCodeId], references: [id])
 }
 
@@ -692,12 +717,14 @@ model DeliveryOrderItem {
   id        String          @id @default(uuid())
   doId      String
   productId String
+  variantId String?
   qty       Decimal
   soItemId  String?
   unitId    String?
   unit      Unit?           @relation(fields: [unitId], references: [id])
   do        DeliveryOrder   @relation(fields: [doId], references: [id])
   product   Product         @relation(fields: [productId], references: [id])
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
   soItem    SalesOrderItem? @relation(fields: [soItemId], references: [id])
 }
 
@@ -728,6 +755,7 @@ model SalesInvoiceItem {
   id          String            @id @default(uuid())
   invoiceId   String
   productId   String
+  variantId   String?
   qty         Decimal
   rate        Decimal
   taxCodeId   String?
@@ -739,6 +767,7 @@ model SalesInvoiceItem {
   unit        Unit?             @relation(fields: [unitId], references: [id])
   invoice     SalesInvoice      @relation(fields: [invoiceId], references: [id])
   product     Product           @relation(fields: [productId], references: [id])
+  variant     ProductVariant?   @relation(fields: [variantId], references: [id])
   soItem      SalesOrderItem?   @relation(fields: [soItemId], references: [id])
   taxCode     TaxCode?          @relation(fields: [taxCodeId], references: [id])
   returnItems SalesReturnItem[]
@@ -767,6 +796,7 @@ model SalesReturnItem {
   id            String            @id @default(uuid())
   returnId      String
   productId     String
+  variantId     String?
   qty           Decimal
   rate          Decimal
   taxCodeId     String?
@@ -777,6 +807,7 @@ model SalesReturnItem {
   unit          Unit?             @relation(fields: [unitId], references: [id])
   invoiceItem   SalesInvoiceItem? @relation(fields: [invoiceItemId], references: [id])
   product       Product           @relation(fields: [productId], references: [id])
+  variant       ProductVariant?   @relation(fields: [variantId], references: [id])
   return        SalesReturn       @relation(fields: [returnId], references: [id])
   taxCode       TaxCode?          @relation(fields: [taxCodeId], references: [id])
 }

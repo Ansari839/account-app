@@ -184,6 +184,7 @@ export class PurchaseController {
                     items: {
                         create: body.items.map((item: any) => ({
                             productId: item.productId,
+                            variantId: item.variantId || null,
                             unitId: item.unitId || null,
                             qty: Number(item.qty || 0),
                             rate: Number(item.rate || 0),
@@ -265,6 +266,7 @@ export class PurchaseController {
                         items: {
                             create: body.items.map((item: any) => ({
                                 productId: item.productId,
+                                variantId: item.variantId || null,
                                 unitId: item.unitId || null,
                                 qty: Number(item.qty || 0),
                                 rate: Number(item.rate || 0),
@@ -355,6 +357,7 @@ export class PurchaseController {
                         items: {
                             create: validItems.map((item: any) => ({
                                 productId: item.productId,
+                                variantId: item.variantId || null,
                                 unitId: item.unitId || null,
                                 poItemId: item.poItemId || null,
                                 qtyReceived: item.qtyReceived,
@@ -428,6 +431,7 @@ export class PurchaseController {
                         await tx.stockLedger.create({
                             data: {
                                 productId: item.productId,
+                                variantId: item.variantId || null,
                                 warehouseId,
                                 date: new Date(date),
                                 qtyIn: item.qtyReceived,
@@ -739,6 +743,7 @@ export class PurchaseController {
                         items: {
                             create: items.map((item: any) => ({
                                 productId: item.productId,
+                                variantId: item.variantId || null,
                                 unitId: item.unitId || null,
                                 poItemId: item.poItemId || null,
                                 grnItemId: item.grnItemId || null,
@@ -756,6 +761,7 @@ export class PurchaseController {
                         await tx.stockLedger.create({
                             data: {
                                 productId: item.productId,
+                                variantId: item.variantId || null,
                                 warehouseId,
                                 date: new Date(date),
                                 qtyIn: item.qty,
@@ -877,7 +883,7 @@ export class PurchaseController {
                     }
                     // Delete old stock entries for this GRN
                     await tx.stockLedger.deleteMany({
-                        where: { refType: 'GRN', refId: id, productId: item.productId }
+                        where: { refType: 'GRN', refId: id, productId: item.productId, variantId: item.variantId || null }
                     });
                 }
 
@@ -900,6 +906,7 @@ export class PurchaseController {
                         data: {
                             grnId: id,
                             productId: item.productId,
+                            variantId: item.variantId || null,
                             unitId: item.unitId || null,
                             poItemId: item.poItemId,
                             qtyReceived: item.qtyReceived,
@@ -919,6 +926,7 @@ export class PurchaseController {
                         await tx.stockLedger.create({
                             data: {
                                 productId: item.productId,
+                                variantId: item.variantId || null,
                                 warehouseId,
                                 date: new Date(date),
                                 qtyIn: item.qtyReceived,
@@ -995,6 +1003,7 @@ export class PurchaseController {
                         data: {
                             invoiceId: id,
                             productId: item.productId,
+                            variantId: item.variantId || null,
                             unitId: item.unitId || null,
                             poItemId: item.poItemId || null,
                             grnItemId: item.grnItemId || null,
@@ -1018,6 +1027,7 @@ export class PurchaseController {
                         await tx.stockLedger.create({
                             data: {
                                 productId: item.productId,
+                                variantId: item.variantId || null,
                                 warehouseId,
                                 date: new Date(date),
                                 qtyIn: item.qty,

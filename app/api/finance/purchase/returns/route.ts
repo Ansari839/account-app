@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
 
         const body = await req.json();
         // Body should match PurchaseService.createReturn input: { purchaseInvoiceId, date, remarks, items, ... }
+        // Force Rebuild: 1
 
         const result = await PurchaseService.createReturn({
             purchaseInvoiceId: body.purchaseInvoiceId || undefined,

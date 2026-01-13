@@ -526,9 +526,11 @@ export class ReportService {
     /**
      * Stock Summary
      */
-    static async getStockSummary(companyId: string, warehouseId?: string) {
+    static async getStockSummary(companyId: string, warehouseId?: string, productId?: string, variantId?: string) {
         const where: any = {};
         if (warehouseId) where.warehouseId = warehouseId;
+        if (productId) where.productId = productId;
+        if (variantId) where.variantId = variantId;
 
         const summary = await prisma.stockLedger.groupBy({
             by: ['productId', 'warehouseId'],
@@ -553,28 +555,33 @@ export class ReportService {
     }
 
     /**
-     * Stock Ledger
-     */
-    /**
      * Item-wise Stock Report (Aggregated across warehouses)
      */
-    static async getStockItemWise(companyId: string) {
+    static async getStockItemWise(companyId: string, warehouseId?: string, variantId?: string) {
+        const where: any = {};
+        if (warehouseId) where.warehouseId = warehouseId;
+        if (variantId) where.variantId = variantId;
+
         const summary = await prisma.stockLedger.groupBy({
-            by: ['productId'],
+            by: ['productId', 'variantId'],
+            where,
             _sum: { qtyIn: true, qtyOut: true }
         });
 
         const products = await prisma.product.findMany({
-            include: { baseUnit: true, category: true }
+            include: { baseUnit: true, category: true, variants: true }
         });
 
         return summary.map(s => {
             const prod = products.find(p => p.id === s.productId);
+            const variant = prod?.variants.find(v => v.id === s.variantId);
             const stock = (s._sum.qtyIn?.toNumber() || 0) - (s._sum.qtyOut?.toNumber() || 0);
             return {
                 id: s.productId,
+                variantId: s.variantId,
                 productName: prod?.name,
-                productCode: prod?.code,
+                variantName: variant?.name || '-',
+                productCode: variant?.sku || prod?.code,
                 category: prod?.category?.name || '-',
                 unit: prod?.baseUnit?.name || '-',
                 stock
@@ -585,9 +592,10 @@ export class ReportService {
     /**
      * Stock Ledger
      */
-    static async getStockLedger(companyId: string, productId: string, warehouseId?: string | undefined, startDate?: Date, endDate?: Date) {
+    static async getStockLedger(companyId: string, productId: string, warehouseId?: string | undefined, startDate?: Date, endDate?: Date, variantId?: string) {
         const where: any = { productId };
         if (warehouseId) where.warehouseId = warehouseId;
+        if (variantId) where.variantId = variantId;
         if (startDate || endDate) {
             where.createdAt = {};
             if (startDate) where.date = { gte: startDate }; // Changed from createdAt to date
@@ -605,6 +613,7 @@ export class ReportService {
         const piIds = entries.filter(e => ['PURCHASE', 'INVOICE'].includes(e.refType)).map(e => e.refId);
         const siIds = entries.filter(e => ['SALE', 'SALES_INVOICE'].includes(e.refType)).map(e => e.refId);
         const returnIds = entries.filter(e => e.refType === 'RETURN').map(e => e.refId);
+        const salesReturnIds = entries.filter(e => e.refType === 'SALES_RETURN').map(e => e.refId);
 
         // Fetch Metadata
         const grns = await prisma.gRN.findMany({
@@ -621,6 +630,10 @@ export class ReportService {
         });
         const purchaseReturns = await prisma.purchaseReturn.findMany({
             where: { id: { in: returnIds } },
+            select: { id: true, returnNo: true }
+        });
+        const salesReturns = await prisma.salesReturn.findMany({
+            where: { id: { in: salesReturnIds } },
             select: { id: true, returnNo: true }
         });
 
@@ -643,6 +656,10 @@ export class ReportService {
 
             if (['SALE', 'SALES_INVOICE'].includes(e.refType)) {
                 refNo = salesInvoices.find(s => s.id === e.refId)?.invoiceNo || e.refId;
+            }
+
+            if (e.refType === 'SALES_RETURN') {
+                refNo = salesReturns.find(s => s.id === e.refId)?.returnNo || e.refId;
             }
 
             return {

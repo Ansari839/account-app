@@ -141,8 +141,10 @@ export class AccountingController {
 
             const { searchParams } = new URL(req.url);
             const warehouseId = searchParams.get('warehouseId');
+            const productId = searchParams.get('productId');
+            const variantId = searchParams.get('variantId');
 
-            const data = await ReportService.getStockSummary(user.companyId, warehouseId || undefined);
+            const data = await ReportService.getStockSummary(user.companyId, warehouseId || undefined, productId || undefined, variantId || undefined);
             return NextResponse.json({ success: true, data });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });

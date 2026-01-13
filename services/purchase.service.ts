@@ -9,6 +9,7 @@ export interface PurchaseRequestInput {
     remarks?: string;
     items: {
         productId: string;
+        variantId?: string;
         qty: number;
         description?: string;
     }[];
@@ -16,6 +17,7 @@ export interface PurchaseRequestInput {
 
 export interface POItemInput {
     productId: string;
+    variantId?: string;
     unitId?: string;
     qty: number;
     rate: number;
@@ -33,6 +35,7 @@ export interface POInput {
 
 export interface GRNItemInput {
     productId: string;
+    variantId?: string;
     unitId?: string;
     poItemId?: string;
     qtyReceived: number;
@@ -52,6 +55,7 @@ export interface GRNInput {
 
 export interface InvoiceItemInput {
     productId: string;
+    variantId?: string;
     unitId?: string;
     qty: number;
     rate: number;
@@ -81,6 +85,7 @@ export class PurchaseService {
                 items: {
                     create: data.items.map(item => ({
                         productId: item.productId,
+                        variantId: item.variantId || null,
                         qty: item.qty,
                         description: item.description
                     }))
@@ -91,58 +96,86 @@ export class PurchaseService {
     }
 
     /**
-     * Creates a Purchase Order (Tracking only, no financial impact)
+     * Resolves supplier from ID or Account ID
      */
-    static async createPO(data: POInput) {
-        let totalAmount = 0;
-        const items = data.items.map(item => {
-            const total = item.qty * item.rate;
-            totalAmount += total;
-            return {
-                productId: item.productId,
-                unitId: item.unitId || null,
-                qty: item.qty,
-                rate: item.rate,
-                taxCodeId: item.taxCodeId,
-                total: total
-            };
+    private static async resolveSupplier(tx: any, supplierId: string) {
+        let supplier = await tx.supplier.findUnique({
+            where: { id: supplierId },
+            include: { payableAccount: true }
         });
 
-        return await prisma.purchaseOrder.create({
-            data: {
-                poNo: data.poNo,
-                supplierId: data.supplierId,
-                warehouseId: data.warehouseId,
-                date: data.date,
-                expectedDate: data.expectedDate,
-                totalAmount: totalAmount,
-                items: {
-                    create: items
-                }
-            },
-            include: { items: true }
+        if (!supplier) {
+            supplier = await tx.supplier.findFirst({
+                where: { payableAccountId: supplierId },
+                include: { payableAccount: true }
+            });
+        }
+        return supplier;
+    }
+
+    /**
+     * Creates a Purchase Order (Tracking only, no financial impact)
+     */
+    static async createOrder(data: POInput) {
+        return await prisma.$transaction(async (tx) => {
+            const supplier = await this.resolveSupplier(tx, data.supplierId);
+            if (!supplier) throw new Error("Supplier not found.");
+
+            let totalAmount = 0;
+            const items = data.items.map(item => {
+                const total = item.qty * item.rate;
+                totalAmount += total;
+                return {
+                    productId: item.productId,
+                    variantId: item.variantId || null,
+                    unitId: item.unitId || null,
+                    qty: item.qty,
+                    rate: item.rate,
+                    taxCodeId: item.taxCodeId,
+                    total: total
+                };
+            });
+
+            return await tx.purchaseOrder.create({
+                data: {
+                    poNo: data.poNo,
+                    supplierId: supplier.id,
+                    warehouseId: data.warehouseId,
+                    date: data.date,
+                    expectedDate: data.expectedDate,
+                    totalAmount: totalAmount,
+                    items: {
+                        create: items
+                    }
+                },
+                include: { items: true }
+            });
         });
     }
 
     /**
-     * Creates a GRN (Goods Receipt Note) and updates Stock Ledger
+     * Creates a Goods Received Note (GRN) and updates Stock Ledger
      */
     static async createGRN(data: GRNInput) {
         return await prisma.$transaction(async (tx) => {
+            const supplier = await this.resolveSupplier(tx, data.supplierId);
+            if (!supplier) throw new Error("Supplier not found.");
+
             // 1. Create GRN
             const grn = await tx.gRN.create({
                 data: {
                     grnNo: data.grnNo,
                     poId: data.poId,
-                    supplierId: data.supplierId,
+                    supplierId: supplier.id,
                     warehouseId: data.warehouseId,
                     date: data.date,
                     remarks: data.remarks,
                     items: {
                         create: data.items.map(item => ({
                             productId: item.productId,
+                            variantId: item.variantId || null,
                             unitId: item.unitId || null,
-                            poItemId: item.poItemId || null,
+                            poItemId: item.poItemId,
                             qtyReceived: item.qtyReceived,
                             qtyRejected: item.qtyRejected || 0,
                             rate: item.rate || 0
@@ -157,6 +190,7 @@ export class PurchaseService {
                 await tx.stockLedger.create({
                     data: {
                         productId: item.productId,
+                        variantId: item.variantId || null,
                         warehouseId: data.warehouseId,
                         date: data.date,
                         qtyIn: item.qtyReceived,
@@ -187,12 +221,9 @@ export class PurchaseService {
             let totalSubtotal = 0;
             const journalLines = [];
 
-            // Fetch supplier to get Payable account
-            const supplier = await tx.supplier.findUnique({
-                where: { id: data.supplierId },
-                include: { payableAccount: true }
-            });
-            if (!supplier?.payableAccountId) throw new Error("Supplier does not have a linked Payable Account.");
+            // Fetch supplier to get Payable account using helper
+            const supplier = await this.resolveSupplier(tx, data.supplierId);
+            if (!supplier?.payableAccountId) throw new Error("Supplier not found or linked Payable Account is missing.");
 
             const invoiceItems = [];
             for (const item of data.items) {
@@ -230,6 +261,7 @@ export class PurchaseService {
 
                 invoiceItems.push({
                     productId: item.productId,
+                    variantId: item.variantId || null,
                     unitId: item.unitId || null,
                     qty: item.qty,
                     rate: item.rate,
@@ -296,7 +328,8 @@ export class PurchaseService {
                         where: {
                             refType: "GRN",
                             refId: data.grnId,
-                            productId: item.productId
+                            productId: item.productId,
+                            variantId: item.variantId || null
                         },
                         data: {
                             refType: "INVOICE",
@@ -323,6 +356,7 @@ export class PurchaseService {
                     await tx.stockLedger.create({
                         data: {
                             productId: item.productId,
+                            variantId: item.variantId || null,
                             warehouseId: warehouseId,
                             date: data.date,
                             qtyIn: item.qty,
@@ -350,6 +384,7 @@ export class PurchaseService {
         remarks?: string;
         items: {
             productId: string;
+            variantId?: string;
             unitId?: string;
             qty: number;
             rate: number;
@@ -373,7 +408,7 @@ export class PurchaseService {
                 if (!invoice) throw new Error("Purchase Invoice not found.");
             }
 
-            const supplier = invoice?.supplier || await tx.supplier.findUnique({ where: { id: data.supplierId }, include: { payableAccount: true } });
+            let supplier = invoice?.supplier || await this.resolveSupplier(tx, data.supplierId);
             if (!supplier) throw new Error("Supplier not found.");
             if (!supplier.payableAccount) throw new Error("Supplier Payable Account not configured.");
 
@@ -418,6 +453,7 @@ export class PurchaseService {
 
                 returnItemsData.push({
                     productId: item.productId,
+                    variantId: item.variantId || null,
                     unitId: item.unitId || null,
                     invoiceItemId: originalItem?.id || null,
                     qty: item.qty,
@@ -475,6 +511,7 @@ export class PurchaseService {
                 await tx.stockLedger.create({
                     data: {
                         productId: item.productId,
+                        variantId: item.variantId || null,
                         warehouseId: warehouse.id,
                         date: data.date,
                         qtyIn: 0,
