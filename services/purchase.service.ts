@@ -288,20 +288,42 @@ export class PurchaseService {
                 include: { items: true }
             });
 
-            // 4. Update Stock Ledger if NO GRN was used
-            if (!data.grnId) {
+            // 4. Update Stock Ledger (Precedence: Invoice > GRN)
+            if (data.grnId) {
+                // If GRN exists, update existing stock ledger entries to point to Invoice
                 for (const item of data.items) {
-                    // We need a warehouse. If not provided in input, we might need a default or error out.
-                    // For now, let's assume either we have a default warehouse or we require simplified input.
-                    // Requirement says: If GRN not used -> stock in here.
-                    // I will add warehouseId to InvoiceInput or fetch default.
+                    await tx.stockLedger.updateMany({
+                        where: {
+                            refType: "GRN",
+                            refId: data.grnId,
+                            productId: item.productId
+                        },
+                        data: {
+                            refType: "INVOICE",
+                            refId: invoice.id,
+                            costRate: item.rate
+                        }
+                    });
+                }
+            } else {
+                // If NO GRN was used, create new stock entries
+                for (const item of data.items) {
                     const defaultWH = await tx.warehouse.findFirst({ where: { isDefault: true } });
-                    if (!defaultWH) throw new Error("No default warehouse found to post stock for invoice without GRN.");
+                    if (!defaultWH && !data.poId) throw new Error("No default warehouse found to post stock for invoice without GRN.");
+
+                    // If PO is linked, try to get warehouse from PO
+                    let warehouseId = defaultWH?.id;
+                    if (data.poId) {
+                        const po = await tx.purchaseOrder.findUnique({ where: { id: data.poId } });
+                        if (po?.warehouseId) warehouseId = po.warehouseId;
+                    }
+
+                    if (!warehouseId) throw new Error("Warehouse ID could not be determined for stock posting.");
 
                     await tx.stockLedger.create({
                         data: {
                             productId: item.productId,
-                            warehouseId: defaultWH.id,
+                            warehouseId: warehouseId,
                             date: data.date,
                             qtyIn: item.qty,
                             qtyOut: 0,

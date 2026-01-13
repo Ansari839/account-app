@@ -56,11 +56,13 @@ async function runTest() {
             data: { name: "Electronics" }
         });
 
-        // Accounts (Using upsert or find/create)
+        // Accounts (Using direct prisma to avoid service constraints for test setup)
         const getAccount = async (code: string, name: string, type: AccountType, isPosting: boolean, parentId?: string) => {
-            const existing = await prisma.account.findFirst({ where: { code } });
-            if (existing) return existing;
-            return await AccountService.createAccount({ name, type, isPosting, parentId });
+            return await prisma.account.upsert({
+                where: { code },
+                update: { isPosting, name, type, parentId },
+                create: { code, name, type, isPosting, parentId }
+            });
         };
 
         const assets = await getAccount("1000", "Assets", AccountType.ASSET, false);
@@ -157,6 +159,13 @@ async function runTest() {
             items: [{ productId: laptop.id, qty: 10, rate: 100000, taxCodeId: vat5.id }]
         });
         console.log("✅ Purchase Invoice Created:", invoice.invoiceNo, "Total:", invoice.totalAmount.toString());
+
+        // Verify Stock Ledger (Should now point to INVOICE)
+        const updatedStock = await prisma.stockLedger.findFirst({ where: { refId: invoice.id } });
+        console.log("📦 Updated Stock Ledger Entry:", updatedStock ? `Ref Type: ${updatedStock.refType}, Ref Id: ${updatedStock.refId}` : "NOT FOUND");
+
+        const oldStock = await prisma.stockLedger.findFirst({ where: { refId: grn.id } });
+        console.log("📦 Old GRN Stock Entry:", oldStock ? "STILL EXISTS (Unexpected)" : "REPLACED (Expected)");
 
         // Verify Journal Entry
         if (invoice.journalEntryId) {
