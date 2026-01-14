@@ -1172,6 +1172,10 @@ export class PurchaseController {
             if (!existing) return NextResponse.json({ success: false, error: "Return not found" }, { status: 404 });
 
             // 2. Validate Invoice
+            if (!existing.invoiceId) {
+                return NextResponse.json({ success: false, error: "Return has no associated invoice" }, { status: 400 });
+            }
+
             const invoice = await prisma.purchaseInvoice.findUnique({
                 where: { id: existing.invoiceId },
                 include: { items: { include: { product: true, taxCode: true } }, supplier: true }
@@ -1293,7 +1297,6 @@ export class PurchaseController {
                         where: { id: existing.journalEntryId },
                         data: {
                             date: new Date(date),
-                            totalAmount: returnTotalAmount, // If JV has total
                             lines: { create: jvLines }
                         }
                     });

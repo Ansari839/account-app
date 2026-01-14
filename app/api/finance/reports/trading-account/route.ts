@@ -13,7 +13,7 @@ export async function GET(req: Request) {
             return NextResponse.json({ success: false, error: "Missing start or end date" }, { status: 400 });
         }
 
-        const auth = await AuthUtils.verifyToken(req);
+        const auth = await AuthUtils.getAuthUser(req);
         if (!auth) {
             return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
         }

@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
     const productId = searchParams.get('productId');
 
     if (productId) {
-        const variants = await VariantService.getVariantsByProduct(productId);
+        const variants = await VariantService.getByProduct(productId);
         return NextResponse.json({ success: true, data: variants });
     }
 
