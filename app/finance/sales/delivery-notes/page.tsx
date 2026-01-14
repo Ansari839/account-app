@@ -127,6 +127,22 @@ export default function DeliveryNotesPage() {
         }
     };
 
+    const handleDelete = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this delivery note? Stock will be reverted.")) return;
+
+        try {
+            const res = await authenticatedFetch(`/api/finance/sales/delivery-notes/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchDNS();
+            } else {
+                const json = await res.json();
+                alert(json.error || "Failed to delete delivery note");
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     const columns: Column<any>[] = [
         { header: "DN #", accessor: "doNo" },
         { header: "Date", accessor: (row) => format(new Date(row.date), "dd/MM/yyyy") },
@@ -134,11 +150,30 @@ export default function DeliveryNotesPage() {
         { header: "Ref Order", accessor: (row) => row.order?.orderNo || "-" },
         { header: "Warehouse", accessor: (row) => row.warehouse?.name },
         {
+            header: "Status",
+            accessor: (row) => (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${row.invoices?.length > 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'}`}>
+                    {row.invoices?.length > 0 ? 'INVOICED' : 'PENDING'}
+                </span>
+            )
+        },
+        {
             header: "Actions",
             accessor: (row) => (
                 <div className="flex gap-2">
-                    <button className="p-1 text-slate-400 hover:text-indigo-600">👁</button>
-                    <button className="p-1 text-slate-400 hover:text-red-600">🗑</button>
+                    <button
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
+                        title="View"
+                    >
+                        👁
+                    </button>
+                    <button
+                        onClick={() => handleDelete(row.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                        title="Delete"
+                    >
+                        🗑
+                    </button>
                 </div>
             )
         }

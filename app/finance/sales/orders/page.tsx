@@ -139,6 +139,44 @@ export default function SalesOrdersPage() {
         }
     };
 
+    const handleEdit = (order: any) => {
+        setIsEditing(true);
+        setEditId(order.id);
+        setFormData({
+            orderNo: order.orderNo,
+            customerId: order.customerId,
+            warehouseId: order.warehouseId || "",
+            date: order.date.split("T")[0],
+            expectedDate: order.expectedDate ? order.expectedDate.split("T")[0] : "",
+            items: order.items.map((it: any) => ({
+                productId: it.productId,
+                unitId: it.unitId,
+                qty: Number(it.qty),
+                rate: Number(it.rate),
+                total: Number(it.total),
+                fulfilledQty: Number(it.fulfilledQty || 0),
+                invoicedQty: Number(it.invoicedQty || 0)
+            }))
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this sales order?")) return;
+
+        try {
+            const res = await authenticatedFetch(`/api/finance/sales/orders/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchOrders();
+            } else {
+                const json = await res.json();
+                alert(json.error || "Failed to delete order");
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     const columns: Column<any>[] = [
         { header: "Order #", accessor: "orderNo" },
         { header: "Date", accessor: (row) => format(new Date(row.date), "dd/MM/yyyy") },
@@ -153,11 +191,63 @@ export default function SalesOrdersPage() {
             )
         },
         {
+            header: 'Progress',
+            accessor: (row) => {
+                const totalQty = row.items.reduce((sum: number, it: any) => sum + Number(it.qty), 0);
+                const fulQty = row.items.reduce((sum: number, it: any) => sum + Number(it.fulfilledQty || 0), 0);
+                const invQty = row.items.reduce((sum: number, it: any) => sum + Number(it.invoicedQty || 0), 0);
+
+                const fulPerc = totalQty > 0 ? Math.round((fulQty / totalQty) * 100) : 0;
+                const invPerc = totalQty > 0 ? Math.round((invQty / totalQty) * 100) : 0;
+
+                return (
+                    <div className="flex flex-col gap-1.5 w-24">
+                        <div className="flex flex-col gap-0.5">
+                            <div className="flex justify-between text-[9px] uppercase font-bold text-slate-400">
+                                <span>Del</span>
+                                <span>{fulPerc}%</span>
+                            </div>
+                            <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-500 transition-all" style={{ width: `${fulPerc}%` }}></div>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                            <div className="flex justify-between text-[9px] uppercase font-bold text-slate-400">
+                                <span>Inv</span>
+                                <span>{invPerc}%</span>
+                            </div>
+                            <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-indigo-500 transition-all" style={{ width: `${invPerc}%` }}></div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+        },
+        {
             header: "Actions",
             accessor: (row) => (
                 <div className="flex gap-2">
-                    <button className="p-1 text-slate-400 hover:text-indigo-600">👁</button>
-                    <button className="p-1 text-slate-400 hover:text-amber-600">📝</button>
+                    <button
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
+                        title="View"
+                    >
+                        👁
+                    </button>
+                    <button
+                        onClick={() => handleEdit(row)}
+                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-100"
+                        title="Edit"
+                    >
+                        📝
+                    </button>
+                    <button
+                        onClick={() => handleDelete(row.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                        title="Delete"
+                    >
+                        🗑
+                    </button>
                 </div>
             )
         }

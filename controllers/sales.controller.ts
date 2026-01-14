@@ -154,7 +154,8 @@ export class SalesController {
                     customer: true,
                     warehouse: true,
                     items: { include: { product: true } },
-                    order: { select: { orderNo: true } }
+                    order: { select: { orderNo: true } },
+                    invoices: { select: { id: true } }
                 },
                 orderBy: { date: 'desc' }
             });
@@ -206,7 +207,14 @@ export class SalesController {
                 ...body,
                 customerId,
                 date: new Date(body.date),
-                orderId: body.orderId || null
+                orderId: body.orderId || null,
+                items: body.items.map((it: any) => ({
+                    productId: it.productId,
+                    variantId: it.variantId || null,
+                    unitId: it.unitId || null,
+                    orderItemId: it.orderItemId || null,
+                    qtyShipped: Number(it.qtyShipped)
+                }))
             });
 
             return NextResponse.json({ success: true, data: dn });
@@ -232,7 +240,19 @@ export class SalesController {
                 date: new Date(body.date),
                 dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
                 doId: body.doId || null,
-                warehouseId: body.warehouseId || null
+                orderId: body.orderId || null,
+                warehouseId: body.warehouseId || null,
+                trackingNo: body.trackingNo || null,
+                trackingUrl: body.trackingUrl || null,
+                items: body.items.map((it: any) => ({
+                    productId: it.productId,
+                    variantId: it.variantId || null,
+                    unitId: it.unitId || null,
+                    soItemId: it.soItemId || null,
+                    qty: Number(it.qty),
+                    rate: Number(it.rate),
+                    taxCodeId: it.taxCodeId || null
+                }))
             });
 
             return NextResponse.json({ success: true, data: invoice });
@@ -293,6 +313,136 @@ export class SalesController {
             return NextResponse.json({ success: true, data: returns });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Get Single Sales Order
+     */
+    static async getOrder(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const order = await prisma.salesOrder.findUnique({
+                where: { id },
+                include: {
+                    customer: true,
+                    warehouse: true,
+                    items: { include: { product: true } },
+                    deliveryOrders: { include: { items: true } },
+                    invoices: { include: { items: true } }
+                }
+            });
+
+            if (!order) return NextResponse.json({ success: false, error: "Order not found" }, { status: 404 });
+            return NextResponse.json({ success: true, data: order });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Delete Sales Order
+     */
+    static async deleteOrder(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            await SalesService.deleteOrder(id);
+            return NextResponse.json({ success: true });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+        }
+    }
+
+    /**
+     * Get Single Delivery Note
+     */
+    static async getDeliveryNote(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const dn = await prisma.deliveryOrder.findUnique({
+                where: { id },
+                include: {
+                    customer: true,
+                    warehouse: true,
+                    order: true,
+                    items: { include: { product: true } },
+                    invoices: true
+                }
+            });
+
+            if (!dn) return NextResponse.json({ success: false, error: "Delivery Note not found" }, { status: 404 });
+            return NextResponse.json({ success: true, data: dn });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Delete Delivery Note
+     */
+    static async deleteDeliveryNote(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            await SalesService.deleteDO(id);
+            return NextResponse.json({ success: true });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+        }
+    }
+
+    /**
+     * Get Single Sales Invoice
+     */
+    static async getInvoice(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const invoice = await prisma.salesInvoice.findUnique({
+                where: { id },
+                include: {
+                    customer: true,
+                    warehouse: true,
+                    order: true,
+                    do: true,
+                    items: { include: { product: true } },
+                    journalEntry: { include: { lines: { include: { account: true } } } }
+                }
+            });
+
+            if (!invoice) return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 });
+            return NextResponse.json({ success: true, data: invoice });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Delete Sales Invoice
+     */
+    static async deleteInvoice(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            await SalesService.deleteSalesInvoice(id);
+            return NextResponse.json({ success: true });
+        } catch (error: any) {
+            return NextResponse.json({ success: false, error: error.message }, { status: 400 });
         }
     }
 }

@@ -21,7 +21,7 @@ export interface SalesQuotationInput {
 }
 
 export interface SalesOrderInput {
-    orderNo: string;
+    orderNo?: string;
     customerId: string;
     warehouseId?: string;
     date: Date;
@@ -38,7 +38,7 @@ export interface SalesOrderInput {
 }
 
 export interface DeliveryOrderInput {
-    doNo: string;
+    doNo?: string;
     orderId?: string;
     customerId: string;
     warehouseId: string;
@@ -54,16 +54,18 @@ export interface DeliveryOrderInput {
 }
 
 export interface SalesInvoiceInput {
-    invoiceNo: string;
+    invoiceNo?: string;
     customerId: string;
     warehouseId?: string;
     date: Date;
     dueDate?: Date;
     doId?: string;
+    orderId?: string;
     items: {
         productId: string;
         variantId?: string;
         unitId?: string;
+        soItemId?: string;
         qty: number;
         rate: number;
         taxCodeId?: string;
@@ -252,6 +254,14 @@ export class SalesService {
                         refId: deliveryOrder.id
                     }
                 });
+
+                // Update fulfilledQty in SalesOrderItem if linked
+                if (item.orderItemId) {
+                    await tx.salesOrderItem.update({
+                        where: { id: item.orderItemId },
+                        data: { fulfilledQty: { increment: item.qtyShipped } }
+                    });
+                }
             }
 
             return deliveryOrder;
@@ -333,11 +343,11 @@ export class SalesService {
                     if (!product) throw new Error(`Product ${item.productId} not found.`);
 
                     // REVENUE (Sales) - Credit
-                    const incomeAccount = product.salesAccountId || product.incomeAccountId;
-                    if (!incomeAccount) throw new Error(`Product ${product.name} missing Sales/Income Account mapping.`);
+                    const salesAccount = product.salesAccountId;
+                    if (!salesAccount) throw new Error(`Product ${product.name} missing Sales Account mapping.`);
 
                     journalLines.push({
-                        accountId: incomeAccount,
+                        accountId: salesAccount,
                         credit: subtotal,
                         narration: `Sales of ${product.name}`
                     });
@@ -418,6 +428,7 @@ export class SalesService {
                         invoiceNo: invoiceNo,
                         customerId: customer.id,
                         warehouseId: data.warehouseId,
+                        orderId: data.orderId || null,
                         date: data.date,
                         dueDate: data.dueDate,
                         totalAmount: totalInvoiceAmount,
@@ -431,10 +442,21 @@ export class SalesService {
                     include: { items: true }
                 });
 
-                // 4. Update Stock Ledger
+                // 4. Update Stock Ledger & Track Quantities
                 if (data.doId) {
                     // Update exisiting DO entries to point to Invoice (Mirroring Purchase)
                     for (const item of data.items) {
+                        // Get cost rate for this specific item
+                        const product = await tx.product.findUnique({ where: { id: item.productId } });
+                        let itemCostRate = 0;
+                        if (product?.inventoryAccountId && product?.cogsAccountId) {
+                            const lastStock = await tx.stockLedger.findFirst({
+                                where: { productId: item.productId, qtyIn: { gt: 0 }, costRate: { gt: 0 } },
+                                orderBy: { date: 'desc' }
+                            });
+                            itemCostRate = lastStock ? Number(lastStock.costRate) : 0;
+                        }
+
                         await tx.stockLedger.updateMany({
                             where: {
                                 refType: "DO",
@@ -444,13 +466,33 @@ export class SalesService {
                             },
                             data: {
                                 refType: "SALES_INVOICE",
-                                refId: invoice.id
+                                refId: invoice.id,
+                                costRate: itemCostRate
                             }
                         });
+
+                        // Track Invoiced Qty in SO Items
+                        if (item.soItemId) {
+                            await tx.salesOrderItem.update({
+                                where: { id: item.soItemId },
+                                data: { invoicedQty: { increment: item.qty } }
+                            });
+                        }
                     }
                 } else {
                     // Create new entries
                     for (const item of data.items) {
+                        // Get cost rate for this specific item
+                        const product = await tx.product.findUnique({ where: { id: item.productId } });
+                        let itemCostRate = 0;
+                        if (product?.inventoryAccountId && product?.cogsAccountId) {
+                            const lastStock = await tx.stockLedger.findFirst({
+                                where: { productId: item.productId, qtyIn: { gt: 0 }, costRate: { gt: 0 } },
+                                orderBy: { date: 'desc' }
+                            });
+                            itemCostRate = lastStock ? Number(lastStock.costRate) : 0;
+                        }
+
                         await tx.stockLedger.create({
                             data: {
                                 productId: item.productId,
@@ -459,9 +501,31 @@ export class SalesService {
                                 date: data.date,
                                 qtyOut: item.qty, // OUT for Sales
                                 qtyIn: 0,
+                                costRate: itemCostRate,
                                 refType: "SALES_INVOICE",
                                 refId: invoice.id
                             }
+                        });
+
+                        // Track Invoiced Qty in SO Items
+                        if (item.soItemId) {
+                            await tx.salesOrderItem.update({
+                                where: { id: item.soItemId },
+                                data: { invoicedQty: { increment: item.qty } }
+                            });
+                        }
+                    }
+                }
+
+                // 5. Automatic Order Status Update
+                const orderId = data.orderId || (data.doId ? (await tx.deliveryOrder.findUnique({ where: { id: data.doId } }))?.orderId : null);
+                if (orderId) {
+                    const orderItems = await tx.salesOrderItem.findMany({ where: { orderId } });
+                    const isFullyInvoiced = orderItems.every(it => Number(it.invoicedQty) >= Number(it.qty));
+                    if (isFullyInvoiced) {
+                        await tx.salesOrder.update({
+                            where: { id: orderId },
+                            data: { status: "CLOSED" }
                         });
                     }
                 }
@@ -539,13 +603,14 @@ export class SalesService {
                 totalReturnAmount += subtotal;
 
                 const product = await tx.product.findUnique({ where: { id: item.productId } });
-                const incomeAccount = product?.salesAccountId || product?.incomeAccountId;
-                if (!incomeAccount) throw new Error(`Product ${item.productId} missing Sales Account.`);
+                const salesAccount = product?.salesAccountId;
+                if (!salesAccount) throw new Error(`Product ${item.productId} missing Sales Account.`);
 
                 // DEBIT Revenue (Reversal)
                 journalLines.push({
-                    accountId: incomeAccount,
+                    accountId: salesAccount,
                     debit: subtotal,
+                    credit: 0,
                     narration: `Sales Return - ${product?.name}`
                 });
 
@@ -622,6 +687,125 @@ export class SalesService {
             }
 
             return salesReturn;
+        });
+    }
+
+    /**
+     * Delete Sales Order
+     */
+    static async deleteOrder(id: string) {
+        return await prisma.$transaction(async (tx) => {
+            const order = await tx.salesOrder.findUnique({
+                where: { id },
+                include: { _count: { select: { deliveryOrders: true, invoices: true } } }
+            });
+
+            if (!order) throw new Error("Sales Order not found.");
+            if (order._count.deliveryOrders > 0 || order._count.invoices > 0) {
+                throw new Error("Cannot delete Sales Order with linked Delivery Orders or Invoices.");
+            }
+
+            await tx.salesOrderItem.deleteMany({ where: { orderId: id } });
+            await tx.salesOrder.delete({ where: { id } });
+        });
+    }
+
+    /**
+     * Delete Delivery Order (DO)
+     */
+    static async deleteDO(id: string) {
+        return await prisma.$transaction(async (tx) => {
+            const dn = await tx.deliveryOrder.findUnique({
+                where: { id },
+                include: {
+                    items: true,
+                    _count: { select: { invoices: true } }
+                }
+            });
+
+            if (!dn) throw new Error("Delivery Note not found.");
+            if (dn._count.invoices > 0) {
+                throw new Error("Cannot delete Delivery Note already invoiced.");
+            }
+
+            // 1. Revert Fulfilled Qty in SO
+            for (const item of dn.items) {
+                if (item.soItemId) {
+                    await tx.salesOrderItem.update({
+                        where: { id: item.soItemId },
+                        data: { fulfilledQty: { decrement: item.qty } }
+                    });
+                }
+            }
+
+            // 2. Remove Stock Ledger
+            await tx.stockLedger.deleteMany({
+                where: { refType: 'DO', refId: id }
+            });
+
+            // 3. Delete Items and DO
+            await tx.deliveryOrderItem.deleteMany({ where: { doId: id } });
+            await tx.deliveryOrder.delete({ where: { id } });
+        });
+    }
+
+    /**
+     * Delete Sales Invoice
+     */
+    static async deleteSalesInvoice(id: string) {
+        return await prisma.$transaction(async (tx) => {
+            const invoice = await tx.salesInvoice.findUnique({
+                where: { id },
+                include: { items: true }
+            });
+
+            if (!invoice) throw new Error("Sales Invoice not found.");
+
+            // 1. Revert Invoiced Qty in SO
+            for (const item of invoice.items) {
+                if (item.soItemId) {
+                    await tx.salesOrderItem.update({
+                        where: { id: item.soItemId },
+                        data: { invoicedQty: { decrement: item.qty } }
+                    });
+
+                    // Check if we need to reopen the order
+                    const soItem = await tx.salesOrderItem.findUnique({ where: { id: item.soItemId } });
+                    if (soItem && soItem.orderId) {
+                        await tx.salesOrder.update({
+                            where: { id: soItem.orderId },
+                            data: { status: "OPEN" }
+                        });
+                    }
+                }
+            }
+
+            // 2. Revert Stock Ledger
+            // If it was a DO -> Invoice flow, we updated DO ref to INVOICE.
+            // When deleting invoice, we should revert it back to DO or Delete if direct.
+            if (invoice.doId) {
+                await tx.stockLedger.updateMany({
+                    where: { refType: 'SALES_INVOICE', refId: id },
+                    data: {
+                        refType: 'DO',
+                        refId: invoice.doId
+                    }
+                });
+            } else {
+                await tx.stockLedger.deleteMany({
+                    where: { refType: 'SALES_INVOICE', refId: id }
+                });
+            }
+
+            // 3. Delete Journal Entry
+            if (invoice.journalEntryId) {
+                await tx.journalLine.deleteMany({ where: { entryId: invoice.journalEntryId } });
+                await tx.journalEntry.delete({ where: { id: invoice.journalEntryId } });
+            }
+
+            // 4. Delete Items and Invoice
+            await tx.salesInvoiceItem.deleteMany({ where: { invoiceId: id } });
+            await tx.salesInvoice.delete({ where: { id } });
         });
     }
 }
