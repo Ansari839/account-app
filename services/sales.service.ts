@@ -231,6 +231,10 @@ export class SalesService {
             throw new Error("Delivery Order is mandatory for Sales Invoicing.");
         }
 
+        if (!data.doId && !data.warehouseId) {
+            throw new Error("Warehouse is required for Direct Sales Invoices to update inventory.");
+        }
+
         // Validate stock if no DO is used
         if (!data.doId && data.warehouseId) {
             const { StockService } = await import("./stock.service");
@@ -350,7 +354,26 @@ export class SalesService {
                     },
                     orderBy: { invoice: { date: 'desc' } }
                 });
-                const costRate = lastPurchase ? Number(lastPurchase.rate) : 0;
+
+                let costRate = lastPurchase ? Number(lastPurchase.rate) : 0;
+
+                // Fallback: If no purchase history (e.g., Opening Stock or Cleaned Data), checks Stock Ledger
+                if (costRate === 0) {
+                    const lastStockEntry = await tx.stockLedger.findFirst({
+                        where: {
+                            productId: item.productId,
+                            // @ts-ignore
+                            variantId: item.variantId ? { equals: item.variantId } : null,
+                            qtyIn: { gt: 0 },
+                            costRate: { gt: 0 }
+                        },
+                        orderBy: { date: 'desc' }
+                    });
+                    if (lastStockEntry) {
+                        costRate = Number(lastStockEntry.costRate);
+                    }
+                }
+
                 const costAmount = Number(item.qty) * costRate;
 
                 if (costAmount > 0) {
@@ -524,7 +547,25 @@ export class SalesService {
                     },
                     orderBy: { invoice: { date: 'desc' } }
                 });
-                const costRate = lastPurchase ? Number(lastPurchase.rate) : 0;
+
+                let costRate = lastPurchase ? Number(lastPurchase.rate) : 0;
+
+                if (costRate === 0) {
+                    const lastStockEntry = await tx.stockLedger.findFirst({
+                        where: {
+                            productId: item.productId,
+                            // @ts-ignore
+                            variantId: item.variantId ? { equals: item.variantId } : null,
+                            qtyIn: { gt: 0 },
+                            costRate: { gt: 0 }
+                        },
+                        orderBy: { date: 'desc' }
+                    });
+                    if (lastStockEntry) {
+                        costRate = Number(lastStockEntry.costRate);
+                    }
+                }
+
                 const costAmount = Number(item.qty) * costRate;
 
                 if (costAmount > 0) {

@@ -664,6 +664,11 @@ export class PurchaseController {
                 return NextResponse.json({ success: false, error: "GRN is mandatory for creating Purchase Invoices." }, { status: 400 });
             }
 
+            // Enforce Warehouse for Direct Invoices (No GRN)
+            if (!grnId && !warehouseId) {
+                return NextResponse.json({ success: false, error: "Warehouse is required for Direct Purchase Invoices to update inventory." }, { status: 400 });
+            }
+
             // Generate Invoice Number
             const lastInvoice = await prisma.purchaseInvoice.findFirst({
                 where: { invoiceNo: { startsWith: `PI-${new Date().getFullYear()}-` } },
@@ -1079,6 +1084,216 @@ export class PurchaseController {
             return NextResponse.json({ success: true, data: result });
         } catch (error: any) {
             console.error("Update PI Error:", error);
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+    /**
+     * Delete Purchase Return
+     */
+    static async deleteReturn(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const existing = await prisma.purchaseReturn.findUnique({
+                where: { id },
+                include: { items: true }
+            });
+
+            if (!existing) return NextResponse.json({ success: false, error: "Return not found" }, { status: 404 });
+
+            await prisma.$transaction(async (tx) => {
+                // 1. Delete Stock Ledger Entries (Reverses Stock Out)
+                await tx.stockLedger.deleteMany({
+                    where: { refType: 'PURCHASE_RETURN', refId: id }
+                });
+
+                // 2. Delete Journal Entry
+                if (existing.journalEntryId) {
+                    await tx.journalLine.deleteMany({ where: { entryId: existing.journalEntryId } });
+                    await tx.journalEntry.delete({ where: { id: existing.journalEntryId } });
+                }
+
+                // 3. Delete Items & Header
+                await tx.purchaseReturnItem.deleteMany({ where: { returnId: id } });
+                await tx.purchaseReturn.delete({ where: { id } });
+            });
+
+            return NextResponse.json({ success: true, message: "Purchase Return deleted successfully" });
+        } catch (error: any) {
+            console.error("Delete Return Error:", error);
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Update Purchase Return
+     */
+    static async updateReturn(req: Request, { params }: { params: Promise<{ id: string }> }) {
+        try {
+            const { id } = await params;
+            const user = await getAuthUser(req);
+            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+            const body = await req.json();
+            const { date, remarks, warehouseId, items } = body;
+
+            // 1. Fetch Existing
+            const existing = await prisma.purchaseReturn.findUnique({
+                where: { id },
+                include: { items: true }
+            });
+
+            if (!existing) return NextResponse.json({ success: false, error: "Return not found" }, { status: 404 });
+
+            // 2. Validate Invoice
+            const invoice = await prisma.purchaseInvoice.findUnique({
+                where: { id: existing.invoiceId },
+                include: { items: { include: { product: true, taxCode: true } }, supplier: true }
+            });
+            if (!invoice) return NextResponse.json({ success: false, error: "Original Invoice not found" }, { status: 400 });
+
+            const result = await prisma.$transaction(async (tx) => {
+                // 3. Revert Old Effects (Stock & Journal)
+                await tx.stockLedger.deleteMany({
+                    where: { refType: 'PURCHASE_RETURN', refId: id }
+                });
+
+                if (existing.journalEntryId) {
+                    await tx.journalLine.deleteMany({ where: { entryId: existing.journalEntryId } });
+                    // We will update the existing journal entry instead of deleting/recreating to keep ID stable, 
+                    // OR delete/recreate. Recreating is safer for complex logic. Let's delete lines and update header/lines.
+                }
+
+                // 4. Delete Old Items
+                await tx.purchaseReturnItem.deleteMany({ where: { returnId: id } });
+
+                // 5. Calculate New Totals
+                let returnSubtotal = 0;
+                let returnTax = 0;
+                const returnItemsData = [];
+
+                for (const item of items) {
+                    const origItem = invoice.items.find(i => i.productId === item.productId && i.variantId === (item.variantId || null));
+                    if (!origItem) throw new Error(`Product ${item.productId} not found in original invoice.`);
+
+                    const total = Number(item.qty) * Number(item.rate);
+                    returnSubtotal += total;
+
+                    let taxAmount = 0;
+                    if (origItem.taxCodeId) {
+                        taxAmount = (total * Number(origItem.taxCode!.rate)) / 100;
+                        returnTax += taxAmount;
+                    }
+
+                    returnItemsData.push({
+                        returnId: id,
+                        productId: item.productId,
+                        variantId: item.variantId || null,
+                        unitId: item.unitId || origItem.unitId,
+                        qty: item.qty,
+                        rate: item.rate,
+                        taxAmount: taxAmount,
+                        total: total + taxAmount,
+                        invoiceItemId: origItem.id
+                    });
+                }
+
+                const returnTotalAmount = returnSubtotal + returnTax;
+
+                // 6. Update Header & Items
+                const updatedReturn = await tx.purchaseReturn.update({
+                    where: { id },
+                    data: {
+                        date: new Date(date),
+                        warehouseId,
+                        remarks,
+                        totalAmount: returnTotalAmount,
+                        items: { createMany: { data: returnItemsData } } // Use createMany for speed if possible, or create loop
+                    }
+                });
+
+                // 7. Apply New Stock Effects
+                for (const item of items) {
+                    await tx.stockLedger.create({
+                        data: {
+                            productId: item.productId,
+                            variantId: item.variantId || null,
+                            warehouseId: warehouseId,
+                            date: new Date(date),
+                            qtyOut: item.qty, // Purchase Return = Stock OUT
+                            qtyIn: 0,
+                            refType: 'PURCHASE_RETURN',
+                            refId: id
+                        }
+                    });
+                }
+
+                // 8. Apply New Journal Effects
+                const jvLines = [];
+                // 8.1 Debit Payable (Decrease Liability)
+                if (invoice.supplier.payableAccountId) {
+                    jvLines.push({
+                        accountId: invoice.supplier.payableAccountId,
+                        debit: returnTotalAmount,
+                        credit: 0,
+                        narration: `Purchase Return ${updatedReturn.returnNo}`
+                    });
+                }
+
+                for (const item of returnItemsData) {
+                    const product = await tx.product.findUnique({ where: { id: item.productId } });
+                    // 8.2 Credit Inventory/Purchase (Decrease Asset/Expense)
+                    let creditAccount = product?.inventoryAccountId || product?.purchaseAccountId;
+                    // Fallback handled in original creation, assuming exists here or use same logic
+                    if (!creditAccount) {
+                        // Basic fallback
+                        const defInv = await prisma.account.findFirst({ where: { name: 'Inventory', type: 'ASSET' } });
+                        creditAccount = defInv?.id;
+                    }
+
+                    if (creditAccount) {
+                        jvLines.push({
+                            accountId: creditAccount,
+                            debit: 0,
+                            credit: item.total - item.taxAmount, // Net Amount
+                            narration: `Return of ${product?.name}`
+                        });
+                    }
+                }
+
+                // Update Journal Entry
+                if (existing.journalEntryId) {
+                    await tx.journalEntry.update({
+                        where: { id: existing.journalEntryId },
+                        data: {
+                            date: new Date(date),
+                            totalAmount: returnTotalAmount, // If JV has total
+                            lines: { create: jvLines }
+                        }
+                    });
+                } else {
+                    // Create if missing (edge case)
+                    const je = await tx.journalEntry.create({
+                        data: {
+                            number: `PRJV-${Date.now()}`,
+                            date: new Date(date),
+                            type: 'PURCHASE',
+                            reference: updatedReturn.returnNo,
+                            narration: `Purchase Return ${updatedReturn.returnNo}`,
+                            lines: { create: jvLines }
+                        }
+                    });
+                    await tx.purchaseReturn.update({ where: { id }, data: { journalEntryId: je.id } });
+                }
+
+                return updatedReturn;
+            });
+
+            return NextResponse.json({ success: true, data: result });
+        } catch (error: any) {
+            console.error("Update Return Error:", error);
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         }
     }

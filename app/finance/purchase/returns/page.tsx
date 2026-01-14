@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import MainLayout from "@/components/MainLayout";
 import { authenticatedFetch } from "@/lib/api-client";
-import { Plus, Search, Eye } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2 } from "lucide-react";
 import debounce from "lodash/debounce";
 import DataTable, { Column } from "@/components/DataTable";
 
@@ -56,16 +56,52 @@ export default function PurchaseReturnsPage() {
         {
             header: "Actions",
             accessor: (row) => (
-                <button
-                    onClick={() => router.push(`/finance/purchase/returns/${row.id}`)}
-                    className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600 transition-colors"
-                >
-                    <Eye size={16} />
-                </button>
+                <div className="flex gap-2 justify-center">
+                    <button
+                        onClick={() => router.push(`/finance/purchase/returns/${row.id}`)}
+                        className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600 transition-colors"
+                        title="View"
+                    >
+                        <Eye size={16} />
+                    </button>
+                    {/* Edit Button */}
+                    <button
+                        onClick={() => router.push(`/finance/purchase/returns/${row.id}/edit`)}
+                        className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-amber-600 transition-colors"
+                        title="Edit"
+                    >
+                        <Edit size={16} />
+                    </button>
+                    {/* Delete Button */}
+                    <button
+                        onClick={() => handleDelete(row.id)}
+                        className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-red-600 transition-colors"
+                        title="Delete"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                </div>
             ),
-            className: "w-10 text-center"
+            className: "w-24 text-center"
         }
     ];
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this Purchase Return? This will reverse stock and accounting entries.")) return;
+
+        try {
+            const res = await authenticatedFetch(`/api/finance/purchase/returns/${id}`, { method: 'DELETE' });
+            const json = await res.json();
+            if (json.success) {
+                fetchReturns();
+            } else {
+                alert("Failed to delete: " + json.error);
+            }
+        } catch (err) {
+            console.error("Delete Error", err);
+            alert("An error occurred while deleting.");
+        }
+    };
 
     return (
         <MainLayout>
