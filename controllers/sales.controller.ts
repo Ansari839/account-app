@@ -9,6 +9,69 @@ async function getAuthUser(req: Request) {
     return AuthUtils.verifyToken(token);
 }
 
+// Helper: Resolve Account to Customer (Auto-Link/Create)
+async function resolveCustomerId(id: string) {
+    // Check if passed ID is an Account
+    const account = await prisma.account.findUnique({ where: { id } });
+
+    // If it's NOT an account, assume it's a Customer ID (or invalid) and return as is.
+    if (!account) return id;
+
+    // It IS an account. Check for existing linked Customer.
+    let customer = await prisma.customer.findFirst({
+        where: { receivableAccountId: account.id }
+    });
+
+    if (!customer) {
+        // Check generic by name
+        customer = await prisma.customer.findFirst({
+            where: { name: `Cash Customer - ${account.name}`, currencyCode: 'PKR' }
+        });
+
+        if (!customer) {
+            // Auto-Create
+            const lastCustomer = await prisma.customer.findFirst({
+                where: { code: { startsWith: 'CUST-' } },
+                orderBy: { code: 'desc' }
+            });
+            let nextSeq = 1;
+            if (lastCustomer) {
+                const lastNum = parseInt(lastCustomer.code.split('-')[1]);
+                if (!isNaN(lastNum)) nextSeq = lastNum + 1;
+            }
+
+            try {
+                customer = await prisma.customer.create({
+                    data: {
+                        code: `CUST-${nextSeq.toString().padStart(4, '0')}`,
+                        name: `Cash Customer - ${account.name}`,
+                        receivableAccountId: account.id,
+                        currencyCode: 'PKR'
+                    }
+                });
+            } catch (e) {
+                // Fallback
+                customer = await prisma.customer.create({
+                    data: {
+                        code: `CUST-${Date.now()}`,
+                        name: `Cash Customer - ${account.name}`,
+                        receivableAccountId: account.id,
+                        currencyCode: 'PKR'
+                    }
+                });
+            }
+        } else if (!customer.receivableAccountId) {
+            // Found generic but unlinked? Link it.
+            // This safeguards against "Found by name but failing strict check"
+            await prisma.customer.update({
+                where: { id: customer.id },
+                data: { receivableAccountId: account.id }
+            });
+        }
+    }
+    return customer.id;
+}
+
 export class SalesController {
     /**
      * List Sales Invoices (Filtered by Company via Customer -> Account)
@@ -111,8 +174,11 @@ export class SalesController {
             if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const body = await req.json();
+            const customerId = await resolveCustomerId(body.customerId);
+
             const order = await SalesService.createOrder({
                 ...body,
+                customerId,
                 date: new Date(body.date),
                 expectedDate: body.expectedDate ? new Date(body.expectedDate) : undefined,
                 quoteId: body.quoteId || null,
@@ -134,8 +200,11 @@ export class SalesController {
             if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const body = await req.json();
+            const customerId = await resolveCustomerId(body.customerId);
+
             const dn = await SalesService.createDO({
                 ...body,
+                customerId,
                 date: new Date(body.date),
                 orderId: body.orderId || null
             });
@@ -155,8 +224,11 @@ export class SalesController {
             if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const body = await req.json();
+            const customerId = await resolveCustomerId(body.customerId);
+
             const invoice = await SalesService.createSalesInvoice({
                 ...body,
+                customerId,
                 date: new Date(body.date),
                 dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
                 doId: body.doId || null,
@@ -178,8 +250,11 @@ export class SalesController {
             if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const body = await req.json();
+            const customerId = await resolveCustomerId(body.customerId);
+
             const result = await SalesService.createSalesReturn({
                 ...body,
+                customerId,
                 date: new Date(body.date),
                 warehouseId: body.warehouseId || null
             });

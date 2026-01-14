@@ -26,3 +26,1153 @@ Stack: Error: Customer not found.
     at async Server.requestListener (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/start-server.js:226:13)
 Data: {"sourceType":"DIRECT","sourceId":"","customerId":"7e4fdc05-af6d-4e07-95a2-479d020b4240","warehouseId":"6ac0a987-c1c9-40ee-99d9-c7c459173aa4","date":"2026-01-14T00:00:00.000Z","items":[{"productId":"9aa16a61-c832-4bd9-8803-b7e50c93544d","productName":"Women Silk Scarf","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","qty":100,"rate":600,"total":60000},{"productId":"fbc26d6d-765f-4fde-a335-5684d6404572","productName":"Men T-Shirt (White)","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","qty":100,"rate":1000,"total":100000}],"doId":null}
 
+[2026-01-14T18:55:39.248Z] Error in createSalesInvoice: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:948:55
+
+  945 if (!customer) throw new Error("Customer not found.");
+  946 if (!customer.receivableAccountId) throw new Error("Customer has no linked Receivable Account.");
+  947 // 3. Create Sales Invoice
+→ 948 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: null,
+          doId: null,
+          totalAmount: 60000,
+          taxAmount: 0,
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: 100,
+                rate: 600,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 60000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+              taxCode: true
+            }
+          },
+          customer: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+Stack: PrismaClientValidationError: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:948:55
+
+  945 if (!customer) throw new Error("Customer not found.");
+  946 if (!customer.receivableAccountId) throw new Error("Customer has no linked Receivable Account.");
+  947 // 3. Create Sales Invoice
+→ 948 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: null,
+          doId: null,
+          totalAmount: 60000,
+          taxAmount: 0,
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: 100,
+                rate: 600,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 60000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+              taxCode: true
+            }
+          },
+          customer: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+    at tr (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:10:1379)
+    at qr.handleRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7815)
+    at qr.handleAndLogRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7467)
+    at qr.request (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7174)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async a (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:5816)
+    at async /home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:948:33
+    at async Proxy._transactionWithCallback (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:4390)
+    at async SalesService.createSalesInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:911:20)
+    at async SalesController.createInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:1544:29)
+    at async AppRouteRouteModule.do (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1422:9)
+    at async DevServer.renderPageComponent (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1524:32)
+    at async DevServer.pipeImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/next-server.js:395:17)
+    at async DevServer.handleRequestImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:909:17)
+    at async /home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:387:20
+    at async Span.traceAsyncFn (/home/abdullah/Next-js/account-app/node_modules/next/dist/trace/trace.js:157:20)
+    at async DevServer.handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:383:24)
+    at async invokeRender (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:248:21)
+    at async handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:447:24)
+    at async requestHandlerImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:496:13)
+    at async Server.requestListener (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/start-server.js:226:13)
+Data: {"sourceType":"DIRECT","sourceId":"","customerId":"7e4fdc05-af6d-4e07-95a2-479d020b4240","warehouseId":"6ac0a987-c1c9-40ee-99d9-c7c459173aa4","date":"2026-01-14T00:00:00.000Z","items":[{"productId":"9aa16a61-c832-4bd9-8803-b7e50c93544d","productName":"Women Silk Scarf","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","qty":100,"rate":600,"total":60000}],"doId":null}
+
+[2026-01-14T18:55:50.146Z] Error in createSalesInvoice: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:948:55
+
+  945 if (!customer) throw new Error("Customer not found.");
+  946 if (!customer.receivableAccountId) throw new Error("Customer has no linked Receivable Account.");
+  947 // 3. Create Sales Invoice
+→ 948 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: null,
+          doId: null,
+          totalAmount: 60000,
+          taxAmount: 0,
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: 100,
+                rate: 600,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 60000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+              taxCode: true
+            }
+          },
+          customer: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+Stack: PrismaClientValidationError: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:948:55
+
+  945 if (!customer) throw new Error("Customer not found.");
+  946 if (!customer.receivableAccountId) throw new Error("Customer has no linked Receivable Account.");
+  947 // 3. Create Sales Invoice
+→ 948 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: null,
+          doId: null,
+          totalAmount: 60000,
+          taxAmount: 0,
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: 100,
+                rate: 600,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 60000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+              taxCode: true
+            }
+          },
+          customer: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+    at tr (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:10:1379)
+    at qr.handleRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7815)
+    at qr.handleAndLogRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7467)
+    at qr.request (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7174)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async a (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:5816)
+    at async /home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:948:33
+    at async Proxy._transactionWithCallback (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:4390)
+    at async SalesService.createSalesInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:911:20)
+    at async SalesController.createInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:1544:29)
+    at async AppRouteRouteModule.do (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1422:9)
+    at async DevServer.renderPageComponent (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1524:32)
+    at async DevServer.pipeImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/next-server.js:395:17)
+    at async DevServer.handleRequestImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:909:17)
+    at async /home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:387:20
+    at async Span.traceAsyncFn (/home/abdullah/Next-js/account-app/node_modules/next/dist/trace/trace.js:157:20)
+    at async DevServer.handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:383:24)
+    at async invokeRender (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:248:21)
+    at async handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:447:24)
+    at async requestHandlerImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:496:13)
+    at async Server.requestListener (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/start-server.js:226:13)
+Data: {"sourceType":"DIRECT","sourceId":"","customerId":"1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481","warehouseId":"6ac0a987-c1c9-40ee-99d9-c7c459173aa4","date":"2026-01-14T00:00:00.000Z","items":[{"productId":"9aa16a61-c832-4bd9-8803-b7e50c93544d","productName":"Women Silk Scarf","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","qty":100,"rate":600,"total":60000}],"doId":null}
+
+[2026-01-14T18:59:49.049Z] Error in createSalesInvoice: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:960:55
+
+  957 if (!customer) throw new Error("Customer not found.");
+  958 if (!customer.receivableAccountId) throw new Error("Customer has no linked Receivable Account.");
+  959 // 3. Create Sales Invoice
+→ 960 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: null,
+          doId: null,
+          totalAmount: 60000,
+          taxAmount: 0,
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: 100,
+                rate: 600,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 60000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+              taxCode: true
+            }
+          },
+          customer: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+Stack: PrismaClientValidationError: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:960:55
+
+  957 if (!customer) throw new Error("Customer not found.");
+  958 if (!customer.receivableAccountId) throw new Error("Customer has no linked Receivable Account.");
+  959 // 3. Create Sales Invoice
+→ 960 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: null,
+          doId: null,
+          totalAmount: 60000,
+          taxAmount: 0,
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: 100,
+                rate: 600,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 60000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+              taxCode: true
+            }
+          },
+          customer: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+    at tr (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:10:1379)
+    at qr.handleRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7815)
+    at qr.handleAndLogRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7467)
+    at qr.request (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7174)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async a (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:5816)
+    at async /home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:960:33
+    at async Proxy._transactionWithCallback (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:4390)
+    at async SalesService.createSalesInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:923:20)
+    at async SalesController.createInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:1556:29)
+    at async AppRouteRouteModule.do (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1422:9)
+    at async DevServer.renderPageComponent (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1524:32)
+    at async DevServer.pipeImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/next-server.js:395:17)
+    at async DevServer.handleRequestImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:909:17)
+    at async /home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:387:20
+    at async Span.traceAsyncFn (/home/abdullah/Next-js/account-app/node_modules/next/dist/trace/trace.js:157:20)
+    at async DevServer.handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:383:24)
+    at async invokeRender (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:248:21)
+    at async handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:447:24)
+    at async requestHandlerImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:496:13)
+    at async Server.requestListener (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/start-server.js:226:13)
+Data: {"sourceType":"DIRECT","sourceId":"","customerId":"7e4fdc05-af6d-4e07-95a2-479d020b4240","warehouseId":"6ac0a987-c1c9-40ee-99d9-c7c459173aa4","date":"2026-01-14T00:00:00.000Z","items":[{"productId":"9aa16a61-c832-4bd9-8803-b7e50c93544d","productName":"Women Silk Scarf","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","qty":100,"rate":600,"total":60000}],"doId":null}
+
+[2026-01-14T19:01:48.536Z] Error in createSalesInvoice: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:960:55
+
+  957 if (!customer) throw new Error("Customer not found.");
+  958 if (!customer.receivableAccountId) throw new Error("Customer has no linked Receivable Account.");
+  959 // 3. Create Sales Invoice
+→ 960 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: null,
+          doId: null,
+          totalAmount: 60000,
+          taxAmount: 0,
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: 100,
+                rate: 600,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 60000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+              taxCode: true
+            }
+          },
+          customer: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+Stack: PrismaClientValidationError: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:960:55
+
+  957 if (!customer) throw new Error("Customer not found.");
+  958 if (!customer.receivableAccountId) throw new Error("Customer has no linked Receivable Account.");
+  959 // 3. Create Sales Invoice
+→ 960 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: null,
+          doId: null,
+          totalAmount: 60000,
+          taxAmount: 0,
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: 100,
+                rate: 600,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 60000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+              taxCode: true
+            }
+          },
+          customer: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+    at tr (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:10:1379)
+    at qr.handleRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7815)
+    at qr.handleAndLogRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7467)
+    at qr.request (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7174)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async a (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:5816)
+    at async /home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:960:33
+    at async Proxy._transactionWithCallback (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:4390)
+    at async SalesService.createSalesInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:923:20)
+    at async SalesController.createInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:1556:29)
+    at async AppRouteRouteModule.do (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1422:9)
+    at async DevServer.renderPageComponent (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1524:32)
+    at async DevServer.pipeImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/next-server.js:395:17)
+    at async DevServer.handleRequestImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:909:17)
+    at async /home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:387:20
+    at async Span.traceAsyncFn (/home/abdullah/Next-js/account-app/node_modules/next/dist/trace/trace.js:157:20)
+    at async DevServer.handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:383:24)
+    at async invokeRender (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:248:21)
+    at async handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:447:24)
+    at async requestHandlerImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:496:13)
+    at async Server.requestListener (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/start-server.js:226:13)
+Data: {"sourceType":"DIRECT","sourceId":"","customerId":"7e4fdc05-af6d-4e07-95a2-479d020b4240","warehouseId":"6ac0a987-c1c9-40ee-99d9-c7c459173aa4","date":"2026-01-14T00:00:00.000Z","items":[{"productId":"9aa16a61-c832-4bd9-8803-b7e50c93544d","productName":"Women Silk Scarf","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","qty":100,"rate":600,"total":60000}],"doId":null}
+
+[2026-01-14T19:04:29.862Z] Error in createSalesInvoice: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:1015:55
+
+  1012 if (!customer) throw new Error("Customer not found.");
+  1013 if (!customer.receivableAccountId) throw new Error("Customer has no linked Receivable Account.");
+  1014 // 3. Create Sales Invoice
+→ 1015 const invoice = await tx.salesInvoice.create({
+         data: {
+           customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+           warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+           date: new Date("2026-01-14T00:00:00.000Z"),
+           dueDate: null,
+           doId: null,
+           totalAmount: 60000,
+           taxAmount: 0,
+           items: {
+             create: [
+               {
+                 productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                 variantId: null,
+                 unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                 qty: 100,
+                 rate: 600,
+                 taxCodeId: undefined,
+                 taxAmount: 0,
+                 total: 60000
+               }
+             ]
+           },
+       +   invoiceNo: String
+         },
+         include: {
+           items: {
+             include: {
+               product: true,
+               taxCode: true
+             }
+           },
+           customer: true
+         }
+       })
+
+Argument `invoiceNo` is missing.
+Stack: PrismaClientValidationError: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:1015:55
+
+  1012 if (!customer) throw new Error("Customer not found.");
+  1013 if (!customer.receivableAccountId) throw new Error("Customer has no linked Receivable Account.");
+  1014 // 3. Create Sales Invoice
+→ 1015 const invoice = await tx.salesInvoice.create({
+         data: {
+           customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+           warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+           date: new Date("2026-01-14T00:00:00.000Z"),
+           dueDate: null,
+           doId: null,
+           totalAmount: 60000,
+           taxAmount: 0,
+           items: {
+             create: [
+               {
+                 productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                 variantId: null,
+                 unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                 qty: 100,
+                 rate: 600,
+                 taxCodeId: undefined,
+                 taxAmount: 0,
+                 total: 60000
+               }
+             ]
+           },
+       +   invoiceNo: String
+         },
+         include: {
+           items: {
+             include: {
+               product: true,
+               taxCode: true
+             }
+           },
+           customer: true
+         }
+       })
+
+Argument `invoiceNo` is missing.
+    at tr (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:10:1379)
+    at qr.handleRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7815)
+    at qr.handleAndLogRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7467)
+    at qr.request (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7174)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async a (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:5816)
+    at async /home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:1015:33
+    at async Proxy._transactionWithCallback (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:4390)
+    at async SalesService.createSalesInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:978:20)
+    at async SalesController.createInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:1611:29)
+    at async AppRouteRouteModule.do (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1422:9)
+    at async DevServer.renderPageComponent (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1524:32)
+    at async DevServer.pipeImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/next-server.js:395:17)
+    at async DevServer.handleRequestImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:909:17)
+    at async /home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:387:20
+    at async Span.traceAsyncFn (/home/abdullah/Next-js/account-app/node_modules/next/dist/trace/trace.js:157:20)
+    at async DevServer.handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:383:24)
+    at async invokeRender (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:248:21)
+    at async handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:447:24)
+    at async requestHandlerImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:496:13)
+    at async Server.requestListener (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/start-server.js:226:13)
+Data: {"sourceType":"DIRECT","sourceId":"","customerId":"7e4fdc05-af6d-4e07-95a2-479d020b4240","warehouseId":"6ac0a987-c1c9-40ee-99d9-c7c459173aa4","date":"2026-01-14T00:00:00.000Z","items":[{"productId":"9aa16a61-c832-4bd9-8803-b7e50c93544d","productName":"Women Silk Scarf","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","qty":100,"rate":600,"total":60000}],"doId":null}
+
+[2026-01-14T19:05:11.387Z] Error in createSalesInvoice: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:1015:55
+
+  1012 if (!customer) throw new Error("Customer not found.");
+  1013 if (!customer.receivableAccountId) throw new Error("Customer has no linked Receivable Account.");
+  1014 // 3. Create Sales Invoice
+→ 1015 const invoice = await tx.salesInvoice.create({
+         data: {
+           customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+           warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+           date: new Date("2026-01-14T00:00:00.000Z"),
+           dueDate: null,
+           doId: null,
+           totalAmount: 60000,
+           taxAmount: 0,
+           items: {
+             create: [
+               {
+                 productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                 variantId: null,
+                 unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                 qty: 100,
+                 rate: 600,
+                 taxCodeId: undefined,
+                 taxAmount: 0,
+                 total: 60000
+               }
+             ]
+           },
+       +   invoiceNo: String
+         },
+         include: {
+           items: {
+             include: {
+               product: true,
+               taxCode: true
+             }
+           },
+           customer: true
+         }
+       })
+
+Argument `invoiceNo` is missing.
+Stack: PrismaClientValidationError: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:1015:55
+
+  1012 if (!customer) throw new Error("Customer not found.");
+  1013 if (!customer.receivableAccountId) throw new Error("Customer has no linked Receivable Account.");
+  1014 // 3. Create Sales Invoice
+→ 1015 const invoice = await tx.salesInvoice.create({
+         data: {
+           customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+           warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+           date: new Date("2026-01-14T00:00:00.000Z"),
+           dueDate: null,
+           doId: null,
+           totalAmount: 60000,
+           taxAmount: 0,
+           items: {
+             create: [
+               {
+                 productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                 variantId: null,
+                 unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                 qty: 100,
+                 rate: 600,
+                 taxCodeId: undefined,
+                 taxAmount: 0,
+                 total: 60000
+               }
+             ]
+           },
+       +   invoiceNo: String
+         },
+         include: {
+           items: {
+             include: {
+               product: true,
+               taxCode: true
+             }
+           },
+           customer: true
+         }
+       })
+
+Argument `invoiceNo` is missing.
+    at tr (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:10:1379)
+    at qr.handleRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7815)
+    at qr.handleAndLogRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7467)
+    at qr.request (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7174)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async a (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:5816)
+    at async /home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:1015:33
+    at async Proxy._transactionWithCallback (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:4390)
+    at async SalesService.createSalesInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:978:20)
+    at async SalesController.createInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:1611:29)
+    at async AppRouteRouteModule.do (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1422:9)
+    at async DevServer.renderPageComponent (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1524:32)
+    at async DevServer.pipeImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/next-server.js:395:17)
+    at async DevServer.handleRequestImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:909:17)
+    at async /home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:387:20
+    at async Span.traceAsyncFn (/home/abdullah/Next-js/account-app/node_modules/next/dist/trace/trace.js:157:20)
+    at async DevServer.handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:383:24)
+    at async invokeRender (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:248:21)
+    at async handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:447:24)
+    at async requestHandlerImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:496:13)
+    at async Server.requestListener (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/start-server.js:226:13)
+Data: {"sourceType":"DIRECT","sourceId":"","customerId":"1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481","warehouseId":"6ac0a987-c1c9-40ee-99d9-c7c459173aa4","date":"2026-01-14T00:00:00.000Z","items":[{"productId":"9aa16a61-c832-4bd9-8803-b7e50c93544d","productName":"Women Silk Scarf","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","qty":100,"rate":600,"total":60000}],"doId":null}
+
+[2026-01-14T19:20:10.965Z] Error in createSalesInvoice: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:545:55
+
+  542     }
+  543 });
+  544 // 3. Create Sales Invoice (Linked to JE)
+→ 545 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: undefined,
+          totalAmount: 60000,
+          taxAmount: 0,
+          doId: null,
+          journalEntryId: "84eab7a5-4a6b-4a2d-b0f5-2e17cd923b3c",
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: 100,
+                rate: 600,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 60000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+Stack: PrismaClientValidationError: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:545:55
+
+  542     }
+  543 });
+  544 // 3. Create Sales Invoice (Linked to JE)
+→ 545 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: undefined,
+          totalAmount: 60000,
+          taxAmount: 0,
+          doId: null,
+          journalEntryId: "84eab7a5-4a6b-4a2d-b0f5-2e17cd923b3c",
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: 100,
+                rate: 600,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 60000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+    at tr (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:10:1379)
+    at qr.handleRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7815)
+    at qr.handleAndLogRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7467)
+    at qr.request (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7174)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async a (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:5816)
+    at async /home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:545:33
+    at async Proxy._transactionWithCallback (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:4390)
+    at async SalesService.createSalesInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:425:20)
+    at async SalesController.createInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:1074:29)
+    at async AppRouteRouteModule.do (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1422:9)
+    at async DevServer.renderPageComponent (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1524:32)
+    at async DevServer.pipeImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/next-server.js:395:17)
+    at async DevServer.handleRequestImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:909:17)
+    at async /home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:387:20
+    at async Span.traceAsyncFn (/home/abdullah/Next-js/account-app/node_modules/next/dist/trace/trace.js:157:20)
+    at async DevServer.handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:383:24)
+    at async invokeRender (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:248:21)
+    at async handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:447:24)
+    at async requestHandlerImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:496:13)
+    at async Server.requestListener (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/start-server.js:226:13)
+Data: {"sourceType":"DIRECT","sourceId":"","customerId":"1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481","warehouseId":"6ac0a987-c1c9-40ee-99d9-c7c459173aa4","date":"2026-01-14T00:00:00.000Z","items":[{"productId":"9aa16a61-c832-4bd9-8803-b7e50c93544d","productName":"Women Silk Scarf","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","qty":100,"rate":600,"total":60000}],"doId":null}
+
+[2026-01-14T19:22:45.010Z] Error in createSalesInvoice: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:545:55
+
+  542     }
+  543 });
+  544 // 3. Create Sales Invoice (Linked to JE)
+→ 545 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: undefined,
+          totalAmount: 70000,
+          taxAmount: 0,
+          doId: "af6a28e0-7b34-481d-8b7b-7479cfdce2cd",
+          journalEntryId: "40e10aec-5ba7-46d1-be38-b001929ec4d8",
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: "100",
+                rate: 700,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 70000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+Stack: PrismaClientValidationError: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:545:55
+
+  542     }
+  543 });
+  544 // 3. Create Sales Invoice (Linked to JE)
+→ 545 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: undefined,
+          totalAmount: 70000,
+          taxAmount: 0,
+          doId: "af6a28e0-7b34-481d-8b7b-7479cfdce2cd",
+          journalEntryId: "40e10aec-5ba7-46d1-be38-b001929ec4d8",
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: "100",
+                rate: 700,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 70000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+    at tr (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:10:1379)
+    at qr.handleRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7815)
+    at qr.handleAndLogRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7467)
+    at qr.request (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7174)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async a (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:5816)
+    at async /home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:545:33
+    at async Proxy._transactionWithCallback (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:4390)
+    at async SalesService.createSalesInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:425:20)
+    at async SalesController.createInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:1074:29)
+    at async AppRouteRouteModule.do (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1422:9)
+    at async DevServer.renderPageComponent (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1524:32)
+    at async DevServer.pipeImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/next-server.js:395:17)
+    at async DevServer.handleRequestImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:909:17)
+    at async /home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:387:20
+    at async Span.traceAsyncFn (/home/abdullah/Next-js/account-app/node_modules/next/dist/trace/trace.js:157:20)
+    at async DevServer.handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:383:24)
+    at async invokeRender (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:248:21)
+    at async handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:447:24)
+    at async requestHandlerImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:496:13)
+    at async Server.requestListener (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/start-server.js:226:13)
+Data: {"sourceType":"DO","sourceId":"af6a28e0-7b34-481d-8b7b-7479cfdce2cd","customerId":"1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481","warehouseId":"6ac0a987-c1c9-40ee-99d9-c7c459173aa4","date":"2026-01-14T00:00:00.000Z","items":[{"productId":"9aa16a61-c832-4bd9-8803-b7e50c93544d","productName":"Women Silk Scarf","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","doItemId":"42e18f66-3f7a-4f1d-8edd-242aff347e3c","soItemId":"d22257c7-d2b0-4273-929d-6cdb4cef8274","qtyAvailable":"100","qty":"100","rate":700,"total":70000}],"doId":"af6a28e0-7b34-481d-8b7b-7479cfdce2cd"}
+
+[2026-01-14T19:22:53.872Z] Error in createSalesInvoice: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:545:55
+
+  542     }
+  543 });
+  544 // 3. Create Sales Invoice (Linked to JE)
+→ 545 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: undefined,
+          totalAmount: 70000,
+          taxAmount: 0,
+          doId: "af6a28e0-7b34-481d-8b7b-7479cfdce2cd",
+          journalEntryId: "a3ef3ce5-f6db-4795-a25b-3debcff543e1",
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: "100",
+                rate: 700,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 70000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+Stack: PrismaClientValidationError: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:545:55
+
+  542     }
+  543 });
+  544 // 3. Create Sales Invoice (Linked to JE)
+→ 545 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: undefined,
+          totalAmount: 70000,
+          taxAmount: 0,
+          doId: "af6a28e0-7b34-481d-8b7b-7479cfdce2cd",
+          journalEntryId: "a3ef3ce5-f6db-4795-a25b-3debcff543e1",
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: "100",
+                rate: 700,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 70000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+    at tr (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:10:1379)
+    at qr.handleRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7815)
+    at qr.handleAndLogRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7467)
+    at qr.request (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7174)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async a (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:5816)
+    at async /home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:545:33
+    at async Proxy._transactionWithCallback (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:4390)
+    at async SalesService.createSalesInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:425:20)
+    at async SalesController.createInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:1074:29)
+    at async AppRouteRouteModule.do (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1422:9)
+    at async DevServer.renderPageComponent (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1524:32)
+    at async DevServer.pipeImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/next-server.js:395:17)
+    at async DevServer.handleRequestImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:909:17)
+    at async /home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:387:20
+    at async Span.traceAsyncFn (/home/abdullah/Next-js/account-app/node_modules/next/dist/trace/trace.js:157:20)
+    at async DevServer.handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:383:24)
+    at async invokeRender (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:248:21)
+    at async handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:447:24)
+    at async requestHandlerImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:496:13)
+    at async Server.requestListener (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/start-server.js:226:13)
+Data: {"sourceType":"DO","sourceId":"af6a28e0-7b34-481d-8b7b-7479cfdce2cd","customerId":"1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481","warehouseId":"6ac0a987-c1c9-40ee-99d9-c7c459173aa4","date":"2026-01-14T00:00:00.000Z","items":[{"productId":"9aa16a61-c832-4bd9-8803-b7e50c93544d","productName":"Women Silk Scarf","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","doItemId":"42e18f66-3f7a-4f1d-8edd-242aff347e3c","soItemId":"d22257c7-d2b0-4273-929d-6cdb4cef8274","qtyAvailable":"100","qty":"100","rate":700,"total":70000}],"doId":"af6a28e0-7b34-481d-8b7b-7479cfdce2cd"}
+
+[2026-01-14T19:23:28.002Z] Error in createSalesInvoice: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:545:55
+
+  542     }
+  543 });
+  544 // 3. Create Sales Invoice (Linked to JE)
+→ 545 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: undefined,
+          totalAmount: 70000,
+          taxAmount: 0,
+          doId: "af6a28e0-7b34-481d-8b7b-7479cfdce2cd",
+          journalEntryId: "a3fa2a24-a54c-4c32-9d0f-74af9e0d4cd8",
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: "100",
+                rate: 700,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 70000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+Stack: PrismaClientValidationError: 
+Invalid `tx.salesInvoice.create()` invocation in
+/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:545:55
+
+  542     }
+  543 });
+  544 // 3. Create Sales Invoice (Linked to JE)
+→ 545 const invoice = await tx.salesInvoice.create({
+        data: {
+          customerId: "1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481",
+          warehouseId: "6ac0a987-c1c9-40ee-99d9-c7c459173aa4",
+          date: new Date("2026-01-14T00:00:00.000Z"),
+          dueDate: undefined,
+          totalAmount: 70000,
+          taxAmount: 0,
+          doId: "af6a28e0-7b34-481d-8b7b-7479cfdce2cd",
+          journalEntryId: "a3fa2a24-a54c-4c32-9d0f-74af9e0d4cd8",
+          items: {
+            create: [
+              {
+                productId: "9aa16a61-c832-4bd9-8803-b7e50c93544d",
+                variantId: null,
+                unitId: "d9c034d1-8a9a-4f15-8492-3783a33e89e0",
+                qty: "100",
+                rate: 700,
+                taxCodeId: undefined,
+                taxAmount: 0,
+                total: 70000
+              }
+            ]
+          },
+      +   invoiceNo: String
+        },
+        include: {
+          items: true
+        }
+      })
+
+Argument `invoiceNo` is missing.
+    at tr (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:10:1379)
+    at qr.handleRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7815)
+    at qr.handleAndLogRequestError (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7467)
+    at qr.request (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:65:7174)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async a (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:5816)
+    at async /home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:545:33
+    at async Proxy._transactionWithCallback (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:4390)
+    at async SalesService.createSalesInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:425:20)
+    at async SalesController.createInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__c47a4428._.js:1074:29)
+    at async AppRouteRouteModule.do (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1422:9)
+    at async DevServer.renderPageComponent (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1524:32)
+    at async DevServer.pipeImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/next-server.js:395:17)
+    at async DevServer.handleRequestImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:909:17)
+    at async /home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:387:20
+    at async Span.traceAsyncFn (/home/abdullah/Next-js/account-app/node_modules/next/dist/trace/trace.js:157:20)
+    at async DevServer.handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:383:24)
+    at async invokeRender (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:248:21)
+    at async handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:447:24)
+    at async requestHandlerImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:496:13)
+    at async Server.requestListener (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/start-server.js:226:13)
+Data: {"sourceType":"DO","sourceId":"af6a28e0-7b34-481d-8b7b-7479cfdce2cd","customerId":"1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481","warehouseId":"6ac0a987-c1c9-40ee-99d9-c7c459173aa4","date":"2026-01-14T00:00:00.000Z","items":[{"productId":"9aa16a61-c832-4bd9-8803-b7e50c93544d","productName":"Women Silk Scarf","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","doItemId":"42e18f66-3f7a-4f1d-8edd-242aff347e3c","soItemId":"d22257c7-d2b0-4273-929d-6cdb4cef8274","qtyAvailable":"100","qty":"100","rate":700,"total":70000}],"doId":"af6a28e0-7b34-481d-8b7b-7479cfdce2cd"}
+

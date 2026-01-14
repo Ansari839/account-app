@@ -41,7 +41,9 @@ async function main() {
                 OR: [
                     { name: { contains: 'Cash', mode: 'insensitive' } },
                     { name: { contains: 'Bank', mode: 'insensitive' } },
-                    { name: { contains: 'Hand', mode: 'insensitive' } }
+                    { name: { contains: 'Hand', mode: 'insensitive' } },
+                    { name: { contains: 'Customer', mode: 'insensitive' } }, // Catch 'ABC Customer'
+                    { id: '7e4fdc05-af6d-4e07-95a2-479d020b4240' }          // Specifically target the failing one
                 ]
             }
         });
