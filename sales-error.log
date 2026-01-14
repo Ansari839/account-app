@@ -1,0 +1,28 @@
+[2026-01-14T18:51:49.952Z] Error in createSalesInvoice: Customer not found.
+Stack: Error: Customer not found.
+    at /home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:945:38
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Proxy._transactionWithCallback (/home/abdullah/Next-js/account-app/node_modules/@prisma/client/runtime/client.js:75:4390)
+    at async SalesService.createSalesInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:911:20)
+    at async SalesController.createInvoice (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__b87e44c6._.js:1544:29)
+    at async AppRouteRouteModule.do (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (/home/abdullah/Next-js/account-app/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (/home/abdullah/Next-js/account-app/.next/dev/server/chunks/[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1422:9)
+    at async DevServer.renderPageComponent (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1524:32)
+    at async DevServer.pipeImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/next-server.js:395:17)
+    at async DevServer.handleRequestImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/base-server.js:909:17)
+    at async /home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:387:20
+    at async Span.traceAsyncFn (/home/abdullah/Next-js/account-app/node_modules/next/dist/trace/trace.js:157:20)
+    at async DevServer.handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/dev/next-dev-server.js:383:24)
+    at async invokeRender (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:248:21)
+    at async handleRequest (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:447:24)
+    at async requestHandlerImpl (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/router-server.js:496:13)
+    at async Server.requestListener (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/start-server.js:226:13)
+Data: {"sourceType":"DIRECT","sourceId":"","customerId":"7e4fdc05-af6d-4e07-95a2-479d020b4240","warehouseId":"6ac0a987-c1c9-40ee-99d9-c7c459173aa4","date":"2026-01-14T00:00:00.000Z","items":[{"productId":"9aa16a61-c832-4bd9-8803-b7e50c93544d","productName":"Women Silk Scarf","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","qty":100,"rate":600,"total":60000},{"productId":"fbc26d6d-765f-4fde-a335-5684d6404572","productName":"Men T-Shirt (White)","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","qty":100,"rate":1000,"total":100000}],"doId":null}
+

@@ -2,6 +2,8 @@ import prisma from "@/lib/prisma";
 import { JournalService } from "./journal.service";
 import { GlobalSettingsService } from "./settings.service";
 import { SalesQuotation, SalesOrder, DeliveryOrder, SalesInvoice } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface SalesQuotationInput {
     quoteNo: string;
@@ -72,18 +74,27 @@ export class SalesService {
     /**
      * Resolves customer from ID or Account ID
      */
+    /**
+     * Resolves customer from ID or Account ID
+     */
+    /**
+     * Resolves customer from ID or Account ID
+     */
     private static async resolveCustomer(tx: any, customerId: string) {
+        // 1. Try finding by Customer ID
         let customer = await tx.customer.findUnique({
             where: { id: customerId },
             include: { receivableAccount: true }
         });
 
-        if (!customer) {
-            customer = await tx.customer.findFirst({
-                where: { receivableAccountId: customerId },
-                include: { receivableAccount: true }
-            });
-        }
+        if (customer) return customer;
+
+        // 2. Try finding by Linked Receivable Account
+        customer = await tx.customer.findFirst({
+            where: { receivableAccountId: customerId },
+            include: { receivableAccount: true }
+        });
+
         return customer;
     }
 
@@ -235,181 +246,188 @@ export class SalesService {
             throw new Error("Warehouse is required for Direct Sales Invoices to update inventory.");
         }
 
-        // Validate stock if no DO is used
         if (!data.doId && data.warehouseId) {
             const { StockService } = await import("./stock.service");
             await StockService.validateStockAvailability(data.warehouseId, data.items);
         }
 
-        return await prisma.$transaction(async (tx) => {
-            // 2. Calculate Totals and Tax
-            let subtotal = 0;
-            let totalTax = 0;
-            const invoiceItemsData = [];
+        try {
+            return await prisma.$transaction(async (tx) => {
+                // 2. Calculate Totals and Tax
+                let subtotal = 0;
+                let totalTax = 0;
+                const invoiceItemsData = [];
 
-            for (const item of data.items) {
-                const total = item.qty * item.rate;
-                subtotal += total;
-
-                let taxAmount = 0;
-                if (item.taxCodeId) {
-                    const taxCode = await tx.taxCode.findUnique({ where: { id: item.taxCodeId } });
-                    if (taxCode) {
-                        taxAmount = (total * Number(taxCode.rate)) / 100;
-                        totalTax += taxAmount;
-                    }
-                }
-
-                invoiceItemsData.push({
-                    productId: item.productId,
-                    variantId: item.variantId || null,
-                    unitId: item.unitId || null,
-                    qty: item.qty,
-                    rate: item.rate,
-                    taxCodeId: item.taxCodeId,
-                    taxAmount: taxAmount,
-                    total: total + taxAmount
-                });
-            }
-
-            const totalAmount = subtotal + totalTax;
-
-            // Fetch customer carefully
-            const customer = await this.resolveCustomer(tx, data.customerId);
-            if (!customer) throw new Error("Customer not found.");
-
-            // 3. Create Sales Invoice
-            const invoice = await tx.salesInvoice.create({
-                data: {
-                    invoiceNo: data.invoiceNo,
-                    customerId: customer.id,
-                    warehouseId: data.warehouseId,
-                    date: data.date,
-                    dueDate: data.dueDate ? new Date(data.dueDate) : null,
-                    doId: data.doId || null,
-                    totalAmount: totalAmount,
-                    taxAmount: totalTax,
-                    items: {
-                        create: invoiceItemsData
-                    }
-                },
-                include: { items: { include: { product: true, taxCode: true } }, customer: true }
-            });
-
-            // 4. Update Stock Ledger (If no DO)
-            if (!data.doId && data.warehouseId) {
                 for (const item of data.items) {
-                    await tx.stockLedger.create({
-                        data: {
-                            productId: item.productId,
-                            variantId: item.variantId || null,
-                            warehouseId: data.warehouseId,
-                            date: data.date,
-                            qtyOut: item.qty,
-                            qtyIn: 0,
-                            refType: "SALES_INVOICE",
-                            refId: invoice.id
+                    const total = item.qty * item.rate;
+                    subtotal += total;
+
+                    let taxAmount = 0;
+                    if (item.taxCodeId) {
+                        const taxCode = await tx.taxCode.findUnique({ where: { id: item.taxCodeId } });
+                        if (taxCode) {
+                            taxAmount = (total * Number(taxCode.rate)) / 100;
+                            totalTax += taxAmount;
                         }
-                    });
-                }
-            }
+                    }
 
-            // 5. Generate Automated Journal Entry (5 Lines)
-            const jvLines = [];
-
-            // 1. AR Debit
-            jvLines.push({
-                accountId: invoice.customer.receivableAccountId!,
-                debit: totalAmount,
-                credit: 0,
-                narration: `Sales Invoice ${invoice.invoiceNo}`
-            });
-
-            // Iterate items for Revenue, Tax, and COGS/Inventory
-            for (const item of invoice.items) {
-                // 2. Revenue Credit
-                jvLines.push({
-                    accountId: item.product.salesAccountId!,
-                    debit: 0,
-                    credit: Number(item.qty) * Number(item.rate),
-                    narration: `Revenue for ${item.product.name}`
-                });
-
-                // 3. Tax Credit
-                if (item.taxCodeId && item.taxCode?.accountId) {
-                    jvLines.push({
-                        accountId: item.taxCode.accountId,
-                        debit: 0,
-                        credit: Number(item.taxAmount),
-                        narration: `Tax on ${item.product.name}`
-                    });
-                }
-
-                // 4 & 5. COGS / Inventory
-                const lastPurchase = await tx.purchaseInvoiceItem.findFirst({
-                    where: {
+                    invoiceItemsData.push({
                         productId: item.productId,
-                        // @ts-ignore
-                        variantId: item.variantId ? { equals: item.variantId } : null
+                        variantId: item.variantId || null,
+                        unitId: item.unitId || null,
+                        qty: item.qty,
+                        rate: item.rate,
+                        taxCodeId: item.taxCodeId,
+                        taxAmount: taxAmount,
+                        total: total + taxAmount
+                    });
+                }
+
+                const totalAmount = subtotal + totalTax;
+
+                // Fetch customer carefully
+                const customer = await this.resolveCustomer(tx, data.customerId);
+                if (!customer) throw new Error("Customer not found.");
+                if (!customer.receivableAccountId) throw new Error("Customer has no linked Receivable Account.");
+
+                // 3. Create Sales Invoice
+                const invoice = await tx.salesInvoice.create({
+                    data: {
+                        invoiceNo: data.invoiceNo,
+                        customerId: customer.id,
+                        warehouseId: data.warehouseId,
+                        date: data.date,
+                        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+                        doId: data.doId || null,
+                        totalAmount: totalAmount,
+                        taxAmount: totalTax,
+                        items: {
+                            create: invoiceItemsData
+                        }
                     },
-                    orderBy: { invoice: { date: 'desc' } }
+                    include: { items: { include: { product: true, taxCode: true } }, customer: true }
                 });
 
-                let costRate = lastPurchase ? Number(lastPurchase.rate) : 0;
+                // 4. Update Stock Ledger (If no DO)
+                if (!data.doId && data.warehouseId) {
+                    for (const item of data.items) {
+                        await tx.stockLedger.create({
+                            data: {
+                                productId: item.productId,
+                                variantId: item.variantId || null,
+                                warehouseId: data.warehouseId,
+                                date: data.date,
+                                qtyOut: item.qty,
+                                qtyIn: 0,
+                                refType: "SALES_INVOICE",
+                                refId: invoice.id
+                            }
+                        });
+                    }
+                }
 
-                // Fallback: If no purchase history (e.g., Opening Stock or Cleaned Data), checks Stock Ledger
-                if (costRate === 0) {
-                    const lastStockEntry = await tx.stockLedger.findFirst({
+                // 5. Generate Automated Journal Entry (5 Lines)
+                const jvLines = [];
+
+                // 1. AR Debit
+                jvLines.push({
+                    accountId: invoice.customer.receivableAccountId!,
+                    debit: totalAmount,
+                    credit: 0,
+                    narration: `Sales Invoice ${invoice.invoiceNo}`
+                });
+
+                // Iterate items for Revenue, Tax, and COGS/Inventory
+                for (const item of invoice.items) {
+                    // 2. Revenue Credit
+                    jvLines.push({
+                        accountId: item.product.salesAccountId!,
+                        debit: 0,
+                        credit: Number(item.qty) * Number(item.rate),
+                        narration: `Revenue for ${item.product.name}`
+                    });
+
+                    // 3. Tax Credit
+                    if (item.taxCodeId && item.taxCode?.accountId) {
+                        jvLines.push({
+                            accountId: item.taxCode.accountId,
+                            debit: 0,
+                            credit: Number(item.taxAmount),
+                            narration: `Tax on ${item.product.name}`
+                        });
+                    }
+
+                    // 4 & 5. COGS / Inventory
+                    const lastPurchase = await tx.purchaseInvoiceItem.findFirst({
                         where: {
                             productId: item.productId,
                             // @ts-ignore
-                            variantId: item.variantId ? { equals: item.variantId } : null,
-                            qtyIn: { gt: 0 },
-                            costRate: { gt: 0 }
+                            variantId: item.variantId ? { equals: item.variantId } : null
                         },
-                        orderBy: { date: 'desc' }
+                        orderBy: { invoice: { date: 'desc' } }
                     });
-                    if (lastStockEntry) {
-                        costRate = Number(lastStockEntry.costRate);
+
+                    let costRate = lastPurchase ? Number(lastPurchase.rate) : 0;
+
+                    // Fallback: If no purchase history (e.g., Opening Stock or Cleaned Data), checks Stock Ledger
+                    if (costRate === 0) {
+                        const lastStockEntry = await tx.stockLedger.findFirst({
+                            where: {
+                                productId: item.productId,
+                                // @ts-ignore
+                                variantId: item.variantId ? { equals: item.variantId } : null,
+                                qtyIn: { gt: 0 },
+                                costRate: { gt: 0 }
+                            },
+                            orderBy: { date: 'desc' }
+                        });
+                        if (lastStockEntry) {
+                            costRate = Number(lastStockEntry.costRate);
+                        }
+                    }
+
+                    const costAmount = Number(item.qty) * costRate;
+
+                    if (costAmount > 0) {
+                        jvLines.push({
+                            accountId: item.product.cogsAccountId!,
+                            debit: costAmount,
+                            credit: 0,
+                            narration: `COGS for ${item.product.name}`
+                        });
+
+                        jvLines.push({
+                            accountId: item.product.inventoryAccountId!,
+                            debit: 0,
+                            credit: costAmount,
+                            narration: `Stock out for ${item.product.name}`
+                        });
                     }
                 }
 
-                const costAmount = Number(item.qty) * costRate;
+                const journalEntry = await JournalService.createEntry({
+                    number: `SALV-${Date.now()}`,
+                    date: data.date,
+                    type: "SALES" as any,
+                    reference: invoice.invoiceNo,
+                    narration: `Automated JV for Sales Invoice ${invoice.invoiceNo}`,
+                    lines: jvLines
+                }, tx);
 
-                if (costAmount > 0) {
-                    jvLines.push({
-                        accountId: item.product.cogsAccountId!,
-                        debit: costAmount,
-                        credit: 0,
-                        narration: `COGS for ${item.product.name}`
-                    });
+                // Link Invoice to JV
+                await tx.salesInvoice.update({
+                    where: { id: invoice.id },
+                    data: { journalEntryId: journalEntry.id }
+                });
 
-                    jvLines.push({
-                        accountId: item.product.inventoryAccountId!,
-                        debit: 0,
-                        credit: costAmount,
-                        narration: `Stock out for ${item.product.name}`
-                    });
-                }
-            }
-
-            const journalEntry = await JournalService.createEntry({
-                number: `SALV-${Date.now()}`,
-                date: data.date,
-                type: "SALES" as any,
-                reference: invoice.invoiceNo,
-                narration: `Automated JV for Sales Invoice ${invoice.invoiceNo}`,
-                lines: jvLines
-            }, tx);
-
-            // Link Invoice to JV
-            await tx.salesInvoice.update({
-                where: { id: invoice.id },
-                data: { journalEntryId: journalEntry.id }
+                return { ...invoice, journalEntryId: journalEntry.id };
             });
-
-            return { ...invoice, journalEntryId: journalEntry.id };
-        });
+        } catch (error: any) {
+            const logPath = path.join(process.cwd(), 'sales-error.log');
+            const logEntry = `[${new Date().toISOString()}] Error in createSalesInvoice: ${error.message}\nStack: ${error.stack}\nData: ${JSON.stringify(data)}\n\n`;
+            fs.appendFileSync(logPath, logEntry);
+            throw error;
+        }
     }
 
     /**

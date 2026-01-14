@@ -633,23 +633,47 @@ export class PurchaseController {
                 });
 
                 if (!supplier) {
-                    const lastSupplier = await prisma.supplier.findFirst({
-                        where: { code: { startsWith: 'SUP-' } },
-                        orderBy: { code: 'desc' }
+                    // Try to find generic supplier first to avoid creating duplicates
+                    supplier = await prisma.supplier.findFirst({
+                        where: { name: account.name, currencyCode: 'PKR' }
                     });
-                    let nextSupSeq = 1;
-                    if (lastSupplier) {
-                        const lastNum = parseInt(lastSupplier.code.split('-')[1]);
-                        if (!isNaN(lastNum)) nextSupSeq = lastNum + 1;
-                    }
-                    supplier = await prisma.supplier.create({
-                        data: {
-                            code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
-                            name: account.name,
-                            currencyCode: 'PKR',
-                            payableAccountId: account.id
+
+                    if (!supplier) {
+                        try {
+                            const lastSupplier = await prisma.supplier.findFirst({
+                                where: { code: { startsWith: 'SUP-' } },
+                                orderBy: { code: 'desc' }
+                            });
+                            let nextSupSeq = 1;
+                            if (lastSupplier) {
+                                const lastNum = parseInt(lastSupplier.code.split('-')[1]);
+                                if (!isNaN(lastNum)) nextSupSeq = lastNum + 1;
+                            }
+
+                            // Use upsert-like logic or randomized code on fail
+                            supplier = await prisma.supplier.create({
+                                data: {
+                                    code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
+                                    name: account.name,
+                                    currencyCode: 'PKR',
+                                    payableAccountId: account.id
+                                }
+                            });
+                        } catch (e) {
+                            // Fallback with random code
+                            supplier = await prisma.supplier.create({
+                                data: {
+                                    code: `SUP-${Date.now()}`,
+                                    name: account.name,
+                                    currencyCode: 'PKR',
+                                    payableAccountId: account.id
+                                }
+                            });
                         }
-                    });
+                    } else if (!supplier.payableAccountId) {
+                        // Update existing generic supplier to link to this account? 
+                        // No, better not touch existing if it has different link. But here we assume it matches name.
+                    }
                 }
                 supplierId = supplier.id;
             }

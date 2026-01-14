@@ -752,4 +752,111 @@ export class ReportService {
             orderBy: { date: 'asc' }
         });
     }
+
+    /**
+     * Trading Account (Gross Profit)
+     */
+    static async getTradingAccount(companyId: string, startDate: Date, endDate: Date) {
+        // 1. Opening Stock (Value at startDate)
+        const calculateStockValue = async (date: Date) => {
+            const entries = await prisma.stockLedger.findMany({
+                where: {
+                    warehouse: { companyId },
+                    date: { lt: date }
+                }
+            });
+
+            const stockMap = new Map<string, { qty: number, value: number }>();
+
+            for (const entry of entries) {
+                const key = `${entry.productId}-${entry.variantId || 'null'}`;
+                const curr = stockMap.get(key) || { qty: 0, value: 0 };
+
+                const qtyIn = entry.qtyIn?.toNumber() || 0;
+                const qtyOut = entry.qtyOut?.toNumber() || 0;
+                const rate = entry.costRate?.toNumber() || 0;
+
+                curr.value += (qtyIn * rate) - (qtyOut * rate);
+                curr.qty += (qtyIn - qtyOut);
+                stockMap.set(key, curr);
+            }
+
+            let totalValue = 0;
+            for (const val of stockMap.values()) {
+                totalValue += val.value;
+            }
+            return totalValue;
+        };
+
+        const openingStock = await calculateStockValue(startDate);
+        const closingStock = await calculateStockValue(endDate);
+
+        // 2. Purchases (Direct Expenses)
+        const expenseAccounts = await prisma.account.findMany({
+            where: {
+                companyId,
+                type: AccountType.EXPENSE,
+                isPosting: true
+            }
+        });
+
+        const directExpenseAccounts = expenseAccounts.filter(a =>
+            a.name.toLowerCase().includes('purchase') ||
+            a.name.toLowerCase().includes('cost of goods') ||
+            a.name.toLowerCase().includes('cogs') ||
+            a.name.toLowerCase().includes('freight') ||
+            a.name.toLowerCase().includes('wages') ||
+            a.name.toLowerCase().includes('custom')
+        );
+        const directAccountIds = directExpenseAccounts.map(a => a.id);
+
+        const purchaseLines = await prisma.journalLine.aggregate({
+            where: {
+                accountId: { in: directAccountIds },
+                entry: { date: { gte: startDate, lte: endDate }, status: true }
+            },
+            _sum: { debit: true, credit: true }
+        });
+
+        const purchasesTotal = (purchaseLines._sum.debit?.toNumber() || 0) - (purchaseLines._sum.credit?.toNumber() || 0);
+
+        // 3. Sales (Revenue)
+        const incomeAccounts = await prisma.account.findMany({
+            where: { companyId, type: AccountType.INCOME, isPosting: true }
+        });
+        const incomeAccountIds = incomeAccounts.map(a => a.id);
+
+        const salesLines = await prisma.journalLine.aggregate({
+            where: {
+                accountId: { in: incomeAccountIds },
+                entry: { date: { gte: startDate, lte: endDate }, status: true }
+            },
+            _sum: { debit: true, credit: true }
+        });
+
+        const salesTotal = (salesLines._sum.credit?.toNumber() || 0) - (salesLines._sum.debit?.toNumber() || 0);
+
+        // 4. Structure Result
+        const debitSide = [
+            { name: "Opening Stock", amount: openingStock },
+            { name: "Purchases & Direct Expenses", amount: purchasesTotal }
+        ];
+
+        const creditSide = [
+            { name: "Sales / Revenue", amount: salesTotal },
+            { name: "Closing Stock", amount: closingStock }
+        ];
+
+        const totalDebits = openingStock + purchasesTotal;
+        const totalCredits = salesTotal + closingStock;
+        const grossProfit = totalCredits - totalDebits;
+
+        return {
+            debitSide,
+            creditSide,
+            totalDebits,
+            totalCredits,
+            grossProfit
+        };
+    }
 }
