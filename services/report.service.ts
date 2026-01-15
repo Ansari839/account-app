@@ -761,7 +761,6 @@ export class ReportService {
         const calculateStockValue = async (date: Date) => {
             const entries = await prisma.stockLedger.findMany({
                 where: {
-                    warehouse: { companyId },
                     date: { lt: date }
                 }
             });
