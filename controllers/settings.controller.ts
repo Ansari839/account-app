@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from "@/lib/prisma";
 import { AuthUtils } from '@/lib/auth-utils';
-import { GlobalSettingsService } from '../services/settings.service';
+import { CompanySettingsService } from '../services/settings.service';
 
 async function getAuthUser(req: Request) {
     const token = req.headers.get('Authorization')?.split(' ')[1];
@@ -10,26 +10,27 @@ async function getAuthUser(req: Request) {
 }
 
 export class SettingsController {
-    // --- Global Settings (Feature Toggles) ---
+    // --- Company Settings (Feature Toggles) ---
 
-    static async getGlobalSettings(req: Request) {
+    static async getCompanySettings(req: Request) {
         try {
-            // In a real app, maybe restrict to Admin
-            const settings = await GlobalSettingsService.listAll();
+            const companyId = req.headers.get('x-company-id');
+            if (!companyId) return NextResponse.json({ success: false, error: "Company not selected" }, { status: 400 });
+
+            const settings = await CompanySettingsService.listAll(companyId);
             return NextResponse.json({ success: true, data: settings });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         }
     }
 
-    static async updateGlobalSettings(req: Request) {
+    static async updateCompanySettings(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            // Verify Admin role here if needed
+            const companyId = req.headers.get('x-company-id');
+            if (!companyId) return NextResponse.json({ success: false, error: "Company not selected" }, { status: 400 });
 
             const body = await req.json();
-            // Body expected: { "SETTING_KEY": "value", ... }
-            await GlobalSettingsService.updateMany(body);
+            await CompanySettingsService.updateMany(companyId, body);
             return NextResponse.json({ success: true });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -40,10 +41,10 @@ export class SettingsController {
 
     static async getCompanyProfile(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const companyId = req.headers.get('x-company-id');
+            if (!companyId) return NextResponse.json({ success: false, error: "Company not selected" }, { status: 400 });
 
-            const company = await prisma.company.findUnique({ where: { id: user.companyId } });
+            const company = await prisma.company.findUnique({ where: { id: companyId } });
             return NextResponse.json({ success: true, data: company });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -52,12 +53,12 @@ export class SettingsController {
 
     static async updateCompanyProfile(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const companyId = req.headers.get('x-company-id');
+            if (!companyId) return NextResponse.json({ success: false, error: "Company not selected" }, { status: 400 });
 
             const body = await req.json();
             const company = await prisma.company.update({
-                where: { id: user.companyId },
+                where: { id: companyId },
                 data: {
                     name: body.name,
                     address: body.address,

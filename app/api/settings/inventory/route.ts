@@ -14,12 +14,12 @@ export async function GET(req: Request) {
         const user = await getAuthUser(req);
         if (!user) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
-        // Retrieve settings from GlobalSetting or similar
-        // For now, we will use a workaround if GlobalSetting is not heavily used yet
-        // Let's assume we store them in GlobalSetting table
+        const companyId = req.headers.get('x-company-id');
+        if (!companyId) return NextResponse.json({ success: false, error: "Company not selected" }, { status: 400 });
 
-        const settings = await prisma.globalSetting.findMany({
+        const settings = await prisma.companySetting.findMany({
             where: {
+                companyId,
                 key: { in: ['INVENTORY_GRN_MANDATORY', 'INVENTORY_DO_MANDATORY'] }
             }
         });
@@ -39,19 +39,22 @@ export async function POST(req: Request) {
         const user = await getAuthUser(req);
         if (!user) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
+        const companyId = req.headers.get('x-company-id');
+        if (!companyId) return NextResponse.json({ success: false, error: "Company not selected" }, { status: 400 });
+
         const body = await req.json();
         const { INVENTORY_GRN_MANDATORY, INVENTORY_DO_MANDATORY } = body;
 
-        // Upsert settings
-        await prisma.globalSetting.upsert({
-            where: { key: 'INVENTORY_GRN_MANDATORY' },
-            create: { key: 'INVENTORY_GRN_MANDATORY', value: String(INVENTORY_GRN_MANDATORY), type: 'BOOLEAN', group: 'INVENTORY' },
+        // Upsert settings per company
+        await prisma.companySetting.upsert({
+            where: { companyId_key: { companyId, key: 'INVENTORY_GRN_MANDATORY' } },
+            create: { companyId, key: 'INVENTORY_GRN_MANDATORY', value: String(INVENTORY_GRN_MANDATORY), type: 'BOOLEAN', group: 'INVENTORY' },
             update: { value: String(INVENTORY_GRN_MANDATORY) }
         });
 
-        await prisma.globalSetting.upsert({
-            where: { key: 'INVENTORY_DO_MANDATORY' },
-            create: { key: 'INVENTORY_DO_MANDATORY', value: String(INVENTORY_DO_MANDATORY), type: 'BOOLEAN', group: 'INVENTORY' },
+        await prisma.companySetting.upsert({
+            where: { companyId_key: { companyId, key: 'INVENTORY_DO_MANDATORY' } },
+            create: { companyId, key: 'INVENTORY_DO_MANDATORY', value: String(INVENTORY_DO_MANDATORY), type: 'BOOLEAN', group: 'INVENTORY' },
             update: { value: String(INVENTORY_DO_MANDATORY) }
         });
 

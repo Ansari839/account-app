@@ -3,7 +3,7 @@ import { FinancialYearService } from "../services/financial-year.service";
 import { JournalService } from "../services/journal.service";
 import { AccountService } from "../services/account.service";
 import { ReportService } from "../services/report.service";
-import { GlobalSettingsService } from "../services/settings.service";
+import { CompanySettingsService } from "../services/settings.service";
 import { AccountType, VoucherType } from "@prisma/client";
 import prisma from "../lib/prisma";
 
@@ -17,7 +17,7 @@ async function runTest() {
         await prisma.financialYear.deleteMany({});
         await prisma.voucherSequence.deleteMany({});
         await prisma.account.deleteMany({});
-        await prisma.globalSetting.deleteMany({});
+        await prisma.companySetting.deleteMany({});
 
         // 1. Setup FY
         const fy = await FinancialYearService.createYear({
@@ -67,8 +67,8 @@ async function runTest() {
 
         // 6. Test Date Lock Control
         console.log("--- Testing Date Lock Control ---");
-        await prisma.globalSetting.create({
-            data: { key: "FINANCE_LOCK_DATE", value: "2024-04-30", type: "STRING" }
+        await prisma.companySetting.create({
+            data: { companyId: company.id, key: "FINANCE_LOCK_DATE", value: "2024-04-30", type: "STRING" }
         });
 
         // This should pass (May 1st > April 30th)

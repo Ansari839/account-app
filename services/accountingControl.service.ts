@@ -1,12 +1,12 @@
 import prisma from "@/lib/prisma";
-import { GlobalSettingsService } from "./settings.service";
+import { CompanySettingsService } from "./settings.service";
 
 export class AccountingControlService {
     /**
      * Check if a specific date is locked for transactions
      */
-    static async isDateLocked(date: Date) {
-        const lockDateStr = await GlobalSettingsService.get("FINANCE_LOCK_DATE");
+    static async isDateLocked(companyId: string, date: Date) {
+        const lockDateStr = await CompanySettingsService.get(companyId, "FINANCE_LOCK_DATE");
         if (!lockDateStr) return false;
 
         const lockDate = new Date(lockDateStr);
@@ -16,8 +16,8 @@ export class AccountingControlService {
     /**
      * Check if a voucher can be edited based on its creation time
      */
-    static async isEditWindowOpen(createdAt: Date) {
-        const windowHours = parseInt(await GlobalSettingsService.get("VOUCHER_EDIT_WINDOW_HOURS") || "24");
+    static async isEditWindowOpen(companyId: string, createdAt: Date) {
+        const windowHours = parseInt(await CompanySettingsService.get(companyId, "VOUCHER_EDIT_WINDOW_HOURS") || "24");
         const now = new Date();
         const diffHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
 
@@ -27,16 +27,16 @@ export class AccountingControlService {
     /**
      * Validate a transaction against all controls
      */
-    static async validateTransaction(date: Date, voucherId?: string) {
+    static async validateTransaction(companyId: string, date: Date, voucherId?: string) {
         // 1. Check Date Lock
-        if (await this.isDateLocked(date)) {
+        if (await this.isDateLocked(companyId, date)) {
             throw new Error(`Transaction date ${date.toDateString()} is within a locked period.`);
         }
 
         // 2. Check Edit Window if it's an update
         if (voucherId) {
             const voucher = await prisma.journalEntry.findUnique({ where: { id: voucherId } });
-            if (voucher && !(await this.isEditWindowOpen(voucher.createdAt))) {
+            if (voucher && !(await this.isEditWindowOpen(companyId, voucher.createdAt))) {
                 throw new Error("Voucher edit window has closed.");
             }
         }

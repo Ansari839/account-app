@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { JournalService } from "./journal.service";
-import { GlobalSettingsService } from "./settings.service";
+import { CompanySettingsService } from "./settings.service";
 import { SalesQuotation, SalesOrder, DeliveryOrder, SalesInvoice } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -272,8 +272,11 @@ export class SalesService {
      * Creates a Sales Invoice, updates Stock (if no DO), and generates Auto JV
      * Mirrors PurchaseService.createPurchaseInvoice exactly.
      */
-    static async createSalesInvoice(data: SalesInvoiceInput) {
-        const isDOMandatory = await GlobalSettingsService.getBoolean('DO_MANDATORY', false);
+    static async createSalesInvoice(data: SalesInvoiceInput & { companyId?: string }) {
+        // TODO: Phase 3 - companyId will be passed from controller
+        const isDOMandatory = data.companyId
+            ? await CompanySettingsService.getBoolean(data.companyId, 'DO_MANDATORY', false)
+            : false;
         if (isDOMandatory && !data.doId) {
             throw new Error("Delivery Order is mandatory for Sales Invoicing.");
         }

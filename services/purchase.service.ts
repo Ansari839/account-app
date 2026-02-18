@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { JournalService } from "./journal.service";
-import { GlobalSettingsService } from "./settings.service";
+import { CompanySettingsService } from "./settings.service";
 import { PurchaseOrder, GRN, PurchaseInvoice } from '@prisma/client';
 
 export interface PurchaseRequestInput {
@@ -209,8 +209,11 @@ export class PurchaseService {
     /**
      * Creates a Purchase Invoice, updates Stock (if no GRN), and generates Auto JV
      */
-    static async createPurchaseInvoice(data: InvoiceInput) {
-        const isGrnMandatory = await GlobalSettingsService.getBoolean("GRN_MANDATORY", false);
+    static async createPurchaseInvoice(data: InvoiceInput & { companyId?: string }) {
+        // TODO: Phase 3 - companyId will be passed from controller
+        const isGrnMandatory = data.companyId
+            ? await CompanySettingsService.getBoolean(data.companyId, "GRN_MANDATORY", false)
+            : false;
         if (isGrnMandatory && !data.grnId) {
             throw new Error("GRN is mandatory for purchase invoices according to system settings.");
         }

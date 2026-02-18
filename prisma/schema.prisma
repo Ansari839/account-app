@@ -6,6 +6,10 @@ datasource db {
   provider = "postgresql"
 }
 
+// ============================================================
+// COMPANY & USER MANAGEMENT
+// ============================================================
+
 model Company {
   id           String        @id @default(uuid())
   name         String
@@ -17,107 +21,90 @@ model Company {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   deletedAt    DateTime?
-  accounts     Account[]
-  transactions Transaction[]
-  users        User[]
+  // Relations
+  accounts         Account[]
+  transactions     Transaction[]
+  users            User[]
+  userCompanies    UserCompany[]
+  products         Product[]
+  categories       Category[]
+  customers        Customer[]
+  suppliers        Supplier[]
+  warehouses       Warehouse[]
+  units            Unit[]
+  currencies       Currency[]
+  unitConversions  UnitConversion[]
+  taxCodes         TaxCode[]
+  financialYears   FinancialYear[]
+  journalEntries   JournalEntry[]
+  stockLedgers     StockLedger[]
+  voucherSequences VoucherSequence[]
+  companySettings  CompanySetting[]
+  auditLogs        AuditLog[]
+  purchaseOrders   PurchaseOrder[]
+  purchaseReturns  PurchaseReturn[]
+  grns             GRN[]
+  purchaseInvoices PurchaseInvoice[]
+  purchaseRequests PurchaseRequest[]
+  salesQuotations  SalesQuotation[]
+  salesOrders      SalesOrder[]
+  deliveryOrders   DeliveryOrder[]
+  salesInvoices    SalesInvoice[]
+  salesReturns     SalesReturn[]
+  roles            Role[]
 }
 
-model FinancialYear {
-  id             String         @id @default(uuid())
-  name           String         @unique
-  startDate      DateTime
-  endDate        DateTime
-  isOpen         Boolean        @default(false)
-  openKeyHash    String?
-  lockedAt       DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  deletedAt      DateTime?
-  journalEntries JournalEntry[]
-}
+model UserCompany {
+  id        String   @id @default(uuid())
+  userId    String
+  companyId String
+  role      String   @default("USER")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id])
 
-model Currency {
-  id        String     @id @default(uuid())
-  code      String     @unique
-  name      String
-  symbol    String
-  rate      Decimal    @default(1.0)
-  isBase    Boolean    @default(false)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  deletedAt DateTime?
-  customers Customer[]
-  suppliers Supplier[]
-}
-
-model Unit {
-  id              String           @id @default(uuid())
-  name            String
-  code            String           @unique
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  deletedAt       DateTime?
-  products        Product[]
-  conversionsFrom UnitConversion[] @relation("FromUnit")
-  conversionsTo   UnitConversion[] @relation("ToUnit")
-  poItems         PurchaseOrderItem[]
-  grnItems        GRNItem[]
-  invoiceItems    PurchaseInvoiceItem[]
-  returnItems     PurchaseReturnItem[]
-  salesQuoteItems SalesQuotationItem[]
-  salesOrderItems SalesOrderItem[]
-  doItems         DeliveryOrderItem[]
-  salesInvItems   SalesInvoiceItem[]
-  salesRetItems   SalesReturnItem[]
-}
-
-model TaxCode {
-  id                   String                @id @default(uuid())
-  name                 String
-  code                 String                @unique
-  rate                 Decimal               @default(0.0)
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  deletedAt            DateTime?
-  accountId            String?
-  products             Product[]
-  purchaseInvoiceItems PurchaseInvoiceItem[]
-  purchaseOrderItems   PurchaseOrderItem[]
-  purchaseReturnItems  PurchaseReturnItem[]
-  salesInvoiceItems    SalesInvoiceItem[]
-  salesOrderItems      SalesOrderItem[]
-  salesQuotationItems  SalesQuotationItem[]
-  salesReturnItems     SalesReturnItem[]
-  account              Account?              @relation("TaxAccount", fields: [accountId], references: [id])
+  @@unique([userId, companyId])
 }
 
 model User {
-  id             String     @id @default(uuid())
-  email          String     @unique
-  createdAt      DateTime   @default(now())
+  id             String        @id @default(uuid())
+  email          String        @unique
+  createdAt      DateTime      @default(now())
   deletedAt      DateTime?
   fullName       String?
-  isActive       Boolean    @default(true)
+  isActive       Boolean       @default(true)
+  isSuperAdmin   Boolean       @default(false)
   lastLoginAt    DateTime?
-  mustChangePass Boolean    @default(true)
+  mustChangePass Boolean       @default(true)
   passwordHash   String
   phone          String?
-  updatedAt      DateTime   @updatedAt
+  updatedAt      DateTime      @updatedAt
   companyId      String?
   auditLogs      AuditLog[]
-  company        Company?   @relation(fields: [companyId], references: [id])
+  company        Company?      @relation(fields: [companyId], references: [id])
   roles          UserRole[]
+  companies      UserCompany[]
 }
+
+// ============================================================
+// RBAC (Per Company)
+// ============================================================
 
 model Role {
   id          String           @id @default(uuid())
-  name        String           @unique
+  name        String
   description String?
+  companyId   String?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   deletedAt   DateTime?
+  company     Company?         @relation(fields: [companyId], references: [id])
   permissions RolePermission[]
   users       UserRole[]
+
+  @@unique([companyId, name])
 }
 
 model UserRole {
@@ -164,19 +151,28 @@ model UserRoleLimit {
   updatedAt  DateTime @updatedAt
 }
 
-model GlobalSetting {
+// ============================================================
+// SETTINGS & CONFIG (Per Company)
+// ============================================================
+
+model CompanySetting {
   id        String   @id @default(uuid())
-  key       String   @unique
+  companyId String
+  key       String
   value     String
   type      String
   group     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, key])
 }
 
 model AuditLog {
   id          String   @id @default(uuid())
   userId      String?
+  companyId   String?
   action      String
   module      String
   entityId    String?
@@ -186,7 +182,118 @@ model AuditLog {
   userAgent   String?
   createdAt   DateTime @default(now())
   user        User?    @relation(fields: [userId], references: [id])
+  company     Company? @relation(fields: [companyId], references: [id])
 }
+
+// ============================================================
+// FINANCIAL YEAR (Per Company)
+// ============================================================
+
+model FinancialYear {
+  id             String         @id @default(uuid())
+  name           String
+  startDate      DateTime
+  endDate        DateTime
+  isOpen         Boolean        @default(false)
+  openKeyHash    String?
+  lockedAt       DateTime?
+  companyId      String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+  company        Company        @relation(fields: [companyId], references: [id])
+  journalEntries JournalEntry[]
+
+  @@unique([companyId, name])
+}
+
+// ============================================================
+// MASTER DATA (Per Company)
+// ============================================================
+
+model Currency {
+  id        String     @id @default(uuid())
+  code      String
+  name      String
+  symbol    String
+  rate      Decimal    @default(1.0)
+  isBase    Boolean    @default(false)
+  companyId String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+  company   Company    @relation(fields: [companyId], references: [id])
+  customers Customer[]
+  suppliers Supplier[]
+
+  @@unique([companyId, code])
+}
+
+model Unit {
+  id              String           @id @default(uuid())
+  name            String
+  code            String
+  companyId       String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
+  company         Company          @relation(fields: [companyId], references: [id])
+  products        Product[]
+  conversionsFrom UnitConversion[] @relation("FromUnit")
+  conversionsTo   UnitConversion[] @relation("ToUnit")
+  poItems         PurchaseOrderItem[]
+  grnItems        GRNItem[]
+  invoiceItems    PurchaseInvoiceItem[]
+  returnItems     PurchaseReturnItem[]
+  salesQuoteItems SalesQuotationItem[]
+  salesOrderItems SalesOrderItem[]
+  doItems         DeliveryOrderItem[]
+  salesInvItems   SalesInvoiceItem[]
+  salesRetItems   SalesReturnItem[]
+
+  @@unique([companyId, code])
+}
+
+model TaxCode {
+  id                   String                @id @default(uuid())
+  name                 String
+  code                 String
+  rate                 Decimal               @default(0.0)
+  companyId            String
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  deletedAt            DateTime?
+  accountId            String?
+  company              Company               @relation(fields: [companyId], references: [id])
+  products             Product[]
+  purchaseInvoiceItems PurchaseInvoiceItem[]
+  purchaseOrderItems   PurchaseOrderItem[]
+  purchaseReturnItems  PurchaseReturnItem[]
+  salesInvoiceItems    SalesInvoiceItem[]
+  salesOrderItems      SalesOrderItem[]
+  salesQuotationItems  SalesQuotationItem[]
+  salesReturnItems     SalesReturnItem[]
+  account              Account?              @relation("TaxAccount", fields: [accountId], references: [id])
+
+  @@unique([companyId, code])
+}
+
+model UnitConversion {
+  id         String   @id @default(uuid())
+  fromUnitId String
+  toUnitId   String
+  factor     Decimal
+  companyId  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  company    Company  @relation(fields: [companyId], references: [id])
+  fromUnit   Unit     @relation("FromUnit", fields: [fromUnitId], references: [id])
+  toUnit     Unit     @relation("ToUnit", fields: [toUnitId], references: [id])
+}
+
+// ============================================================
+// CHART OF ACCOUNTS (Per Company — already had companyId)
+// ============================================================
 
 model Account {
   id                  String         @id @default(uuid())
@@ -250,51 +357,69 @@ model AccountEntry {
   transaction   Transaction @relation(fields: [transactionId], references: [id])
 }
 
+// ============================================================
+// PARTIES (Per Company)
+// ============================================================
+
 model Customer {
   id                  String           @id @default(uuid())
-  code                String           @unique
+  code                String
   name                String
   taxId               String?
   currencyCode        String
   creditLimit         Decimal          @default(0.0)
   receivableAccountId String?
+  companyId           String
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
   deletedAt           DateTime?
-  currency            Currency         @relation(fields: [currencyCode], references: [code])
+  company             Company          @relation(fields: [companyId], references: [id])
+  currency            Currency         @relation(fields: [currencyCode], references: [id])
   receivableAccount   Account?         @relation("ReceivableAccount", fields: [receivableAccountId], references: [id])
   deliveryOrders      DeliveryOrder[]
   invoices            SalesInvoice[]
   orders              SalesOrder[]
   quotes              SalesQuotation[]
   returns             SalesReturn[]
+
+  @@unique([companyId, code])
 }
 
 model Supplier {
   id               String            @id @default(uuid())
-  code             String            @unique
+  code             String
   name             String
   taxId            String?
   currencyCode     String
   payableAccountId String?
+  companyId        String
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   deletedAt        DateTime?
+  company          Company           @relation(fields: [companyId], references: [id])
   grns             GRN[]
   invoices         PurchaseInvoice[]
   purchaseOrders   PurchaseOrder[]
   returns          PurchaseReturn[]
-  currency         Currency          @relation(fields: [currencyCode], references: [code])
+  currency         Currency          @relation(fields: [currencyCode], references: [id])
   payableAccount   Account?          @relation("PayableAccount", fields: [payableAccountId], references: [id])
+
+  @@unique([companyId, code])
 }
+
+// ============================================================
+// INVENTORY (Per Company)
+// ============================================================
 
 model Category {
   id        String     @id @default(uuid())
   name      String
   parentId  String?
+  companyId String
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   deletedAt DateTime?
+  company   Company    @relation(fields: [companyId], references: [id])
   parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children  Category[] @relation("CategoryHierarchy")
   products  Product[]
@@ -302,7 +427,7 @@ model Category {
 
 model Product {
   id                  String                @id @default(uuid())
-  code                String                @unique
+  code                String
   name                String
   categoryId          String?
   baseUnitId          String
@@ -312,9 +437,11 @@ model Product {
   salesAccountId      String?
   purchaseAccountId   String?
   openingStock        Decimal               @default(0.0)
+  companyId           String
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
   deletedAt           DateTime?
+  company             Company               @relation(fields: [companyId], references: [id])
   doItems             DeliveryOrderItem[]
   grnItems            GRNItem[]
   baseUnit            Unit                  @relation(fields: [baseUnitId], references: [id])
@@ -334,6 +461,8 @@ model Product {
   quoteItems          SalesQuotationItem[]
   returnItems         SalesReturnItem[]
   stockEntries        StockLedger[]
+
+  @@unique([companyId, code])
 }
 
 model ProductVariant {
@@ -361,13 +490,15 @@ model ProductVariant {
 
 model Warehouse {
   id               String            @id @default(uuid())
-  code             String            @unique
+  code             String
   name             String
   address          String?
   isDefault        Boolean           @default(false)
+  companyId        String
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   deletedAt        DateTime?
+  company          Company           @relation(fields: [companyId], references: [id])
   deliveryOrders   DeliveryOrder[]
   grns             GRN[]
   purchaseInvoices PurchaseInvoice[]
@@ -377,36 +508,35 @@ model Warehouse {
   salesOrders      SalesOrder[]
   salesReturns     SalesReturn[]
   stockEntries     StockLedger[]
+
+  @@unique([companyId, code])
 }
 
-model UnitConversion {
-  id         String   @id @default(uuid())
-  fromUnitId String
-  toUnitId   String
-  factor     Decimal
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  fromUnit   Unit     @relation("FromUnit", fields: [fromUnitId], references: [id])
-  toUnit     Unit     @relation("ToUnit", fields: [toUnitId], references: [id])
-}
+// ============================================================
+// JOURNAL & ACCOUNTING (Per Company)
+// ============================================================
 
 model JournalEntry {
   id              String           @id @default(uuid())
-  number          String           @unique
+  number          String
   date            DateTime
   type            VoucherType
   reference       String?
   narration       String?
   status          Boolean          @default(true)
+  companyId       String
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   financialYearId String?
+  company         Company          @relation(fields: [companyId], references: [id])
   financialYear   FinancialYear?   @relation(fields: [financialYearId], references: [id])
   lines           JournalLine[]
   purchaseInvoice PurchaseInvoice?
   purchaseReturn  PurchaseReturn?
   salesInvoice    SalesInvoice?
   salesReturn     SalesReturn?
+
+  @@unique([companyId, number])
 }
 
 model JournalLine {
@@ -430,35 +560,45 @@ model StockLedger {
   costRate    Decimal         @default(0.0)
   refType     String
   refId       String
+  companyId   String
   createdAt   DateTime        @default(now())
   variantId   String?
+  company     Company         @relation(fields: [companyId], references: [id])
   product     Product         @relation(fields: [productId], references: [id])
   variant     ProductVariant? @relation(fields: [variantId], references: [id])
   warehouse   Warehouse       @relation(fields: [warehouseId], references: [id])
 }
 
+// ============================================================
+// PURCHASE MODULE (Per Company)
+// ============================================================
+
 model PurchaseOrder {
   id           String              @id @default(uuid())
-  poNo         String              @unique
+  poNo         String
   supplierId   String
   warehouseId  String?
   date         DateTime
   expectedDate DateTime?
   totalAmount  Decimal             @default(0.0)
   status       String              @default("DRAFT")
+  companyId    String
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
+  company      Company             @relation(fields: [companyId], references: [id])
   grns         GRN[]
   invoices     PurchaseInvoice[]
   supplier     Supplier            @relation(fields: [supplierId], references: [id])
   warehouse    Warehouse?          @relation(fields: [warehouseId], references: [id])
   items        PurchaseOrderItem[]
   returns      PurchaseReturn[]
+
+  @@unique([companyId, poNo])
 }
 
 model PurchaseReturn {
   id             String               @id @default(uuid())
-  returnNo       String               @unique
+  returnNo       String
   poId           String?
   invoiceId      String?
   supplierId     String
@@ -467,14 +607,18 @@ model PurchaseReturn {
   totalAmount    Decimal              @default(0.0)
   journalEntryId String?              @unique
   remarks        String?
+  companyId      String
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
+  company        Company              @relation(fields: [companyId], references: [id])
   invoice        PurchaseInvoice?     @relation(fields: [invoiceId], references: [id])
   journalEntry   JournalEntry?        @relation(fields: [journalEntryId], references: [id])
   po             PurchaseOrder?       @relation(fields: [poId], references: [id])
   supplier       Supplier             @relation(fields: [supplierId], references: [id])
   warehouse      Warehouse            @relation(fields: [warehouseId], references: [id])
   items          PurchaseReturnItem[]
+
+  @@unique([companyId, returnNo])
 }
 
 model PurchaseReturnItem {
@@ -521,19 +665,23 @@ model PurchaseOrderItem {
 
 model GRN {
   id          String            @id @default(uuid())
-  grnNo       String            @unique
+  grnNo       String
   poId        String?
   supplierId  String
   warehouseId String
   date        DateTime
   remarks     String?
+  companyId   String
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
+  company     Company           @relation(fields: [companyId], references: [id])
   po          PurchaseOrder?    @relation(fields: [poId], references: [id])
   supplier    Supplier          @relation(fields: [supplierId], references: [id])
   warehouse   Warehouse         @relation(fields: [warehouseId], references: [id])
   items       GRNItem[]
   invoices    PurchaseInvoice[]
+
+  @@unique([companyId, grnNo])
 }
 
 model GRNItem {
@@ -555,7 +703,7 @@ model GRNItem {
 
 model PurchaseInvoice {
   id             String                @id @default(uuid())
-  invoiceNo      String                @unique
+  invoiceNo      String
   supplierId     String
   date           DateTime
   dueDate        DateTime?
@@ -564,9 +712,11 @@ model PurchaseInvoice {
   grnId          String?
   poId           String?
   journalEntryId String?               @unique
+  companyId      String
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   warehouseId    String?
+  company        Company               @relation(fields: [companyId], references: [id])
   grn            GRN?                  @relation(fields: [grnId], references: [id])
   journalEntry   JournalEntry?         @relation(fields: [journalEntryId], references: [id])
   po             PurchaseOrder?        @relation(fields: [poId], references: [id])
@@ -574,6 +724,8 @@ model PurchaseInvoice {
   warehouse      Warehouse?            @relation(fields: [warehouseId], references: [id])
   items          PurchaseInvoiceItem[]
   returns        PurchaseReturn[]
+
+  @@unique([companyId, invoiceNo])
 }
 
 model PurchaseInvoiceItem {
@@ -600,13 +752,17 @@ model PurchaseInvoiceItem {
 
 model PurchaseRequest {
   id        String                @id @default(uuid())
-  reqNo     String                @unique
+  reqNo     String
   date      DateTime
   status    String                @default("DRAFT")
   remarks   String?
+  companyId String
   createdAt DateTime              @default(now())
   updatedAt DateTime              @updatedAt
+  company   Company               @relation(fields: [companyId], references: [id])
   items     PurchaseRequestItem[]
+
+  @@unique([companyId, reqNo])
 }
 
 model PurchaseRequestItem {
@@ -621,19 +777,27 @@ model PurchaseRequestItem {
   request     PurchaseRequest @relation(fields: [requestId], references: [id])
 }
 
+// ============================================================
+// SALES MODULE (Per Company)
+// ============================================================
+
 model SalesQuotation {
   id          String               @id @default(uuid())
-  quoteNo     String               @unique
+  quoteNo     String
   customerId  String
   date        DateTime
   validUntil  DateTime?
   totalAmount Decimal              @default(0.0)
   status      String               @default("DRAFT")
+  companyId   String
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
+  company     Company              @relation(fields: [companyId], references: [id])
   orders      SalesOrder[]
   customer    Customer             @relation(fields: [customerId], references: [id])
   items       SalesQuotationItem[]
+
+  @@unique([companyId, quoteNo])
 }
 
 model SalesQuotationItem {
@@ -656,7 +820,7 @@ model SalesQuotationItem {
 
 model SalesOrder {
   id             String           @id @default(uuid())
-  orderNo        String           @unique
+  orderNo        String
   customerId     String
   warehouseId    String?
   date           DateTime
@@ -664,14 +828,18 @@ model SalesOrder {
   totalAmount    Decimal          @default(0.0)
   status         String           @default("DRAFT")
   quoteId        String?
+  companyId      String
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+  company        Company          @relation(fields: [companyId], references: [id])
   deliveryOrders DeliveryOrder[]
   invoices       SalesInvoice[]
   customer       Customer         @relation(fields: [customerId], references: [id])
   quote          SalesQuotation?  @relation(fields: [quoteId], references: [id])
   warehouse      Warehouse?       @relation(fields: [warehouseId], references: [id])
   items          SalesOrderItem[]
+
+  @@unique([companyId, orderNo])
 }
 
 model SalesOrderItem {
@@ -698,19 +866,23 @@ model SalesOrderItem {
 
 model DeliveryOrder {
   id          String              @id @default(uuid())
-  doNo        String              @unique
+  doNo        String
   orderId     String?
   customerId  String
   warehouseId String
   date        DateTime
   remarks     String?
+  companyId   String
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
+  company     Company             @relation(fields: [companyId], references: [id])
   customer    Customer            @relation(fields: [customerId], references: [id])
   order       SalesOrder?         @relation(fields: [orderId], references: [id])
   warehouse   Warehouse           @relation(fields: [warehouseId], references: [id])
   items       DeliveryOrderItem[]
   invoices    SalesInvoice[]
+
+  @@unique([companyId, doNo])
 }
 
 model DeliveryOrderItem {
@@ -730,7 +902,7 @@ model DeliveryOrderItem {
 
 model SalesInvoice {
   id             String             @id @default(uuid())
-  invoiceNo      String             @unique
+  invoiceNo      String
   customerId     String
   warehouseId    String?
   date           DateTime
@@ -739,9 +911,11 @@ model SalesInvoice {
   taxAmount      Decimal            @default(0.0)
   doId           String?
   journalEntryId String?            @unique
+  companyId      String
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   orderId        String?
+  company        Company            @relation(fields: [companyId], references: [id])
   customer       Customer           @relation(fields: [customerId], references: [id])
   do             DeliveryOrder?     @relation(fields: [doId], references: [id])
   journalEntry   JournalEntry?      @relation(fields: [journalEntryId], references: [id])
@@ -749,6 +923,8 @@ model SalesInvoice {
   warehouse      Warehouse?         @relation(fields: [warehouseId], references: [id])
   items          SalesInvoiceItem[]
   returns        SalesReturn[]
+
+  @@unique([companyId, invoiceNo])
 }
 
 model SalesInvoiceItem {
@@ -775,21 +951,25 @@ model SalesInvoiceItem {
 
 model SalesReturn {
   id             String            @id @default(uuid())
-  returnNo       String            @unique
+  returnNo       String
   invoiceId      String?
   customerId     String
   date           DateTime
   totalAmount    Decimal           @default(0.0)
   journalEntryId String?           @unique
   remarks        String?
+  companyId      String
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   warehouseId    String
+  company        Company           @relation(fields: [companyId], references: [id])
   customer       Customer          @relation(fields: [customerId], references: [id])
   invoice        SalesInvoice?     @relation(fields: [invoiceId], references: [id])
   journalEntry   JournalEntry?     @relation(fields: [journalEntryId], references: [id])
   warehouse      Warehouse         @relation(fields: [warehouseId], references: [id])
   items          SalesReturnItem[]
+
+  @@unique([companyId, returnNo])
 }
 
 model SalesReturnItem {
@@ -812,13 +992,25 @@ model SalesReturnItem {
   taxCode       TaxCode?          @relation(fields: [taxCodeId], references: [id])
 }
 
+// ============================================================
+// VOUCHER SEQUENCE (Per Company)
+// ============================================================
+
 model VoucherSequence {
   id        String      @id @default(uuid())
-  type      VoucherType @unique
+  type      VoucherType
   prefix    String
   nextValue Int         @default(1)
+  companyId String
   updatedAt DateTime    @updatedAt
+  company   Company     @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, type])
 }
+
+// ============================================================
+// ENUMS
+// ============================================================
 
 enum AccountType {
   ASSET

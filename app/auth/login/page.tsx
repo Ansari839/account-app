@@ -25,11 +25,26 @@ export default function LoginPage() {
             const json = await res.json();
 
             if (json.success) {
-                showNotification('success', 'Welcome back, Administrator!');
+                showNotification('success', 'Welcome back!');
                 localStorage.setItem('token', json.data.token);
                 localStorage.setItem('user', JSON.stringify(json.data.user));
                 localStorage.setItem('isLoggedIn', 'true');
-                router.push('/finance/dashboard');
+
+                // Store companies for company selector
+                const companies = json.data.companies || [];
+                localStorage.setItem('companies', JSON.stringify(companies));
+
+                if (companies.length === 1) {
+                    // Single company — auto-select and go to dashboard
+                    localStorage.setItem('activeCompanyId', companies[0].id);
+                    router.push('/finance/dashboard');
+                } else if (companies.length > 1) {
+                    // Multiple companies — show company selector
+                    router.push('/auth/select-company');
+                } else {
+                    // No companies assigned
+                    showNotification('error', 'No company assigned to your account. Contact admin.');
+                }
             } else {
                 showNotification('error', json.error || 'Invalid email or password');
             }

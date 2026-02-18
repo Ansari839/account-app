@@ -678,10 +678,11 @@ export class PurchaseController {
                 supplierId = supplier.id;
             }
 
-            // 1. Fetch Setting: GRN Mandatory
-            const setting = await prisma.globalSetting.findFirst({
-                where: { key: 'INVENTORY_GRN_MANDATORY' }
-            });
+            // 1. Fetch Setting: GRN Mandatory (per company)
+            const companyId = req.headers.get('x-company-id') || user.companyId;
+            const setting = companyId ? await prisma.companySetting.findUnique({
+                where: { companyId_key: { companyId, key: 'INVENTORY_GRN_MANDATORY' } }
+            }) : null;
             const grnMandatory = setting?.value === 'true';
 
             if (grnMandatory && !grnId) {

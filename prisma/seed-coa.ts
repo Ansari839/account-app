@@ -24,8 +24,8 @@ async function main() {
         },
     });
 
-    // 2. Global Settings
-    console.log("⚙️  Seeding Global Settings...");
+    // 2. Company Settings
+    console.log("⚙️  Seeding Company Settings...");
     const settings = [
         { key: 'mandatory_grn', value: 'false', group: 'PURCHASE', type: 'BOOLEAN' },
         { key: 'mandatory_do', value: 'false', group: 'SALES', type: 'BOOLEAN' },
@@ -35,10 +35,10 @@ async function main() {
     ];
 
     for (const s of settings) {
-        await prisma.globalSetting.upsert({
-            where: { key: s.key },
-            update: s,
-            create: s
+        await prisma.companySetting.upsert({
+            where: { companyId_key: { companyId: company.id, key: s.key } },
+            update: { value: s.value, type: s.type, group: s.group },
+            create: { companyId: company.id, ...s }
         });
     }
 

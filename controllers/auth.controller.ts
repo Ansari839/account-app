@@ -20,11 +20,8 @@ export class AuthController {
                 success: true,
                 data: {
                     token: result.token,
-                    user: {
-                        id: result.user.id,
-                        email: result.user.email,
-                        fullName: result.user.fullName,
-                    }
+                    user: result.user,
+                    companies: result.companies,
                 }
             });
         } catch (error: any) {
