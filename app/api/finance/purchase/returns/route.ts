@@ -3,39 +3,21 @@ import prisma from "@/lib/prisma";
 import { PurchaseService } from "@/services/purchase.service";
 import { AuthUtils } from "@/lib/auth-utils";
 
-async function getAuthUser(req: Request) {
-    const token = req.headers.get("Authorization")?.split(" ")[1];
-    if (!token) return null;
-    return AuthUtils.verifyToken(token);
-}
-
 export async function GET(req: NextRequest) {
     try {
-        const user = await getAuthUser(req);
-        if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+        const { companyId, error } = AuthUtils.getCompanyId(req);
+        if (error) return error;
 
         const searchParams = req.nextUrl.searchParams;
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '20');
         const search = searchParams.get('search') || '';
 
-        const where: any = {
-            supplier: {
-                payableAccount: {
-                    companyId: user.companyId
-                }
-            }
-        };
+        const where: any = { companyId };
 
         if (search) {
             where.AND = [
-                {
-                    supplier: {
-                        payableAccount: {
-                            companyId: user.companyId
-                        }
-                    }
-                },
+                { companyId },
                 {
                     OR: [
                         { returnNo: { contains: search, mode: 'insensitive' } },
@@ -78,14 +60,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        const user = await getAuthUser(req);
-        if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+        const { companyId, error } = AuthUtils.getCompanyId(req);
+        if (error) return error;
 
         const body = await req.json();
-        // Body should match PurchaseService.createReturn input: { purchaseInvoiceId, date, remarks, items, ... }
-        // Force Rebuild: 1
 
         const result = await PurchaseService.createReturn({
+            companyId,
             purchaseInvoiceId: body.purchaseInvoiceId || undefined,
             supplierId: body.supplierId,
             warehouseId: body.warehouseId,

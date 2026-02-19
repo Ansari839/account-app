@@ -37,6 +37,32 @@ const reportGroups = [
 ];
 
 export default function ReportsHub() {
+    const [isSuperAdmin, setIsSuperAdmin] = React.useState(false);
+
+    React.useEffect(() => {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                setIsSuperAdmin(!!user.isSuperAdmin);
+            } catch (e) {
+                console.error("Failed to parse user", e);
+            }
+        }
+    }, []);
+
+    const consolidatedGroup = {
+        title: 'Consolidated Intelligence',
+        icon: '🌐',
+        reports: [
+            { name: 'Combined Trial Balance', path: '/finance/reports/consolidated/trial-balance', desc: 'Multi-company TB aggregation' },
+            { name: 'Combined Profit & Loss', path: '/finance/reports/consolidated/profit-loss', desc: 'Group Level Performance' },
+            { name: 'Combined Balance Sheet', path: '/finance/reports/consolidated/balance-sheet', desc: 'Group Level Financial Position' },
+        ]
+    };
+
+    const groupsToDisplay = isSuperAdmin ? [...reportGroups, consolidatedGroup] : reportGroups;
+
     return (
         <MainLayout>
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -46,7 +72,7 @@ export default function ReportsHub() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {reportGroups.map((group, i) => (
+                    {groupsToDisplay.map((group, i) => (
                         <div key={i} className="bg-white/50 dark:bg-slate-900/30 backdrop-blur-sm border border-slate-200/60 dark:border-slate-800/60 rounded-3xl p-8 shadow-sm">
                             <div className="flex items-center gap-3 mb-6">
                                 <span className="text-2xl">{group.icon}</span>

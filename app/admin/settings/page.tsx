@@ -8,6 +8,7 @@ import CurrencySettings from '@/components/settings/CurrencySettings';
 import TaxSettings from '@/components/settings/TaxSettings';
 import FiscalYearSettings from '@/components/settings/FiscalYearSettings';
 import InventorySettings from '@/components/settings/InventorySettings';
+import VoucherSettings from '@/components/settings/VoucherSettings';
 
 const TABS = [
     { id: 'company', label: 'Company Info', icon: '🏢' },
@@ -15,6 +16,7 @@ const TABS = [
     { id: 'units', label: 'Units', icon: '⚖️' },
     { id: 'currency', label: 'Currency', icon: '💱' },
     { id: 'tax', label: 'Tax Codes', icon: '🧾' },
+    { id: 'vouchers', label: 'Vouchers', icon: '📝' },
     { id: 'inventory', label: 'Inventory', icon: '📦' },
 ];
 
@@ -53,6 +55,7 @@ export default function SettingsPage() {
                     {activeTab === 'units' && <UnitSettings />}
                     {activeTab === 'currency' && <CurrencySettings />}
                     {activeTab === 'tax' && <TaxSettings />}
+                    {activeTab === 'vouchers' && <VoucherSettings />}
                     {activeTab === 'inventory' && <InventorySettings />}
                 </div>
             </div>

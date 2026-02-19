@@ -4,9 +4,14 @@ export class RoleService {
     /**
      * Create or update a Role
      */
-    static async upsertRole(name: string, description?: string, permissions?: string[]) {
+    static async upsertRole(name: string, description?: string, permissions?: string[], companyId: string | null = null) {
         return await prisma.role.upsert({
-            where: { name },
+            where: {
+                companyId_name: {
+                    name,
+                    companyId: companyId as string // forced cast if nullable, or handle null specific logic if Prisma generates optional fields differently
+                }
+            },
             update: {
                 description,
                 permissions: permissions ? {
@@ -16,6 +21,7 @@ export class RoleService {
             },
             create: {
                 name,
+                companyId,
                 description,
                 permissions: permissions ? {
                     create: permissions.map(pId => ({ permissionId: pId }))

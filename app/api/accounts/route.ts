@@ -10,7 +10,6 @@ const connectionString = process.env.DATABASE_URL!;
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
-
 const accountSchema = z.object({
     code: z.string().min(1),
     name: z.string().min(1),
@@ -25,17 +24,9 @@ const accountSchema = z.object({
     openingBalanceType: z.enum(['DR', 'CR']).default('DR'),
 });
 
-async function getAuthUser(req: Request) {
-    const token = req.headers.get('Authorization')?.split(' ')[1];
-    if (!token) return null;
-    return AuthUtils.verifyToken(token);
-}
-
 export async function GET(request: Request) {
-    const user = await getAuthUser(request);
-    if (!user || !user.companyId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { companyId, error } = AuthUtils.getCompanyId(request);
+    if (error) return error;
 
     const { searchParams } = new URL(request.url);
     const suggestCode = searchParams.get('suggestCode');
@@ -48,7 +39,7 @@ export async function GET(request: Request) {
             if (!parent) return NextResponse.json({ error: 'Parent not found' }, { status: 404 });
 
             const lastChild = await prisma.account.findFirst({
-                where: { parentId: pid, companyId: user.companyId as string },
+                where: { parentId: pid, companyId },
                 orderBy: { code: 'desc' }
             });
 
@@ -76,7 +67,7 @@ export async function GET(request: Request) {
 
         const isPosting = searchParams.get('isPosting');
 
-        const where: any = { companyId: user.companyId };
+        const where: any = { companyId };
         if (isPosting === 'true') where.isPosting = true;
         if (isPosting === 'false') where.isPosting = false;
 
@@ -101,8 +92,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(req: Request) {
-    const user = await getAuthUser(req);
-    if (!user || !user.companyId || user.role !== 'ADMIN') {
+    const { companyId, error } = AuthUtils.getCompanyId(req);
+    if (error) return error;
+
+    const user = await AuthUtils.getAuthUser(req);
+    if (!user || user.role !== 'ADMIN') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -128,7 +122,7 @@ export async function POST(req: Request) {
                 type: typeVal as any,
                 description: validatedData.description,
                 parentId: validatedData.parentId,
-                companyId: user.companyId,
+                companyId: companyId,
                 isPosting: validatedData.isPosting,
                 openingBalance: validatedData.openingBalance,
                 openingBalanceType: validatedData.openingBalanceType,
@@ -149,8 +143,11 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-    const user = await getAuthUser(req);
-    if (!user || !user.companyId || (user.role !== 'ADMIN' && user.role !== 'ACCOUNTS')) {
+    const { companyId, error } = AuthUtils.getCompanyId(req);
+    if (error) return error;
+
+    const user = await AuthUtils.getAuthUser(req);
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'ACCOUNTS')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -161,7 +158,7 @@ export async function PATCH(req: Request) {
         if (!id) return NextResponse.json({ error: 'Account ID is required' }, { status: 400 });
 
         const existingAccount = await prisma.account.findUnique({
-            where: { id, companyId: user.companyId }
+            where: { id, companyId }
         });
         if (!existingAccount) return NextResponse.json({ error: 'Account not found' }, { status: 404 });
 
@@ -195,7 +192,7 @@ export async function PATCH(req: Request) {
         if (typeVal === 'REVENUE') typeVal = 'INCOME';
 
         const account = await prisma.account.update({
-            where: { id: id, companyId: user.companyId },
+            where: { id: id, companyId },
             data: {
                 code,
                 name,
@@ -216,8 +213,11 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-    const user = await getAuthUser(req);
-    if (!user || !user.companyId || user.role !== 'ADMIN') {
+    const { companyId, error } = AuthUtils.getCompanyId(req);
+    if (error) return error;
+
+    const user = await AuthUtils.getAuthUser(req);
+    if (!user || user.role !== 'ADMIN') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -246,7 +246,7 @@ export async function DELETE(req: Request) {
         }
 
         await prisma.account.delete({
-            where: { id: id, companyId: user.companyId },
+            where: { id: id, companyId },
         });
 
         return NextResponse.json({ message: 'Account deleted successfully' });

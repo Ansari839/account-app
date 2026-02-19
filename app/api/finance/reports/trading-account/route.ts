@@ -13,13 +13,11 @@ export async function GET(req: Request) {
             return NextResponse.json({ success: false, error: "Missing start or end date" }, { status: 400 });
         }
 
-        const auth = await AuthUtils.getAuthUser(req);
-        if (!auth) {
-            return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-        }
+        const { companyId, error } = AuthUtils.getCompanyId(req);
+        if (error) return error;
 
         const data = await ReportService.getTradingAccount(
-            auth.companyId,
+            companyId,
             new Date(startDate),
             new Date(endDate)
         );

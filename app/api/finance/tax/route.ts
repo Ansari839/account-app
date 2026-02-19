@@ -2,7 +2,7 @@
 import { TaxController } from '@/controllers/tax.controller';
 
 export async function GET(req: Request) {
-    return TaxController.getAll();
+    return TaxController.getAll(req);
 }
 
 export async function POST(req: Request) {

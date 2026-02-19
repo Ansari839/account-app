@@ -2,17 +2,16 @@ import prisma from "@/lib/prisma";
 
 export class FinancialYearService {
     /**
-     * Create a new Financial Year
+     * Create a new Financial Year (scoped to company)
      */
-    static async createYear(data: {
+    static async createYear(companyId: string, data: {
         name: string;
         startDate: Date;
         endDate: Date;
     }) {
-        // Ensure no other year is open? Or allowed multiple open?
-        // For strict accounting, usually one. But let's allow creation, enforcing open logic elsewhere.
         return prisma.financialYear.create({
             data: {
+                companyId,
                 name: data.name,
                 startDate: new Date(data.startDate),
                 endDate: new Date(data.endDate),
@@ -22,11 +21,12 @@ export class FinancialYearService {
     }
 
     /**
-     * Get the active financial year for a given date
+     * Get the active financial year for a given date (scoped to company)
      */
-    static async getActiveYear(date: Date = new Date()) {
+    static async getActiveYear(companyId: string, date: Date = new Date()) {
         const year = await prisma.financialYear.findFirst({
             where: {
+                companyId,
                 startDate: { lte: date },
                 endDate: { gte: date },
                 isOpen: true,
@@ -38,10 +38,11 @@ export class FinancialYearService {
     }
 
     /**
-     * List all financial years
+     * List all financial years (scoped to company)
      */
-    static async listYears() {
+    static async listYears(companyId: string) {
         return prisma.financialYear.findMany({
+            where: { companyId },
             orderBy: { startDate: 'desc' }
         });
     }

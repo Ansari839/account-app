@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { UnitService } from '@/services/unit.service';
+import { AuthUtils } from '@/lib/auth-utils';
 
 export class UnitController {
-    static async getAll() {
+    static async getAll(req: Request) {
         try {
-            const units = await UnitService.getAllUnits();
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
+            const units = await UnitService.getAllUnits(companyId);
             return NextResponse.json({ success: true, data: units });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -13,8 +17,11 @@ export class UnitController {
 
     static async create(req: Request) {
         try {
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
             const body = await req.json();
-            const unit = await UnitService.createUnit(body);
+            const unit = await UnitService.createUnit(companyId, body);
             return NextResponse.json({ success: true, data: unit });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 400 });
@@ -23,8 +30,11 @@ export class UnitController {
 
     static async addConversion(req: Request) {
         try {
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
             const body = await req.json();
-            const conversion = await UnitService.addConversion(body);
+            const conversion = await UnitService.addConversion(companyId, body);
             return NextResponse.json({ success: true, data: conversion });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 400 });

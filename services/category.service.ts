@@ -2,17 +2,18 @@
 import prisma from "@/lib/prisma";
 
 export class CategoryService {
-    static async list() {
-        // Return hierarchy or flat list. For simplicity, flat sorted by name for now.
+    static async list(companyId: string) {
         return await prisma.category.findMany({
+            where: { companyId },
             include: { parent: true, children: true },
             orderBy: { name: 'asc' }
         });
     }
 
-    static async create(data: { name: string, parentId?: string }) {
+    static async create(companyId: string, data: { name: string, parentId?: string }) {
         return await prisma.category.create({
             data: {
+                companyId,
                 name: data.name,
                 parentId: data.parentId || null
             }
@@ -30,11 +31,9 @@ export class CategoryService {
     }
 
     static async delete(id: string) {
-        // Check for products
         const products = await prisma.product.count({ where: { categoryId: id } });
         if (products > 0) throw new Error("Cannot delete category with associated products.");
 
-        // Check for children
         const children = await prisma.category.count({ where: { parentId: id } });
         if (children > 0) throw new Error("Cannot delete category with sub-categories.");
 

@@ -2,7 +2,7 @@
 import { UnitController } from '@/controllers/unit.controller';
 
 export async function GET(req: Request) {
-    return UnitController.getAll();
+    return UnitController.getAll(req);
 }
 
 export async function POST(req: Request) {

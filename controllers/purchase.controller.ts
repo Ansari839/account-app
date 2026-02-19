@@ -3,19 +3,14 @@ import prisma from "@/lib/prisma";
 import { AuthUtils } from '@/lib/auth-utils';
 import { AccountType } from '@prisma/client';
 
-async function getAuthUser(req: Request) {
-    const token = req.headers.get('Authorization')?.split(' ')[1];
-    if (!token) return null;
-    return AuthUtils.verifyToken(token);
-}
-
 export class PurchaseController {
     /**
      * Helper to find a default account by name and type
      */
-    private static async findDefaultAccount(name: string, type: AccountType) {
+    private static async findDefaultAccount(companyId: string, name: string, type: AccountType) {
         return prisma.account.findFirst({
             where: {
+                companyId,
                 name: { contains: name, mode: 'insensitive' },
                 type: type,
                 isPosting: true
@@ -27,17 +22,11 @@ export class PurchaseController {
      */
     static async listInvoices(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const invoices = await prisma.purchaseInvoice.findMany({
-                where: {
-                    supplier: {
-                        payableAccount: {
-                            companyId: user.companyId
-                        }
-                    }
-                },
+                where: { companyId },
                 include: {
                     supplier: true,
                     items: { include: { product: true, unit: true } }
@@ -57,17 +46,11 @@ export class PurchaseController {
      */
     static async listOrders(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const orders = await prisma.purchaseOrder.findMany({
-                where: {
-                    supplier: {
-                        payableAccount: {
-                            companyId: user.companyId
-                        }
-                    }
-                },
+                where: { companyId },
                 include: {
                     supplier: true,
                     items: { include: { product: true, unit: true } }
@@ -86,17 +69,11 @@ export class PurchaseController {
      */
     static async listGRNs(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const grns = await prisma.gRN.findMany({
-                where: {
-                    supplier: {
-                        payableAccount: {
-                            companyId: user.companyId
-                        }
-                    }
-                },
+                where: { companyId },
                 include: {
                     supplier: true,
                     items: { include: { product: true, unit: true } },
@@ -118,8 +95,8 @@ export class PurchaseController {
      */
     static async createOrder(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const body = await req.json();
 
@@ -148,6 +125,7 @@ export class PurchaseController {
                     }
                     supplier = await prisma.supplier.create({
                         data: {
+                            companyId,
                             code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
                             name: account.name,
                             currencyCode: 'PKR', // Default currency
@@ -174,9 +152,10 @@ export class PurchaseController {
 
             const order = await prisma.purchaseOrder.create({
                 data: {
+                    companyId,
                     poNo,
-                    supplier: { connect: { id: supplierId } },
-                    warehouse: body.warehouseId ? { connect: { id: body.warehouseId } } : undefined,
+                    supplierId,
+                    warehouseId: body.warehouseId || null,
                     date: new Date(body.date),
                     expectedDate: body.expectedDate ? new Date(body.expectedDate) : null,
                     totalAmount: body.items.reduce((acc: number, item: any) => acc + (Number(item.qty || 0) * Number(item.rate || 0)), 0),
@@ -213,8 +192,7 @@ export class PurchaseController {
     static async getOrder(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
 
             const order = await prisma.purchaseOrder.findUnique({
                 where: { id },
@@ -245,8 +223,6 @@ export class PurchaseController {
     static async updateOrder(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const body = await req.json();
 
@@ -292,8 +268,6 @@ export class PurchaseController {
     static async deleteOrder(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             // Check if PO has GRNs or Invoices
             const order = await prisma.purchaseOrder.findUnique({
@@ -318,8 +292,8 @@ export class PurchaseController {
      */
     static async createGRN(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const body = await req.json();
             const { poId, supplierId, warehouseId, date, items } = body;
@@ -349,6 +323,7 @@ export class PurchaseController {
 
                 const grn = await tx.gRN.create({
                     data: {
+                        companyId,
                         grnNo,
                         poId: poId || null,
                         supplierId,
@@ -390,6 +365,7 @@ export class PurchaseController {
                                     const addendumNo = `PO-ADD-${new Date().getFullYear()}-${nextAddendumSeq}`;
                                     await tx.purchaseOrder.create({
                                         data: {
+                                            companyId,
                                             poNo: addendumNo,
                                             supplierId,
                                             date: new Date(),
@@ -430,6 +406,7 @@ export class PurchaseController {
                         const poItem = item.poItemId ? await tx.purchaseOrderItem.findUnique({ where: { id: item.poItemId } }) : null;
                         await tx.stockLedger.create({
                             data: {
+                                companyId,
                                 productId: item.productId,
                                 variantId: item.variantId || null,
                                 warehouseId,
@@ -460,8 +437,6 @@ export class PurchaseController {
     static async getGRN(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const grn = await prisma.gRN.findUnique({
                 where: { id },
@@ -488,8 +463,6 @@ export class PurchaseController {
     static async deleteGRN(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const grn = await prisma.gRN.findUnique({
                 where: { id },
@@ -546,8 +519,6 @@ export class PurchaseController {
     static async getInvoice(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const invoice = await prisma.purchaseInvoice.findUnique({
                 where: { id },
@@ -575,8 +546,6 @@ export class PurchaseController {
     static async deleteInvoice(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const invoice = await prisma.purchaseInvoice.findUnique({
                 where: { id },
@@ -618,8 +587,8 @@ export class PurchaseController {
      */
     static async createPurchaseInvoice(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const body = await req.json();
             const { poId, grnId, warehouseId, date, dueDate, items } = body;
@@ -653,6 +622,7 @@ export class PurchaseController {
                             // Use upsert-like logic or randomized code on fail
                             supplier = await prisma.supplier.create({
                                 data: {
+                                    companyId,
                                     code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
                                     name: account.name,
                                     currencyCode: 'PKR',
@@ -663,6 +633,7 @@ export class PurchaseController {
                             // Fallback with random code
                             supplier = await prisma.supplier.create({
                                 data: {
+                                    companyId,
                                     code: `SUP-${Date.now()}`,
                                     name: account.name,
                                     currencyCode: 'PKR',
@@ -679,10 +650,9 @@ export class PurchaseController {
             }
 
             // 1. Fetch Setting: GRN Mandatory (per company)
-            const companyId = req.headers.get('x-company-id') || user.companyId;
-            const setting = companyId ? await prisma.companySetting.findUnique({
+            const setting = await prisma.companySetting.findUnique({
                 where: { companyId_key: { companyId, key: 'INVENTORY_GRN_MANDATORY' } }
-            }) : null;
+            });
             const grnMandatory = setting?.value === 'true';
 
             if (grnMandatory && !grnId) {
@@ -734,6 +704,7 @@ export class PurchaseController {
                                     const addendumNo = `PO-ADD-${new Date().getFullYear()}-${nextAddendumSeq}`;
                                     const addendumPo = await tx.purchaseOrder.create({
                                         data: {
+                                            companyId,
                                             poNo: addendumNo,
                                             supplierId,
                                             date: new Date(),
@@ -762,6 +733,7 @@ export class PurchaseController {
                 // 3. Create Invoice
                 const invoice = await tx.purchaseInvoice.create({
                     data: {
+                        companyId,
                         invoiceNo,
                         supplierId,
                         poId: poId || null,
@@ -790,6 +762,7 @@ export class PurchaseController {
                     for (const item of items) {
                         await tx.stockLedger.create({
                             data: {
+                                companyId,
                                 productId: item.productId,
                                 variantId: item.variantId || null,
                                 warehouseId,
@@ -839,8 +812,8 @@ export class PurchaseController {
 
                     if (!purchaseAccount) {
                         // Fallback to default Inventory or Purchase account
-                        const defInv = await this.findDefaultAccount('Inventory', 'ASSET');
-                        const defPur = await this.findDefaultAccount('Purchase', 'EXPENSE');
+                        const defInv = await this.findDefaultAccount(companyId, 'Inventory', 'ASSET');
+                        const defPur = await this.findDefaultAccount(companyId, 'Purchase', 'EXPENSE');
                         purchaseAccount = defInv?.id || defPur?.id;
 
                         if (!purchaseAccount) {
@@ -858,6 +831,7 @@ export class PurchaseController {
 
                 await tx.journalEntry.create({
                     data: {
+                        companyId,
                         number: journalNo,
                         date: new Date(date),
                         type: 'PURCHASE',
@@ -883,8 +857,8 @@ export class PurchaseController {
     static async updateGRN(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const body = await req.json();
             const { date, warehouseId, items } = body;
@@ -955,6 +929,7 @@ export class PurchaseController {
                     if (Number(item.qtyReceived) > 0) {
                         await tx.stockLedger.create({
                             data: {
+                                companyId,
                                 productId: item.productId,
                                 variantId: item.variantId || null,
                                 warehouseId,
@@ -982,8 +957,8 @@ export class PurchaseController {
     static async updatePurchaseInvoice(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const body = await req.json();
             const { date, dueDate, warehouseId, items } = body;
@@ -1056,6 +1031,7 @@ export class PurchaseController {
                     for (const item of items) {
                         await tx.stockLedger.create({
                             data: {
+                                companyId,
                                 productId: item.productId,
                                 variantId: item.variantId || null,
                                 warehouseId,
@@ -1082,8 +1058,8 @@ export class PurchaseController {
                         let pAcc = product?.purchaseAccountId || product?.inventoryAccountId;
 
                         if (!pAcc) {
-                            const defInv = await this.findDefaultAccount('Inventory', 'ASSET');
-                            const defPur = await this.findDefaultAccount('Purchase', 'EXPENSE');
+                            const defInv = await this.findDefaultAccount(companyId, 'Inventory', 'ASSET');
+                            const defPur = await this.findDefaultAccount(companyId, 'Purchase', 'EXPENSE');
                             pAcc = defInv?.id || defPur?.id || '';
                         }
 
@@ -1118,8 +1094,6 @@ export class PurchaseController {
     static async deleteReturn(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const existing = await prisma.purchaseReturn.findUnique({
                 where: { id },
@@ -1158,8 +1132,8 @@ export class PurchaseController {
     static async updateReturn(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const body = await req.json();
             const { date, remarks, warehouseId, items } = body;
@@ -1247,6 +1221,7 @@ export class PurchaseController {
                 for (const item of items) {
                     await tx.stockLedger.create({
                         data: {
+                            companyId,
                             productId: item.productId,
                             variantId: item.variantId || null,
                             warehouseId: warehouseId,
@@ -1278,7 +1253,7 @@ export class PurchaseController {
                     // Fallback handled in original creation, assuming exists here or use same logic
                     if (!creditAccount) {
                         // Basic fallback
-                        const defInv = await prisma.account.findFirst({ where: { name: 'Inventory', type: 'ASSET' } });
+                        const defInv = await prisma.account.findFirst({ where: { companyId, name: 'Inventory', type: 'ASSET' } });
                         creditAccount = defInv?.id;
                     }
 
@@ -1305,6 +1280,7 @@ export class PurchaseController {
                     // Create if missing (edge case)
                     const je = await tx.journalEntry.create({
                         data: {
+                            companyId,
                             number: `PRJV-${Date.now()}`,
                             date: new Date(date),
                             type: 'PURCHASE',

@@ -4,12 +4,16 @@ import { ProductService } from '../services/product.service';
 import { WarehouseService } from '../services/warehouse.service';
 import { CategoryService } from '../services/category.service';
 import { UnitService } from '../services/unit.service';
+import { AuthUtils } from '@/lib/auth-utils';
 
 export class InventoryController {
     // --- PRODUCTS ---
-    static async listProducts() {
+    static async listProducts(req: Request) {
         try {
-            const data = await ProductService.getAllProducts();
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
+            const data = await ProductService.getAllProducts(companyId);
             return NextResponse.json({ success: true, data });
         } catch (e: any) {
             return NextResponse.json({ success: false, error: e.message }, { status: 500 });
@@ -18,8 +22,11 @@ export class InventoryController {
 
     static async createProduct(req: Request) {
         try {
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
             const body = await req.json();
-            const data = await ProductService.createProduct(body);
+            const data = await ProductService.createProduct(companyId, body);
             return NextResponse.json({ success: true, data });
         } catch (e: any) {
             return NextResponse.json({ success: false, error: e.message }, { status: 400 });
@@ -46,9 +53,12 @@ export class InventoryController {
     }
 
     // --- WAREHOUSES ---
-    static async listWarehouses() {
+    static async listWarehouses(req: Request) {
         try {
-            const data = await WarehouseService.getAllWarehouses();
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
+            const data = await WarehouseService.getAllWarehouses(companyId);
             return NextResponse.json({ success: true, data });
         } catch (e: any) {
             return NextResponse.json({ success: false, error: e.message }, { status: 500 });
@@ -57,8 +67,11 @@ export class InventoryController {
 
     static async createWarehouse(req: Request) {
         try {
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
             const body = await req.json();
-            const data = await WarehouseService.createWarehouse(body);
+            const data = await WarehouseService.createWarehouse(companyId, body);
             return NextResponse.json({ success: true, data });
         } catch (e: any) {
             return NextResponse.json({ success: false, error: e.message }, { status: 400 });
@@ -67,8 +80,11 @@ export class InventoryController {
 
     static async updateWarehouse(req: Request, id: string) {
         try {
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
             const body = await req.json();
-            const data = await WarehouseService.updateWarehouse(id, body);
+            const data = await WarehouseService.updateWarehouse(companyId, id, body);
             return NextResponse.json({ success: true, data });
         } catch (e: any) {
             return NextResponse.json({ success: false, error: e.message }, { status: 400 });
@@ -85,9 +101,12 @@ export class InventoryController {
     }
 
     // --- CATEGORIES ---
-    static async listCategories() {
+    static async listCategories(req: Request) {
         try {
-            const data = await CategoryService.list();
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
+            const data = await CategoryService.list(companyId);
             return NextResponse.json({ success: true, data });
         } catch (e: any) {
             return NextResponse.json({ success: false, error: e.message }, { status: 500 });
@@ -96,8 +115,11 @@ export class InventoryController {
 
     static async createCategory(req: Request) {
         try {
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
             const body = await req.json();
-            const data = await CategoryService.create(body);
+            const data = await CategoryService.create(companyId, body);
             return NextResponse.json({ success: true, data });
         } catch (e: any) {
             return NextResponse.json({ success: false, error: e.message }, { status: 400 });
@@ -124,9 +146,12 @@ export class InventoryController {
     }
 
     // --- UNITS ---
-    static async listUnits() {
+    static async listUnits(req: Request) {
         try {
-            const data = await UnitService.getAllUnits();
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
+            const data = await UnitService.getAllUnits(companyId);
             return NextResponse.json({ success: true, data });
         } catch (e: any) {
             return NextResponse.json({ success: false, error: e.message }, { status: 500 });
@@ -135,8 +160,11 @@ export class InventoryController {
 
     static async createUnit(req: Request) {
         try {
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
             const body = await req.json();
-            const data = await UnitService.createUnit(body);
+            const data = await UnitService.createUnit(companyId, body);
             return NextResponse.json({ success: true, data });
         } catch (e: any) {
             return NextResponse.json({ success: false, error: e.message }, { status: 400 });

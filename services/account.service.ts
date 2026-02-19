@@ -4,9 +4,9 @@ import { Account, AccountType } from '@prisma/client';
 
 export class AccountService {
     /**
-     * Generate automatic account code
+     * Generate automatic account code (scoped to company)
      */
-    static async generateCode(parentId: string | null, type: AccountType): Promise<string> {
+    static async generateCode(companyId: string, parentId: string | null, type: AccountType): Promise<string> {
         if (!parentId) {
             const prefixMap: Record<AccountType, string> = {
                 'ASSET': '1000',
@@ -17,7 +17,7 @@ export class AccountService {
             };
             const prefix = prefixMap[type];
             const maxRoot = await prisma.account.findFirst({
-                where: { parentId: null, type },
+                where: { companyId, parentId: null, type },
                 orderBy: { code: 'desc' },
             });
 
@@ -29,7 +29,7 @@ export class AccountService {
         if (!parent) throw new Error('Parent not found');
 
         const lastChild = await prisma.account.findFirst({
-            where: { parentId },
+            where: { companyId, parentId },
             orderBy: { code: 'desc' },
         });
 
@@ -37,19 +37,13 @@ export class AccountService {
         const parentLevel = parent.level;
 
         if (!lastChild) {
-            // First child logic based on depth
-            // Level 0 -> Level 1 (e.g. 1000 -> 1100)
             if (parentLevel === 0) return (parseInt(parentCode) + 100).toString();
-            // Level 1 -> Level 2 (e.g. 1100 -> 1110)
             if (parentLevel === 1) return (parseInt(parentCode) + 10).toString();
-            // Level 2 -> Level 3 (e.g. 1110 -> 1111)
             if (parentLevel === 2) return (parseInt(parentCode) + 1).toString();
-
-            return `${parentCode}01`; // Fallback
+            return `${parentCode}01`;
         }
 
         const lastCode = parseInt(lastChild.code);
-        // Standard increment based on depth
         if (parentLevel === 0) return (lastCode + 100).toString();
         if (parentLevel === 1) return (lastCode + 10).toString();
         if (parentLevel === 2) return (lastCode + 1).toString();
@@ -58,11 +52,11 @@ export class AccountService {
     }
 
     /**
-     * Setup Default COA Structure
+     * Setup Default COA Structure (scoped to company)
      */
-    static async setupDefaultCOA() {
-        const count = await prisma.account.count();
-        if (count > 0) throw new Error('Chart of Accounts is not empty');
+    static async setupDefaultCOA(companyId: string) {
+        const count = await prisma.account.count({ where: { companyId } });
+        if (count > 0) throw new Error('Chart of Accounts is not empty for this company');
 
         const structure = [
             {
@@ -123,7 +117,7 @@ export class AccountService {
 
         const createRecursive = async (items: any[], parentId: string | null = null, type?: AccountType) => {
             for (const item of items) {
-                const account = await this.createAccount({
+                const account = await this.createAccount(companyId, {
                     name: item.name,
                     type: type || item.type,
                     parentId,
@@ -140,9 +134,9 @@ export class AccountService {
     }
 
     /**
-     * Create a new Account
+     * Create a new Account (scoped to company)
      */
-    static async createAccount(data: {
+    static async createAccount(companyId: string, data: {
         name: string;
         type: AccountType;
         parentId?: string | null;
@@ -150,7 +144,6 @@ export class AccountService {
         openingBalance?: number;
         openingBalanceType?: 'DR' | 'CR';
     }) {
-        // 1. Validate Parent
         let level = 0;
         if (data.parentId) {
             const parent = await prisma.account.findUnique({
@@ -164,12 +157,11 @@ export class AccountService {
             }
         }
 
-        // 2. Generate Code
-        const code = await this.generateCode(data.parentId || null, data.type);
+        const code = await this.generateCode(companyId, data.parentId || null, data.type);
 
-        // 3. Create Account
         return prisma.account.create({
             data: {
+                companyId,
                 code,
                 name: data.name,
                 type: data.type,
@@ -183,10 +175,11 @@ export class AccountService {
     }
 
     /**
-     * Get Account Hierarchy
+     * Get Account Hierarchy (scoped to company)
      */
-    static async getAccountHierarchy() {
+    static async getAccountHierarchy(companyId: string) {
         const allAccounts = await prisma.account.findMany({
+            where: { companyId },
             orderBy: { code: 'asc' },
         });
 
@@ -203,11 +196,12 @@ export class AccountService {
     }
 
     /**
-     * Get flattened list of posting accounts (for dropdowns)
+     * Get flattened list of posting accounts (for dropdowns, scoped to company)
      */
-    static async getPostingAccounts(type?: AccountType) {
+    static async getPostingAccounts(companyId: string, type?: AccountType) {
         return prisma.account.findMany({
             where: {
+                companyId,
                 isPosting: true,
                 ...(type && { type }),
             },
@@ -230,7 +224,6 @@ export class AccountService {
         const existing = await prisma.account.findUnique({ where: { id } });
         if (!existing) throw new Error('Account not found');
 
-        // Rule: A summary account with children cannot be converted to a posting account
         if (data.isPosting === true && existing.isPosting === false) {
             const childrenCount = await prisma.account.count({ where: { parentId: id } });
             if (childrenCount > 0) {
@@ -238,7 +231,6 @@ export class AccountService {
             }
         }
 
-        // Rule: Parent cannot be a posting account
         if (data.parentId) {
             const parent = await prisma.account.findUnique({ where: { id: data.parentId } });
             if (parent?.isPosting) {
@@ -273,20 +265,16 @@ export class AccountService {
      * Delete an Account
      */
     static async deleteAccount(id: string) {
-        // 1. Check for children
         const children = await prisma.account.count({
             where: { parentId: id },
         });
         if (children > 0) throw new Error('Cannot delete account with sub-accounts');
 
-        // 2. Check for transactions (Journal Lines)
         const transactions = await prisma.journalLine.count({
             where: { accountId: id },
         });
         if (transactions > 0) throw new Error('Cannot delete account with existing transactions');
 
-        // 3. Check if used in masters (Products, Customers, etc.)
-        // This is a complex check, but minimal for now:
         const productUsage = await prisma.product.count({
             where: {
                 OR: [

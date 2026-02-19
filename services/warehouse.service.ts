@@ -4,25 +4,24 @@ import { Warehouse } from '@prisma/client';
 
 export class WarehouseService {
     /**
-     * Create a new Warehouse
+     * Create a new Warehouse (scoped to company)
      */
-    static async createWarehouse(data: {
+    static async createWarehouse(companyId: string, data: {
         code: string;
         name: string;
         address?: string;
         isDefault?: boolean;
     }) {
-        // If setting as default, unset other defaults? 
-        // Logic: specific business rule, usually yes.
         if (data.isDefault) {
             await prisma.warehouse.updateMany({
-                where: { isDefault: true },
+                where: { companyId, isDefault: true },
                 data: { isDefault: false }
             });
         }
 
         return prisma.warehouse.create({
             data: {
+                companyId,
                 code: data.code,
                 name: data.name,
                 address: data.address,
@@ -32,29 +31,31 @@ export class WarehouseService {
     }
 
     /**
-     * Get All Warehouses
+     * Get All Warehouses (scoped to company)
      */
-    static async getAllWarehouses() {
+    static async getAllWarehouses(companyId: string) {
         return prisma.warehouse.findMany({
+            where: { companyId },
             orderBy: { name: 'asc' }
         });
     }
 
     /**
-     * Get Default Warehouse
+     * Get Default Warehouse (scoped to company)
      */
-    static async getDefaultWarehouse() {
+    static async getDefaultWarehouse(companyId: string) {
         return prisma.warehouse.findFirst({
-            where: { isDefault: true }
+            where: { companyId, isDefault: true }
         });
     }
+
     /**
      * Update Warehouse
      */
-    static async updateWarehouse(id: string, data: { name: string; address?: string; isDefault?: boolean }) {
+    static async updateWarehouse(companyId: string, id: string, data: { name: string; address?: string; isDefault?: boolean }) {
         if (data.isDefault) {
             await prisma.warehouse.updateMany({
-                where: { isDefault: true, id: { not: id } },
+                where: { companyId, isDefault: true, id: { not: id } },
                 data: { isDefault: false }
             });
         }

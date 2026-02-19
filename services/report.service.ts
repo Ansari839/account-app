@@ -695,14 +695,105 @@ export class ReportService {
 
         const stock = await prisma.stockLedger.groupBy({
             by: ['productId'],
+            where: { companyId }, // Fixed: Added companyId filter
             _sum: { qtyIn: true, qtyOut: true }
         });
 
         return {
             monthlySales: sales._sum.credit?.toNumber() || 0,
             totalReceivables: (receivables._sum.debit?.toNumber() || 0) - (receivables._sum.credit?.toNumber() || 0),
-            totalStockItems: stock.length
+            totalStockItems: stock.length,
+            netProfit: 0 // Placeholder, requires P&L calculation
         };
+    }
+
+    /**
+     * Super Admin Dashboard Stats (Global)
+     */
+    static async getSuperAdminStats() {
+        // 1. Total Companies
+        const companiesCount = await prisma.company.count({ where: { deletedAt: null } });
+
+        // 2. Total Users
+        const usersCount = await prisma.user.count();
+
+        // 3. Global Revenue (This Month)
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const globalSales = await prisma.journalLine.aggregate({
+            where: {
+                account: { type: AccountType.INCOME },
+                entry: { date: { gte: startOfMonth }, status: true }
+            },
+            _sum: { credit: true }
+        });
+
+        // 4. Companies created this month
+        const newCompanies = await prisma.company.count({
+            where: { createdAt: { gte: startOfMonth } }
+        });
+
+        return {
+            totalCompanies: companiesCount,
+            totalUsers: usersCount,
+            globalMonthlyRevenue: globalSales._sum.credit?.toNumber() || 0,
+            newCompaniesThisMonth: newCompanies
+        };
+    }
+
+    /**
+     * Role-Based Stats
+     */
+    static async getRoleBasedStats(companyId: string, role: string) {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        if (role === 'SALES') {
+            const mySales = await prisma.salesInvoice.aggregate({
+                where: { companyId, date: { gte: startOfMonth } },
+                _sum: { totalAmount: true },
+                _count: { id: true }
+            });
+            const pendingOrders = await prisma.salesOrder.count({
+                where: { companyId, status: 'PENDING' }
+            });
+            return {
+                monthlySales: mySales._sum.totalAmount?.toNumber() || 0,
+                invoiceCount: mySales._count.id,
+                pendingOrders
+            };
+        }
+
+        if (role === 'PURCHASE') {
+            const monthPurchases = await prisma.purchaseInvoice.aggregate({
+                where: { companyId, date: { gte: startOfMonth } },
+                _sum: { totalAmount: true }
+            });
+            const pendingPO = await prisma.purchaseOrder.count({
+                where: { companyId, status: 'PENDING' }
+            });
+            return {
+                monthlyPurchases: monthPurchases._sum.totalAmount?.toNumber() || 0,
+                pendingPO
+            };
+        }
+
+        if (role === 'WAREHOUSE') {
+            const lowStock = await prisma.product.count({
+                where: {
+                    companyId,
+                    // simplified low stock check, ideally needs stock ledger calculation
+                }
+            });
+            return {
+                lowStockItems: 0,
+                pendingDelivery: await prisma.salesOrder.count({ where: { companyId, status: { in: ['APPROVED', 'PENDING'] } } }),
+                pendingGRN: await prisma.purchaseOrder.count({ where: { companyId, status: { in: ['APPROVED', 'PENDING'] } } })
+            };
+        }
+
+        return {};
     }
 
     /**
@@ -856,6 +947,220 @@ export class ReportService {
             totalDebits,
             totalCredits,
             grossProfit
+        };
+    }
+
+    static async getConsolidatedTrialBalance(endDate: Date) {
+        // 1. Fetch all active companies
+        const companies = await prisma.company.findMany({
+            where: { deletedAt: null },
+            select: { id: true, name: true },
+            orderBy: { name: 'asc' }
+        });
+
+        // 2. Fetch TB for each company
+        const consolidatedMap = new Map<string, {
+            code: string,
+            name: string,
+            type: string,
+            companies: Record<string, number>,
+            totalDebit: number,
+            totalCredit: number
+        }>();
+
+        for (const company of companies) {
+            const tb = await this.getTrialBalance(company.id, endDate);
+            for (const line of tb) {
+                const key = line.accountCode;
+                const existing = consolidatedMap.get(key) || {
+                    code: line.accountCode,
+                    name: line.accountName,
+                    type: line.type,
+                    companies: {},
+                    totalDebit: 0,
+                    totalCredit: 0
+                };
+
+                existing.companies[company.id] = line.debit - line.credit; // Net val
+                existing.totalDebit += line.debit;
+                existing.totalCredit += line.credit;
+
+                consolidatedMap.set(key, existing);
+            }
+        }
+
+        // 3. Format Result
+        const report = Array.from(consolidatedMap.values()).sort((a, b) => a.code.localeCompare(b.code));
+
+        return {
+            companies,
+            report
+        };
+    }
+
+    /**
+     * Helper to merge hierarchical reports
+     */
+    private static mergeTrees(
+        baseNodes: any[],
+        newNodes: any[],
+        companyId: string,
+        mergedFn: (node: any, amount: number, companyId: string) => void
+    ) {
+        // Flatten newNodes for easier lookup
+        const flatten = (nodes: any[]): any[] => {
+            let res: any[] = [];
+            for (const n of nodes) {
+                res.push(n);
+                if (n.children) res = res.concat(flatten(n.children));
+                if (n.items) res = res.concat(flatten(n.items)); // For BS structure
+            }
+            return res;
+        };
+        const flatNew = flatten(newNodes);
+
+        // Recursive merge into baseNodes
+        // Actually, better to rebuild the tree from a Map of all codes
+        return; // This approach is too complex for simple merge.
+    }
+
+    // SIMPLIFIED APPROACH:
+    // We already have generic "Get Report for Company"
+    // We will return a structure that mimics the single report but amounts are objects { [compId]: val, total: val }
+    // To do this, we'll collect all nodes from all companies into a Map<Code, Node>
+    // Then reconstruct the tree.
+
+    static async getConsolidatedProfitLoss(startDate: Date, endDate: Date) {
+        const companies = await prisma.company.findMany({
+            where: { deletedAt: null },
+            select: { id: true, name: true },
+            orderBy: { name: 'asc' }
+        });
+
+        // Map<Code, { name, level, isPosting, type, amounts: {}, total: 0 }>
+        const accountMap = new Map<string, any>();
+
+        // We need to fetch flat structures to build the map easily.
+        // Re-using getProfitLoss internal logic would be best but it's private.
+        // We'll call getProfitLoss and flatten the result.
+
+        const flattenTree = (nodes: any[], type: string) => {
+            let res: any[] = [];
+            for (const node of nodes) {
+                res.push({ ...node, reportType: type });
+                if (node.children) res = res.concat(flattenTree(node.children, type));
+            }
+            return res;
+        };
+
+        for (const company of companies) {
+            const pl = await this.getProfitLoss(company.id, startDate, endDate);
+            const flatIncome = flattenTree(pl.income, 'INCOME');
+            const flatExpense = flattenTree(pl.expense, 'EXPENSE');
+
+            [...flatIncome, ...flatExpense].forEach(item => {
+                const key = item.code;
+                const existing = accountMap.get(key) || {
+                    code: item.code,
+                    name: item.name,
+                    level: item.level,
+                    isPosting: item.isPosting,
+                    reportType: item.reportType,
+                    companies: {},
+                    total: 0
+                };
+
+                existing.companies[company.id] = item.amount;
+                existing.total += item.amount;
+                accountMap.set(key, existing);
+            });
+        }
+
+        // Rebuild Trees
+        const buildTree = (type: string) => {
+            const nodes = Array.from(accountMap.values())
+                .filter(n => n.reportType === type)
+                .sort((a, b) => a.code.localeCompare(b.code));
+
+            // Basic hierarchy reconstruction based on levels
+            // Assuming strict COA structure where parent code is prefix? Or just using levels.
+            // Since we don't have parentId here easily, we rely on the fact that getProfitLoss returned a tree.
+            // But we flattened it.
+            // To reconstruct, we need parent linkage. 
+            // The simpliest way for Consolidated View is FLATTENED LIST with indentation (level).
+            // Frontend can render it.
+            return nodes;
+        };
+
+        return {
+            companies,
+            income: buildTree('INCOME'),
+            expense: buildTree('EXPENSE')
+        };
+    }
+
+    static async getConsolidatedBalanceSheet(endDate: Date) {
+        const companies = await prisma.company.findMany({
+            where: { deletedAt: null },
+            select: { id: true, name: true },
+            orderBy: { name: 'asc' }
+        });
+
+        const accountMap = new Map<string, any>();
+
+        const flattenBS = (section: any[], type: string) => {
+            let res: any[] = [];
+            for (const group of section) {
+                // Groups in BS (Level 1)
+                res.push({ code: group.code, name: group.name, amount: group.total || group.amount, level: 1, type }); // Group Header
+                if (group.items) {
+                    for (const item of group.items) {
+                        res.push({ ...item, level: 2, type });
+                    }
+                }
+            }
+            return res;
+        };
+
+        for (const company of companies) {
+            const bs = await this.getBalanceSheet(company.id, endDate);
+
+            // Assets
+            const assets = flattenBS(bs.assetSection, 'ASSET');
+            // Liabilities
+            const liabilities = flattenBS(bs.liabilitySection, 'LIABILITY');
+            // Equity
+            const equity = bs.equityItems.map((i: any) => ({ ...i, type: 'EQUITY' }));
+
+            [...assets, ...liabilities, ...equity].forEach(item => {
+                if (!item.code) return; // Skip if no code (e.g. profit line might need handling)
+                const key = item.code;
+                const existing = accountMap.get(key) || {
+                    code: item.code,
+                    name: item.name,
+                    level: item.level,
+                    type: item.type,
+                    companies: {},
+                    total: 0
+                };
+
+                existing.companies[company.id] = item.amount;
+                existing.total += item.amount;
+                accountMap.set(key, existing);
+            });
+        }
+
+        const buildList = (type: string) => {
+            return Array.from(accountMap.values())
+                .filter(n => n.type === type)
+                .sort((a, b) => a.code.localeCompare(b.code));
+        }
+
+        return {
+            companies,
+            assets: buildList('ASSET'),
+            liabilities: buildList('LIABILITY'),
+            equity: buildList('EQUITY')
         };
     }
 }

@@ -4,6 +4,7 @@ import { CompanySettingsService } from "./settings.service";
 import { PurchaseOrder, GRN, PurchaseInvoice } from '@prisma/client';
 
 export interface PurchaseRequestInput {
+    companyId: string;
     reqNo: string;
     date: Date;
     remarks?: string;
@@ -25,6 +26,7 @@ export interface POItemInput {
 }
 
 export interface POInput {
+    companyId: string;
     poNo: string;
     supplierId: string;
     warehouseId: string;
@@ -44,6 +46,7 @@ export interface GRNItemInput {
 }
 
 export interface GRNInput {
+    companyId: string;
     grnNo: string;
     poId?: string;
     supplierId: string;
@@ -79,6 +82,7 @@ export class PurchaseService {
     static async createRequest(data: PurchaseRequestInput) {
         return await prisma.purchaseRequest.create({
             data: {
+                companyId: data.companyId,
                 reqNo: data.reqNo,
                 date: data.date,
                 remarks: data.remarks,
@@ -138,6 +142,7 @@ export class PurchaseService {
 
             return await tx.purchaseOrder.create({
                 data: {
+                    companyId: data.companyId,
                     poNo: data.poNo,
                     supplierId: supplier.id,
                     warehouseId: data.warehouseId,
@@ -164,6 +169,7 @@ export class PurchaseService {
             // 1. Create GRN
             const grn = await tx.gRN.create({
                 data: {
+                    companyId: data.companyId,
                     grnNo: data.grnNo,
                     poId: data.poId,
                     supplierId: supplier.id,
@@ -189,6 +195,7 @@ export class PurchaseService {
             for (const item of data.items) {
                 await tx.stockLedger.create({
                     data: {
+                        companyId: data.companyId,
                         productId: item.productId,
                         variantId: item.variantId || null,
                         warehouseId: data.warehouseId,
@@ -209,11 +216,8 @@ export class PurchaseService {
     /**
      * Creates a Purchase Invoice, updates Stock (if no GRN), and generates Auto JV
      */
-    static async createPurchaseInvoice(data: InvoiceInput & { companyId?: string }) {
-        // TODO: Phase 3 - companyId will be passed from controller
-        const isGrnMandatory = data.companyId
-            ? await CompanySettingsService.getBoolean(data.companyId, "GRN_MANDATORY", false)
-            : false;
+    static async createPurchaseInvoice(data: InvoiceInput & { companyId: string }) {
+        const isGrnMandatory = await CompanySettingsService.getBoolean(data.companyId, "GRN_MANDATORY", false);
         if (isGrnMandatory && !data.grnId) {
             throw new Error("GRN is mandatory for purchase invoices according to system settings.");
         }
@@ -288,6 +292,7 @@ export class PurchaseService {
             const voucherNo = `PURV-${Date.now()}`;
             const journalEntry = await tx.journalEntry.create({
                 data: {
+                    companyId: data.companyId,
                     number: voucherNo,
                     date: data.date,
                     type: "PURCHASE",
@@ -307,6 +312,7 @@ export class PurchaseService {
             // 3. Create Purchase Invoice
             const invoice = await tx.purchaseInvoice.create({
                 data: {
+                    companyId: data.companyId,
                     invoiceNo: data.invoiceNo,
                     supplierId: data.supplierId,
                     date: data.date,
@@ -358,6 +364,7 @@ export class PurchaseService {
 
                     await tx.stockLedger.create({
                         data: {
+                            companyId: data.companyId,
                             productId: item.productId,
                             variantId: item.variantId || null,
                             warehouseId: warehouseId,
@@ -380,6 +387,7 @@ export class PurchaseService {
      * Creates a Purchase Return, updates Stock, and generates reversal JV
      */
     static async createReturn(data: {
+        companyId: string;
         purchaseInvoiceId?: string;
         supplierId: string;
         warehouseId: string;
@@ -478,6 +486,7 @@ export class PurchaseService {
             const voucherNo = `PRRTV-${Date.now()}`;
             const journalEntry = await tx.journalEntry.create({
                 data: {
+                    companyId: data.companyId,
                     number: voucherNo,
                     date: data.date,
                     type: "PURCHASE_RETURN",
@@ -497,6 +506,7 @@ export class PurchaseService {
             // 5. Create Purchase Return Record
             const purchaseReturn = await tx.purchaseReturn.create({
                 data: {
+                    companyId: data.companyId,
                     returnNo,
                     date: data.date,
                     supplierId: supplier.id,
@@ -515,6 +525,7 @@ export class PurchaseService {
             for (const item of data.items) {
                 await tx.stockLedger.create({
                     data: {
+                        companyId: data.companyId,
                         productId: item.productId,
                         variantId: item.variantId || null,
                         warehouseId: warehouse.id,

@@ -2,11 +2,12 @@ import prisma from "@/lib/prisma";
 
 export class UnitService {
     /**
-     * Create a new Unit
+     * Create a new Unit (scoped to company)
      */
-    static async createUnit(data: { name: string; code: string }) {
+    static async createUnit(companyId: string, data: { name: string; code: string }) {
         return prisma.unit.create({
             data: {
+                companyId,
                 name: data.name,
                 code: data.code,
             },
@@ -14,10 +15,9 @@ export class UnitService {
     }
 
     /**
-     * Create a Conversion Factor
-     * e.g. from KG to GM, factor = 1000
+     * Create a Conversion Factor (scoped to company)
      */
-    static async addConversion(data: {
+    static async addConversion(companyId: string, data: {
         fromUnitId: string;
         toUnitId: string;
         factor: number;
@@ -32,6 +32,7 @@ export class UnitService {
 
         return prisma.unitConversion.create({
             data: {
+                companyId,
                 fromUnitId: data.fromUnitId,
                 toUnitId: data.toUnitId,
                 factor: data.factor,
@@ -40,10 +41,11 @@ export class UnitService {
     }
 
     /**
-     * Get all units
+     * Get all units (scoped to company)
      */
-    static async getAllUnits() {
+    static async getAllUnits(companyId: string) {
         return prisma.unit.findMany({
+            where: { companyId },
             orderBy: { name: 'asc' },
             include: {
                 conversionsFrom: { include: { toUnit: true } },

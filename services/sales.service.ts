@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 export interface SalesQuotationInput {
+    companyId: string;
     quoteNo: string;
     customerId: string;
     date: Date;
@@ -21,6 +22,7 @@ export interface SalesQuotationInput {
 }
 
 export interface SalesOrderInput {
+    companyId: string;
     orderNo?: string;
     customerId: string;
     warehouseId?: string;
@@ -38,6 +40,7 @@ export interface SalesOrderInput {
 }
 
 export interface DeliveryOrderInput {
+    companyId: string;
     doNo?: string;
     orderId?: string;
     customerId: string;
@@ -116,6 +119,7 @@ export class SalesService {
 
             return await tx.salesQuotation.create({
                 data: {
+                    companyId: data.companyId,
                     quoteNo: data.quoteNo,
                     customerId: customer.id,
                     date: data.date,
@@ -172,6 +176,7 @@ export class SalesService {
 
             return await tx.salesOrder.create({
                 data: {
+                    companyId: data.companyId,
                     orderNo: orderNo,
                     customerId: customer.id,
                     warehouseId: data.warehouseId,
@@ -221,6 +226,7 @@ export class SalesService {
             // 1. Create DO
             const deliveryOrder = await tx.deliveryOrder.create({
                 data: {
+                    companyId: data.companyId,
                     doNo: doNo,
                     orderId: data.orderId,
                     customerId: customer.id,
@@ -244,6 +250,7 @@ export class SalesService {
             for (const item of data.items) {
                 await tx.stockLedger.create({
                     data: {
+                        companyId: data.companyId,
                         productId: item.productId,
                         variantId: item.variantId || null,
                         warehouseId: data.warehouseId,
@@ -272,11 +279,8 @@ export class SalesService {
      * Creates a Sales Invoice, updates Stock (if no DO), and generates Auto JV
      * Mirrors PurchaseService.createPurchaseInvoice exactly.
      */
-    static async createSalesInvoice(data: SalesInvoiceInput & { companyId?: string }) {
-        // TODO: Phase 3 - companyId will be passed from controller
-        const isDOMandatory = data.companyId
-            ? await CompanySettingsService.getBoolean(data.companyId, 'DO_MANDATORY', false)
-            : false;
+    static async createSalesInvoice(data: SalesInvoiceInput & { companyId: string }) {
+        const isDOMandatory = await CompanySettingsService.getBoolean(data.companyId, 'DO_MANDATORY', false);
         if (isDOMandatory && !data.doId) {
             throw new Error("Delivery Order is mandatory for Sales Invoicing.");
         }
@@ -409,6 +413,7 @@ export class SalesService {
                 const voucherNo = `SALV-${Date.now()}`;
                 const journalEntry = await tx.journalEntry.create({
                     data: {
+                        companyId: data.companyId,
                         number: voucherNo,
                         date: data.date,
                         type: "SALES",
@@ -428,6 +433,7 @@ export class SalesService {
                 // 3. Create Sales Invoice (Linked to JE)
                 const invoice = await tx.salesInvoice.create({
                     data: {
+                        companyId: data.companyId,
                         invoiceNo: invoiceNo,
                         customerId: customer.id,
                         warehouseId: data.warehouseId,
@@ -498,6 +504,7 @@ export class SalesService {
 
                         await tx.stockLedger.create({
                             data: {
+                                companyId: data.companyId,
                                 productId: item.productId,
                                 variantId: item.variantId || null,
                                 warehouseId: data.warehouseId!,
@@ -548,6 +555,7 @@ export class SalesService {
      * Mirrors PurchaseService.createReturn
      */
     static async createSalesReturn(data: {
+        companyId: string;
         invoiceId?: string;
         customerId: string;
         warehouseId: string;
@@ -640,6 +648,7 @@ export class SalesService {
             const voucherNo = `SRRET-${Date.now()}`;
             const journalEntry = await tx.journalEntry.create({
                 data: {
+                    companyId: data.companyId,
                     number: voucherNo,
                     date: data.date,
                     type: "SALES_RETURN",
@@ -659,6 +668,7 @@ export class SalesService {
             // 5. Create Sales Return
             const salesReturn = await tx.salesReturn.create({
                 data: {
+                    companyId: data.companyId,
                     returnNo,
                     invoiceId: invoice?.id, // Optional link
                     customerId: customer.id,
@@ -677,6 +687,7 @@ export class SalesService {
             for (const item of data.items) {
                 await tx.stockLedger.create({
                     data: {
+                        companyId: data.companyId,
                         productId: item.productId,
                         variantId: item.variantId || null,
                         warehouseId: warehouse.id,

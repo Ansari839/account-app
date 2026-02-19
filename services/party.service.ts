@@ -4,9 +4,9 @@ import { AccountService } from "./account.service";
 
 export class PartyService {
     /**
-     * Create a new Customer
+     * Create a new Customer (scoped to company)
      */
-    static async createCustomer(data: {
+    static async createCustomer(companyId: string, data: {
         code: string;
         name: string;
         taxId?: string;
@@ -14,17 +14,14 @@ export class PartyService {
         creditLimit?: number;
         receivableAccountId: string;
     }) {
-        // 1. Validate Receivable Account
         const isPosting = await AccountService.validatePostingAccount(data.receivableAccountId);
         if (!isPosting) {
             throw new Error("Receivable Account must be a valid posting account.");
         }
 
-        // 2. Validate Currency (Optional: assuming foreign key constraint handles existence, but good to check)
-        // For strictness we could check, but let's rely on FK for now or add check if needed.
-
         return prisma.customer.create({
             data: {
+                companyId,
                 code: data.code,
                 name: data.name,
                 taxId: data.taxId,
@@ -36,16 +33,15 @@ export class PartyService {
     }
 
     /**
-     * Create a new Supplier
+     * Create a new Supplier (scoped to company)
      */
-    static async createSupplier(data: {
+    static async createSupplier(companyId: string, data: {
         code: string;
         name: string;
         taxId?: string;
         currencyCode: string;
         payableAccountId: string;
     }) {
-        // 1. Validate Payable Account
         const isPosting = await AccountService.validatePostingAccount(data.payableAccountId);
         if (!isPosting) {
             throw new Error("Payable Account must be a valid posting account.");
@@ -53,6 +49,7 @@ export class PartyService {
 
         return prisma.supplier.create({
             data: {
+                companyId,
                 code: data.code,
                 name: data.name,
                 taxId: data.taxId,

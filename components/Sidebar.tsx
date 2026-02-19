@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import CompanySwitcher from './CompanySwitcher';
 
 const menuItems = [
     { name: 'Dashboard', icon: '📊', path: '/finance/dashboard' },
@@ -23,6 +24,27 @@ const menuItems = [
 export default function Sidebar() {
     const pathname = usePathname();
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+    useEffect(() => {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                setIsSuperAdmin(!!user.isSuperAdmin);
+            } catch (e) {
+                console.error("Failed to parse user from local storage", e);
+            }
+        }
+    }, []);
+
+    const adminItems = [
+        { name: 'Companies', icon: '🏢', path: '/admin/companies', sub: undefined },
+        { name: 'Users', icon: '👥', path: '/admin/users', sub: undefined },
+        { name: 'Backup & Restore', icon: '💾', path: '/admin/backup', sub: undefined },
+    ];
+
+    const displayItems = isSuperAdmin ? [...menuItems, ...adminItems] : menuItems;
 
     return (
         <aside className={`h-screen bg-[#0f172a] text-slate-300 transition-all duration-300 ease-in-out border-r border-slate-800/50 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'} sticky top-0`}>
@@ -46,9 +68,12 @@ export default function Sidebar() {
                 </button>
             </div>
 
+            {/* Company Switcher */}
+            <CompanySwitcher isCollapsed={isCollapsed} />
+
             {/* Navigation */}
             <nav className="flex-1 px-4 space-y-2 overflow-y-auto mt-4 scrollbar-hide">
-                {menuItems.map((item) => {
+                {displayItems.map((item) => {
                     const isActive = pathname.startsWith(item.path);
                     return (
                         <div key={item.name} className="space-y-1">

@@ -2,9 +2,9 @@ import prisma from "@/lib/prisma";
 
 export class TaxService {
     /**
-     * Create a new Tax Code
+     * Create a new Tax Code (scoped to company)
      */
-    static async createTaxCode(data: {
+    static async createTaxCode(companyId: string, data: {
         name: string;
         code: string;
         rate: number;
@@ -15,6 +15,7 @@ export class TaxService {
 
         return prisma.taxCode.create({
             data: {
+                companyId,
                 name: data.name,
                 code: data.code,
                 rate: data.rate,
@@ -23,10 +24,11 @@ export class TaxService {
     }
 
     /**
-     * Get all Tax Codes
+     * Get all Tax Codes (scoped to company)
      */
-    static async getAllTaxCodes() {
+    static async getAllTaxCodes(companyId: string) {
         return prisma.taxCode.findMany({
+            where: { companyId },
             orderBy: { name: 'asc' }
         });
     }

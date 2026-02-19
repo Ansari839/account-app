@@ -3,17 +3,16 @@ import { VoucherType, Prisma, JournalEntry } from '@prisma/client';
 
 export class VoucherService {
     /**
-     * Generates a new unique voucher number for the given type and financial year
+     * Generates a new unique voucher number for the given type (scoped to company)
      */
-    static async generateNumber(type: VoucherType, tx?: Prisma.TransactionClient) {
+    static async generateNumber(companyId: string, type: VoucherType, tx?: Prisma.TransactionClient) {
         const execute = async (txClient: Prisma.TransactionClient) => {
-            // 1. Get or create sequence for the type
-            let sequence = await txClient.voucherSequence.findUnique({
-                where: { type }
+            // 1. Get or create sequence for the type within company
+            let sequence = await txClient.voucherSequence.findFirst({
+                where: { companyId, type }
             });
 
             if (!sequence) {
-                // Initial defaults for types
                 const prefixes: Record<VoucherType, string> = {
                     [VoucherType.JOURNAL]: "JV-",
                     [VoucherType.PAYMENT]: "PV-",
@@ -29,6 +28,7 @@ export class VoucherService {
 
                 sequence = await txClient.voucherSequence.create({
                     data: {
+                        companyId,
                         type,
                         prefix: prefixes[type] || "V-",
                         nextValue: 1
@@ -57,12 +57,12 @@ export class VoucherService {
     }
 
     /**
-     * Validate if a voucher number is already used
+     * Validate if a voucher number is already used (scoped to company)
      */
-    static async validateNumber(number: string, tx?: Prisma.TransactionClient) {
+    static async validateNumber(companyId: string, number: string, tx?: Prisma.TransactionClient) {
         const client = tx || prisma;
-        const existing = await client.journalEntry.findUnique({
-            where: { number }
+        const existing = await client.journalEntry.findFirst({
+            where: { companyId, number }
         });
         if (existing) {
             throw new Error(`Voucher number ${number} is already in use.`);

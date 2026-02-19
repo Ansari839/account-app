@@ -1,11 +1,15 @@
 
 import { NextResponse } from 'next/server';
 import { AccountService } from '@/services/account.service';
+import { AuthUtils } from '@/lib/auth-utils';
 
 export class AccountController {
-    static async getHierarchy() {
+    static async getHierarchy(req: Request) {
         try {
-            const hierarchy = await AccountService.getAccountHierarchy();
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
+            const hierarchy = await AccountService.getAccountHierarchy(companyId);
             return NextResponse.json({ success: true, data: hierarchy });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -14,9 +18,11 @@ export class AccountController {
 
     static async create(req: Request) {
         try {
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
             const body = await req.json();
-            // Basic validation could go here or Zod
-            const account = await AccountService.createAccount(body);
+            const account = await AccountService.createAccount(companyId, body);
             return NextResponse.json({ success: true, data: account });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 400 });
@@ -44,9 +50,12 @@ export class AccountController {
         }
     }
 
-    static async setupDefault() {
+    static async setupDefault(req: Request) {
         try {
-            const result = await AccountService.setupDefaultCOA();
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
+            const result = await AccountService.setupDefaultCOA(companyId);
             return NextResponse.json({ success: true, data: result });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 400 });
@@ -55,11 +64,13 @@ export class AccountController {
 
     static async getPostingAccounts(req: Request) {
         try {
-            // Extract query param 'type' if needed
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
             const { searchParams } = new URL(req.url);
             const type = searchParams.get('type') as any;
 
-            const accounts = await AccountService.getPostingAccounts(type);
+            const accounts = await AccountService.getPostingAccounts(companyId, type);
             return NextResponse.json({ success: true, data: accounts });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });

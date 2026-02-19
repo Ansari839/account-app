@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { FinancialYearService } from '@/services/financial-year.service';
+import { AuthUtils } from '@/lib/auth-utils';
 
 export class FinancialYearController {
     static async list(req: Request) {
         try {
-            const years = await FinancialYearService.listYears();
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
+            const years = await FinancialYearService.listYears(companyId);
             return NextResponse.json({ success: true, data: years });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -13,8 +17,11 @@ export class FinancialYearController {
 
     static async create(req: Request) {
         try {
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
             const body = await req.json();
-            const year = await FinancialYearService.createYear(body);
+            const year = await FinancialYearService.createYear(companyId, body);
             return NextResponse.json({ success: true, data: year });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 400 });

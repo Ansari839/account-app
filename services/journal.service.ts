@@ -14,9 +14,10 @@ export interface JournalLineInput {
 }
 
 export interface JournalEntryInput {
-    id?: string; // For updates
-    userId?: string; // Added for ABAC and Audit
-    number?: string; // Made optional for auto-generation
+    id?: string;
+    userId?: string;
+    companyId: string;
+    number?: string;
     date: Date;
     type: VoucherType;
     reference?: string;
@@ -26,13 +27,14 @@ export interface JournalEntryInput {
 
 export class JournalService {
     /**
-     * Creates a balanced Journal Entry (Voucher)
+     * Creates a balanced Journal Entry (scoped to company)
      */
     static async createEntry(data: JournalEntryInput, tx?: Prisma.TransactionClient) {
         const client = tx || prisma;
+        const { companyId } = data;
 
         // 1. Accounting Controls
-        await AccountingControlService.validateTransaction(data.date, data.id);
+        await AccountingControlService.validateTransaction(companyId, data.date, data.id);
 
         // 2. ABAC: Value Limits
         if (data.userId) {
@@ -55,13 +57,12 @@ export class JournalService {
             throw new Error("Journal Entry must have at least two lines.");
         }
 
-        // Validate line amounts
         if (data.lines.some(l => (l.debit || 0) <= 0 && (l.credit || 0) <= 0)) {
             throw new Error("All journal lines must have a value greater than 0.");
         }
 
         // 4. Financial Year Handling
-        const activeYear = await FinancialYearService.getActiveYear(data.date);
+        const activeYear = await FinancialYearService.getActiveYear(companyId, data.date);
 
         if (!activeYear) {
             throw new Error(`No Active Financial Year found for date ${data.date}. Please open a Financial Year in Settings.`);
@@ -76,13 +77,14 @@ export class JournalService {
 
         const execute = async (txClient: Prisma.TransactionClient) => {
             if (!voucherNo) {
-                voucherNo = await VoucherService.generateNumber(data.type, txClient);
+                voucherNo = await VoucherService.generateNumber(companyId, data.type, txClient);
             } else {
-                await VoucherService.validateNumber(voucherNo, txClient);
+                await VoucherService.validateNumber(companyId, voucherNo, txClient);
             }
 
             const entry = await txClient.journalEntry.create({
                 data: {
+                    companyId,
                     number: voucherNo,
                     date: data.date,
                     type: data.type,
@@ -114,9 +116,9 @@ export class JournalService {
         }
     }
 
-    static async getEntryByNumber(number: string) {
-        return prisma.journalEntry.findUnique({
-            where: { number },
+    static async getEntryByNumber(companyId: string, number: string) {
+        return prisma.journalEntry.findFirst({
+            where: { companyId, number },
             include: { lines: { include: { account: true } } }
         });
     }
@@ -124,8 +126,8 @@ export class JournalService {
     static async getEntries(companyId: string, filters?: { type?: VoucherType }) {
         return prisma.journalEntry.findMany({
             where: {
+                companyId,
                 ...filters,
-                lines: { some: { account: { companyId } } }
             },
             include: { lines: true },
             orderBy: { date: 'desc' }

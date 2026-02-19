@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
+import { NextResponse } from "next/server";
 
 const JWT_SECRET = new TextEncoder().encode(
     process.env.JWT_SECRET || "default_secret_CHANGE_ME_IN_PROD"
@@ -52,5 +53,17 @@ export const AuthUtils = {
         const token = req.headers.get("Authorization")?.split(" ")[1];
         if (!token) return null;
         return this.verifyToken(token);
+    },
+
+    /**
+     * Extracts companyId from the x-company-id header.
+     * Returns { companyId, error } — if error is set, return it from the controller.
+     */
+    getCompanyId(req: Request): { companyId: string; error?: never } | { companyId?: never; error: NextResponse } {
+        const companyId = req.headers.get("x-company-id");
+        if (!companyId) {
+            return { error: NextResponse.json({ success: false, error: "Company not selected" }, { status: 400 }) };
+        }
+        return { companyId };
     }
 };

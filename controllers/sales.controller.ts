@@ -3,14 +3,8 @@ import prisma from "@/lib/prisma";
 import { AuthUtils } from '@/lib/auth-utils';
 import { SalesService } from '@/services/sales.service';
 
-async function getAuthUser(req: Request) {
-    const token = req.headers.get('Authorization')?.split(' ')[1];
-    if (!token) return null;
-    return AuthUtils.verifyToken(token);
-}
-
 // Helper: Resolve Account to Customer (Auto-Link/Create)
-async function resolveCustomerId(id: string) {
+async function resolveCustomerId(companyId: string, id: string) {
     // Check if passed ID is an Account
     const account = await prisma.account.findUnique({ where: { id } });
 
@@ -43,6 +37,7 @@ async function resolveCustomerId(id: string) {
             try {
                 customer = await prisma.customer.create({
                     data: {
+                        companyId,
                         code: `CUST-${nextSeq.toString().padStart(4, '0')}`,
                         name: `Cash Customer - ${account.name}`,
                         receivableAccountId: account.id,
@@ -53,6 +48,7 @@ async function resolveCustomerId(id: string) {
                 // Fallback
                 customer = await prisma.customer.create({
                     data: {
+                        companyId,
                         code: `CUST-${Date.now()}`,
                         name: `Cash Customer - ${account.name}`,
                         receivableAccountId: account.id,
@@ -61,8 +57,6 @@ async function resolveCustomerId(id: string) {
                 });
             }
         } else if (!customer.receivableAccountId) {
-            // Found generic but unlinked? Link it.
-            // This safeguards against "Found by name but failing strict check"
             await prisma.customer.update({
                 where: { id: customer.id },
                 data: { receivableAccountId: account.id }
@@ -74,21 +68,15 @@ async function resolveCustomerId(id: string) {
 
 export class SalesController {
     /**
-     * List Sales Invoices (Filtered by Company via Customer -> Account)
+     * List Sales Invoices (Filtered by Company)
      */
     static async listInvoices(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const invoices = await prisma.salesInvoice.findMany({
-                where: {
-                    customer: {
-                        receivableAccount: {
-                            companyId: user.companyId
-                        }
-                    }
-                },
+                where: { companyId },
                 include: {
                     customer: true,
                     warehouse: true,
@@ -109,17 +97,11 @@ export class SalesController {
      */
     static async listOrders(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const orders = await prisma.salesOrder.findMany({
-                where: {
-                    customer: {
-                        receivableAccount: {
-                            companyId: user.companyId
-                        }
-                    }
-                },
+                where: { companyId },
                 include: {
                     customer: true,
                     warehouse: true,
@@ -139,17 +121,11 @@ export class SalesController {
      */
     static async listDeliveryNotes(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const dns = await prisma.deliveryOrder.findMany({
-                where: {
-                    customer: {
-                        receivableAccount: {
-                            companyId: user.companyId
-                        }
-                    }
-                },
+                where: { companyId },
                 include: {
                     customer: true,
                     warehouse: true,
@@ -171,14 +147,15 @@ export class SalesController {
      */
     static async createOrder(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const body = await req.json();
-            const customerId = await resolveCustomerId(body.customerId);
+            const customerId = await resolveCustomerId(companyId, body.customerId);
 
             const order = await SalesService.createOrder({
                 ...body,
+                companyId,
                 customerId,
                 date: new Date(body.date),
                 expectedDate: body.expectedDate ? new Date(body.expectedDate) : undefined,
@@ -197,14 +174,15 @@ export class SalesController {
      */
     static async createDeliveryNote(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const body = await req.json();
-            const customerId = await resolveCustomerId(body.customerId);
+            const customerId = await resolveCustomerId(companyId, body.customerId);
 
             const dn = await SalesService.createDO({
                 ...body,
+                companyId,
                 customerId,
                 date: new Date(body.date),
                 orderId: body.orderId || null,
@@ -228,14 +206,15 @@ export class SalesController {
      */
     static async createInvoice(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const body = await req.json();
-            const customerId = await resolveCustomerId(body.customerId);
+            const customerId = await resolveCustomerId(companyId, body.customerId);
 
             const invoice = await SalesService.createSalesInvoice({
                 ...body,
+                companyId,
                 customerId,
                 date: new Date(body.date),
                 dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
@@ -266,14 +245,15 @@ export class SalesController {
      */
     static async createReturn(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const body = await req.json();
-            const customerId = await resolveCustomerId(body.customerId);
+            const customerId = await resolveCustomerId(companyId, body.customerId);
 
             const result = await SalesService.createSalesReturn({
                 ...body,
+                companyId,
                 customerId,
                 date: new Date(body.date),
                 warehouseId: body.warehouseId || null
@@ -290,17 +270,11 @@ export class SalesController {
      */
     static async listReturns(req: Request) {
         try {
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
 
             const returns = await prisma.salesReturn.findMany({
-                where: {
-                    customer: {
-                        receivableAccount: {
-                            companyId: user.companyId
-                        }
-                    }
-                },
+                where: { companyId },
                 include: {
                     customer: true,
                     warehouse: true,
@@ -322,8 +296,6 @@ export class SalesController {
     static async getOrder(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const order = await prisma.salesOrder.findUnique({
                 where: { id },
@@ -349,8 +321,6 @@ export class SalesController {
     static async deleteOrder(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             await SalesService.deleteOrder(id);
             return NextResponse.json({ success: true });
@@ -365,8 +335,6 @@ export class SalesController {
     static async getDeliveryNote(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const dn = await prisma.deliveryOrder.findUnique({
                 where: { id },
@@ -392,8 +360,6 @@ export class SalesController {
     static async deleteDeliveryNote(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             await SalesService.deleteDO(id);
             return NextResponse.json({ success: true });
@@ -408,8 +374,6 @@ export class SalesController {
     static async getInvoice(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             const invoice = await prisma.salesInvoice.findUnique({
                 where: { id },
@@ -436,8 +400,6 @@ export class SalesController {
     static async deleteInvoice(req: Request, { params }: { params: Promise<{ id: string }> }) {
         try {
             const { id } = await params;
-            const user = await getAuthUser(req);
-            if (!user?.companyId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
             await SalesService.deleteSalesInvoice(id);
             return NextResponse.json({ success: true });

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { JournalEntry, PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { AuthUtils } from '@/lib/auth-utils';
@@ -9,24 +9,16 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-async function getAuthUser(req: Request) {
-    const token = req.headers.get('Authorization')?.split(' ')[1];
-    if (!token) return null;
-    return AuthUtils.verifyToken(token);
-}
-
 // GET: Fetch Single Voucher by ID
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const user = await getAuthUser(req);
-    if (!user || !user.companyId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { companyId, error } = AuthUtils.getCompanyId(req);
+    if (error) return error;
 
     const { id } = await params;
 
     try {
-        const voucher = await prisma.journalEntry.findUnique({
-            where: { id: id },
+        const voucher = await prisma.journalEntry.findFirst({
+            where: { id, companyId },
             include: {
                 lines: {
                     include: { account: true }
@@ -36,12 +28,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
         if (!voucher) {
             return NextResponse.json({ error: 'Voucher not found' }, { status: 404 });
-        }
-
-        // Security: Ensure at least one line belongs to the user's company
-        const belongsToCompany = voucher.lines.some(l => l.account.companyId === user.companyId);
-        if (!belongsToCompany) {
-            return NextResponse.json({ error: 'Unauthorized access to this voucher' }, { status: 403 });
         }
 
         return NextResponse.json({ success: true, data: voucher });
@@ -54,10 +40,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 // PUT: Update Voucher
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const user = await getAuthUser(req);
-    if (!user || !user.companyId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { companyId, error } = AuthUtils.getCompanyId(req);
+    if (error) return error;
 
     const { id } = await params;
 
@@ -67,14 +51,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
         await prisma.$transaction(async (tx) => {
             // 1. Verify Ownership
-            const existing = await tx.journalEntry.findUnique({
-                where: { id },
-                include: { lines: { include: { account: true } } }
+            const existing = await tx.journalEntry.findFirst({
+                where: { id, companyId }
             });
 
             if (!existing) throw new Error("Voucher not found");
-            const belongsToCompany = existing.lines.some(l => l.account.companyId === user.companyId);
-            if (!belongsToCompany) throw new Error("Unauthorized");
 
             // 2. Update Header
             await tx.journalEntry.update({
@@ -87,7 +68,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             });
 
             // 3. Replace Lines (Delete All + Create New)
-            // Using 'entryId' based on previous error message indicating 'journalEntryId' was invalid
             await tx.journalLine.deleteMany({
                 where: { entryId: id }
             });
@@ -115,34 +95,26 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
 // DELETE: Remove Voucher
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const user = await getAuthUser(req);
-    if (!user || !user.companyId || user.role !== 'ADMIN') {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { companyId, error } = AuthUtils.getCompanyId(req);
+    if (error) return error;
 
     const { id } = await params;
 
     try {
         await prisma.$transaction(async (tx) => {
-            // 1. Fetch to check ownership and status
-            const voucher = await tx.journalEntry.findUnique({
-                where: { id },
-                include: { lines: { include: { account: true } } }
+            // 1. Fetch to check ownership
+            const voucher = await tx.journalEntry.findFirst({
+                where: { id, companyId }
             });
 
             if (!voucher) throw new Error("Voucher not found");
 
-            // 2. Check Company
-            const belongsToCompany = voucher.lines.some(l => l.account.companyId === user.companyId);
-            if (!belongsToCompany) throw new Error("Unauthorized");
-
-            // 3. Delete Lines first
-            // Using 'entryId' as fixed field name
+            // 2. Delete Lines first
             await tx.journalLine.deleteMany({
                 where: { entryId: id }
             });
 
-            // 4. Delete Entry
+            // 3. Delete Entry
             await tx.journalEntry.delete({
                 where: { id }
             });

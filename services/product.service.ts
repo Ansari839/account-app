@@ -5,11 +5,12 @@ import { AccountService } from "./account.service";
 
 export class ProductService {
     /**
-     * Helper to find a default account by name and type
+     * Helper to find a default account by name and type (scoped to company)
      */
-    private static async findDefaultAccount(name: string, type: AccountType) {
+    private static async findDefaultAccount(companyId: string, name: string, type: AccountType) {
         return prisma.account.findFirst({
             where: {
+                companyId,
                 name: { contains: name, mode: 'insensitive' },
                 type: type,
                 isPosting: true
@@ -18,9 +19,9 @@ export class ProductService {
     }
 
     /**
-     * Create a new Product with GL Mappings and Variants
+     * Create a new Product with GL Mappings and Variants (scoped to company)
      */
-    static async createProduct(data: {
+    static async createProduct(companyId: string, data: {
         code?: string;
         name: string;
         categoryId?: string;
@@ -35,26 +36,25 @@ export class ProductService {
     }) {
         // Auto-generate SKU if not provided
         if (!data.code || data.code.trim() === "") {
-            const count = await prisma.product.count();
+            const count = await prisma.product.count({ where: { companyId } });
             data.code = `PROD-${(count + 1).toString().padStart(4, '0')}`;
         }
 
         // --- Assign Default Accounts if Missing ---
         if (!data.inventoryAccountId) {
-            const def = await this.findDefaultAccount('Inventory', 'ASSET');
+            const def = await this.findDefaultAccount(companyId, 'Inventory', 'ASSET');
             if (def) data.inventoryAccountId = def.id;
         }
         if (!data.cogsAccountId) {
-            const def = await this.findDefaultAccount('Cost of Goods Sold', 'EXPENSE');
+            const def = await this.findDefaultAccount(companyId, 'Cost of Goods Sold', 'EXPENSE');
             if (def) data.cogsAccountId = def.id;
         }
         if (!data.salesAccountId) {
-            const def = await this.findDefaultAccount('Sales', 'INCOME');
+            const def = await this.findDefaultAccount(companyId, 'Sales', 'INCOME');
             if (def) data.salesAccountId = def.id;
         }
         if (!data.purchaseAccountId) {
-            // Priority 1: Purchase Account, Priority 2: COGS, Priority 3: Inventory
-            const def = await this.findDefaultAccount('Purchase', 'EXPENSE');
+            const def = await this.findDefaultAccount(companyId, 'Purchase', 'EXPENSE');
             if (def) {
                 data.purchaseAccountId = def.id;
             } else if (data.cogsAccountId) {
@@ -64,7 +64,7 @@ export class ProductService {
             }
         }
 
-        // Validate Account Mappings (If provided)
+        // Validate Account Mappings
         const accountsToValidate = [
             { id: data.inventoryAccountId, name: 'Inventory Account' },
             { id: data.cogsAccountId, name: 'COGS Account' },
@@ -83,6 +83,7 @@ export class ProductService {
 
         return prisma.product.create({
             data: {
+                companyId,
                 code: data.code,
                 name: data.name,
                 categoryId: data.categoryId,
@@ -106,11 +107,11 @@ export class ProductService {
     }
 
     /**
-     * Get Product by Code
+     * Get Product by Code (scoped to company)
      */
-    static async getProductByCode(code: string) {
-        return prisma.product.findUnique({
-            where: { code },
+    static async getProductByCode(companyId: string, code: string) {
+        return prisma.product.findFirst({
+            where: { companyId, code },
             include: {
                 category: true,
                 baseUnit: true,
@@ -122,10 +123,11 @@ export class ProductService {
     }
 
     /**
-     * Get All Products
+     * Get All Products (scoped to company)
      */
-    static async getAllProducts() {
+    static async getAllProducts(companyId: string) {
         return prisma.product.findMany({
+            where: { companyId },
             include: {
                 category: true,
                 baseUnit: true,
@@ -142,24 +144,13 @@ export class ProductService {
     static async updateProduct(id: string, data: any) {
         const { variants, ...productData } = data;
 
-        // If variants are provided, we handle them carefully.
-        // For simplicity: delete existing and recreate (if acceptable) OR upsert.
-        // Recreating is risky if linked to stock. 
-        // Better strategy: Update or Create. Handle deletion separately if needed.
-
-        // Let's implement basics + overwrite variants if provided (user typically edits full list)
-        // CAUTION: If variants have transactions, we cannot delete them.
-
         return prisma.product.update({
             where: { id },
             data: {
                 ...productData,
-                // Simple case: add new variants only for now through this API to avoid complexity
-                // Or user can manage variants via separate API if needed.
-                // We'll support creating new variants here.
                 variants: variants ? {
                     upsert: variants.map((v: any) => ({
-                        where: { id: v.id || 'new' }, // 'new' won't match, so it creates
+                        where: { id: v.id || 'new' },
                         create: { name: v.name, sku: v.sku, price: v.price },
                         update: { name: v.name, sku: v.sku, price: v.price }
                     }))
@@ -172,7 +163,6 @@ export class ProductService {
      * Delete Product
      */
     static async deleteProduct(id: string) {
-        // Check for transactions
         const transactions = await prisma.stockLedger.count({ where: { productId: id } });
         if (transactions > 0) throw new Error("Cannot delete product with existing stock transactions.");
 
