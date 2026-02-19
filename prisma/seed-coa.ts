@@ -45,21 +45,21 @@ async function main() {
     // 2.5 Currencies and Units
     console.log("💱 Seeding Currencies and Units...");
     await prisma.currency.upsert({
-        where: { code: 'PKR' },
+        where: { companyId_code: { companyId: company.id, code: 'PKR' } },
         update: {},
-        create: { code: 'PKR', name: 'Pakistani Rupee', symbol: 'Rs.', rate: 1, isBase: true }
+        create: { code: 'PKR', name: 'Pakistani Rupee', symbol: 'Rs.', rate: 1, isBase: true, companyId: company.id }
     });
 
     await prisma.unit.upsert({
-        where: { code: 'MTR' },
+        where: { companyId_code: { companyId: company.id, code: 'MTR' } },
         update: {},
-        create: { code: 'MTR', name: 'Meter' }
+        create: { code: 'MTR', name: 'Meter', companyId: company.id }
     });
 
     await prisma.unit.upsert({
-        where: { code: 'PCS' },
+        where: { companyId_code: { companyId: company.id, code: 'PCS' } },
         update: {},
-        create: { code: 'PCS', name: 'Pieces' }
+        create: { code: 'PCS', name: 'Pieces', companyId: company.id }
     });
 
     // 3. Chart of Accounts (Garments Specific)

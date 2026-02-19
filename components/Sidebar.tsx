@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import CompanySwitcher from './CompanySwitcher';
+import { useCompany } from '@/context/CompanyContext';
+import { SIDEBAR_PERMISSION_MAP } from '@/lib/permissions';
 
 const menuItems = [
     { name: 'Dashboard', icon: '📊', path: '/finance/dashboard' },
@@ -26,6 +28,7 @@ export default function Sidebar() {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isSuperAdmin, setIsSuperAdmin] = useState(false);
     const [user, setUser] = useState<{ fullName: string; email: string } | null>(null);
+    const { hasPermission } = useCompany();
 
     useEffect(() => {
         const userStr = localStorage.getItem('user');
@@ -43,8 +46,18 @@ export default function Sidebar() {
     const adminItems = [
         { name: 'Companies', icon: '🏢', path: '/admin/companies', sub: undefined },
         { name: 'Users', icon: '👥', path: '/admin/users', sub: undefined },
+        { name: 'Access Control', icon: '🔐', path: '/admin/rbac', sub: undefined },
         { name: 'Backup & Restore', icon: '💾', path: '/admin/backup', sub: undefined },
     ];
+
+    // Filter menu items based on user permissions
+    const visibleMenuItems = isSuperAdmin
+        ? menuItems
+        : menuItems.filter((item) => {
+            const requiredModule = SIDEBAR_PERMISSION_MAP[item.name];
+            if (!requiredModule) return true; // No permission mapping → always show
+            return hasPermission(requiredModule, 'VIEW');
+        });
 
     return (
         <aside className={`h-screen bg-[#0f172a] text-slate-300 transition-all duration-300 ease-in-out border-r border-slate-800/50 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'} sticky top-0`}>
@@ -73,7 +86,7 @@ export default function Sidebar() {
 
             {/* Navigation */}
             <nav className="flex-1 px-4 space-y-2 overflow-y-auto mt-4 scrollbar-hide">
-                {menuItems.map((item) => {
+                {visibleMenuItems.map((item) => {
                     const isActive = pathname.startsWith(item.path);
                     return (
                         <div key={item.name} className="space-y-1">

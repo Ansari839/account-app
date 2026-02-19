@@ -45,27 +45,27 @@ async function main() {
     // 2.5 Currencies and Units
     console.log("💱 Seeding Currencies and Units...");
     const pkr = await prisma.currency.upsert({
-        where: { code: 'PKR' },
+        where: { companyId_code: { companyId: company.id, code: 'PKR' } },
         update: {},
-        create: { code: 'PKR', name: 'Pakistani Rupee', symbol: 'Rs.', rate: 1, isBase: true }
+        create: { code: 'PKR', name: 'Pakistani Rupee', symbol: 'Rs.', rate: 1, isBase: true, companyId: company.id }
     });
 
     const meter = await prisma.unit.upsert({
-        where: { code: 'MTR' },
+        where: { companyId_code: { companyId: company.id, code: 'MTR' } },
         update: {},
-        create: { code: 'MTR', name: 'Meter' }
+        create: { code: 'MTR', name: 'Meter', companyId: company.id }
     });
 
     const pack = await prisma.unit.upsert({
-        where: { code: 'PKT' },
+        where: { companyId_code: { companyId: company.id, code: 'PKT' } },
         update: {},
-        create: { code: 'PKT', name: 'Pack' }
+        create: { code: 'PKT', name: 'Pack', companyId: company.id }
     });
 
     const pcs = await prisma.unit.upsert({
-        where: { code: 'PCS' },
+        where: { companyId_code: { companyId: company.id, code: 'PCS' } },
         update: {},
-        create: { code: 'PCS', name: 'Pieces' }
+        create: { code: 'PCS', name: 'Pieces', companyId: company.id }
     });
 
     // 3. Chart of Accounts (Garments Specific)
@@ -151,9 +151,9 @@ async function main() {
 
     for (const w of warehouses) {
         await prisma.warehouse.upsert({
-            where: { code: w.code },
-            update: w,
-            create: w
+            where: { companyId_code: { companyId: company.id, code: w.code } },
+            update: { name: w.name, address: w.address },
+            create: { ...w, companyId: company.id }
         });
     }
 
@@ -167,9 +167,9 @@ async function main() {
 
     const catMap = new Map();
     for (const c of categories) {
-        let category = await prisma.category.findFirst({ where: { name: c.name } });
+        let category = await prisma.category.findFirst({ where: { name: c.name, companyId: company.id } });
         if (!category) {
-            category = await prisma.category.create({ data: c });
+            category = await prisma.category.create({ data: { ...c, companyId: company.id } });
         }
         catMap.set(c.name, category);
     }
@@ -185,23 +185,24 @@ async function main() {
     ];
 
     for (const p of products) {
-        const unit = await prisma.unit.findUnique({ where: { code: p.unitCode } });
+        const unit = await prisma.unit.findUnique({ where: { companyId_code: { companyId: company.id, code: p.unitCode } } });
         if (!unit) throw new Error(`Unit ${p.unitCode} not found`);
 
         const product = await prisma.product.upsert({
-            where: { code: p.code },
+            where: { companyId_code: { companyId: company.id, code: p.code } },
             update: {
                 name: p.name,
                 categoryId: catMap.get(p.catName).id,
                 baseUnitId: unit.id,
-                inventoryAccountId: accountMap.get('1231').id, // Raw Materials
-                purchaseAccountId: accountMap.get('5110').id, // Fabric Purchases
-                salesAccountId: accountMap.get('4110').id, // Local Sales
-                cogsAccountId: accountMap.get('5100').id, // COGS
+                inventoryAccountId: accountMap.get('1231').id,
+                purchaseAccountId: accountMap.get('5110').id,
+                salesAccountId: accountMap.get('4110').id,
+                cogsAccountId: accountMap.get('5100').id,
             },
             create: {
                 code: p.code,
                 name: p.name,
+                companyId: company.id,
                 categoryId: catMap.get(p.catName).id,
                 baseUnitId: unit.id,
                 inventoryAccountId: accountMap.get('1231').id,
@@ -227,39 +228,41 @@ async function main() {
     // 7. Suppliers & Customers
     console.log("🤝 Seeding Parties...");
     await prisma.supplier.upsert({
-        where: { code: 'SUP-001' },
+        where: { companyId_code: { companyId: company.id, code: 'SUP-001' } },
         update: {
             name: 'Textile Mills Ltd',
-            currencyCode: 'PKR',
+            currencyCode: pkr.id,
             payableAccountId: accountMap.get('2110').id,
         },
         create: {
             code: 'SUP-001',
             name: 'Textile Mills Ltd',
-            currencyCode: 'PKR',
+            companyId: company.id,
+            currencyCode: pkr.id,
             payableAccountId: accountMap.get('2110').id,
         }
     });
 
     await prisma.customer.upsert({
-        where: { code: 'CUS-001' },
+        where: { companyId_code: { companyId: company.id, code: 'CUS-001' } },
         update: {
             name: 'Retail Fashion Hub',
-            currencyCode: 'PKR',
+            currencyCode: pkr.id,
             receivableAccountId: accountMap.get('1220').id,
         },
         create: {
             code: 'CUS-001',
             name: 'Retail Fashion Hub',
-            currencyCode: 'PKR',
+            companyId: company.id,
+            currencyCode: pkr.id,
             receivableAccountId: accountMap.get('1220').id,
         }
     });
 
-    // 8. Admin User
+    // 8. Admin User + UserCompany
     console.log("👤 Seeding Admin...");
     const passwordHash = await bcrypt.hash('Admin@123', 10);
-    await prisma.user.upsert({
+    const adminUser = await prisma.user.upsert({
         where: { email: 'admin@mstech.com' },
         update: {
             passwordHash,
@@ -274,6 +277,13 @@ async function main() {
             mustChangePass: false,
             companyId: company.id
         }
+    });
+
+    // Link user to company
+    await prisma.userCompany.upsert({
+        where: { userId_companyId: { userId: adminUser.id, companyId: company.id } },
+        update: { role: 'ADMIN' },
+        create: { userId: adminUser.id, companyId: company.id, role: 'ADMIN', isDefault: true }
     });
 
     console.log(`🎉 MS Tech Seeding successfully finished!`)
