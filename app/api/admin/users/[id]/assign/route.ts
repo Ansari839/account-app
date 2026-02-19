@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { AuthUtils } from '@/lib/auth-utils';
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const authUser = await AuthUtils.getAuthUser(req);
         if (!authUser || !authUser.isSuperAdmin) {
@@ -48,7 +49,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     try {
         const authUser = await AuthUtils.getAuthUser(req);
         if (!authUser || !authUser.isSuperAdmin) {

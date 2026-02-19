@@ -9,6 +9,7 @@ export default function SelectCompanyPage() {
     const { companies, setCompanies, switchCompany, activeCompany } = useCompany();
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [stats, setStats] = useState<Record<string, { sales: number; users: number }>>({});
 
     useEffect(() => {
         // Load companies from localStorage if context is empty
@@ -24,6 +25,21 @@ export default function SelectCompanyPage() {
             }
         }
         setIsLoading(false);
+
+        // Fetch stats
+        const token = localStorage.getItem('token');
+        if (token) {
+            fetch('/api/user/companies-stats', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        setStats(data.data);
+                    }
+                })
+                .catch(console.error);
+        }
     }, []);
 
     // Redirect if only one company (auto-selected by context)
@@ -46,6 +62,15 @@ export default function SelectCompanyPage() {
     const handleSelectCompany = (company: CompanyInfo) => {
         switchCompany(company.id);
         router.push('/finance/dashboard');
+    };
+
+    // Format currency
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            maximumFractionDigits: 0
+        }).format(amount);
     };
 
     if (isLoading || companies.length <= 1) {
@@ -131,6 +156,18 @@ export default function SelectCompanyPage() {
                                     {company.email && (
                                         <p className="text-sm text-slate-400 truncate">{company.email}</p>
                                     )}
+
+                                    {/* Quick Stats (Mocked or Fetched) */}
+                                    <div className="flex gap-4 mt-2">
+                                        <div className="text-xs">
+                                            <span className="text-slate-500">Sales: </span>
+                                            <span className="text-emerald-400 font-bold">$12.5k</span>
+                                        </div>
+                                        <div className="text-xs">
+                                            <span className="text-slate-500">Users: </span>
+                                            <span className="text-blue-400 font-bold">5</span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Role Badge + Arrow */}

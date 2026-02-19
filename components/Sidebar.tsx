@@ -25,13 +25,15 @@ export default function Sidebar() {
     const pathname = usePathname();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+    const [user, setUser] = useState<{ fullName: string; email: string } | null>(null);
 
     useEffect(() => {
         const userStr = localStorage.getItem('user');
         if (userStr) {
             try {
-                const user = JSON.parse(userStr);
-                setIsSuperAdmin(!!user.isSuperAdmin);
+                const parsed = JSON.parse(userStr);
+                setIsSuperAdmin(!!parsed.isSuperAdmin);
+                setUser(parsed);
             } catch (e) {
                 console.error("Failed to parse user from local storage", e);
             }
@@ -43,8 +45,6 @@ export default function Sidebar() {
         { name: 'Users', icon: '👥', path: '/admin/users', sub: undefined },
         { name: 'Backup & Restore', icon: '💾', path: '/admin/backup', sub: undefined },
     ];
-
-    const displayItems = isSuperAdmin ? [...menuItems, ...adminItems] : menuItems;
 
     return (
         <aside className={`h-screen bg-[#0f172a] text-slate-300 transition-all duration-300 ease-in-out border-r border-slate-800/50 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'} sticky top-0`}>
@@ -73,7 +73,7 @@ export default function Sidebar() {
 
             {/* Navigation */}
             <nav className="flex-1 px-4 space-y-2 overflow-y-auto mt-4 scrollbar-hide">
-                {displayItems.map((item) => {
+                {menuItems.map((item) => {
                     const isActive = pathname.startsWith(item.path);
                     return (
                         <div key={item.name} className="space-y-1">
@@ -118,13 +118,39 @@ export default function Sidebar() {
                         </div>
                     );
                 })}
+
+                {/* Admin Section */}
+                {isSuperAdmin && (
+                    <>
+                        <div className="my-4 border-t border-slate-800/50"></div>
+                        {!isCollapsed && <div className="px-4 text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Admin</div>}
+                        {adminItems.map((item) => {
+                            const isActive = pathname.startsWith(item.path);
+                            return (
+                                <Link
+                                    key={item.name}
+                                    href={item.path}
+                                    className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
+                                        ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                        : 'hover:bg-slate-800/50 hover:text-white'
+                                        }`}
+                                >
+                                    <span className="text-xl">{item.icon}</span>
+                                    {!isCollapsed && (
+                                        <span className="font-medium flex-1">{item.name}</span>
+                                    )}
+                                </Link>
+                            );
+                        })}
+                    </>
+                )}
             </nav>
 
             {/* User Block */}
             <div className="p-4 border-t border-slate-800/50">
                 <div className={`flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800/50 cursor-pointer transition-colors group ${isCollapsed ? 'justify-center' : ''}`}>
                     <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold border border-slate-600 group-hover:bg-rose-500/20 group-hover:border-rose-500/50 transition-colors">
-                        <span className="group-hover:hidden">AA</span>
+                        <span className="group-hover:hidden">{user?.fullName?.charAt(0) || 'U'}</span>
                         <span className="hidden group-hover:block" onClick={async () => {
                             try {
                                 const token = localStorage.getItem('token');
@@ -145,7 +171,7 @@ export default function Sidebar() {
                                 window.location.href = '/auth/login';
                             }
                         }}>
-                            <p className="text-sm font-semibold truncate text-white group-hover:text-rose-400">Abdullah Ansari</p>
+                            <p className="text-sm font-semibold truncate text-white group-hover:text-rose-400">{user?.fullName || 'User'}</p>
                             <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold group-hover:text-rose-500/50">Logout</p>
                         </div>
                     )}

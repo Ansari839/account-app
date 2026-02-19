@@ -1,0 +1,21 @@
+{
+  "code": "P2022",
+  "meta": {
+    "modelName": "User",
+    "driverAdapterError": {
+      "name": "DriverAdapterError",
+      "cause": {
+        "originalCode": "42703",
+        "originalMessage": "column User.isSuperAdmin does not exist",
+        "kind": "ColumnNotFound"
+      }
+    }
+  },
+  "clientVersion": "7.2.0",
+  "name": "PrismaClientKnownRequestError"
+}
+PrismaClientKnownRequestError: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+The column `(not available)` does not exist in the current database.

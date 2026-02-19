@@ -53,9 +53,9 @@ async function main() {
 
   for (const t of taxCodes) {
     await prisma.taxCode.upsert({
-      where: { code: t.code },
+      where: { companyId_code: { companyId: company.id, code: t.code } },
       update: t,
-      create: t
+      create: { ...t, companyId: company.id }
     });
   }
 
@@ -137,16 +137,8 @@ async function main() {
       ? await prisma.account.findUnique({ where: { companyId_code: { companyId: 'default-company', code: ac.parentCode } } })
       : null;
 
-    // Map REVENUE to INCOME, ensure Enum validity
     let type = ac.type === 'REVENUE' ? 'INCOME' : ac.type;
-    // Simple level calculation: if parent, level = parent.level + 1, else 0
     const level = parent ? parent.level + 1 : 0;
-    // Basic posting logic: if it has children in this list, it's a summary (isPosting=false). 
-    // BUT the user didn't provide this flag. 
-    // Heuristic: If another account lists THIS as parentCode, likely summary.
-    // OR standard convention: Level 0, 1 usually summary.
-    // Let's assume all provided are posting EXCEPT if they are parents.
-    // Better: Check if any other item in `coaData` has `parentCode === ac.code`.
     const isParent = coaData.some(item => item.parentCode === ac.code);
     const isPosting = !isParent;
 
@@ -156,7 +148,6 @@ async function main() {
         update: {
           parentId: parent?.id,
           name: ac.name,
-          // Preserve existing type if updating? No, force overwrite.
           type: type as AccountType,
           level,
           isPosting: isPosting,
@@ -188,9 +179,9 @@ async function main() {
   const roleMap = new Map();
   for (const r of roles) {
     const role = await prisma.role.upsert({
-      where: { name: r.name },
+      where: { companyId_name: { companyId: 'default-company', name: r.name } },
       update: r,
-      create: r
+      create: { ...r, companyId: 'default-company' }
     });
     roleMap.set(r.name, role.id);
   }
@@ -200,12 +191,13 @@ async function main() {
 
   const adminUser = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: { passwordHash, companyId: 'default-company' },
+    update: { passwordHash, companyId: 'default-company', isSuperAdmin: true },
     create: {
       email: adminEmail,
       passwordHash,
       fullName: 'Super Administrator',
       isActive: true,
+      isSuperAdmin: true,
       mustChangePass: false,
       companyId: 'default-company'
     }
@@ -225,16 +217,33 @@ async function main() {
     }
   });
 
+  // Link Admin to Default Company
+  await prisma.userCompany.upsert({
+    where: {
+      userId_companyId: {
+        userId: adminUser.id,
+        companyId: 'default-company'
+      }
+    },
+    update: {},
+    create: {
+      userId: adminUser.id,
+      companyId: 'default-company',
+      isDefault: true
+    }
+  });
+
   // 6. Financial Year
   console.log("📅 Seeding Current Financial Year...");
   await prisma.financialYear.upsert({
-    where: { name: 'FY 2025' },
+    where: { companyId_name: { companyId: 'default-company', name: 'FY 2025' } },
     update: {},
     create: {
       name: 'FY 2025',
       startDate: new Date('2025-01-01'),
       endDate: new Date('2025-12-31'),
-      isOpen: true
+      isOpen: true,
+      companyId: 'default-company'
     }
   });
 

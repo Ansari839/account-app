@@ -71,6 +71,36 @@ export default function AdminCompaniesPage() {
         }
     };
 
+    const [cloneModalOpen, setCloneModalOpen] = useState(false);
+    const [cloneSource, setCloneSource] = useState<{ id: string; name: string } | null>(null);
+    const [cloneName, setCloneName] = useState('');
+
+    const handleClone = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!cloneSource) return;
+
+        try {
+            const res = await authenticatedFetch('/api/admin/companies', {
+                method: 'POST',
+                body: JSON.stringify({ name: cloneName, cloneFromId: cloneSource.id }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.success) {
+                showNotification('success', 'Company cloned successfully');
+                setCloneName('');
+                setCloneSource(null);
+                setCloneModalOpen(false);
+                fetchCompanies();
+            } else {
+                showNotification('error', data.error);
+            }
+        } catch (error) {
+            console.error(error);
+            showNotification('error', 'Failed to clone company');
+        }
+    };
+
     return (
         <MainLayout>
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -108,16 +138,21 @@ export default function AdminCompaniesPage() {
                                             <span>📧</span> {company.email}
                                         </div>
                                     )}
-                                    {company.phone && (
-                                        <div className="flex items-center gap-2">
-                                            <span>📱</span> {company.phone}
-                                        </div>
-                                    )}
                                     <div className="flex items-center gap-2 pt-2 border-t border-slate-700/50 mt-2">
                                         <span>👥</span> {company._count?.users || 0} Users
                                     </div>
                                 </div>
-                                <div className="mt-4 pt-4 border-t border-slate-700 flex justify-end">
+                                <div className="mt-4 pt-4 border-t border-slate-700 flex justify-end gap-3">
+                                    <button
+                                        onClick={() => {
+                                            setCloneSource({ id: company.id, name: company.name });
+                                            setCloneName(`${company.name} (Copy)`);
+                                            setCloneModalOpen(true);
+                                        }}
+                                        className="text-sm text-emerald-400 hover:text-emerald-300 font-medium"
+                                    >
+                                        Clone
+                                    </button>
                                     <button className="text-sm text-indigo-400 hover:text-indigo-300 font-medium">Edit Details →</button>
                                 </div>
                             </div>
@@ -142,6 +177,7 @@ export default function AdminCompaniesPage() {
                                         placeholder="Acme Corp"
                                     />
                                 </div>
+                                {/* ... existing fields ... */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="text-sm font-medium text-slate-400">Email</label>
@@ -192,6 +228,44 @@ export default function AdminCompaniesPage() {
                                         className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg shadow-lg shadow-indigo-500/20"
                                     >
                                         Create Company
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Clone Modal */}
+                {cloneModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+                            <h2 className="text-xl font-bold text-white mb-2">Clone Company</h2>
+                            <p className="text-slate-400 text-sm mb-6">Create a copy of <span className="font-bold text-white">{cloneSource?.name}</span>. This will copy all settings, chart of accounts, and master data.</p>
+
+                            <form onSubmit={handleClone}>
+                                <div>
+                                    <label className="text-sm font-medium text-slate-400">New Company Name *</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        value={cloneName}
+                                        onChange={e => setCloneName(e.target.value)}
+                                        className="w-full mt-1.5 p-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:ring-2 focus:ring-emerald-500/50 outline-none"
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-3 pt-6">
+                                    <button
+                                        type="button"
+                                        onClick={() => setCloneModalOpen(false)}
+                                        className="px-4 py-2 text-slate-400 hover:text-white font-medium hover:bg-slate-800 rounded-lg transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-lg shadow-emerald-500/20"
+                                    >
+                                        Clone Company
                                     </button>
                                 </div>
                             </form>
