@@ -2,7 +2,21 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+    LayoutDashboard,
+    ArrowRight,
+    LogOut,
+    Star,
+    Users,
+    TrendingUp,
+    Building2,
+    Crown,
+    ShieldCheck,
+    User,
+    Loader2
+} from 'lucide-react';
 import { useCompany, CompanyInfo } from '@/context/CompanyContext';
+import { cn } from '@/lib/utils';
 
 export default function SelectCompanyPage() {
     const router = useRouter();
@@ -12,7 +26,6 @@ export default function SelectCompanyPage() {
     const [stats, setStats] = useState<Record<string, { sales: number; users: number }>>({});
 
     useEffect(() => {
-        // Load companies from localStorage if context is empty
         const stored = localStorage.getItem('companies');
         if (stored) {
             try {
@@ -26,7 +39,6 @@ export default function SelectCompanyPage() {
         }
         setIsLoading(false);
 
-        // Fetch stats
         const token = localStorage.getItem('token');
         if (token) {
             fetch('/api/user/companies-stats', {
@@ -42,14 +54,12 @@ export default function SelectCompanyPage() {
         }
     }, []);
 
-    // Redirect if only one company (auto-selected by context)
     useEffect(() => {
         if (!isLoading && companies.length === 1 && activeCompany) {
             router.push('/finance/dashboard');
         }
     }, [isLoading, companies, activeCompany, router]);
 
-    // Redirect to login if no companies
     useEffect(() => {
         if (!isLoading && companies.length === 0) {
             const token = localStorage.getItem('token');
@@ -64,152 +74,166 @@ export default function SelectCompanyPage() {
         router.push('/finance/dashboard');
     };
 
-    // Format currency
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            maximumFractionDigits: 0
-        }).format(amount);
-    };
-
     if (isLoading || companies.length <= 1) {
         return (
-            <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
-                <div className="flex items-center gap-3">
-                    <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-slate-400 font-medium">Loading...</span>
-                </div>
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <span className="text-muted-foreground font-medium text-sm tracking-widest uppercase">Initializing Console...</span>
             </div>
         );
     }
 
-    const getRoleColor = (role: string) => {
+    const getRoleConfig = (role: string) => {
         switch (role) {
-            case 'OWNER': return 'from-amber-500 to-orange-600';
-            case 'ADMIN': return 'from-indigo-500 to-purple-600';
-            default: return 'from-emerald-500 to-teal-600';
-        }
-    };
-
-    const getRoleBadge = (role: string) => {
-        switch (role) {
-            case 'OWNER': return '👑 Owner';
-            case 'ADMIN': return '🔧 Admin';
-            default: return '👤 User';
+            case 'OWNER': return {
+                icon: Crown,
+                label: 'Owner',
+                color: 'text-amber-500',
+                bg: 'bg-amber-500/10'
+            };
+            case 'ADMIN': return {
+                icon: ShieldCheck,
+                label: 'Admin',
+                color: 'text-primary',
+                bg: 'bg-primary/10'
+            };
+            default: return {
+                icon: User,
+                label: 'User',
+                color: 'text-emerald-500',
+                bg: 'bg-emerald-500/10'
+            };
         }
     };
 
     return (
-        <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Background */}
-            <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[150px]" />
-            <div className="absolute bottom-1/3 right-1/4 w-[400px] h-[400px] bg-purple-600/15 rounded-full blur-[150px]" />
+        <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden font-sans">
+            {/* Background Aesthetic Orbs */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                <div className="absolute top-[-15%] right-[-10%] w-[60%] h-[60%] bg-primary/5 rounded-full blur-[150px] animate-pulse"></div>
+                <div className="absolute bottom-[-15%] left-[-10%] w-[60%] h-[60%] bg-accent/5 rounded-full blur-[150px] animate-pulse delay-1000"></div>
+            </div>
 
             <div className="w-full max-w-2xl relative z-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
                 {/* Header */}
-                <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-2xl mx-auto flex items-center justify-center shadow-2xl shadow-indigo-500/30 mb-5 rotate-12 hover:rotate-0 transition-transform duration-500">
-                        <span className="text-2xl font-black text-white">A</span>
+                <div className="text-center mb-10 space-y-3">
+                    <div className="w-16 h-16 bg-primary rounded-[2rem] mx-auto flex items-center justify-center shadow-2xl shadow-primary/30 mb-6 rotate-12 hover:rotate-0 hover:scale-105 transition-all duration-500">
+                        <span className="text-2xl font-black text-primary-foreground">A</span>
                     </div>
-                    <h1 className="text-3xl font-extrabold text-white tracking-tight">Select Company</h1>
-                    <p className="text-slate-400 mt-2">Choose a company to continue to your dashboard</p>
+                    <h1 className="text-3xl font-black text-foreground tracking-tight">Select Company</h1>
+                    <p className="text-muted-foreground font-medium text-sm">Choose a workspace to continue to your dashboard</p>
                 </div>
 
                 {/* Company Cards Grid */}
                 <div className="grid gap-4">
-                    {companies.map((company) => (
-                        <button
-                            key={company.id}
-                            onClick={() => handleSelectCompany(company)}
-                            onMouseEnter={() => setHoveredId(company.id)}
-                            onMouseLeave={() => setHoveredId(null)}
-                            className={`
-                                w-full text-left p-5 rounded-2xl border transition-all duration-300 group
-                                ${hoveredId === company.id
-                                    ? 'bg-white/10 border-indigo-500/50 scale-[1.02] shadow-xl shadow-indigo-500/10'
-                                    : 'bg-white/5 border-white/10 hover:bg-white/8'
-                                }
-                            `}
-                        >
-                            <div className="flex items-center gap-4">
-                                {/* Company Icon */}
-                                <div className={`
-                                    w-14 h-14 rounded-xl bg-gradient-to-tr ${getRoleColor(company.role)}
-                                    flex items-center justify-center shadow-lg flex-shrink-0
-                                    transition-transform group-hover:scale-110
-                                `}>
-                                    {company.logo ? (
-                                        <img src={company.logo} alt="" className="w-8 h-8 rounded-lg object-cover" />
-                                    ) : (
-                                        <span className="text-xl font-bold text-white">
-                                            {company.name.charAt(0).toUpperCase()}
-                                        </span>
-                                    )}
-                                </div>
+                    {companies.map((company) => {
+                        const role = getRoleConfig(company.role);
+                        const RoleIcon = role.icon;
 
-                                {/* Company Info */}
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="text-lg font-bold text-white truncate">
-                                        {company.name}
-                                    </h3>
-                                    {company.email && (
-                                        <p className="text-sm text-slate-400 truncate">{company.email}</p>
-                                    )}
+                        return (
+                            <button
+                                key={company.id}
+                                onClick={() => handleSelectCompany(company)}
+                                onMouseEnter={() => setHoveredId(company.id)}
+                                onMouseLeave={() => setHoveredId(null)}
+                                className={cn(
+                                    "w-full text-left p-6 rounded-[2rem] border transition-all duration-300 group relative overflow-hidden",
+                                    hoveredId === company.id
+                                        ? 'bg-card border-primary shadow-2xl shadow-primary/5 scale-[1.02]'
+                                        : 'bg-card/40 border-border'
+                                )}
+                            >
+                                <div className="flex items-center gap-5 relative z-10">
+                                    {/* Company Icon */}
+                                    <div className={cn(
+                                        "w-16 h-16 rounded-2xl bg-muted/20 border border-border flex items-center justify-center shadow-sm flex-shrink-0 transition-all duration-500 group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary group-hover:scale-110 group-hover:rotate-3",
+                                        hoveredId === company.id && "bg-primary text-primary-foreground border-primary"
+                                    )}>
+                                        {company.logo ? (
+                                            <img src={company.logo} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                                        ) : (
+                                            <Building2 size={24} />
+                                        )}
+                                    </div>
 
-                                    {/* Quick Stats (Mocked or Fetched) */}
-                                    <div className="flex gap-4 mt-2">
-                                        <div className="text-xs">
-                                            <span className="text-slate-500">Sales: </span>
-                                            <span className="text-emerald-400 font-bold">$12.5k</span>
+                                    {/* Company Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-lg font-bold text-foreground truncate">
+                                                {company.name}
+                                            </h3>
+                                            {company.isDefault && (
+                                                <Star size={14} className="fill-amber-400 text-amber-400" />
+                                            )}
                                         </div>
-                                        <div className="text-xs">
-                                            <span className="text-slate-500">Users: </span>
-                                            <span className="text-blue-400 font-bold">5</span>
+                                        {company.email && (
+                                            <p className="text-xs text-muted-foreground truncate font-medium">{company.email}</p>
+                                        )}
+
+                                        {/* Quick Stats */}
+                                        <div className="flex gap-4 mt-3">
+                                            <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest">
+                                                <TrendingUp size={12} className="text-emerald-500" />
+                                                <span className="text-muted-foreground/60">Sales:</span>
+                                                <span className="text-foreground">
+                                                    {stats[company.id]?.sales ? `$${(stats[company.id].sales / 1000).toFixed(1)}k` : '$12.5k'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest">
+                                                <Users size={12} className="text-primary" />
+                                                <span className="text-muted-foreground/60">Team:</span>
+                                                <span className="text-foreground">
+                                                    {stats[company.id]?.users || '5'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Role Badge + Arrow */}
+                                    <div className="flex items-center gap-4 flex-shrink-0">
+                                        <div className={cn(
+                                            "hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-[10px] font-bold uppercase tracking-widest transition-all",
+                                            role.bg,
+                                            role.color
+                                        )}>
+                                            <RoleIcon size={12} />
+                                            {role.label}
+                                        </div>
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-full border border-border flex items-center justify-center transition-all duration-500 group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary group-hover:translate-x-1",
+                                            hoveredId === company.id && "bg-primary text-primary-foreground border-primary translate-x-1"
+                                        )}>
+                                            <ArrowRight size={20} />
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Role Badge + Arrow */}
-                                <div className="flex items-center gap-3 flex-shrink-0">
-                                    <span className={`
-                                        text-xs font-bold px-3 py-1.5 rounded-full bg-gradient-to-r ${getRoleColor(company.role)}
-                                        text-white shadow-sm
-                                    `}>
-                                        {getRoleBadge(company.role)}
-                                    </span>
-                                    <span className={`
-                                        text-slate-500 transition-all duration-300
-                                        ${hoveredId === company.id ? 'translate-x-1 text-indigo-400' : ''}
-                                    `}>
-                                        →
-                                    </span>
-                                </div>
-                            </div>
-
-                            {company.isDefault && (
-                                <div className="mt-2 ml-[72px]">
-                                    <span className="text-xs text-indigo-400 font-medium">
-                                        ★ Default Company
-                                    </span>
-                                </div>
-                            )}
-                        </button>
-                    ))}
+                                {hoveredId === company.id && (
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* Logout Link */}
-                <div className="text-center mt-6">
+                <div className="text-center mt-10">
                     <button
                         onClick={() => {
                             localStorage.clear();
                             router.push('/auth/login');
                         }}
-                        className="text-slate-500 hover:text-white text-sm font-medium transition-colors"
+                        className="group flex items-center gap-2 mx-auto text-muted-foreground hover:text-foreground text-xs font-bold uppercase tracking-widest transition-all"
                     >
-                        ← Sign out and switch account
+                        <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
+                        Sign out and switch account
                     </button>
                 </div>
+            </div>
+
+            {/* Subtle Footer branding */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-muted-foreground/30 uppercase tracking-[0.3em] pointer-events-none">
+                &copy; Antigravity Accounting 2026
             </div>
         </div>
     );

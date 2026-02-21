@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
+import { Search, ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface Column<T> {
     header: string;
@@ -42,51 +44,60 @@ export default function DataTable<T extends { id: string | number }>({
             {/* Search & Actions Bar */}
             <div className="flex items-center justify-between gap-4">
                 <div className="relative group flex-1 max-w-sm">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">🔍</span>
+                    <Search
+                        size={18}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors"
+                    />
                     <input
                         type="text"
                         placeholder={searchPlaceholder}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                        className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-muted-foreground/50"
                     />
                 </div>
             </div>
 
             {/* Table Container */}
-            <div className="bg-white/50 dark:bg-slate-900/30 backdrop-blur-sm border border-slate-200/60 dark:border-slate-800/60 rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-800">
+                            <tr className="bg-muted/30 border-b border-border">
                                 {columns.map((col, i) => (
-                                    <th key={i} className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                                    <th key={i} className="px-6 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                                         {col.header}
                                     </th>
                                 ))}
-                                {actions && <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>}
+                                {actions && <th className="px-6 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-right">Actions</th>}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                        <tbody className="divide-y divide-border">
                             {isLoading ? (
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <tr key={i} className="animate-pulse">
                                         {columns.map((_, j) => (
                                             <td key={j} className="px-6 py-4">
-                                                <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded w-3/4"></div>
+                                                <div className="h-4 bg-muted rounded w-3/4"></div>
                                             </td>
                                         ))}
-                                        {actions && <td className="px-6 py-4"><div className="h-4 bg-slate-100 dark:bg-slate-800 rounded w-1/2 ml-auto"></div></td>}
+                                        {actions && <td className="px-6 py-4"><div className="h-4 bg-muted rounded w-1/2 ml-auto"></div></td>}
                                     </tr>
                                 ))
                             ) : filteredData.length > 0 ? filteredData.map((item, i) => (
                                 <tr
                                     key={item.id}
                                     onClick={() => onRowClick?.(item)}
-                                    className={`group transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-800/40 ${onRowClick ? 'cursor-pointer' : ''}`}
+                                    className={cn(
+                                        "group transition-all duration-200 hover:bg-muted/20",
+                                        onRowClick && "cursor-pointer"
+                                    )}
                                 >
                                     {columns.map((col, j) => (
-                                        <td key={j} className={`px-6 py-4 text-sm font-medium ${col.className || ''}`}>
+                                        <td key={j} className={cn(
+                                            "px-6 py-4 text-sm font-medium text-foreground/80 group-hover:text-foreground",
+                                            col.className
+                                        )}>
                                             {typeof col.accessor === 'function' ? col.accessor(item) : (item[col.accessor] as React.ReactNode)}
                                         </td>
                                     ))}
@@ -98,10 +109,10 @@ export default function DataTable<T extends { id: string | number }>({
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan={columns.length + (actions ? 1 : 0)} className="px-6 py-12 text-center text-slate-500">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <span className="text-3xl">🏜️</span>
-                                            <p className="text-sm">No records found matching your criteria</p>
+                                    <td colSpan={columns.length + (actions ? 1 : 0)} className="px-6 py-16 text-center text-muted-foreground">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <Inbox size={40} className="text-muted-foreground/30" />
+                                            <p className="text-sm font-medium">No records found matching your criteria</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -114,23 +125,25 @@ export default function DataTable<T extends { id: string | number }>({
             {/* Pagination */}
             {pagination && pagination.totalPages > 1 && (
                 <div className="flex items-center justify-between px-2 py-4">
-                    <div className="text-sm text-slate-500">
-                        Page <span className="font-bold text-slate-900 dark:text-white">{pagination.currentPage}</span> of <span className="font-bold text-slate-900 dark:text-white">{pagination.totalPages}</span>
+                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                        Page <span className="text-foreground">{pagination.currentPage}</span> of <span className="text-foreground">{pagination.totalPages}</span>
                     </div>
                     <div className="flex gap-2">
                         <button
                             onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
                             disabled={pagination.currentPage <= 1}
-                            className="px-4 py-2 text-sm font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                            className="p-2 border border-border rounded-lg disabled:opacity-30 hover:bg-muted transition-colors"
+                            aria-label="Previous page"
                         >
-                            Previous
+                            <ChevronLeft size={18} />
                         </button>
                         <button
                             onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
                             disabled={pagination.currentPage >= pagination.totalPages}
-                            className="px-4 py-2 text-sm font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                            className="p-2 border border-border rounded-lg disabled:opacity-30 hover:bg-muted transition-colors"
+                            aria-label="Next page"
                         >
-                            Next
+                            <ChevronRight size={18} />
                         </button>
                     </div>
                 </div>

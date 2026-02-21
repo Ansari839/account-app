@@ -2,7 +2,16 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+    Mail,
+    Lock,
+    ArrowRight,
+    Loader2,
+    ShieldCheck,
+    HelpCircle
+} from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
+import { cn } from '@/lib/utils';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -30,19 +39,15 @@ export default function LoginPage() {
                 localStorage.setItem('user', JSON.stringify(json.data.user));
                 localStorage.setItem('isLoggedIn', 'true');
 
-                // Store companies for company selector
                 const companies = json.data.companies || [];
                 localStorage.setItem('companies', JSON.stringify(companies));
 
                 if (companies.length === 1) {
-                    // Single company — auto-select and go to dashboard
                     localStorage.setItem('activeCompanyId', companies[0].id);
                     router.push('/finance/dashboard');
                 } else if (companies.length > 1) {
-                    // Multiple companies — show company selector
                     router.push('/auth/select-company');
                 } else {
-                    // No companies assigned
                     showNotification('error', 'No company assigned to your account. Contact admin.');
                 }
             } else {
@@ -56,67 +61,112 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Background Orbs */}
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] animate-pulse"></div>
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] animate-pulse delay-700"></div>
+        <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden font-sans">
+            {/* Background Aesthetic Orbs */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px] animate-pulse"></div>
+                <div className="absolute bottom-[-10%] right-[-5%] w-[50%] h-[50%] bg-accent/10 rounded-full blur-[120px] animate-pulse delay-1000"></div>
+            </div>
 
-            <div className="w-full max-w-md space-y-8 relative z-10 animate-in fade-in zoom-in duration-700">
-                <div className="text-center">
-                    <div className="w-20 h-20 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-3xl mx-auto flex items-center justify-center shadow-2xl shadow-indigo-500/40 mb-6 rotate-12 transition-transform hover:rotate-0 duration-500">
-                        <span className="text-3xl font-black text-white">A</span>
+            <div className="w-full max-w-[440px] space-y-8 relative z-10 animate-in fade-in zoom-in duration-700">
+                <div className="text-center space-y-3">
+                    <div className="w-20 h-20 bg-primary rounded-[2.5rem] mx-auto flex items-center justify-center shadow-2xl shadow-primary/30 mb-6 rotate-12 transition-all hover:rotate-0 hover:scale-105 duration-500">
+                        <span className="text-3xl font-black text-primary-foreground">A</span>
                     </div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-white">Antigravity ERP</h1>
-                    <p className="text-slate-400 mt-2 font-medium">Enter your credentials to access your console</p>
+                    <h1 className="text-4xl font-black tracking-tight text-foreground">
+                        Antigravity <span className="text-primary/70">ERP</span>
+                    </h1>
+                    <p className="text-muted-foreground font-medium text-sm">
+                        Enter your credentials to access your secure console
+                    </p>
                 </div>
 
-                <form onSubmit={handleLogin} className="bg-white/10 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl space-y-6">
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Work Email</label>
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                className="w-full mt-1.5 p-4 rounded-2xl bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-600"
-                                placeholder="name@company.com"
-                            />
+                <div className="bg-card/40 backdrop-blur-2xl border border-border rounded-[2.5rem] p-8 md:p-10 shadow-2xl shadow-foreground/5 overflow-hidden relative">
+                    {/* Decorative subtle line at top */}
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
+
+                    <form onSubmit={handleLogin} className="space-y-6">
+                        <div className="space-y-5">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                                    <Mail size={12} /> Work Email
+                                </label>
+                                <div className="relative group">
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        required
+                                        className="w-full p-4 rounded-2xl bg-muted/20 border border-border text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-muted-foreground/30 font-medium text-sm"
+                                        placeholder="name@company.com"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                                    <Lock size={12} /> Password
+                                </label>
+                                <div className="relative group">
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                        className="w-full p-4 rounded-2xl bg-muted/20 border border-border text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-muted-foreground/30 font-medium text-sm"
+                                        placeholder="••••••••"
+                                    />
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Password</label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                className="w-full mt-1.5 p-4 rounded-2xl bg-white/5 border border-white/10 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-600"
-                                placeholder="••••••••"
-                            />
+
+                        <div className="flex items-center justify-between px-1 text-xs">
+                            <label className="flex items-center gap-2 text-muted-foreground cursor-pointer group">
+                                <input
+                                    type="checkbox"
+                                    className="w-4 h-4 rounded border-border bg-muted/20 text-primary focus:ring-primary/20 focus:ring-offset-background transition-colors"
+                                />
+                                <span className="font-bold group-hover:text-foreground transition-colors uppercase tracking-tight">Remember me</span>
+                            </label>
+                            <a href="#" className="text-primary font-bold hover:underline transition-all uppercase tracking-tight flex items-center gap-1">
+                                <HelpCircle size={12} /> Forgot?
+                            </a>
                         </div>
+
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className={cn(
+                                "w-full py-4 bg-primary text-primary-foreground font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3 group text-sm uppercase tracking-widest",
+                                isLoading && "cursor-not-allowed"
+                            )}
+                        >
+                            {isLoading ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <>
+                                    <span>Sign In to Dashboard</span>
+                                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                                </>
+                            )}
+                        </button>
+                    </form>
+                </div>
+
+                <div className="text-center space-y-4">
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
+                        <ShieldCheck size={14} className="text-primary/60" />
+                        Enterprise Grade Security Enabled
                     </div>
+                    <p className="text-muted-foreground text-xs font-medium">
+                        New to Antigravity? <a href="#" className="text-foreground font-black hover:underline transition-all underline-offset-4 decoration-primary/30">Contact System Admin</a>
+                    </p>
+                </div>
+            </div>
 
-                    <div className="flex items-center justify-between px-1 text-sm">
-                        <label className="flex items-center gap-2 text-slate-400 cursor-pointer">
-                            <input type="checkbox" className="w-4 h-4 rounded border-white/10 bg-white/5 text-indigo-600 focus:ring-offset-[#0f172a]" />
-                            Remember me
-                        </label>
-                        <a href="#" className="text-indigo-400 font-bold hover:text-indigo-300 transition-colors">Forgot Password?</a>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-500/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                        {isLoading ? 'Authenticating...' : 'Sign In to Dashboard'}
-                        {!isLoading && <span>→</span>}
-                    </button>
-                </form>
-
-                <p className="text-center text-slate-500 text-sm">
-                    New to Antigravity? <a href="#" className="text-white font-bold hover:underline">Contact System Admin</a>
-                </p>
+            {/* Subtle Footer branding */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-muted-foreground/30 uppercase tracking-[0.3em] pointer-events-none">
+                &copy; Antigravity Accounting 2026
             </div>
         </div>
     );

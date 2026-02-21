@@ -3,24 +3,65 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+    LayoutDashboard,
+    Folders,
+    FileText,
+    ShoppingCart,
+    TrendingUp,
+    Package,
+    ScrollText,
+    Settings,
+    ChevronDown,
+    Menu,
+    X,
+    LogOut,
+    Building2,
+    Users,
+    Lock,
+    Database
+} from 'lucide-react';
 import CompanySwitcher from './CompanySwitcher';
 import { useCompany } from '@/context/CompanyContext';
 import { SIDEBAR_PERMISSION_MAP } from '@/lib/permissions';
+import { cn } from '@/lib/utils';
 
 const menuItems = [
-    { name: 'Dashboard', icon: '📊', path: '/finance/dashboard' },
-    { name: 'Chart of Accounts', icon: '🗂️', path: '/finance/coa' },
-    { name: 'Vouchers', icon: '📝', path: '/finance/vouchers', sub: ['Journal', 'Payment', 'Receipt'] },
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/finance/dashboard' },
+    { name: 'Chart of Accounts', icon: Folders, path: '/finance/coa' },
+    { name: 'Vouchers', icon: FileText, path: '/finance/vouchers', sub: ['Journal', 'Payment', 'Receipt'] },
     {
         name: 'Purchase',
-        icon: '🛒',
+        icon: ShoppingCart,
         path: '/finance/purchase',
         sub: ['orders', 'grn', 'invoices', 'returns']
     },
-    { name: 'Sales', icon: '📈', path: '/finance/sales', sub: ['orders', 'delivery-notes', 'invoices', 'returns'] },
-    { name: 'Inventory', icon: '📦', path: '/inventory', sub: ['Products', 'Categories', 'Warehouses'] },
-    { name: 'Reports', icon: '📜', path: '/finance/reports', sub: ['P&L', 'Balance Sheet', 'Ledger', 'Aging'] },
-    { name: 'Settings', icon: '⚙️', path: '/admin/settings' },
+    {
+        name: 'Sales',
+        icon: TrendingUp,
+        path: '/finance/sales',
+        sub: ['orders', 'delivery-notes', 'invoices', 'returns']
+    },
+    {
+        name: 'Inventory',
+        icon: Package,
+        path: '/inventory',
+        sub: ['Products', 'Categories', 'Warehouses']
+    },
+    {
+        name: 'Reports',
+        icon: ScrollText,
+        path: '/finance/reports',
+        sub: ['P&L', 'Balance Sheet', 'Ledger', 'Aging']
+    },
+    { name: 'Settings', icon: Settings, path: '/admin/settings' },
+];
+
+const adminItems = [
+    { name: 'Companies', icon: Building2, path: '/admin/companies' },
+    { name: 'Users', icon: Users, path: '/admin/users' },
+    { name: 'Access Control', icon: Lock, path: '/admin/rbac' },
+    { name: 'Backup & Restore', icon: Database, path: '/admin/backup' },
 ];
 
 export default function Sidebar() {
@@ -43,74 +84,107 @@ export default function Sidebar() {
         }
     }, []);
 
-    const adminItems = [
-        { name: 'Companies', icon: '🏢', path: '/admin/companies', sub: undefined },
-        { name: 'Users', icon: '👥', path: '/admin/users', sub: undefined },
-        { name: 'Access Control', icon: '🔐', path: '/admin/rbac', sub: undefined },
-        { name: 'Backup & Restore', icon: '💾', path: '/admin/backup', sub: undefined },
-    ];
+    const logout = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        } finally {
+            localStorage.clear();
+            window.location.href = '/auth/login';
+        }
+    };
 
     // Filter menu items based on user permissions
     const visibleMenuItems = isSuperAdmin
         ? menuItems
         : menuItems.filter((item) => {
             const requiredModule = SIDEBAR_PERMISSION_MAP[item.name];
-            if (!requiredModule) return true; // No permission mapping → always show
+            if (!requiredModule) return true;
             return hasPermission(requiredModule, 'VIEW');
         });
 
     return (
-        <aside className={`h-screen bg-[#0f172a] text-slate-300 transition-all duration-300 ease-in-out border-r border-slate-800/50 flex flex-col ${isCollapsed ? 'w-20' : 'w-64'} sticky top-0`}>
+        <aside
+            className={cn(
+                "h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out border-r border-sidebar-border flex flex-col sticky top-0 z-50",
+                isCollapsed ? "w-20" : "w-64"
+            )}
+        >
             {/* Logo Section */}
             <div className="p-6 flex items-center justify-between">
                 {!isCollapsed && (
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">
+                    <div className="flex items-center gap-3 animate-in fade-in duration-500">
+                        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center font-bold text-primary-foreground shadow-lg shadow-primary/20">
                             A
                         </div>
-                        <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                        <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">
                             Antigravity
                         </span>
                     </div>
                 )}
+                {isCollapsed && (
+                    <div className="mx-auto w-10 h-10 rounded-xl bg-primary flex items-center justify-center font-bold text-primary-foreground shadow-lg shadow-primary/20">
+                        A
+                    </div>
+                )}
                 <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="p-1.5 rounded-lg hover:bg-slate-800/50 text-slate-400"
+                    className="p-2 rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                    aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                 >
-                    {isCollapsed ? '➡️' : '⬅️'}
+                    {isCollapsed ? <Menu size={20} /> : <X size={20} />}
                 </button>
             </div>
 
             {/* Company Switcher */}
-            <CompanySwitcher isCollapsed={isCollapsed} />
+            <div className="px-4">
+                <CompanySwitcher isCollapsed={isCollapsed} />
+            </div>
 
             {/* Navigation */}
-            <nav className="flex-1 px-4 space-y-2 overflow-y-auto mt-4 scrollbar-hide">
+            <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto scrollbar-hide">
                 {visibleMenuItems.map((item) => {
                     const isActive = pathname.startsWith(item.path);
+                    const Icon = item.icon;
+
                     return (
                         <div key={item.name} className="space-y-1">
                             <Link
                                 href={item.path}
-                                className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
-                                    ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20'
-                                    : 'hover:bg-slate-800/50 hover:text-white'
-                                    }`}
-                            >
-                                <span className="text-xl">{item.icon}</span>
-                                {!isCollapsed && (
-                                    <span className="font-medium flex-1">{item.name}</span>
+                                className={cn(
+                                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
+                                    isActive
+                                        ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                                        : "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                                 )}
+                            >
+                                <Icon size={22} className={cn(
+                                    "transition-colors",
+                                    isActive ? "text-sidebar-primary" : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground"
+                                )} />
+
+                                {!isCollapsed && (
+                                    <span className="flex-1 truncate">{item.name}</span>
+                                )}
+
                                 {!isCollapsed && item.sub && (
-                                    <span className={`text-[10px] transition-transform duration-200 ${isActive ? 'rotate-180 opacity-100' : 'opacity-30'}`}>
-                                        ▼
-                                    </span>
+                                    <ChevronDown size={14} className={cn(
+                                        "transition-transform duration-200 opacity-40",
+                                        isActive && "rotate-180 opacity-100"
+                                    )} />
+                                )}
+
+                                {isActive && (
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-sidebar-primary rounded-r-full" />
                                 )}
                             </Link>
 
                             {/* Sub-menu rendering */}
                             {!isCollapsed && item.sub && isActive && (
-                                <div className="ml-12 border-l border-slate-800 space-y-1 py-1 animate-in slide-in-from-left-2 duration-300">
+                                <div className="ml-9 border-l border-sidebar-border/50 space-y-1 py-1 animate-in slide-in-from-top-1 duration-200">
                                     {item.sub.map((sub) => {
                                         const subPath = `${item.path}/${sub.toLowerCase()}`;
                                         const isSubActive = pathname === subPath;
@@ -118,9 +192,12 @@ export default function Sidebar() {
                                             <Link
                                                 key={sub}
                                                 href={subPath}
-                                                className={`block px-4 py-2 text-xs font-semibold rounded-lg transition-colors ${isSubActive
-                                                    ? 'text-white'
-                                                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}
+                                                className={cn(
+                                                    "block px-4 py-2 text-sm rounded-md transition-colors",
+                                                    isSubActive
+                                                        ? "text-sidebar-primary font-medium bg-sidebar-primary/5"
+                                                        : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/30"
+                                                )}
                                             >
                                                 {sub.charAt(0).toUpperCase() + sub.slice(1)}
                                             </Link>
@@ -134,58 +211,59 @@ export default function Sidebar() {
 
                 {/* Admin Section */}
                 {isSuperAdmin && (
-                    <>
-                        <div className="my-4 border-t border-slate-800/50"></div>
-                        {!isCollapsed && <div className="px-4 text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Admin</div>}
+                    <div className="pt-6 mt-6 border-t border-sidebar-border/50">
+                        {!isCollapsed && (
+                            <h3 className="px-3 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-widest mb-3">
+                                Administrator
+                            </h3>
+                        )}
                         {adminItems.map((item) => {
                             const isActive = pathname.startsWith(item.path);
+                            const Icon = item.icon;
+
                             return (
                                 <Link
                                     key={item.name}
                                     href={item.path}
-                                    className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
-                                        ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                        : 'hover:bg-slate-800/50 hover:text-white'
-                                        }`}
+                                    className={cn(
+                                        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group",
+                                        isActive
+                                            ? "bg-destructive/10 text-destructive font-medium"
+                                            : "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                                    )}
                                 >
-                                    <span className="text-xl">{item.icon}</span>
+                                    <Icon size={22} className={cn(
+                                        "transition-colors",
+                                        isActive ? "text-destructive" : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground"
+                                    )} />
                                     {!isCollapsed && (
-                                        <span className="font-medium flex-1">{item.name}</span>
+                                        <span className="flex-1 truncate">{item.name}</span>
                                     )}
                                 </Link>
                             );
                         })}
-                    </>
+                    </div>
                 )}
             </nav>
 
             {/* User Block */}
-            <div className="p-4 border-t border-slate-800/50">
-                <div className={`flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800/50 cursor-pointer transition-colors group ${isCollapsed ? 'justify-center' : ''}`}>
-                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold border border-slate-600 group-hover:bg-rose-500/20 group-hover:border-rose-500/50 transition-colors">
-                        <span className="group-hover:hidden">{user?.fullName?.charAt(0) || 'U'}</span>
-                        <span className="hidden group-hover:block" onClick={async () => {
-                            try {
-                                const token = localStorage.getItem('token');
-                                await fetch('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-                            } finally {
-                                localStorage.clear();
-                                window.location.href = '/auth/login';
-                            }
-                        }}>🚪</span>
+            <div className="p-4 border-t border-sidebar-border/50 bg-sidebar/50">
+                <div className={cn(
+                    "flex items-center gap-3 p-2 rounded-xl hover:bg-sidebar-accent group cursor-pointer transition-all duration-200",
+                    isCollapsed && "justify-center"
+                )}>
+                    <div className="w-9 h-9 rounded-lg bg-sidebar-accent border border-sidebar-border flex items-center justify-center text-sm font-bold shadow-inner group-hover:border-sidebar-primary/30 transition-colors">
+                        {user?.fullName?.charAt(0) || 'U'}
                     </div>
+
                     {!isCollapsed && (
-                        <div className="flex-1 overflow-hidden" onClick={async () => {
-                            try {
-                                const token = localStorage.getItem('token');
-                                await fetch('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-                            } finally {
-                                localStorage.clear();
-                                window.location.href = '/auth/login';
-                            }
-                        }}>
-                            <p className="text-sm font-semibold truncate text-white group-hover:text-rose-400">{user?.fullName || 'User'}</p>
-                            <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold group-hover:text-rose-500/50">Logout</p>
+                        <div className="flex-1 min-w-0" onClick={logout}>
+                            <p className="text-sm font-semibold truncate group-hover:text-sidebar-primary">
+                                {user?.fullName || 'User'}
+                            </p>
+                            <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-bold flex items-center gap-1 group-hover:text-destructive transition-colors">
+                                <LogOut size={10} /> Logout
+                            </p>
                         </div>
                     )}
                 </div>
