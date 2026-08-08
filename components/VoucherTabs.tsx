@@ -3,33 +3,36 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { BookOpen, CreditCard, Wallet, RefreshCcw } from 'lucide-react';
 
 const TABS = [
-    { id: 'journal', label: 'Journal', icon: '📝' },
-    { id: 'payment', label: 'Payment', icon: '💸' },
-    { id: 'receipt', label: 'Receipt', icon: '💰' },
-    { id: 'contra', label: 'Contra', icon: '🔄' },
+    { id: 'journal', label: 'Journal', icon: BookOpen },
+    { id: 'payment', label: 'Payment', icon: CreditCard },
+    { id: 'receipt', label: 'Receipt', icon: Wallet },
+    { id: 'contra', label: 'Contra', icon: RefreshCcw },
 ];
 
 export default function VoucherTabs() {
     const pathname = usePathname();
 
     return (
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide border-b border-slate-200 dark:border-slate-800">
+        <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
             {TABS.map(tab => {
                 const path = `/finance/vouchers/${tab.id}`;
-                const isActive = pathname === path;
+                const isActive = pathname === path || (pathname === '/finance/vouchers' && tab.id === 'journal');
+                const Icon = tab.icon;
 
                 return (
                     <Link
                         key={tab.id}
                         href={path}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-t-xl font-bold text-sm transition-all relative top-[1px] ${isActive
-                            ? 'bg-white dark:bg-slate-900 border-x border-t border-slate-200 dark:border-slate-800 text-indigo-600'
-                            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                            }`}
+                        className={`flex items-center gap-2.5 px-6 py-3 rounded-2xl font-bold text-sm transition-all shadow-sm ${
+                            isActive
+                                ? 'bg-indigo-600 text-white shadow-indigo-500/30'
+                                : 'bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                        }`}
                     >
-                        <span>{tab.icon}</span>
+                        <Icon size={18} className={isActive ? 'text-indigo-200' : 'text-slate-400'} />
                         {tab.label}
                     </Link>
                 );

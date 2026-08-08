@@ -18,7 +18,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     }, [router]);
 
     return (
-        <div className="flex min-h-screen bg-background text-foreground font-sans antialiased">
+        <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 font-sans antialiased">
             {/* Sidebar */}
             <Sidebar />
 
@@ -26,8 +26,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <div className="flex-1 flex flex-col min-w-0">
                 <Header />
 
-                <main className="flex-1 p-6 md:p-8 overflow-y-auto bg-muted/5">
-                    <div className="max-w-7xl mx-auto space-y-6">
+                <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+                    <div className="w-full space-y-8">
                         {children}
                     </div>
                 </main>

@@ -1,0 +1,122 @@
+---
+name: complex-ui-patterns
+description: >
+  Advanced UI/UX architecture and patterns for complex interactive wizards, data matrices, 
+  and multi-step forms in IHS-ERP. Use this when building complex execution boards like 
+  Packing, Production, or Deep Stock Analysis to ensure a premium, dynamic, and intuitive experience.
+---
+
+# Complex UI/UX Patterns — IHS ERP
+
+This skill defines the canonical UI/UX design patterns for building complex interactive execution boards, multi-step wizards, and data-dense matrices within IHS ERP (based on the gold standard established in `OmniPackingBoard`).
+
+## 1. Multi-Step Execution Wizards (Cards)
+
+When designing a complex workflow (e.g., Target Configuration -> Component Ratio -> Stock Matrix), break it down into sequential visual blocks using styled `<Card>` components.
+
+### Pattern Rules
+- **Progressive Disclosure**: Show subsequent steps only when prerequisites are met (e.g., Step 2 appears only after Step 1 is configured).
+- **Active State Highlights**: Use subtle background colors (`bg-primary/5` or `bg-blue-500/5`) and colored borders (`border-primary/20`) to highlight the active or most critical step.
+- **Clear Headers**: Always include a `CardTitle` with an Icon and a `CardDescription` explaining the step's purpose.
+
+### Implementation Example
+```tsx
+<Card className="border-blue-500/20 shadow-lg">
+    <CardHeader className="bg-blue-500/5">
+        <CardTitle className="text-lg text-blue-500 flex items-center gap-2">
+            <Layers className="w-5 h-5"/> Step 3: Deep Stock Analysis
+        </CardTitle>
+        <CardDescription>Review the recursive availability of your components across Pack and Loose states.</CardDescription>
+    </CardHeader>
+    <CardContent>
+        {/* Complex Content */}
+    </CardContent>
+</Card>
+```
+
+## 2. Deep Analysis Matrices (Dense Tables)
+
+For complex data grids showing stock, analysis, or multi-dimensional records, standard zebra-striping is not enough. You must use high-contrast color coding to guide the user's eyes.
+
+### Pattern Rules
+- **Header Structure**: Use `bg-muted text-muted-foreground uppercase text-xs font-black tracking-wider` for table headers.
+- **Semantic Colors for Data**:
+  - Positive/Ready data (e.g., Packed Stock): `text-emerald-600 font-bold`
+  - Warning/Actionable data (e.g., Loose Stock needing conversion): `text-amber-600 font-bold`
+  - Primary metric (e.g., Required Qty): `text-lg font-black`
+- **Contextual Badges**: Use styled badges for status instead of plain text.
+  - Ready: `<Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-xs py-1"><CheckCircle2 className="w-4 h-4 mr-1"/> Ready</Badge>`
+  - Action Required: `<Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-xs py-1"><Factory className="w-4 h-4 mr-1"/> Convert</Badge>`
+  - Error/Shortage: `<Badge variant="destructive" className="text-xs py-1"><AlertTriangle className="w-4 h-4 mr-1"/> Shortage</Badge>`
+
+## 3. Interactive Inline Trace Locations & Forms
+
+When users need to select lots, batches, or overrides *inside* a table row, use inline cards/panels rather than separate modals.
+
+### Pattern Rules
+- **Sub-cards**: Wrap the interactive area in a nested styled div: `flex flex-col p-2 border rounded-md bg-background/50 mb-2 shadow-sm`.
+- **Realtime Calculations Tooltips**: Always show the user *why* a calculation is happening inline (e.g., `≈ 80 pcs × 1 ÷ 50 = 1.60 ROLL`). Use muted text for this.
+- **Formula Overrides**: Hide advanced overrides (like formula modifiers) behind a toggle/checkbox to keep the UI clean, but make them accessible inline.
+
+### Implementation Example
+```tsx
+<div className="flex flex-col p-2 border rounded-md bg-background/50 mb-2 shadow-sm">
+    <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col">
+            <span className="font-mono text-xs font-bold">{loc.lotNo}</span>
+            <span className="text-[10px] text-muted-foreground">Available: {loc.qty}</span>
+        </div>
+        <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Enter Pcs:</span>
+            <Input 
+                type="number" 
+                className="w-20 h-8 text-center font-bold" 
+                value={selections[key] || ''} 
+            />
+        </div>
+    </div>
+    {/* Realtime Calc Text */}
+    <div className="mt-1 flex justify-between items-center bg-emerald-500/10 p-1.5 rounded text-[10px] font-mono">
+        <span className="text-emerald-700">Need: 80</span>
+        <span className="text-emerald-700 font-bold">Yield: {calcString}</span>
+    </div>
+</div>
+```
+
+## 4. Master Action Buttons in Headers
+
+If a table requires repetitive data entry (e.g., auto-filling locations, selecting all), place a "Master Action Button" inside the `<th>` tag.
+
+### Pattern Rules
+- Use a small, distinctly colored button (e.g., `bg-amber-200 text-amber-800 hover:bg-amber-300`).
+- Ensure it sits flush with the column label using `flex justify-between items-center`.
+
+### Implementation Example
+```tsx
+<th className="p-3 flex justify-between items-center">
+    <span>Loose Locations (Trace)</span>
+    <Button 
+        type="button" 
+        variant="secondary" 
+        size="sm" 
+        className="h-6 text-[10px] bg-amber-200 text-amber-800 hover:bg-amber-300 ml-2"
+        onClick={handleMasterAutoFill}
+    >
+        MASTER AUTO-FILL
+    </Button>
+</th>
+```
+
+## 5. Complex Error Dialogs (No Toast Overload)
+
+For complex validation failures (e.g., missing 5 pieces of stock across 3 different lots), **DO NOT use `toast.error`**. Toasts disappear too quickly and don't allow users to read long error logs. 
+
+### Pattern Rules
+- Use `AlertDialog` for complex execution errors.
+- Format the error message with line breaks `\n\n` to separate context, values, and required actions.
+- Preserve the user's state so they can fix the issue without losing their form data.
+
+## 6. Dynamic Design Principles
+- **Avoid Generic Colors**: Instead of flat `#fff`, use semantic transparent layers like `bg-primary/5` or `bg-muted/50`.
+- **Micro-Animations**: Add `transition-all` on hoverable inline cards or inputs to make the interface feel responsive.
+- **Glassmorphism Hints**: Use semi-transparent backgrounds with borders for deep nested elements to give a sense of depth and hierarchy.

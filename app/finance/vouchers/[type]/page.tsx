@@ -3,14 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import DataTable, { Column } from '@/components/DataTable';
-import { useParams, usePathname } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { authenticatedFetch } from '@/lib/api-client';
 import Link from 'next/link';
 import VoucherTabs from '@/components/VoucherTabs';
+import { FileText, Plus, Edit3, Trash2, Eye } from 'lucide-react';
 
 export default function GenericVoucherPage() {
     const { type } = useParams();
-    const voucherType = (type as string)?.toUpperCase() || 'VOUCHER';
+    const voucherType = (type as string)?.toUpperCase() || 'JOURNAL';
 
     const [vouchers, setVouchers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -30,7 +31,7 @@ export default function GenericVoucherPage() {
     }, []);
 
     useEffect(() => {
-        // Mapping types to API endpoints (handling Journal for now as only one active)
+        // Mapping types to API endpoints
         const url = `/api/finance/vouchers/journal?type=${type}`;
 
         authenticatedFetch(url)
@@ -54,21 +55,21 @@ export default function GenericVoucherPage() {
         {
             header: 'Voucher #',
             accessor: (v) => (
-                <Link href={`/finance/vouchers/${type || 'journal'}/${v.id}`} className="text-indigo-600 hover:underline font-bold font-mono">
+                <Link href={`/finance/vouchers/${type || 'journal'}/${v.id}`} className="text-indigo-600 hover:text-indigo-500 font-bold font-mono transition-colors">
                     {v.number}
                 </Link>
             )
         },
-        { header: 'Date', accessor: (v) => new Date(v.date).toLocaleDateString() },
+        { header: 'Date', accessor: (v) => new Date(v.date).toLocaleDateString(), className: 'font-medium text-slate-600 dark:text-slate-300' },
         {
             header: 'Type',
             accessor: (v) => v.type,
-            className: 'text-xs font-bold opacity-60'
+            className: 'text-[10px] font-black uppercase tracking-widest text-slate-500'
         },
         {
             header: 'Amount',
             accessor: (v) => (
-                <span className="font-mono font-bold">
+                <span className="font-mono font-bold text-slate-900 dark:text-white">
                     {currency.symbol}
                     {Number(v.total || 0).toLocaleString(undefined, {
                         minimumFractionDigits: 2,
@@ -81,17 +82,24 @@ export default function GenericVoucherPage() {
         {
             header: 'Status',
             accessor: () => (
-                <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded-full text-[10px] font-black">POSTED</span>
+                <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                    POSTED
+                </span>
             )
         },
-        { header: 'Narration', accessor: (v) => v.narration || '-' },
+        { header: 'Narration', accessor: (v) => v.narration || '-', className: 'text-slate-500 dark:text-slate-400 max-w-[200px] truncate' },
         {
             header: 'Actions',
             accessor: (v) => (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                    <Link href={`/finance/vouchers/${type || 'journal'}/${v.id}`}>
+                        <button className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all" title="View">
+                            <Eye size={16} strokeWidth={2.5} />
+                        </button>
+                    </Link>
                     <Link href={`/finance/vouchers/${type || 'journal'}/${v.id}/edit`}>
-                        <button className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Edit">
-                            <span className="text-sm font-bold">✎</span>
+                        <button className="p-2 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all" title="Edit">
+                            <Edit3 size={16} strokeWidth={2.5} />
                         </button>
                     </Link>
                     <button
@@ -109,17 +117,11 @@ export default function GenericVoucherPage() {
                                     });
                             }
                         }}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                        className="p-2 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
                         title="Delete"
                     >
-                        <span className="text-lg leading-none">×</span>
+                        <Trash2 size={16} strokeWidth={2.5} />
                     </button>
-
-                    <Link href={`/finance/vouchers/${type || 'journal'}/${v.id}`}>
-                        <button className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="View">
-                            <span className="text-sm font-bold">👁</span>
-                        </button>
-                    </Link>
                 </div>
             )
         }
@@ -130,20 +132,25 @@ export default function GenericVoucherPage() {
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Voucher Registry</h1>
-                        <p className="text-slate-500 mt-1 font-medium">Manage all accounting entries and financial transactions.</p>
+                        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-500 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
+                            Voucher Registry
+                        </h1>
+                        <p className="text-slate-500 mt-1 text-[10px] uppercase font-bold tracking-widest">
+                            Manage all accounting entries and financial transactions.
+                        </p>
                     </div>
                     <Link href={`/finance/vouchers/${type || 'journal'}/new`}>
-                        <button className="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all">
-                            + New Voucher
+                        <button className="px-5 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 hover:scale-105 transition-all active:scale-95 flex items-center gap-2 text-sm">
+                            <Plus size={18} strokeWidth={3} />
+                            New Voucher
                         </button>
                     </Link>
                 </div>
 
-                <div className="space-y-0">
+                <div className="space-y-4">
                     <VoucherTabs />
 
-                    <div className="bg-white dark:bg-slate-900 border-x border-b border-slate-200 dark:border-slate-800 rounded-b-2xl shadow-sm overflow-hidden">
+                    <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm p-2 overflow-hidden">
                         <DataTable
                             data={vouchers}
                             columns={columns}
