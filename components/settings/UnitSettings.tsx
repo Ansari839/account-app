@@ -76,61 +76,71 @@ export default function UnitSettings() {
     };
 
     const columns = [
-        { header: 'Code', accessor: (u: any) => <span className="font-bold">{u.code}</span> },
-        { header: 'Name', accessor: (u: any) => u.name },
+        { header: 'Code', accessor: (u: any) => <span className="font-mono text-indigo-600 dark:text-indigo-400 font-bold">{u.code}</span> },
+        { header: 'Name', accessor: (u: any) => <span className="font-bold text-slate-800 dark:text-slate-200">{u.name}</span> },
         {
             header: 'Actions',
             accessor: (u: any) => (
-                <div className="flex gap-2">
-                    <button onClick={() => handleEdit(u)} className="text-indigo-600 font-bold text-xs hover:underline">Edit</button>
-                    <button onClick={() => handleDelete(u.id)} className="text-red-500 font-bold text-xs hover:underline">Delete</button>
+                <div className="flex gap-4">
+                    <button onClick={() => handleEdit(u)} className="text-indigo-600 dark:text-indigo-400 font-bold text-xs hover:underline uppercase tracking-widest">Edit</button>
+                    <button onClick={() => handleDelete(u.id)} className="text-rose-500 dark:text-rose-400 font-bold text-xs hover:underline uppercase tracking-widest">Delete</button>
                 </div>
             )
         }
     ];
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Form */}
-            <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
-                <h3 className="text-lg font-semibold mb-4">{isEditing ? 'Edit Unit' : 'Add New Unit'}</h3>
-                <div className="flex gap-4">
-                    <input
-                        placeholder="Code (e.g. KG)"
-                        value={formData.code}
-                        onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                        className="flex-1 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 outline-none"
-                    />
-                    <input
-                        placeholder="Name (e.g. Kilograms)"
-                        value={formData.name}
-                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        className="flex-[2] p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 outline-none"
-                    />
-                    <button
-                        onClick={handleSubmit}
-                        className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:scale-105 transition-all"
-                    >
-                        {isEditing ? 'Update' : 'Add'}
-                    </button>
-                    {isEditing && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-[2rem] shadow-sm">
+                <h3 className="text-xl font-black mb-6 text-slate-800 dark:text-white tracking-tight">{isEditing ? 'Edit Unit' : 'Add New Unit'}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                    <div className="space-y-2 md:col-span-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Code</label>
+                        <input
+                            placeholder="e.g. KG"
+                            value={formData.code}
+                            onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                            className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-800 dark:text-white transition-all font-mono"
+                        />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Name</label>
+                        <input
+                            placeholder="e.g. Kilograms"
+                            value={formData.name}
+                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                            className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-800 dark:text-white transition-all"
+                        />
+                    </div>
+                    <div className="flex gap-2 items-end md:col-span-2">
                         <button
-                            onClick={() => { setIsEditing(false); setFormData({ id: '', code: '', name: '' }); }}
-                            className="px-6 py-2.5 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-xl hover:bg-slate-300 transition-all"
+                            onClick={handleSubmit}
+                            className="flex-1 bg-indigo-600 text-white font-black rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all p-4"
                         >
-                            Cancel
+                            {isEditing ? 'Update Unit' : 'Add Unit'}
                         </button>
-                    )}
+                        {isEditing && (
+                            <button
+                                onClick={() => { setIsEditing(false); setFormData({ id: '', code: '', name: '' }); }}
+                                className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 p-4 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-black"
+                            >
+                                ✕
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* List Units */}
-            <DataTable
-                data={units}
-                columns={columns}
-                searchPlaceholder="Search units..."
-                isLoading={isLoading}
-            />
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-[2rem] shadow-sm overflow-hidden">
+                <DataTable
+                    data={units}
+                    columns={columns}
+                    searchPlaceholder="Search units by name or code..."
+                    isLoading={isLoading}
+                />
+            </div>
         </div>
     );
 }

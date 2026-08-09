@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { FinancialYearController } from "@/controllers/financial-year.controller";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
     return FinancialYearController.list(req);
 }

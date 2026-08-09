@@ -1,15 +1,9 @@
 import { NextResponse } from 'next/server';
-import { JournalEntry, PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { JournalEntry } from '@prisma/client';
 import { cookies } from 'next/headers';
 import { AuthUtils } from '@/lib/auth-utils';
 import { z } from 'zod';
-import { Pool } from 'pg';
-
-const connectionString = process.env.DATABASE_URL!;
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+import prisma from '@/lib/prisma';
 const accountSchema = z.object({
     code: z.string().min(1),
     name: z.string().min(1),

@@ -144,57 +144,59 @@ export default function RoleSettings() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Roles & Permissions</h2>
-                    <p className="text-sm text-slate-500 mt-1">
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Roles & Permissions</h2>
+                    <p className="text-sm font-bold text-slate-400 mt-1">
                         Define what each role can access. Users are assigned roles via the Users page.
                     </p>
                 </div>
                 <button
                     onClick={() => openEditModal(null)}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow-lg shadow-indigo-500/20 transition-all text-sm flex items-center gap-2"
+                    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 hover:scale-105 active:scale-95 text-white font-black rounded-xl shadow-lg shadow-indigo-500/20 transition-all text-sm flex items-center justify-center gap-2"
                 >
-                    <span>+</span> New Role
+                    <span className="text-lg leading-none">+</span> New Role
                 </button>
             </div>
 
             {/* Roles Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {roles.map(role => (
                     <div
                         key={role.id}
-                        className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-5 hover:border-indigo-500/30 transition-all group"
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-8 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 hover:-translate-y-1 transition-all group flex flex-col h-full"
                     >
-                        <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start justify-between mb-4">
                             <div>
-                                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${getRoleBadgeColor(role.name)}`}>
+                                <span className={`text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${getRoleBadgeColor(role.name)}`}>
                                     {role.name}
                                 </span>
                             </div>
                             <button
                                 onClick={() => openEditModal(role)}
-                                className="text-xs text-slate-400 hover:text-indigo-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg"
                             >
-                                Edit ✏️
+                                Edit
                             </button>
                         </div>
                         {role.description && (
-                            <p className="text-xs text-slate-500 mb-3">{role.description}</p>
+                            <p className="text-sm font-medium text-slate-500 mb-6 flex-grow">{role.description}</p>
                         )}
-                        <div className="flex flex-wrap gap-1 mb-3">
+                        {!role.description && <div className="flex-grow mb-6"></div>}
+                        <div className="flex flex-wrap gap-1.5 mb-6">
                             {role.permissions.slice(0, 6).map(p => (
-                                <span key={p.id} className="text-[10px] bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono">
+                                <span key={p.id} className="text-[10px] bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-md font-mono font-bold tracking-tight">
                                     {p.module}.{p.action}
                                 </span>
                             ))}
                             {role.permissions.length > 6 && (
-                                <span className="text-[10px] text-slate-400">+{role.permissions.length - 6} more</span>
+                                <span className="text-[10px] font-bold text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30 px-2 py-1 rounded-md">+{role.permissions.length - 6} more</span>
                             )}
                         </div>
-                        <div className="text-xs text-slate-400 flex items-center gap-1">
-                            👥 {role.userCount} user{role.userCount !== 1 ? 's' : ''}
+                        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 text-xs font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                            <span>Users Assigned</span>
+                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-1 rounded-full">{role.userCount}</span>
                         </div>
                     </div>
                 ))}
@@ -209,107 +211,110 @@ export default function RoleSettings() {
 
             {/* Edit/Create Role Modal */}
             {isEditOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl w-full max-w-2xl p-6 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] w-full max-w-3xl p-8 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col">
+                        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">
                             {editingRole ? `Edit Role: ${editingRole.name}` : 'Create New Role'}
                         </h2>
-                        <p className="text-sm text-slate-500 mb-6">
+                        <p className="text-sm font-bold text-slate-400 mb-8">
                             Select which modules and actions this role can access.
                         </p>
 
-                        <form onSubmit={handleSave} className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Role Name</label>
+                        <form onSubmit={handleSave} className="space-y-8 flex-grow flex flex-col">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Role Name</label>
                                     <input
                                         required
                                         type="text"
                                         value={editName}
                                         onChange={e => setEditName(e.target.value.toUpperCase())}
                                         placeholder="e.g. SALES_MANAGER"
-                                        className="w-full mt-1.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/50 uppercase"
+                                        className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold outline-none focus:ring-2 focus:ring-indigo-500 uppercase transition-all"
                                     />
                                 </div>
-                                <div>
-                                    <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Description</label>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
                                     <input
                                         type="text"
                                         value={editDescription}
                                         onChange={e => setEditDescription(e.target.value)}
                                         placeholder="Short description"
-                                        className="w-full mt-1.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                        className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                     />
                                 </div>
                             </div>
 
                             {/* Permissions Matrix */}
-                            <div className="space-y-3">
+                            <div className="space-y-4 flex-grow">
                                 <div className="flex justify-between items-center">
-                                    <label className="text-sm font-bold text-slate-600 dark:text-slate-300">
-                                        Permissions ({selectedPermIds.length}/{allPermissions.length})
+                                    <label className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest flex items-center gap-2">
+                                        Permissions 
+                                        <span className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full text-[10px]">
+                                            {selectedPermIds.length}/{allPermissions.length}
+                                        </span>
                                     </label>
                                     <div className="flex gap-2">
                                         <button
                                             type="button"
                                             onClick={() => setSelectedPermIds(allPermissions.map(p => p.id))}
-                                            className="text-xs text-indigo-500 hover:text-indigo-400 font-bold"
+                                            className="text-[10px] text-indigo-600 dark:text-indigo-400 font-black uppercase tracking-widest bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
                                         >
                                             Select All
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setSelectedPermIds([])}
-                                            className="text-xs text-slate-400 hover:text-slate-300 font-bold"
+                                            className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                         >
                                             Clear All
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                                <div className="border border-slate-200 dark:border-slate-800 rounded-[1.5rem] overflow-hidden bg-white dark:bg-slate-900/50">
                                     <table className="w-full text-sm">
                                         <thead>
-                                            <tr className="bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-500 uppercase">
-                                                <th className="text-left px-4 py-3 font-bold">Module</th>
-                                                <th className="text-center px-3 py-3 font-bold">View</th>
-                                                <th className="text-center px-3 py-3 font-bold">Create</th>
-                                                <th className="text-center px-3 py-3 font-bold">Edit</th>
-                                                <th className="text-center px-3 py-3 font-bold">Delete</th>
+                                            <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">
+                                                <th className="text-left px-6 py-4">Module</th>
+                                                <th className="text-center px-4 py-4">View</th>
+                                                <th className="text-center px-4 py-4">Create</th>
+                                                <th className="text-center px-4 py-4">Edit</th>
+                                                <th className="text-center px-4 py-4">Delete</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
                                             {groupedPermissions.map(group => {
                                                 const modulePermIds = group.permissions.map(p => p.id);
                                                 const allChecked = modulePermIds.every(id => selectedPermIds.includes(id));
                                                 const someChecked = modulePermIds.some(id => selectedPermIds.includes(id));
 
                                                 return (
-                                                    <tr key={group.module} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                                        <td className="px-4 py-3">
-                                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                    <tr key={group.module} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                                                        <td className="px-6 py-4">
+                                                            <label className="flex items-center gap-3 cursor-pointer">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={allChecked}
                                                                     ref={el => { if (el) el.indeterminate = someChecked && !allChecked; }}
                                                                     onChange={() => toggleModule(group.module)}
-                                                                    className="w-4 h-4 rounded text-indigo-600 border-slate-300 dark:border-slate-600"
+                                                                    className="w-5 h-5 rounded-md text-indigo-600 border-slate-300 dark:border-slate-600 focus:ring-indigo-500 cursor-pointer"
                                                                 />
-                                                                <span className="font-bold text-slate-900 dark:text-white text-xs">
+                                                                <span className="font-bold text-slate-800 dark:text-slate-200">
                                                                     {group.module}
                                                                 </span>
                                                             </label>
                                                         </td>
                                                         {['VIEW', 'CREATE', 'EDIT', 'DELETE'].map(action => {
                                                             const perm = group.permissions.find(p => p.action === action);
-                                                            if (!perm) return <td key={action} className="text-center px-3 py-3"><span className="text-slate-300 dark:text-slate-600">—</span></td>;
+                                                            if (!perm) return <td key={action} className="text-center px-4 py-4"><span className="text-slate-200 dark:text-slate-700">-</span></td>;
                                                             return (
-                                                                <td key={action} className="text-center px-3 py-3">
+                                                                <td key={action} className="text-center px-4 py-4">
                                                                     <input
                                                                         type="checkbox"
                                                                         checked={selectedPermIds.includes(perm.id)}
                                                                         onChange={() => togglePermission(perm.id)}
-                                                                        className="w-4 h-4 rounded text-indigo-600 border-slate-300 dark:border-slate-600 cursor-pointer"
+                                                                        className="w-5 h-5 rounded-md text-indigo-600 border-slate-300 dark:border-slate-600 cursor-pointer focus:ring-indigo-500"
                                                                     />
                                                                 </td>
                                                             );
@@ -322,17 +327,17 @@ export default function RoleSettings() {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-2">
+                            <div className="flex justify-end gap-3 pt-6 border-t border-slate-200 dark:border-slate-800 mt-auto">
                                 <button
                                     type="button"
                                     onClick={() => setIsEditOpen(false)}
-                                    className="px-4 py-2 text-slate-500 hover:text-slate-700 dark:hover:text-white font-medium hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                                    className="px-6 py-4 text-slate-500 hover:text-slate-800 dark:hover:text-white font-black hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg shadow-lg"
+                                    className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 hover:scale-105 active:scale-95 text-white font-black rounded-xl shadow-lg shadow-indigo-500/20 transition-all"
                                 >
                                     {editingRole ? 'Save Changes' : 'Create Role'}
                                 </button>

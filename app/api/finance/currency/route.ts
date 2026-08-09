@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { CurrencyController } from "@/controllers/currency.controller";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
     return CurrencyController.list(req);
 }

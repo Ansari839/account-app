@@ -1,52 +1,64 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { authenticatedFetch } from "@/lib/api-client";
-import MainLayout from "@/components/MainLayout";
-import Combobox from "@/components/Combobox";
-import { ArrowLeft, Save, Trash2, Plus, ArrowUpRight, Building2, Warehouse, Calendar, FileText, Settings2 } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import MainLayout from '@/components/MainLayout';
+import { authenticatedFetch } from '@/lib/api-client';
+import Combobox from '@/components/Combobox';
+import { useRouter } from 'next/navigation';
+import { 
+    Save, 
+    ArrowLeft, 
+    Plus, 
+    Trash2, 
+    ShoppingCart,
+    Users,
+    Calendar,
+    Warehouse,
+    Calculator,
+    CheckCircle2
+} from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
 import { cn } from '@/lib/utils';
 
-export default function CreatePurchaseReturnPage() {
+export default function NewSalesOrderPage() {
     const router = useRouter();
     const { showNotification } = useNotifications();
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
     // Master Data
-    const [suppliers, setSuppliers] = useState<any[]>([]);
+    const [customers, setCustomers] = useState<any[]>([]);
     const [warehouses, setWarehouses] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
     const [units, setUnits] = useState<any[]>([]);
 
-    // Form State
-    const [formData, setFormData] = useState({
-        supplierId: "",
-        warehouseId: "",
+    // Form Data
+    const [formData, setFormData] = useState<any>({
+        customerId: '',
+        warehouseId: '',
         date: new Date().toISOString().split('T')[0],
-        remarks: "",
-        items: [] as any[]
+        expectedDate: '',
+        items: []
     });
 
     useEffect(() => {
-        fetchMasterData();
+        fetchDropdowns();
     }, []);
 
-    const fetchMasterData = async () => {
+    const fetchDropdowns = async () => {
         try {
-            const [supRes, accRes, whRes, prodRes, unitRes] = await Promise.all([
-                authenticatedFetch("/api/finance/parties/suppliers"),
-                authenticatedFetch('/api/accounts?type=LIABILITY&isPosting=true'),
-                authenticatedFetch("/api/inventory/warehouses"),
-                authenticatedFetch("/api/inventory/products"),
-                authenticatedFetch("/api/inventory/units")
+            const [custRes, accRes, whRes, prodRes, unitRes] = await Promise.all([
+                authenticatedFetch('/api/finance/parties/customers'),
+                authenticatedFetch('/api/accounts?type=ASSET&isPosting=true'),
+                authenticatedFetch('/api/inventory/warehouses'),
+                authenticatedFetch('/api/inventory/products'),
+                authenticatedFetch('/api/inventory/units'),
             ]);
 
-            const sups = supRes.ok ? (await supRes.json()).data || [] : [];
+            const custs = custRes.ok ? (await custRes.json()).data || [] : [];
             const accs = accRes.ok ? (await accRes.json()).accounts || [] : [];
-            const combined = [...sups];
-            const existingIds = new Set(sups.map((s: any) => s.id));
+            const combined = [...custs];
+            const existingIds = new Set(custs.map((c: any) => c.id));
             accs.forEach((a: any) => {
                 if (!existingIds.has(a.id)) {
                     combined.push(a);
@@ -54,28 +66,26 @@ export default function CreatePurchaseReturnPage() {
                 }
             });
 
-            setSuppliers(combined);
-
+            if (custRes.ok) setCustomers(combined);
             if (whRes.ok) setWarehouses((await whRes.json()).data || []);
-            
             if (prodRes.ok) {
-                const json = await prodRes.json();
-                if (Array.isArray(json.data)) {
-                    setProducts(json.data);
-                } else if (json.data && Array.isArray(json.data.products)) {
-                    setProducts(json.data.products);
-                } else {
-                    setProducts(json.data || []);
-                }
+                const pJson = await prodRes.json();
+                setProducts(pJson.data || (pJson.products ? pJson.products : []));
             }
-
             if (unitRes.ok) setUnits((await unitRes.json()).data || []);
-        } catch (error) {
-            console.error("Failed to fetch master data", error);
+        } catch (e) {
+            console.error("Failed to load dropdowns", e);
         }
     };
 
-    const handleItemChange = (id: string, field: string, value: any) => {
+    const addItem = () => {
+        setFormData((prev: any) => ({
+            ...prev,
+            items: [...prev.items, { id: Date.now().toString(), productId: '', unitId: '', qty: 1, rate: 0, total: 0 }]
+        }));
+    };
+
+    const updateItem = (id: string, field: string, value: any) => {
         setFormData((prev: any) => {
             const newItems = prev.items.map((item: any) => {
                 if (item.id === id) {
@@ -83,14 +93,15 @@ export default function CreatePurchaseReturnPage() {
                     if (field === "qty" || field === "rate") {
                         refinedValue = isNaN(value) ? 0 : value;
                     }
+                    
                     const updatedItem = { ...item, [field]: refinedValue };
 
                     if (field === 'productId') {
-                        const product = products.find(p => p.id === value);
-                        if (product) {
-                            updatedItem.rate = Number(product.purchasePrice || product.costPrice || 0);
-                            if (product.baseUnitId) {
-                                updatedItem.unitId = product.baseUnitId;
+                        const prod = products.find(p => p.id === value);
+                        if (prod) {
+                            updatedItem.rate = Number(prod.sellingPrice || 0);
+                            if (prod.baseUnitId) {
+                                updatedItem.unitId = prod.baseUnitId;
                             }
                         }
                     }
@@ -104,71 +115,54 @@ export default function CreatePurchaseReturnPage() {
         });
     };
 
-    const addItem = () => {
-        setFormData(prev => ({
+    const removeItem = (id: string) => {
+        setFormData((prev: any) => ({
             ...prev,
-            items: [...prev.items, { id: Date.now().toString(), productId: "", unitId: "", qty: 1, rate: 0, total: 0 }]
+            items: prev.items.filter((item: any) => item.id !== id)
         }));
     };
 
-    const removeItem = (id: string) => {
-        setFormData(prev => ({ ...prev, items: prev.items.filter((item: any) => item.id !== id) }));
-    };
-
     const calculateTotal = () => {
-        return formData.items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+        return formData.items.reduce((sum: number, item: any) => sum + (Number(item.total) || 0), 0);
     };
 
     const handleSubmit = async () => {
-        if (!formData.supplierId) {
-            showNotification('error', "Please select a Supplier/Account.");
-            return;
-        }
-        if (!formData.warehouseId) {
-            showNotification('error', "Please select a Warehouse.");
+        if (!formData.customerId) {
+            showNotification('error', 'Please select a Customer.');
             return;
         }
 
-        const validItems = formData.items.filter(i => i.productId && i.qty > 0);
+        const validItems = formData.items.filter((i: any) => i.productId && Number(i.qty) > 0);
         if (validItems.length === 0) {
-            showNotification('error', "Please add at least one valid item.");
+            showNotification('error', 'Please add at least one valid item with quantity.');
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const res = await authenticatedFetch("/api/finance/purchase/returns", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    supplierId: formData.supplierId,
-                    warehouseId: formData.warehouseId,
-                    date: formData.date,
-                    remarks: formData.remarks,
-                    items: validItems.map(i => ({
-                        productId: i.productId,
-                        qty: Number(i.qty),
-                        rate: Number(i.rate)
-                    }))
-                })
+            const res = await authenticatedFetch('/api/finance/sales/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...formData, items: validItems })
             });
-            const json = await res.json();
-            if (res.ok && json.success) {
-                showNotification('success', 'Purchase Return / Debit Note created successfully!');
-                router.push(`/finance/purchase/returns/${json.data.id}`);
+
+            if (res.ok) {
+                showNotification('success', 'Sales Order created successfully!');
+                router.push('/finance/sales/orders');
             } else {
-                showNotification('error', json.error || "Failed to create return");
+                const json = await res.json();
+                showNotification('error', json.error || 'Failed to create Sales Order.');
             }
         } catch (error) {
-            showNotification('error', "An error occurred while saving the return.");
+            showNotification('error', 'Network error while saving order.');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const supplierOptions = suppliers.map(s => ({
-        value: s.id,
-        label: s.code ? `(${s.code}) ${s.name}` : s.name
+    const customerOptions = customers.map(c => ({
+        value: c.id,
+        label: c.code ? `(${c.code}) ${c.name}` : c.name
     }));
 
     return (
@@ -180,74 +174,72 @@ export default function CreatePurchaseReturnPage() {
                         onClick={() => router.back()}
                         className="flex items-center gap-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors font-bold text-sm"
                     >
-                        <ArrowLeft size={16} /> Back to Returns
+                        <ArrowLeft size={16} /> Back to Orders
                     </button>
                     <div className="flex items-center gap-2 text-sm font-bold text-slate-400">
-                        <ArrowUpRight size={16} className="text-rose-500" /> New Debit Note
+                        <CheckCircle2 size={16} className="text-emerald-500" /> New SO
                     </div>
                 </div>
 
                 {/* Premium Dark Header Card */}
-                <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-rose-500/10 relative overflow-hidden border border-slate-800">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-indigo-500/10 relative overflow-hidden border border-slate-800">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
                     
                     <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8">
                         <div className="col-span-12 md:col-span-4 space-y-2">
-                            <h1 className="text-4xl font-black text-white tracking-tight">Purchase Return</h1>
-                            <p className="text-slate-400 font-medium">Issue a Debit Note to supplier</p>
+                            <h1 className="text-4xl font-black text-white tracking-tight">New Order</h1>
+                            <p className="text-slate-400 font-medium">Create a Sales Order for customer</p>
                         </div>
                         
-                        <div className="col-span-12 md:col-span-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <div className="lg:col-span-2 space-y-2">
+                        <div className="col-span-12 md:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <Building2 size={14} /> Supplier Account
+                                    <Users size={14} /> Customer
                                 </label>
                                 <Combobox
-                                    options={supplierOptions}
-                                    value={formData.supplierId}
-                                    onChange={(val) => setFormData({ ...formData, supplierId: val })}
-                                    placeholder="Select supplier..."
+                                    options={customerOptions}
+                                    value={formData.customerId}
+                                    onChange={(val) => setFormData({ ...formData, customerId: val })}
+                                    placeholder="Select customer..."
                                     className="w-full bg-slate-900/50 border-slate-700 text-white"
                                 />
                             </div>
 
-                            <div className="lg:col-span-2 space-y-2">
+                            <div className="space-y-2">
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <Warehouse size={14} /> From Warehouse
+                                    <Warehouse size={14} /> Fulfill From Warehouse
                                 </label>
                                 <select
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-rose-500"
-                                    required
+                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
                                     value={formData.warehouseId}
                                     onChange={e => setFormData({ ...formData, warehouseId: e.target.value })}
                                 >
-                                    <option value="">Choose Warehouse...</option>
+                                    <option value="">Default Warehouse (Optional)</option>
                                     {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                                 </select>
                             </div>
 
-                            <div className="lg:col-span-2 space-y-2">
+                            <div className="space-y-2">
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <Calendar size={14} /> Return Date
+                                    <Calendar size={14} /> Order Date
                                 </label>
                                 <input
                                     type="date"
                                     value={formData.date}
                                     onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-rose-500"
+                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
                                 />
                             </div>
 
-                            <div className="lg:col-span-4 space-y-2">
+                            <div className="space-y-2">
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <FileText size={14} /> Reason / Remarks
+                                    <Calendar size={14} /> Expected Delivery Date
                                 </label>
-                                <textarea
-                                    value={formData.remarks}
-                                    onChange={e => setFormData({ ...formData, remarks: e.target.value })}
-                                    rows={1}
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-rose-500 resize-none"
-                                    placeholder="Enter reason for return..."
+                                <input
+                                    type="date"
+                                    value={formData.expectedDate}
+                                    onChange={e => setFormData({ ...formData, expectedDate: e.target.value })}
+                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
                                 />
                             </div>
                         </div>
@@ -258,11 +250,11 @@ export default function CreatePurchaseReturnPage() {
                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                     <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
                         <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
-                            <Settings2 size={20} className="text-rose-500" /> Return Items
+                            <ShoppingCart size={20} className="text-indigo-500" /> Order Items
                         </h2>
                         <button 
                             onClick={addItem}
-                            className="flex items-center gap-2 px-4 py-2 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl font-bold text-sm hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
                         >
                             <Plus size={16} /> Add Product
                         </button>
@@ -273,7 +265,7 @@ export default function CreatePurchaseReturnPage() {
                             <div className="grid grid-cols-12 gap-4 mb-3 px-4 text-xs font-bold uppercase tracking-widest text-slate-400">
                                 <div className="col-span-4">Product</div>
                                 <div className="col-span-2">Unit</div>
-                                <div className="col-span-2">Return Qty</div>
+                                <div className="col-span-2">Quantity</div>
                                 <div className="col-span-2">Rate</div>
                                 <div className="col-span-1 text-right">Total</div>
                                 <div className="col-span-1 text-center">Act</div>
@@ -281,12 +273,12 @@ export default function CreatePurchaseReturnPage() {
 
                             <div className="space-y-3">
                                 {formData.items.map((item: any) => (
-                                    <div key={item.id} className="grid grid-cols-12 gap-4 items-center bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 transition-all hover:border-rose-200 dark:hover:border-rose-500/30">
+                                    <div key={item.id} className="grid grid-cols-12 gap-4 items-center bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 transition-all hover:border-indigo-200 dark:hover:border-indigo-500/30">
                                         <div className="col-span-4">
                                             <select
                                                 value={item.productId}
-                                                onChange={e => handleItemChange(item.id, 'productId', e.target.value)}
-                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-rose-500 text-sm font-medium"
+                                                onChange={e => updateItem(item.id, 'productId', e.target.value)}
+                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
                                             >
                                                 <option value="">Select product...</option>
                                                 {products.map(p => (
@@ -297,8 +289,8 @@ export default function CreatePurchaseReturnPage() {
                                         <div className="col-span-2">
                                             <select
                                                 value={item.unitId}
-                                                onChange={e => handleItemChange(item.id, 'unitId', e.target.value)}
-                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-rose-500 text-sm font-medium"
+                                                onChange={e => updateItem(item.id, 'unitId', e.target.value)}
+                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
                                             >
                                                 <option value="">Unit</option>
                                                 {units.map(u => (
@@ -306,35 +298,31 @@ export default function CreatePurchaseReturnPage() {
                                                 ))}
                                             </select>
                                         </div>
-                                        
                                         <div className="col-span-2">
                                             <input
                                                 type="number"
                                                 value={item.qty || ''}
-                                                onChange={e => handleItemChange(item.id, 'qty', parseFloat(e.target.value))}
-                                                placeholder="0"
+                                                onChange={e => updateItem(item.id, 'qty', parseFloat(e.target.value))}
+                                                placeholder="1"
                                                 min="0"
-                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-400 outline-none focus:ring-2 focus:ring-rose-500 font-bold text-sm text-right"
+                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-400 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-right"
                                             />
                                         </div>
-                                        
                                         <div className="col-span-2">
                                             <input
                                                 type="number"
                                                 value={item.rate || ''}
-                                                onChange={e => handleItemChange(item.id, 'rate', parseFloat(e.target.value))}
+                                                onChange={e => updateItem(item.id, 'rate', parseFloat(e.target.value))}
                                                 placeholder="0.00"
                                                 min="0"
-                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-rose-500 text-sm font-medium text-right"
+                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-right"
                                             />
                                         </div>
-
                                         <div className="col-span-1 flex items-center justify-end px-2">
                                             <span className="font-black text-slate-800 dark:text-white">
                                                 {item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                             </span>
                                         </div>
-
                                         <div className="col-span-1 flex justify-center">
                                             <button 
                                                 onClick={() => removeItem(item.id)}
@@ -347,7 +335,7 @@ export default function CreatePurchaseReturnPage() {
                                 ))}
                                 {formData.items.length === 0 && (
                                     <div className="text-center p-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 font-bold">
-                                        No items. Please add items to return.
+                                        No items. Please add items to the order.
                                     </div>
                                 )}
                             </div>
@@ -360,11 +348,11 @@ export default function CreatePurchaseReturnPage() {
             <div className="fixed bottom-0 left-0 lg:left-64 right-0 p-4 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                            <ArrowUpRight size={24} />
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <Calculator size={24} />
                         </div>
                         <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Return Value</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Order Total</p>
                             <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                                 $ {calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </p>
@@ -382,12 +370,12 @@ export default function CreatePurchaseReturnPage() {
                             onClick={handleSubmit}
                             disabled={isSubmitting || formData.items.length === 0}
                             className={cn(
-                                "flex-1 md:flex-none px-8 py-4 rounded-2xl font-black text-white bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 shadow-xl shadow-rose-500/20 transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2",
+                                "flex-1 md:flex-none px-8 py-4 rounded-2xl font-black text-white bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 shadow-xl shadow-indigo-500/20 transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2",
                                 (isSubmitting || formData.items.length === 0) && "opacity-70 cursor-not-allowed"
                             )}
                         >
                             <Save size={18} />
-                            {isSubmitting ? 'Processing...' : 'Confirm Return'}
+                            {isSubmitting ? 'Saving...' : 'Create Order'}
                         </button>
                     </div>
                 </div>

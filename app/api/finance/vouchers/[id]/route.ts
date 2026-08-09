@@ -1,13 +1,6 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
 import { AuthUtils } from '@/lib/auth-utils';
-
-const connectionString = process.env.DATABASE_URL!;
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+import prisma from '@/lib/prisma';
 
 // GET: Fetch Single Voucher by ID
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {

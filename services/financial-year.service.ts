@@ -6,15 +6,30 @@ export class FinancialYearService {
      */
     static async createYear(companyId: string, data: {
         name: string;
-        startDate: Date;
-        endDate: Date;
+        startDate: Date | string;
+        endDate: Date | string;
     }) {
+        const startDate = new Date(data.startDate);
+        const endDate = new Date(data.endDate);
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            throw new Error("Invalid start date or end date provided.");
+        }
+
+        const existing = await prisma.financialYear.findUnique({
+            where: { companyId_name: { companyId, name: String(data.name).trim() } }
+        });
+        
+        if (existing) {
+            throw new Error(`Financial Year "${data.name}" already exists.`);
+        }
+
         return prisma.financialYear.create({
             data: {
                 companyId,
-                name: data.name,
-                startDate: new Date(data.startDate),
-                endDate: new Date(data.endDate),
+                name: String(data.name).trim(),
+                startDate,
+                endDate,
                 isOpen: true
             }
         });
@@ -50,14 +65,22 @@ export class FinancialYearService {
     /**
      * Update a Financial Year
      */
-    static async updateYear(id: string, data: { name?: string; startDate?: Date; endDate?: Date; isOpen?: boolean }) {
+    static async updateYear(id: string, data: { name?: string; startDate?: Date | string; endDate?: Date | string; isOpen?: boolean }) {
+        const updateData: any = { ...data };
+
+        if (data.startDate) {
+            const sd = new Date(data.startDate);
+            if (!isNaN(sd.getTime())) updateData.startDate = sd;
+        }
+
+        if (data.endDate) {
+            const ed = new Date(data.endDate);
+            if (!isNaN(ed.getTime())) updateData.endDate = ed;
+        }
+
         return prisma.financialYear.update({
             where: { id },
-            data: {
-                ...data,
-                startDate: data.startDate ? new Date(data.startDate) : undefined,
-                endDate: data.endDate ? new Date(data.endDate) : undefined
-            }
+            data: updateData
         });
     }
 

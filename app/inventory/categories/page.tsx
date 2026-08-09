@@ -6,21 +6,10 @@ import { authenticatedFetch } from '@/lib/api-client';
 import DataTable, { Column } from '@/components/DataTable';
 import { useRouter } from 'next/navigation';
 
-interface Category {
-    id: string;
-    name: string;
-    parentId?: string;
-    parent?: { name: string };
-    _count?: { products: number };
-}
-
 export default function CategoriesPage() {
     const router = useRouter();
-    const [categories, setCategories] = useState<Category[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [formData, setFormData] = useState({ name: '', parentId: '' });
 
     const fetchCategories = async () => {
         setLoading(true);
@@ -30,37 +19,14 @@ export default function CategoriesPage() {
             if (json.success) setCategories(json.data);
         } catch (e) {
             console.error(e);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     useEffect(() => {
         fetchCategories();
     }, []);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const url = editingId
-            ? `/api/inventory/categories/${editingId}`
-            : '/api/inventory/categories';
-
-        const method = editingId ? 'PUT' : 'POST';
-
-        const res = await authenticatedFetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-        });
-
-        if (res.ok) {
-            setIsModalOpen(false);
-            setEditingId(null);
-            setFormData({ name: '', parentId: '' });
-            fetchCategories();
-        } else {
-            alert("Failed to save category");
-        }
-    };
 
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure?")) return;
@@ -69,21 +35,28 @@ export default function CategoriesPage() {
         else alert("Failed to delete. Ensure no products exist in this category.");
     };
 
-    const openEdit = (cat: Category) => {
-        setEditingId(cat.id);
-        setFormData({ name: cat.name, parentId: cat.parentId || '' });
-        setIsModalOpen(true);
-    };
-
-    const columns: Column<Category>[] = [
+    const columns: Column<any>[] = [
         { header: 'Name', accessor: 'name' },
         { header: 'Parent Category', accessor: (row: any) => row.parent?.name || '-' },
+        { header: 'Products', accessor: (row: any) => row._count?.products || 0 },
         {
             header: 'Actions',
             accessor: (row: any) => (
                 <div className="flex gap-2">
-                    <button onClick={() => openEdit(row)} className="text-blue-500 hover:underline">Edit</button>
-                    <button onClick={() => handleDelete(row.id)} className="text-red-500 hover:underline">Delete</button>
+                    <button 
+                        onClick={() => router.push(`/inventory/categories/${row.id}/edit`)} 
+                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-100"
+                        title="Edit"
+                    >
+                        📝
+                    </button>
+                    <button 
+                        onClick={() => handleDelete(row.id)} 
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                        title="Delete"
+                    >
+                        🗑
+                    </button>
                 </div>
             )
         }
@@ -92,59 +65,26 @@ export default function CategoriesPage() {
     return (
         <MainLayout>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Categories</h1>
+                <div>
+                    <h1 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Categories</h1>
+                    <p className="text-slate-500">Organize your products effectively.</p>
+                </div>
+
                 <button
-                    onClick={() => { setEditingId(null); setFormData({ name: '', parentId: '' }); setIsModalOpen(true); }}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+                    onClick={() => router.push('/inventory/categories/new')}
+                    className="bg-pink-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-pink-200 dark:shadow-pink-900/20 hover:bg-pink-700 transition-colors"
                 >
                     + New Category
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <DataTable
                     data={categories}
                     columns={columns}
                     isLoading={loading}
                 />
             </div>
-
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white dark:bg-slate-900 p-6 rounded-xl w-96">
-                        <h2 className="text-xl font-bold mb-4">{editingId ? 'Edit Category' : 'New Category'}</h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="w-full p-2 border rounded dark:bg-slate-800"
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Parent Category</label>
-                                <select
-                                    className="w-full p-2 border rounded dark:bg-slate-800"
-                                    value={formData.parentId}
-                                    onChange={e => setFormData({ ...formData, parentId: e.target.value })}
-                                >
-                                    <option value="">None</option>
-                                    {categories.filter(c => c.id !== editingId).map(c => (
-                                        <option key={c.id} value={c.id}>{c.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="flex gap-2 justify-end">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Save</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </MainLayout>
     );
 }

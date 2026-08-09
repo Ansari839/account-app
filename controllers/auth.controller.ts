@@ -4,13 +4,15 @@ import { AuthService } from "@/services/auth.service";
 export class AuthController {
     static async login(req: Request) {
         try {
-            const { email, password } = await req.json();
+            const body = await req.json();
+            const email = body?.email;
+            const password = body?.password;
 
-            if (!email || !password) {
-                return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
+            if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
+                return NextResponse.json({ error: "Email and password are required and must be strings" }, { status: 400 });
             }
 
-            const result = await AuthService.login(email, password);
+            const result = await AuthService.login(email.trim(), password);
 
             if (!result) {
                 return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });

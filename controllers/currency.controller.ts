@@ -25,8 +25,11 @@ export class CurrencyController {
 
             const body = await req.json();
             // body: { code, name, symbol, rate, isBase }
+            
+            const isBase = body.isBase === true || body.isBase === 'true';
+            const rate = parseFloat(body.rate) || 1.0;
 
-            if (body.isBase) {
+            if (isBase) {
                 // If creating/updating base currency, unset others
                 await prisma.currency.updateMany({
                     where: { companyId },
@@ -34,10 +37,18 @@ export class CurrencyController {
                 });
             }
 
+            const payload = {
+                code: body.code,
+                name: body.name,
+                symbol: body.symbol,
+                rate,
+                isBase
+            };
+
             const currency = await prisma.currency.upsert({
-                where: { companyId_code: { companyId, code: body.code } },
-                update: { ...body },
-                create: { ...body, companyId }
+                where: { companyId_code: { companyId, code: payload.code } },
+                update: { ...payload },
+                create: { ...payload, companyId }
             });
             return NextResponse.json({ success: true, data: currency });
         } catch (error: any) {

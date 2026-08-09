@@ -4,7 +4,7 @@ import { AuthUtils } from "./lib/auth-utils";
 
 
 // Routes that don't need auth
-const PUBLIC_ROUTES = ["/api/auth/login", "/api/public"];
+const PUBLIC_ROUTES = ["/api/auth/login", "/api/public", "/api/test-db"];
 
 // Routes that need auth but NOT a company context
 const NO_COMPANY_ROUTES = ["/api/auth/change-password", "/api/user/companies"];

@@ -11,6 +11,7 @@ export class FinancialYearController {
             const years = await FinancialYearService.listYears(companyId);
             return NextResponse.json({ success: true, data: years });
         } catch (error: any) {
+            console.error("GET /api/finance/fiscal-year ERROR:", error);
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         }
     }

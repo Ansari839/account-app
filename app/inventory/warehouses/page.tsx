@@ -4,21 +4,12 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { authenticatedFetch } from '@/lib/api-client';
 import DataTable, { Column } from '@/components/DataTable';
-
-interface Warehouse {
-    id: string;
-    code: string;
-    name: string;
-    address?: string;
-    isDefault: boolean;
-}
+import { useRouter } from 'next/navigation';
 
 export default function WarehousesPage() {
-    const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+    const router = useRouter();
+    const [warehouses, setWarehouses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [formData, setFormData] = useState({ code: '', name: '', address: '', isDefault: false });
 
     useEffect(() => {
         fetchWarehouses();
@@ -32,31 +23,8 @@ export default function WarehousesPage() {
             if (json.success) setWarehouses(json.data);
         } catch (err) {
             console.error(err);
-        }
-        setLoading(false);
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const url = editingId
-            ? `/api/inventory/warehouses/${editingId}`
-            : '/api/inventory/warehouses';
-
-        const method = editingId ? 'PUT' : 'POST';
-
-        const res = await authenticatedFetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-        });
-
-        if (res.ok) {
-            setIsModalOpen(false);
-            setEditingId(null);
-            setFormData({ code: '', name: '', address: '', isDefault: false });
-            fetchWarehouses();
-        } else {
-            alert("Failed to save warehouse");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -67,23 +35,34 @@ export default function WarehousesPage() {
         else alert("Failed to delete. Ensure no stock transactions exist.");
     };
 
-    const openEdit = (wh: Warehouse) => {
-        setEditingId(wh.id);
-        setFormData({ code: wh.code, name: wh.name, address: wh.address || '', isDefault: wh.isDefault });
-        setIsModalOpen(true);
-    };
-
-    const columns: Column<Warehouse>[] = [
+    const columns: Column<any>[] = [
         { header: 'Code', accessor: 'code' },
         { header: 'Name', accessor: 'name' },
         { header: 'Address', accessor: (row) => row.address || '-' },
-        { header: 'Default', accessor: (row) => row.isDefault ? '✅' : '-' },
+        { 
+            header: 'Default', 
+            accessor: (row) => row.isDefault ? (
+                <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-full uppercase">Default</span>
+            ) : '-' 
+        },
         {
             header: 'Actions',
             accessor: (row) => (
                 <div className="flex gap-2">
-                    <button onClick={() => openEdit(row)} className="text-blue-500 hover:underline">Edit</button>
-                    <button onClick={() => handleDelete(row.id)} className="text-red-500 hover:underline">Delete</button>
+                    <button 
+                        onClick={() => router.push(`/inventory/warehouses/${row.id}/edit`)} 
+                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-100"
+                        title="Edit"
+                    >
+                        📝
+                    </button>
+                    <button 
+                        onClick={() => handleDelete(row.id)} 
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                        title="Delete"
+                    >
+                        🗑
+                    </button>
                 </div>
             )
         }
@@ -92,74 +71,26 @@ export default function WarehousesPage() {
     return (
         <MainLayout>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Warehouses</h1>
+                <div>
+                    <h1 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Warehouses</h1>
+                    <p className="text-slate-500">Set up and manage storage locations.</p>
+                </div>
+
                 <button
-                    onClick={() => { setEditingId(null); setFormData({ code: '', name: '', address: '', isDefault: false }); setIsModalOpen(true); }}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+                    onClick={() => router.push('/inventory/warehouses/new')}
+                    className="bg-amber-500 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-amber-200 dark:shadow-amber-900/20 hover:bg-amber-600 transition-colors"
                 >
                     + New Warehouse
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <DataTable
                     data={warehouses}
                     columns={columns}
                     isLoading={loading}
                 />
             </div>
-
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white dark:bg-slate-900 p-6 rounded-xl w-96">
-                        <h2 className="text-xl font-bold mb-4">{editingId ? 'Edit Warehouse' : 'New Warehouse'}</h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Code</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="w-full p-2 border rounded dark:bg-slate-800"
-                                    value={formData.code}
-                                    onChange={e => setFormData({ ...formData, code: e.target.value })}
-                                    disabled={!!editingId}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="w-full p-2 border rounded dark:bg-slate-800"
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Address</label>
-                                <input
-                                    type="text"
-                                    className="w-full p-2 border rounded dark:bg-slate-800"
-                                    value={formData.address}
-                                    onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                />
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    checked={formData.isDefault}
-                                    onChange={e => setFormData({ ...formData, isDefault: e.target.checked })}
-                                />
-                                <label className="text-sm">Set as Default Warehouse</label>
-                            </div>
-                            <div className="flex gap-2 justify-end">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Save</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </MainLayout>
     );
 }

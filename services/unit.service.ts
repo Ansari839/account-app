@@ -5,11 +5,23 @@ export class UnitService {
      * Create a new Unit (scoped to company)
      */
     static async createUnit(companyId: string, data: { name: string; code: string }) {
+        if (!data.name || !data.code) {
+            throw new Error("Unit name and code are required.");
+        }
+        
+        const existing = await prisma.unit.findUnique({
+            where: { companyId_code: { companyId, code: String(data.code).trim() } }
+        });
+        
+        if (existing) {
+            throw new Error(`Unit with code "${data.code}" already exists.`);
+        }
+
         return prisma.unit.create({
             data: {
                 companyId,
-                name: data.name,
-                code: data.code,
+                name: String(data.name).trim(),
+                code: String(data.code).trim(),
             },
         });
     }
@@ -65,6 +77,9 @@ export class UnitService {
      * Update a Unit
      */
     static async updateUnit(id: string, data: { name?: string; code?: string }) {
-        return prisma.unit.update({ where: { id }, data });
+        const updateData: any = {};
+        if (data.name !== undefined) updateData.name = String(data.name).trim();
+        if (data.code !== undefined) updateData.code = String(data.code).trim();
+        return prisma.unit.update({ where: { id }, data: updateData });
     }
 }

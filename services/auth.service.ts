@@ -12,8 +12,9 @@ export class AuthService {
         user: any;
         companies: any[];
     } | null> {
+        const safeEmail = String(email).trim();
         const user = await prisma.user.findUnique({
-            where: { email },
+            where: { email: safeEmail },
         });
 
         if (!user || !user.isActive) {
