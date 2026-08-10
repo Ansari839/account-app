@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Folders, FileText, ShoppingCart, TrendingUp, Package,
     ScrollText, Settings, ChevronDown, Menu, X, LogOut, Building2, Users,
-    Lock, Database
+    Lock, Database, Link2
 } from 'lucide-react';
 import CompanySwitcher from './CompanySwitcher';
 import { useCompany } from '@/context/CompanyContext';
@@ -39,6 +39,7 @@ const adminItems = [
     { name: 'Companies', icon: Building2, path: '/admin/companies' },
     { name: 'Users', icon: Users, path: '/admin/users' },
     { name: 'Access Control', icon: Lock, path: '/admin/rbac' },
+    { name: 'Account Mapping', icon: Link2, path: '/admin/settings/account-mapping' },
     { name: 'Backup & Restore', icon: Database, path: '/admin/backup' },
 ];
 
