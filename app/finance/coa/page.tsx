@@ -84,9 +84,15 @@ export default function ChartOfAccountsPage() {
         setSeedResult(null);
         try {
             const token = localStorage.getItem('token');
+            const companies = JSON.parse(localStorage.getItem('companies') || '[]');
+            const companyId = localStorage.getItem('activeCompanyId') || companies[0]?.id || '';
+
             const res = await fetch('/api/finance/coa/seed', {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'x-company-id': companyId
+                }
             });
             const data = await res.json();
             if (data.success) {

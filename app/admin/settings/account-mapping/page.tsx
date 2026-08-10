@@ -61,8 +61,12 @@ export default function AccountMappingPage() {
     const fetchAccounts = async () => {
         try {
             const token = localStorage.getItem('token');
+            const companyId = localStorage.getItem('activeCompanyId') || '';
             const res = await fetch('/api/accounts', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'x-company-id': companyId
+                }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -76,8 +80,12 @@ export default function AccountMappingPage() {
     const fetchMappings = async () => {
         try {
             const token = localStorage.getItem('token');
+            const companyId = localStorage.getItem('activeCompanyId') || '';
             const res = await fetch('/api/finance/coa/mapping', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'x-company-id': companyId
+                }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -100,11 +108,13 @@ export default function AccountMappingPage() {
         setSaving(prev => ({ ...prev, [key]: true }));
         try {
             const token = localStorage.getItem('token');
+            const companyId = localStorage.getItem('activeCompanyId') || '';
             const res = await fetch('/api/finance/coa/mapping', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'x-company-id': companyId
                 },
                 body: JSON.stringify({ key, accountId })
             });

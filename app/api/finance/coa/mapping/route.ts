@@ -5,13 +5,8 @@ import { AuthUtils } from '@/lib/auth-utils';
 // ─── GET: Return all system account mappings for this company ─────────────────
 export async function GET(request: NextRequest) {
     try {
-        const token = request.headers.get('Authorization')?.split(' ')[1];
-        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-        const payload = await AuthUtils.verifyToken(token);
-        if (!payload) return NextResponse.json({ error: 'Invalid Token' }, { status: 401 });
-
-        const companyId = (payload as any).companyId;
+        const { companyId, error } = AuthUtils.getCompanyId(request);
+        if (error) return error;
         if (!companyId) return NextResponse.json({ error: 'No active company session' }, { status: 400 });
 
         const mappings = await prisma.systemAccountMapping.findMany({
@@ -42,13 +37,8 @@ export async function GET(request: NextRequest) {
 // ─── POST: Upsert a single mapping (key → accountId) ─────────────────────────
 export async function POST(request: NextRequest) {
     try {
-        const token = request.headers.get('Authorization')?.split(' ')[1];
-        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-        const payload = await AuthUtils.verifyToken(token);
-        if (!payload) return NextResponse.json({ error: 'Invalid Token' }, { status: 401 });
-
-        const companyId = (payload as any).companyId;
+        const { companyId, error } = AuthUtils.getCompanyId(request);
+        if (error) return error;
         if (!companyId) return NextResponse.json({ error: 'No active company session' }, { status: 400 });
 
         const body = await request.json();

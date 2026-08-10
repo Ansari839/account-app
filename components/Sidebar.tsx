@@ -32,14 +32,14 @@ const menuItems = [
     { name: 'Reports',          icon: ScrollText,      path: '/finance/reports',    permissionKey: 'reports',
       sub: ['trial-balance', 'profit-loss', 'balance-sheet', 'ledger', 'inventory', 'sales', 'purchase'] },
     // Settings: visible to CompanyAdmin/SuperAdmin only (handled separately)
-    { name: 'Settings',         icon: Settings,        path: '/admin/settings',     adminOnly: true },
+    { name: 'Settings',         icon: Settings,        path: '/admin/settings',     adminOnly: true,
+      sub: ['account-mapping'] },
 ];
 
 const adminItems = [
     { name: 'Companies', icon: Building2, path: '/admin/companies' },
     { name: 'Users', icon: Users, path: '/admin/users' },
     { name: 'Access Control', icon: Lock, path: '/admin/rbac' },
-    { name: 'Account Mapping', icon: Link2, path: '/admin/settings/account-mapping' },
     { name: 'Backup & Restore', icon: Database, path: '/admin/backup' },
 ];
 
