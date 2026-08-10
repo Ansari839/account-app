@@ -3,6 +3,7 @@
 import React from 'react';
 import { useTheme } from '@/context/ThemeContext';
 import { useNotifications } from '@/context/NotificationContext';
+import { useCompany } from '@/context/CompanyContext';
 import { Search, Moon, Sun, Bell, LogOut } from 'lucide-react';
 
 export default function Header() {
@@ -16,10 +17,12 @@ export default function Header() {
             setUser(JSON.parse(storedUser));
         }
     }, []);
+    const { clearCompany } = useCompany();
 
     const handleLogout = async () => {
         try {
             const token = localStorage.getItem('token');
+            await fetch('/api/auth/clear-session', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
             await fetch('/api/auth/logout', {
                 method: 'POST',
                 headers: {
@@ -28,10 +31,12 @@ export default function Header() {
             });
         } catch (error) {
             console.error('Logout failed:', error);
-        } finally {
-            localStorage.clear();
-            window.location.href = '/auth/login';
         }
+        
+        clearCompany(); // Reset CompanyContext state
+        
+        localStorage.clear();
+        window.location.href = '/auth/login';
     };
 
     return (

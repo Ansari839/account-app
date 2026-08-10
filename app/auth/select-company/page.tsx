@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 
 export default function SelectCompanyPage() {
     const router = useRouter();
-    const { companies, setCompanies, switchCompany, activeCompany } = useCompany();
+    const { companies, setCompanies, switchCompany, activeCompany, permissionsLoaded } = useCompany();
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [stats, setStats] = useState<Record<string, { sales: number; users: number }>>({});
@@ -55,10 +55,10 @@ export default function SelectCompanyPage() {
     }, []);
 
     useEffect(() => {
-        if (!isLoading && companies.length === 1 && activeCompany) {
-            router.push('/finance/dashboard');
+        if (!isLoading && companies.length === 1 && activeCompany && permissionsLoaded) {
+            window.location.href = '/finance/dashboard';
         }
-    }, [isLoading, companies, activeCompany, router]);
+    }, [isLoading, companies, activeCompany, permissionsLoaded, router]);
 
     useEffect(() => {
         if (!isLoading && companies.length === 0) {
@@ -69,9 +69,23 @@ export default function SelectCompanyPage() {
         }
     }, [isLoading, companies, router]);
 
-    const handleSelectCompany = (company: CompanyInfo) => {
-        switchCompany(company.id);
-        router.push('/finance/dashboard');
+    const handleSelectCompany = async (company: CompanyInfo) => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert('Token is missing from localStorage!');
+            return;
+        }
+
+        if (companies.length === 0) {
+            setCompanies([company]);
+        }
+        
+        try {
+            await switchCompany(company); // PASS FULL OBJECT
+            window.location.href = '/finance/dashboard';
+        } catch (error: any) {
+            alert(`Error switching: ${error.message}`);
+        }
     };
 
     if (isLoading || companies.length <= 1) {

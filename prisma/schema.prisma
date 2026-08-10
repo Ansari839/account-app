@@ -11,16 +11,16 @@ datasource db {
 // ============================================================
 
 model Company {
-  id           String        @id @default(uuid())
-  name         String
-  address      String?
-  phone        String?
-  email        String?
-  website      String?
-  logo         String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  deletedAt    DateTime?
+  id               String            @id @default(uuid())
+  name             String
+  address          String?
+  phone            String?
+  email            String?
+  website          String?
+  logo             String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
   // Relations
   accounts         Account[]
   transactions     Transaction[]
@@ -69,21 +69,21 @@ model UserCompany {
 }
 
 model User {
-  id             String        @id @default(uuid())
-  email          String        @unique
-  createdAt      DateTime      @default(now())
+  id             String           @id @default(uuid())
+  email          String           @unique
+  createdAt      DateTime         @default(now())
   deletedAt      DateTime?
   fullName       String?
-  isActive       Boolean       @default(true)
-  isSuperAdmin   Boolean       @default(false)
+  isActive       Boolean          @default(true)
+  isSuperAdmin   Boolean          @default(false)
   lastLoginAt    DateTime?
-  mustChangePass Boolean       @default(true)
+  mustChangePass Boolean          @default(true)
   passwordHash   String
   phone          String?
-  updatedAt      DateTime      @updatedAt
+  updatedAt      DateTime         @updatedAt
   companyId      String?
   auditLogs      AuditLog[]
-  company        Company?      @relation(fields: [companyId], references: [id])
+  company        Company?         @relation(fields: [companyId], references: [id])
   companies      UserCompany[]
   permissions    UserPermission[]
 }
@@ -96,7 +96,7 @@ model UserPermission {
   id             String   @id @default(uuid())
   userId         String
   companyId      String
-  module         String   // e.g., "sales.orders"
+  module         String // e.g., "sales.orders"
   canRead        Boolean  @default(false)
   canWrite       Boolean  @default(false)
   canDelete      Boolean  @default(false)
@@ -211,17 +211,17 @@ model Currency {
 }
 
 model Unit {
-  id              String           @id @default(uuid())
+  id              String                @id @default(uuid())
   name            String
   code            String
   companyId       String
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
   deletedAt       DateTime?
-  company         Company          @relation(fields: [companyId], references: [id])
+  company         Company               @relation(fields: [companyId], references: [id])
   products        Product[]
-  conversionsFrom UnitConversion[] @relation("FromUnit")
-  conversionsTo   UnitConversion[] @relation("ToUnit")
+  conversionsFrom UnitConversion[]      @relation("FromUnit")
+  conversionsTo   UnitConversion[]      @relation("ToUnit")
   poItems         PurchaseOrderItem[]
   grnItems        GRNItem[]
   invoiceItems    PurchaseInvoiceItem[]
@@ -460,7 +460,7 @@ model ProductVariant {
 
   purchaseRequestItems PurchaseRequestItem[]
   purchaseOrderItems   PurchaseOrderItem[]
-  grnItems            GRNItem[]
+  grnItems             GRNItem[]
   invoiceItems         PurchaseInvoiceItem[]
   purchaseReturnItems  PurchaseReturnItem[]
   salesQuotationItems  SalesQuotationItem[]
@@ -715,21 +715,21 @@ model PurchaseInvoiceItem {
   invoiceId   String
   productId   String
   variantId   String?
-  qty           Decimal
-  rate          Decimal
-  taxCodeId     String?
-  taxAmount     Decimal              @default(0.0)
-  total         Decimal
-  grnItemId     String?
-  poItemId      String?
-  unitId        String?
-  invoice       PurchaseInvoice      @relation(fields: [invoiceId], references: [id])
-  poItem        PurchaseOrderItem?   @relation(fields: [poItemId], references: [id])
-  product       Product              @relation(fields: [productId], references: [id])
-  variant       ProductVariant?      @relation(fields: [variantId], references: [id])
-  taxCode       TaxCode?             @relation(fields: [taxCodeId], references: [id])
-  returnItems   PurchaseReturnItem[]
-  unit          Unit?                @relation(fields: [unitId], references: [id])
+  qty         Decimal
+  rate        Decimal
+  taxCodeId   String?
+  taxAmount   Decimal              @default(0.0)
+  total       Decimal
+  grnItemId   String?
+  poItemId    String?
+  unitId      String?
+  invoice     PurchaseInvoice      @relation(fields: [invoiceId], references: [id])
+  poItem      PurchaseOrderItem?   @relation(fields: [poItemId], references: [id])
+  product     Product              @relation(fields: [productId], references: [id])
+  variant     ProductVariant?      @relation(fields: [variantId], references: [id])
+  taxCode     TaxCode?             @relation(fields: [taxCodeId], references: [id])
+  returnItems PurchaseReturnItem[]
+  unit        Unit?                @relation(fields: [unitId], references: [id])
 }
 
 model PurchaseRequest {
@@ -783,21 +783,21 @@ model SalesQuotation {
 }
 
 model SalesQuotationItem {
-  id        String         @id @default(uuid())
+  id        String          @id @default(uuid())
   quoteId   String
   productId String
   variantId String?
   qty       Decimal
   rate      Decimal
   taxCodeId String?
-  taxAmount Decimal        @default(0.0)
+  taxAmount Decimal         @default(0.0)
   total     Decimal
   unitId    String?
-  unit      Unit?          @relation(fields: [unitId], references: [id])
-  product   Product        @relation(fields: [productId], references: [id])
+  unit      Unit?           @relation(fields: [unitId], references: [id])
+  product   Product         @relation(fields: [productId], references: [id])
   variant   ProductVariant? @relation(fields: [variantId], references: [id])
-  quote     SalesQuotation @relation(fields: [quoteId], references: [id])
-  taxCode   TaxCode?       @relation(fields: [taxCodeId], references: [id])
+  quote     SalesQuotation  @relation(fields: [quoteId], references: [id])
+  taxCode   TaxCode?        @relation(fields: [taxCodeId], references: [id])
 }
 
 model SalesOrder {

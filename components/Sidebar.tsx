@@ -13,15 +13,26 @@ import { useCompany } from '@/context/CompanyContext';
 import { SIDEBAR_PERMISSION_MAP } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 
+// ─────────────────────────────────────────────────────────────
+// Menu items — each has an optional `permissionKey` (module ID
+// stored in UserPermission.module).  Items WITHOUT a permissionKey
+// are always shown to any authenticated user.
+// ─────────────────────────────────────────────────────────────
 const menuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/finance/dashboard' },
-    { name: 'Chart of Accounts', icon: Folders, path: '/finance/coa' },
-    { name: 'Vouchers', icon: FileText, path: '/finance/vouchers', sub: ['Journal', 'Payment', 'Receipt'] },
-    { name: 'Purchase', icon: ShoppingCart, path: '/finance/purchase', sub: ['orders', 'grn', 'invoices', 'returns'] },
-    { name: 'Sales', icon: TrendingUp, path: '/finance/sales', sub: ['orders', 'delivery-notes', 'invoices', 'returns'] },
-    { name: 'Inventory', icon: Package, path: '/inventory', sub: ['Products', 'Categories', 'Warehouses'] },
-    { name: 'Reports', icon: ScrollText, path: '/finance/reports', sub: ['P&L', 'Balance Sheet', 'Ledger', 'Aging'] },
-    { name: 'Settings', icon: Settings, path: '/admin/settings' },
+    { name: 'Dashboard',        icon: LayoutDashboard, path: '/finance/dashboard'  },          // always visible
+    { name: 'Chart of Accounts', icon: Folders,        path: '/finance/coa',        permissionKey: 'chart-of-accounts' },
+    { name: 'Vouchers',         icon: FileText,        path: '/finance/vouchers',   permissionKey: 'vouchers',
+      sub: ['Journal', 'Payment', 'Receipt'] },
+    { name: 'Purchase',         icon: ShoppingCart,    path: '/finance/purchase',   permissionKey: 'purchase',
+      sub: ['orders', 'grn', 'invoices', 'returns'] },
+    { name: 'Sales',            icon: TrendingUp,      path: '/finance/sales',      permissionKey: 'sales',
+      sub: ['orders', 'delivery-notes', 'invoices', 'returns'] },
+    { name: 'Inventory',        icon: Package,         path: '/inventory',          permissionKey: 'inventory',
+      sub: ['Products', 'Categories', 'Warehouses'] },
+    { name: 'Reports',          icon: ScrollText,      path: '/finance/reports',    permissionKey: 'reports',
+      sub: ['trial-balance', 'profit-loss', 'balance-sheet', 'ledger', 'inventory', 'sales', 'purchase'] },
+    // Settings: visible to CompanyAdmin/SuperAdmin only (handled separately)
+    { name: 'Settings',         icon: Settings,        path: '/admin/settings',     adminOnly: true },
 ];
 
 const adminItems = [
@@ -34,43 +45,47 @@ const adminItems = [
 export default function Sidebar() {
     const pathname = usePathname();
     const [isCollapsed, setIsCollapsed] = useState(false);
-    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-    const [user, setUser] = useState<{ fullName: string; email: string } | null>(null);
-    const { hasPermission } = useCompany();
+    const [user, setUser] = useState<{ fullName: string; email: string; isSuperAdmin?: boolean } | null>(null);
+    const { canAccess, permissionsRefreshing, activeCompany, permissionsLoaded, clearCompany } = useCompany();
 
     useEffect(() => {
         const userStr = localStorage.getItem('user');
         if (userStr) {
-            try {
-                const parsed = JSON.parse(userStr);
-                setIsSuperAdmin(!!parsed.isSuperAdmin);
-                setUser(parsed);
-            } catch (e) {
-                console.error("Failed to parse user from local storage", e);
-            }
+            try { setUser(JSON.parse(userStr)); }
+            catch (e) { console.error('Failed to parse user', e); }
         }
     }, []);
 
     const logout = async () => {
         try {
             const token = localStorage.getItem('token');
-            await fetch('/api/auth/logout', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-        } finally {
-            localStorage.clear();
-            window.location.href = '/auth/login';
+            // Clear API session cookie
+            await fetch('/api/auth/clear-session', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+            await fetch('/api/auth/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+        } catch (e) {
+            console.error('Logout error', e);
         }
+        
+        clearCompany(); // Reset CompanyContext state
+        
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('isLoggedIn');
+        window.location.href = '/auth/login';
     };
 
-    const visibleMenuItems = isSuperAdmin
-        ? menuItems
-        : menuItems.filter((item) => {
-            const requiredModule = SIDEBAR_PERMISSION_MAP[item.name];
-            if (!requiredModule) return true;
-            return hasPermission(requiredModule, 'VIEW');
-        });
+    const isSuperAdmin   = !!user?.isSuperAdmin;
+    const isCompanyAdmin = activeCompany?.role === 'ADMIN' || activeCompany?.role === 'OWNER';
+    const hasFullAccess  = isSuperAdmin || isCompanyAdmin;
+
+    // canSeeModule delegates to context's canAccess (which implements all RBAC rules)
+    const canSeeModule = (moduleKey: string) => canAccess(moduleKey, 'VIEW');
+
+    const visibleMenuItems = menuItems.filter((item: any) => {
+        if (item.adminOnly)      return hasFullAccess;   // Settings — admin only
+        if (!item.permissionKey) return true;            // Dashboard — always visible
+        return canSeeModule(item.permissionKey);
+    });
 
     return (
         <aside
@@ -112,7 +127,15 @@ export default function Sidebar() {
 
             {/* Navigation */}
             <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-                {visibleMenuItems.map((item) => {
+                {/* Loading skeleton while permissions first load */}
+                {!permissionsLoaded && (
+                    <div className="space-y-1.5 animate-pulse">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className="h-10 rounded-xl bg-slate-800/60" style={{ opacity: 1 - i * 0.15 }} />
+                        ))}
+                    </div>
+                )}
+                {permissionsLoaded && visibleMenuItems.map((item) => {
                     const isActive = pathname.startsWith(item.path);
                     const Icon = item.icon;
 
@@ -152,6 +175,18 @@ export default function Sidebar() {
                             {!isCollapsed && item.sub && isActive && (
                                 <div className="ml-9 border-l border-slate-700/50 space-y-1 py-1 animate-in slide-in-from-top-1 duration-200">
                                     {item.sub.map((sub) => {
+                                        // Check permission for this specific sub-module
+                                        // e.g. parent is 'purchase', sub is 'orders' => module is 'purchase.orders'
+                                        // Note: For 'vouchers', the sub might be 'Journal', so we lowercase it.
+                                        const parentModule = SIDEBAR_PERMISSION_MAP[item.name];
+                                        const subModuleKey = parentModule ? `${parentModule}.${sub.toLowerCase()}` : '';
+                                        
+                                        // Only show if SuperAdmin, or if the user has VIEW access to this specific sub-module.
+                                        // Wait, hasPermission will return true if they have 'purchase.VIEW' or 'purchase.orders.VIEW'.
+                                        const hasSubAccess = isSuperAdmin || !subModuleKey || canSeeModule(subModuleKey);
+                                        
+                                        if (!hasSubAccess) return null;
+
                                         const subPath = `${item.path}/${sub.toLowerCase()}`;
                                         const isSubActive = pathname === subPath;
                                         return (
@@ -165,7 +200,7 @@ export default function Sidebar() {
                                                         : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                                                 )}
                                             >
-                                                {sub.charAt(0).toUpperCase() + sub.slice(1)}
+                                                {sub.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                                             </Link>
                                         );
                                     })}

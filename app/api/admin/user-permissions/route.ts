@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
         const auth = await AuthUtils.getAuthUser(req);
         if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const { companyId, userId, module, action, value } = await req.json();
+        const { companyId, userId, modules, action, value } = await req.json();
         
         // Verify requester has permission to modify access (must be SUPER_ADMIN or COMPANY ADMIN/OWNER)
         const requester = await prisma.user.findUnique({ where: { id: auth.userId } });
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Only Super Admins or Company Admins can manage permissions" }, { status: 403 });
         }
 
-        if (!companyId || !userId || !module || !action) {
+        if (!companyId || !userId || !modules || !Array.isArray(modules) || !action) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
@@ -89,24 +89,28 @@ export async function POST(req: NextRequest) {
         if (action === 'delete') updateData.canDelete = value;
         if (action === 'finance') updateData.canViewFinance = value;
 
-        const permission = await prisma.userPermission.upsert({
-            where: {
-                userId_companyId_module: {
+        const results = [];
+        for (const mod of modules) {
+            const permission = await prisma.userPermission.upsert({
+                where: {
+                    userId_companyId_module: {
+                        userId,
+                        companyId,
+                        module: mod
+                    }
+                },
+                update: updateData,
+                create: {
                     userId,
                     companyId,
-                    module
+                    module: mod,
+                    ...updateData
                 }
-            },
-            update: updateData,
-            create: {
-                userId,
-                companyId,
-                module,
-                ...updateData
-            }
-        });
+            });
+            results.push(permission);
+        }
 
-        return NextResponse.json({ success: true, data: permission });
+        return NextResponse.json({ success: true, data: results });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

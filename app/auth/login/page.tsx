@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Mail,
@@ -12,14 +12,21 @@ import {
     User
 } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
+import { useCompany } from '@/context/CompanyContext';
 import { cn } from '@/lib/utils';
 
 export default function LoginPage() {
     const router = useRouter();
     const { showNotification } = useNotifications();
+    const { clearCompany } = useCompany();
     const [email, setEmail] = useState('admin@antigravity.erp');
     const [password, setPassword] = useState('Admin@123');
     const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        // Force clear any stale company context state if the user visits the login page
+        clearCompany();
+    }, [clearCompany]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,10 +50,7 @@ export default function LoginPage() {
                 const companies = json.data.companies || [];
                 localStorage.setItem('companies', JSON.stringify(companies));
 
-                if (companies.length === 1) {
-                    localStorage.setItem('activeCompanyId', companies[0].id);
-                    router.push('/finance/dashboard');
-                } else if (companies.length > 1) {
+                if (companies.length > 0) {
                     router.push('/auth/select-company');
                 } else {
                     showNotification('error', 'No company assigned to your account. Contact admin.');

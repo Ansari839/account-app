@@ -13,7 +13,7 @@ export class AuthService {
         companies: any[];
     } | null> {
         const safeEmail = String(email).trim();
-        const user = await prisma.user.findUnique({
+        const user = await prisma.user.findFirst({
             where: { email: safeEmail },
         });
 
@@ -123,13 +123,13 @@ export class AuthService {
         role?: string;
     }> {
         // Super admins have access to all companies
-        const user = await prisma.user.findUnique({ where: { id: userId } });
+        const user = await prisma.user.findFirst({ where: { id: userId } });
         if (user?.isSuperAdmin) {
             return { hasAccess: true, role: 'SUPER_ADMIN' };
         }
 
-        const userCompany = await prisma.userCompany.findUnique({
-            where: { userId_companyId: { userId, companyId } }
+        const userCompany = await prisma.userCompany.findFirst({
+            where: { userId, companyId }
         });
 
         if (userCompany) {

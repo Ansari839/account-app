@@ -47,7 +47,14 @@ const MODULES = [
     { id: 'inventory.categories', label: '↳ Categories', type: 'sub' },
     { id: 'inventory.warehouses', label: '↳ Warehouses', type: 'sub' },
   
-    { id: 'reports', label: 'Reports (All)', type: 'main', readOnly: true },
+    { id: 'reports', label: 'Reports', type: 'main', isParent: true, readOnly: true },
+    { id: 'reports.trial-balance', label: '↳ Trial Balance', type: 'sub', readOnly: true },
+    { id: 'reports.profit-loss', label: '↳ Profit & Loss', type: 'sub', readOnly: true },
+    { id: 'reports.balance-sheet', label: '↳ Balance Sheet', type: 'sub', readOnly: true },
+    { id: 'reports.ledger', label: '↳ General Ledger', type: 'sub', readOnly: true },
+    { id: 'reports.inventory', label: '↳ Inventory Status', type: 'sub', readOnly: true },
+    { id: 'reports.sales', label: '↳ Sales Register', type: 'sub', readOnly: true },
+    { id: 'reports.purchase', label: '↳ Purchase Register', type: 'sub', readOnly: true },
     
     { id: 'settings', label: 'Settings', type: 'main', isParent: true, adminOnly: true },
     { id: 'settings.companies', label: '↳ Companies', type: 'sub', superAdminOnly: true },
@@ -64,6 +71,8 @@ export default function UserAccessPlugboard() {
     const [loading, setLoading] = useState(true);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [togglingMap, setTogglingMap] = useState<Record<string, boolean>>({});
+
+    const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         if (!activeCompany) return;
@@ -87,10 +96,19 @@ export default function UserAccessPlugboard() {
         fetchUsers();
     }, [activeCompany]);
 
+    const toggleModuleExpansion = (moduleId: string) => {
+        setExpandedModules(prev => ({ ...prev, [moduleId]: !prev[moduleId] }));
+    };
+
     const handleToggle = async (userId: string, module: string, action: 'read' | 'write' | 'delete' | 'finance', currentValue: boolean) => {
         const toggleKey = `${userId}-${module}-${action}`;
         setTogglingMap(prev => ({ ...prev, [toggleKey]: true }));
         
+        const isParent = MODULES.find(m => m.id === module)?.isParent;
+        const affectedModules = isParent 
+            ? MODULES.filter(m => m.id === module || m.id.startsWith(`${module}.`)).map(m => m.id)
+            : [module];
+
         try {
             const res = await authenticatedFetch('/api/admin/user-permissions', {
                 method: 'POST',
@@ -98,7 +116,7 @@ export default function UserAccessPlugboard() {
                 body: JSON.stringify({
                     companyId: activeCompany?.id,
                     userId,
-                    module,
+                    modules: affectedModules,
                     action,
                     value: !currentValue
                 })
@@ -107,22 +125,26 @@ export default function UserAccessPlugboard() {
             if (data.success) {
                 setUsers(prev => prev.map(u => {
                     if (u.id === userId) {
-                        const existingPermIndex = u.permissions.findIndex(p => p.module === module);
                         const updatedPerms = [...u.permissions];
-                        if (existingPermIndex >= 0) {
-                            updatedPerms[existingPermIndex] = {
-                                ...updatedPerms[existingPermIndex],
-                                [action === 'read' ? 'canRead' : action === 'write' ? 'canWrite' : action === 'delete' ? 'canDelete' : 'canViewFinance']: !currentValue
-                            };
-                        } else {
-                            updatedPerms.push({
-                                module,
-                                canRead: action === 'read' ? !currentValue : false,
-                                canWrite: action === 'write' ? !currentValue : false,
-                                canDelete: action === 'delete' ? !currentValue : false,
-                                canViewFinance: action === 'finance' ? !currentValue : false,
-                            });
-                        }
+                        
+                        affectedModules.forEach(modId => {
+                            const existingPermIndex = updatedPerms.findIndex(p => p.module === modId);
+                            if (existingPermIndex >= 0) {
+                                updatedPerms[existingPermIndex] = {
+                                    ...updatedPerms[existingPermIndex],
+                                    [action === 'read' ? 'canRead' : action === 'write' ? 'canWrite' : action === 'delete' ? 'canDelete' : 'canViewFinance']: !currentValue
+                                };
+                            } else {
+                                updatedPerms.push({
+                                    module: modId,
+                                    canRead: action === 'read' ? !currentValue : false,
+                                    canWrite: action === 'write' ? !currentValue : false,
+                                    canDelete: action === 'delete' ? !currentValue : false,
+                                    canViewFinance: action === 'finance' ? !currentValue : false,
+                                });
+                            }
+                        });
+                        
                         return { ...u, permissions: updatedPerms };
                     }
                     return u;
@@ -188,11 +210,19 @@ export default function UserAccessPlugboard() {
                                     <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">{selectedUser.fullName}'s Permissions</h3>
                                     <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Configure module access</p>
                                 </div>
-                                {selectedUser.isSuperAdmin && (
-                                    <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest">
-                                        Super Admin (Full Access)
-                                    </span>
-                                )}
+                                {(() => {
+                                    const isCompanyAdmin = selectedUser.companyRole === 'ADMIN' || selectedUser.companyRole === 'OWNER';
+                                    const hasFullAccess = selectedUser.isSuperAdmin || isCompanyAdmin;
+                                    
+                                    if (hasFullAccess) {
+                                        return (
+                                            <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                                                {selectedUser.isSuperAdmin ? 'Super Admin' : selectedUser.companyRole} (Full Access)
+                                            </span>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                             </div>
                             
                             <div className="overflow-y-auto custom-scrollbar flex-1">
@@ -208,22 +238,43 @@ export default function UserAccessPlugboard() {
                                     </thead>
                                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                                         {MODULES.map(mod => {
+                                            if (mod.type === 'sub') {
+                                                const parentId = mod.id.split('.')[0];
+                                                if (!expandedModules[parentId]) return null;
+                                            }
+
                                             const perm = selectedUser.permissions.find(p => p.module === mod.id) || { canRead: false, canWrite: false, canDelete: false, canViewFinance: false };
                                             
                                             // Handle disabled states based on module type and user role
                                             const isSuperAdminOnly = mod.superAdminOnly && !selectedUser.isSuperAdmin;
-                                            const disabled = selectedUser.isSuperAdmin || isSuperAdminOnly;
+                                            const hasFullAccess = selectedUser.isSuperAdmin || selectedUser.companyRole === 'ADMIN' || selectedUser.companyRole === 'OWNER';
+                                            const disabled = hasFullAccess || isSuperAdminOnly;
+                                            const isExpanded = !!expandedModules[mod.id];
 
                                             return (
-                                                <tr key={mod.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${mod.type === 'main' ? 'bg-slate-50/30 dark:bg-slate-800/10' : ''}`}>
-                                                    <td className={`px-6 py-3 font-bold ${mod.type === 'main' ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                                                        {mod.label}
+                                                <tr key={mod.id} className={`transition-colors ${mod.type === 'main' ? 'bg-slate-50/30 dark:bg-slate-800/10' : 'bg-white dark:bg-slate-900'} hover:bg-slate-50 dark:hover:bg-slate-800/30`}>
+                                                    <td className={`px-6 py-3 font-bold ${mod.type === 'main' ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400 pl-12'}`}>
+                                                        <div className="flex items-center gap-2">
+                                                            {mod.isParent && (
+                                                                <button 
+                                                                    onClick={() => toggleModuleExpansion(mod.id)}
+                                                                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition-colors"
+                                                                >
+                                                                    <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
+                                                            <span className={mod.isParent ? 'cursor-pointer select-none' : ''} onClick={() => mod.isParent && toggleModuleExpansion(mod.id)}>
+                                                                {mod.label}
+                                                            </span>
+                                                        </div>
                                                     </td>
                                                     
                                                     {/* Read Toggle */}
                                                     <td className="px-4 py-3 text-center">
                                                         <Toggle 
-                                                            active={perm.canRead || selectedUser.isSuperAdmin} 
+                                                            active={perm.canRead || hasFullAccess} 
                                                             onChange={() => handleToggle(selectedUser.id, mod.id, 'read', perm.canRead)} 
                                                             loading={togglingMap[`${selectedUser.id}-${mod.id}-read`]}
                                                             disabled={disabled}
@@ -233,9 +284,9 @@ export default function UserAccessPlugboard() {
 
                                                     {/* Write Toggle */}
                                                     <td className="px-4 py-3 text-center">
-                                                        {!mod.readOnly && !mod.isParent ? (
+                                                        {!mod.readOnly && (!mod.isParent || mod.isParent) ? (
                                                             <Toggle 
-                                                                active={perm.canWrite || selectedUser.isSuperAdmin} 
+                                                                active={perm.canWrite || hasFullAccess} 
                                                                 onChange={() => handleToggle(selectedUser.id, mod.id, 'write', perm.canWrite)} 
                                                                 loading={togglingMap[`${selectedUser.id}-${mod.id}-write`]}
                                                                 disabled={disabled}
@@ -246,9 +297,9 @@ export default function UserAccessPlugboard() {
 
                                                     {/* Delete Toggle */}
                                                     <td className="px-4 py-3 text-center">
-                                                        {!mod.readOnly && !mod.isParent ? (
+                                                        {!mod.readOnly && (!mod.isParent || mod.isParent) ? (
                                                             <Toggle 
-                                                                active={perm.canDelete || selectedUser.isSuperAdmin} 
+                                                                active={perm.canDelete || hasFullAccess} 
                                                                 onChange={() => handleToggle(selectedUser.id, mod.id, 'delete', perm.canDelete)} 
                                                                 loading={togglingMap[`${selectedUser.id}-${mod.id}-delete`]}
                                                                 disabled={disabled}
@@ -259,9 +310,9 @@ export default function UserAccessPlugboard() {
 
                                                     {/* Finance Toggle */}
                                                     <td className="px-4 py-3 text-center">
-                                                        {!mod.readOnly && !mod.isParent ? (
+                                                        {!mod.readOnly && (!mod.isParent || mod.isParent) ? (
                                                             <Toggle 
-                                                                active={perm.canViewFinance || selectedUser.isSuperAdmin} 
+                                                                active={perm.canViewFinance || hasFullAccess} 
                                                                 onChange={() => handleToggle(selectedUser.id, mod.id, 'finance', perm.canViewFinance)} 
                                                                 loading={togglingMap[`${selectedUser.id}-${mod.id}-finance`]}
                                                                 disabled={disabled}

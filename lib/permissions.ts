@@ -125,16 +125,17 @@ export const DEFAULT_ROLES: { name: string; description: string; permissions: st
 ];
 
 /**
- * Map sidebar menu items to required permission modules.
- * If user has MODULE.VIEW, the menu item is shown.
+ * Maps Sidebar menu item names → the module prefix stored in DB (UserPermission.module).
+ * DB stores: "purchase", "purchase.orders", "sales", "sales.invoices", etc.
+ * A user can see a sidebar tab if ANY permission key with that prefix exists.
  */
 export const SIDEBAR_PERMISSION_MAP: Record<string, string> = {
-    'Dashboard': 'DASHBOARD',
-    'Chart of Accounts': 'COA',
-    'Vouchers': 'VOUCHER',
-    'Purchase': 'PURCHASE',
-    'Sales': 'SALES',
-    'Inventory': 'INVENTORY',
-    'Reports': 'REPORTS',
-    'Settings': 'SETTINGS',
+    'Dashboard': 'dashboard',
+    'Chart of Accounts': 'chart-of-accounts',
+    'Vouchers': 'vouchers',
+    'Purchase': 'purchase',
+    'Sales': 'sales',
+    'Inventory': 'inventory',
+    'Reports': 'reports',
+    'Settings': 'settings',
 };

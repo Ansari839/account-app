@@ -19,8 +19,8 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
         }
 
         // Check if assignment exists
-        const existing = await prisma.userCompany.findUnique({
-            where: { userId_companyId: { userId, companyId } }
+        const existing = await prisma.userCompany.findFirst({
+            where: { userId, companyId }
         });
 
         if (existing) {
@@ -65,8 +65,8 @@ export async function DELETE(req: Request, props: { params: Promise<{ id: string
             return NextResponse.json({ success: false, error: 'Company ID required' }, { status: 400 });
         }
 
-        await prisma.userCompany.delete({
-            where: { userId_companyId: { userId, companyId } }
+        await prisma.userCompany.deleteMany({
+            where: { userId, companyId }
         });
 
         return NextResponse.json({ success: true });
