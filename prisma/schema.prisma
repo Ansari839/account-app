@@ -51,7 +51,7 @@ model Company {
   deliveryOrders   DeliveryOrder[]
   salesInvoices    SalesInvoice[]
   salesReturns     SalesReturn[]
-  roles            Role[]
+  userPermissions  UserPermission[]
 }
 
 model UserCompany {
@@ -84,61 +84,42 @@ model User {
   companyId      String?
   auditLogs      AuditLog[]
   company        Company?      @relation(fields: [companyId], references: [id])
-  roles          UserRole[]
   companies      UserCompany[]
+  permissions    UserPermission[]
 }
 
 // ============================================================
-// RBAC (Per Company)
+// RBAC (Direct User Permissions)
 // ============================================================
 
-model Role {
-  id          String           @id @default(uuid())
-  name        String
-  description String?
-  companyId   String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  deletedAt   DateTime?
-  company     Company?         @relation(fields: [companyId], references: [id])
-  permissions RolePermission[]
-  users       UserRole[]
+model UserPermission {
+  id             String   @id @default(uuid())
+  userId         String
+  companyId      String
+  module         String   // e.g., "sales.orders"
+  canRead        Boolean  @default(false)
+  canWrite       Boolean  @default(false)
+  canDelete      Boolean  @default(false)
+  canViewFinance Boolean  @default(false) // For viewing financial amounts
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id])
+  company        Company  @relation(fields: [companyId], references: [id])
 
-  @@unique([companyId, name])
+  @@unique([userId, companyId, module])
 }
 
-model UserRole {
-  id        String   @id @default(uuid())
-  userId    String
-  roleId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  role      Role     @relation(fields: [roleId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
-
-  @@unique([userId, roleId])
-}
-
+// Keeping Permission model if you want to store module definitions, 
+// but it's optional for direct strings. We can keep it to define valid modules.
 model Permission {
-  id          String           @id @default(uuid())
+  id          String   @id @default(uuid())
   module      String
   action      String
   description String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  roles       RolePermission[]
-}
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-model RolePermission {
-  id           String     @id @default(uuid())
-  roleId       String
-  permissionId String
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  permission   Permission @relation(fields: [permissionId], references: [id])
-  role         Role       @relation(fields: [roleId], references: [id])
-
-  @@unique([roleId, permissionId])
+  @@unique([module, action])
 }
 
 model UserRoleLimit {
@@ -437,6 +418,7 @@ model Product {
   salesAccountId      String?
   purchaseAccountId   String?
   openingStock        Decimal               @default(0.0)
+  hsCode              String?
   companyId           String
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt

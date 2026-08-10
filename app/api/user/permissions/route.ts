@@ -13,7 +13,10 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const companyId = req.nextUrl.searchParams.get("companyId") || undefined;
+        const companyId = req.nextUrl.searchParams.get("companyId");
+        if (!companyId) {
+            return NextResponse.json({ error: "companyId is required" }, { status: 400 });
+        }
 
         const permissions = await RBACService.getUserPermissions(auth.userId, companyId);
 

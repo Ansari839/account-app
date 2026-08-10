@@ -32,6 +32,7 @@ export class ProductService {
         salesAccountId?: string;
         purchaseAccountId?: string;
         openingStock?: number;
+        hsCode?: string;
         variants?: { name: string; sku?: string; price?: number }[];
     }) {
         // Auto-generate SKU if not provided
@@ -94,6 +95,7 @@ export class ProductService {
                 salesAccountId: data.salesAccountId,
                 purchaseAccountId: data.purchaseAccountId,
                 openingStock: data.openingStock,
+                hsCode: data.hsCode,
                 variants: {
                     create: data.variants?.map(v => ({
                         name: v.name,

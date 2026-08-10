@@ -168,24 +168,6 @@ async function main() {
     }
   }
 
-  // 5. User Roles & Admin
-  console.log("👤 Seeding Admin User & Roles...");
-  const roles = [
-    { name: 'ADMIN', description: 'Full System Access' },
-    { name: 'ACCOUNTANT', description: 'Financial Entry & Reporting' },
-    { name: 'SALES_REP', description: 'Sales Transactions Only' },
-  ];
-
-  const roleMap = new Map();
-  for (const r of roles) {
-    const role = await prisma.role.upsert({
-      where: { companyId_name: { companyId: 'default-company', name: r.name } },
-      update: r,
-      create: { ...r, companyId: 'default-company' }
-    });
-    roleMap.set(r.name, role.id);
-  }
-
   const adminEmail = 'admin@antigravity.erp';
   const passwordHash = await bcrypt.hash('Admin@123', 10);
 
@@ -200,20 +182,6 @@ async function main() {
       isSuperAdmin: true,
       mustChangePass: false,
       companyId: 'default-company'
-    }
-  });
-
-  await prisma.userRole.upsert({
-    where: {
-      userId_roleId: {
-        userId: adminUser.id,
-        roleId: roleMap.get('ADMIN')
-      }
-    },
-    update: {},
-    create: {
-      userId: adminUser.id,
-      roleId: roleMap.get('ADMIN')
     }
   });
 

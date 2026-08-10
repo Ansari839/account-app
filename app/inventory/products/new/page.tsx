@@ -234,6 +234,19 @@ export default function NewProductPage() {
                                     {units.map(u => <option key={u.id} value={u.id}>{u.name} ({u.code})</option>)}
                                 </select>
                             </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                    <Barcode size={14} /> HS Code
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. 6109.10"
+                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-slate-600 font-mono text-sm"
+                                    value={formData.hsCode || ''}
+                                    onChange={e => setFormData({ ...formData, hsCode: e.target.value })}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>

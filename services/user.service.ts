@@ -6,7 +6,7 @@ export class UserService {
     /**
      * Create a new user with default password
      */
-    static async createUser(data: { email: string; fullName?: string; roles: string[] }) {
+    static async createUser(data: { email: string; fullName?: string; isSuperAdmin?: boolean }) {
         // Default password is 'Welcome@123'
         const passwordHash = await bcrypt.hash("Welcome@123", 10);
 
@@ -16,33 +16,18 @@ export class UserService {
                 fullName: data.fullName,
                 passwordHash,
                 mustChangePass: true,
-                roles: {
-                    create: data.roles.map(roleId => ({ roleId }))
-                }
-            },
-            include: { roles: { include: { role: true } } }
+                isSuperAdmin: data.isSuperAdmin || false
+            }
         });
     }
 
     /**
-     * Update user roles or status
+     * Update user status or properties
      */
-    static async updateUser(userId: string, data: { fullName?: string; isActive?: boolean; roles?: string[] }) {
-        const updateData: any = { ...data };
-        delete updateData.roles;
-
-        if (data.roles) {
-            // Replace existing roles
-            await prisma.userRole.deleteMany({ where: { userId } });
-            updateData.roles = {
-                create: data.roles.map(roleId => ({ roleId }))
-            };
-        }
-
+    static async updateUser(userId: string, data: { fullName?: string; isActive?: boolean; isSuperAdmin?: boolean }) {
         return await prisma.user.update({
             where: { id: userId },
-            data: updateData,
-            include: { roles: { include: { role: true } } }
+            data
         });
     }
 
@@ -61,12 +46,12 @@ export class UserService {
     }
 
     /**
-     * List Users with Roles
+     * List Users
      */
     static async listUsers() {
         return await prisma.user.findMany({
             where: { deletedAt: null },
-            include: { roles: { include: { role: true } } }
+            include: { companies: true, permissions: true }
         });
     }
 }

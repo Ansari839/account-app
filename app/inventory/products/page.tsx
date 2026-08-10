@@ -31,6 +31,7 @@ export default function ProductsPage() {
     const columns: Column<any>[] = [
         { header: 'P-Code', accessor: 'code' },
         { header: 'Product Name', accessor: 'name' },
+        { header: 'HS Code', accessor: (row) => row.hsCode || '-' },
         { header: 'Category', accessor: (row) => row.category?.name || '-' },
         { header: 'Base Unit', accessor: (row) => row.baseUnit?.name || '-' },
         { header: 'Variants', accessor: (row) => row.variants?.length || 0 },
