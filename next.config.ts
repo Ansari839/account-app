@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["lightningcss"],
+  serverExternalPackages: ["lightningcss", "node-cron"],
 };
 
 export default nextConfig;

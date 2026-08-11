@@ -10,6 +10,7 @@ import FiscalYearSettings from '@/components/settings/FiscalYearSettings';
 import InventorySettings from '@/components/settings/InventorySettings';
 import VoucherSettings from '@/components/settings/VoucherSettings';
 import RoleSettings from '@/components/settings/RoleSettings';
+import BackupSettings from '@/components/settings/BackupSettings';
 import { 
     Building2, 
     Calendar, 
@@ -19,7 +20,8 @@ import {
     Files, 
     Boxes, 
     ShieldCheck, 
-    Settings
+    Settings,
+    DatabaseBackup
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +34,7 @@ const TABS = [
     { id: 'vouchers', label: 'Vouchers', icon: <Files size={18} /> },
     { id: 'inventory', label: 'Inventory', icon: <Boxes size={18} /> },
     { id: 'roles', label: 'Roles & Access', icon: <ShieldCheck size={18} /> },
+    { id: 'backup', label: 'Backup', icon: <DatabaseBackup size={18} /> },
 ];
 
 export default function SettingsPage() {
@@ -86,6 +89,7 @@ export default function SettingsPage() {
                     {activeTab === 'vouchers' && <VoucherSettings />}
                     {activeTab === 'inventory' && <InventorySettings />}
                     {activeTab === 'roles' && <RoleSettings />}
+                    {activeTab === 'backup' && <BackupSettings />}
                 </div>
             </div>
         </MainLayout>

@@ -52,6 +52,7 @@ model Company {
   salesInvoices    SalesInvoice[]
   salesReturns     SalesReturn[]
   userPermissions  UserPermission[]
+  backupSchedules  BackupSchedule[]
 }
 
 model UserCompany {
@@ -991,8 +992,90 @@ model VoucherSequence {
 }
 
 // ============================================================
+// BACKUP SYSTEM
+// ============================================================
+
+model BackupSchedule {
+  id           String     @id @default(uuid())
+  companyId    String?    // null = global (super admin schedule)
+  frequency    BackupFrequency @default(DAILY)
+  cronTime     String     @default("0 2 * * *") // cron expression e.g. "0 2 * * *"
+  storagePath  String     @default("./backups") // local path or USB path
+  masterOnly   Boolean    @default(false)
+  isActive     Boolean    @default(true)
+  retainDaily  Int        @default(7)
+  retainWeekly Int        @default(4)
+  retainMonthly Int       @default(3)
+  retainQuarterly Int     @default(4)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  company      Company?   @relation(fields: [companyId], references: [id])
+  logs         BackupLog[]
+  approvals    BackupApproval[]
+}
+
+model BackupLog {
+  id           String      @id @default(uuid())
+  scheduleId   String?
+  companyId    String?
+  companyName  String?
+  backupType   BackupType  @default(DAILY)
+  status       BackupStatus @default(SUCCESS)
+  filePath     String?
+  fileName     String?
+  fileSizeBytes BigInt?
+  errorMessage String?
+  triggeredBy  String      @default("CRON") // CRON | MANUAL
+  createdAt    DateTime    @default(now())
+  schedule     BackupSchedule? @relation(fields: [scheduleId], references: [id])
+  approval     BackupApproval?
+}
+
+model BackupApproval {
+  id           String      @id @default(uuid())
+  scheduleId   String
+  logId        String?     @unique
+  fromType     BackupType  // e.g. DAILY files to be deleted
+  toType       BackupType  // e.g. WEEKLY consolidated backup
+  status       ApprovalStatus @default(PENDING)
+  companyId    String?
+  fileCount    Int         @default(0)
+  totalSizeBytes BigInt?
+  requestedAt  DateTime    @default(now())
+  resolvedAt   DateTime?
+  schedule     BackupSchedule @relation(fields: [scheduleId], references: [id])
+  log          BackupLog?  @relation(fields: [logId], references: [id])
+}
+
+// ============================================================
 // ENUMS
 // ============================================================
+
+enum BackupFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum BackupType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum BackupStatus {
+  SUCCESS
+  FAILED
+  IN_PROGRESS
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
 
 enum AccountType {
   ASSET
