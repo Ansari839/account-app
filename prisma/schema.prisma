@@ -1024,6 +1024,7 @@ model BackupLog {
   filePath     String?
   fileName     String?
   fileSizeBytes BigInt?
+  fileContent  String?     // JSON stored in DB (for Vercel/serverless)
   errorMessage String?
   triggeredBy  String      @default("CRON") // CRON | MANUAL
   createdAt    DateTime    @default(now())

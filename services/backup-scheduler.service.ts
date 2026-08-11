@@ -85,6 +85,7 @@ export class BackupSchedulerService {
         filePath?: string;
         fileName?: string;
         fileSizeBytes?: bigint;
+        fileContent?: string;
         errorMessage?: string;
         triggeredBy: string;
     }) {
@@ -96,6 +97,7 @@ export class BackupSchedulerService {
         filePath: string;
         fileName: string;
         fileSizeBytes: bigint;
+        fileContent: string;
         errorMessage: string;
     }>) {
         return prisma.backupLog.update({ where: { id }, data });

@@ -1,11 +1,9 @@
 /**
  * Next.js Instrumentation
- * Runs once when the server starts (Node.js runtime only).
- * Used to boot the cron backup engine.
+ * NOTE: node-cron is NOT used on Vercel (serverless).
+ * Scheduled backups run via Vercel Cron Jobs → /api/cron/backup
  */
 export async function register() {
-    if (process.env.NEXT_RUNTIME === 'nodejs') {
-        const { startCronBackups } = await import('./lib/cron-backup');
-        await startCronBackups();
-    }
+    // Cron engine disabled for serverless environments (Vercel).
+    // Use vercel.json cron configuration instead.
 }
