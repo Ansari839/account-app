@@ -61,12 +61,14 @@ export default function ChartOfAccountsPage() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [showModal]);
 
+    const getAuthHeaders = () => ({
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'x-company-id': localStorage.getItem('activeCompanyId') || '',
+    });
+
     const fetchAccounts = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch('/api/accounts', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await fetch('/api/accounts', { headers: getAuthHeaders() });
             if (res.ok) {
                 const data = await res.json();
                 setAccounts(data.accounts);
@@ -83,16 +85,9 @@ export default function ChartOfAccountsPage() {
         setSeeding(true);
         setSeedResult(null);
         try {
-            const token = localStorage.getItem('token');
-            const companies = JSON.parse(localStorage.getItem('companies') || '[]');
-            const companyId = localStorage.getItem('activeCompanyId') || companies[0]?.id || '';
-
             const res = await fetch('/api/finance/coa/seed', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'x-company-id': companyId
-                }
+                headers: getAuthHeaders()
             });
             const data = await res.json();
             if (data.success) {
@@ -114,9 +109,8 @@ export default function ChartOfAccountsPage() {
         const fetchSuggestedCode = async () => {
             if (!formData.parentId || editingAccount) return;
             try {
-                const token = localStorage.getItem('token');
                 const res = await fetch(`/api/accounts?suggestCode=true&parentId=${formData.parentId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: getAuthHeaders()
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -155,13 +149,12 @@ export default function ChartOfAccountsPage() {
     const handleSaveAccount = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('token');
             const method = editingAccount ? 'PATCH' : 'POST';
             const res = await fetch('/api/accounts', {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    ...getAuthHeaders()
                 },
                 body: JSON.stringify(formData),
             });
@@ -181,10 +174,9 @@ export default function ChartOfAccountsPage() {
     const handleDeleteAccount = async (id: string) => {
         if (!confirm('Are you sure you want to delete this account? This will check for children and transactions.')) return;
         try {
-            const token = localStorage.getItem('token');
             const res = await fetch(`/api/accounts?id=${id}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: getAuthHeaders()
             });
             if (res.ok) {
                 fetchAccounts();
