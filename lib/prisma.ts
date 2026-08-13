@@ -13,7 +13,7 @@ if (!connectionString) {
 
 const pool = new Pool({
   connectionString,
-  max: process.env.NODE_ENV === 'development' ? 1 : 10,
+  max: process.env.NODE_ENV === 'development' ? 5 : 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
 })
