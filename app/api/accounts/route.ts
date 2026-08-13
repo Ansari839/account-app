@@ -90,7 +90,19 @@ export async function POST(req: Request) {
     if (error) return error;
 
     const user = await AuthUtils.getAuthUser(req);
-    if (!user || user.role !== 'ADMIN') {
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    let hasAccess = user.isSuperAdmin;
+    if (!hasAccess) {
+        const userCompany = await prisma.userCompany.findUnique({
+            where: { userId_companyId: { userId: user.userId, companyId } }
+        });
+        if (userCompany && (userCompany.role === 'ADMIN' || userCompany.role === 'OWNER')) {
+            hasAccess = true;
+        }
+    }
+    
+    if (!hasAccess) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -141,7 +153,19 @@ export async function PATCH(req: Request) {
     if (error) return error;
 
     const user = await AuthUtils.getAuthUser(req);
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'ACCOUNTS')) {
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    let hasAccess = user.isSuperAdmin;
+    if (!hasAccess) {
+        const userCompany = await prisma.userCompany.findUnique({
+            where: { userId_companyId: { userId: user.userId, companyId } }
+        });
+        if (userCompany && (userCompany.role === 'ADMIN' || userCompany.role === 'OWNER' || userCompany.role === 'ACCOUNTS')) {
+            hasAccess = true;
+        }
+    }
+    
+    if (!hasAccess) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -211,7 +235,19 @@ export async function DELETE(req: Request) {
     if (error) return error;
 
     const user = await AuthUtils.getAuthUser(req);
-    if (!user || user.role !== 'ADMIN') {
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    let hasAccess = user.isSuperAdmin;
+    if (!hasAccess) {
+        const userCompany = await prisma.userCompany.findUnique({
+            where: { userId_companyId: { userId: user.userId, companyId } }
+        });
+        if (userCompany && (userCompany.role === 'ADMIN' || userCompany.role === 'OWNER')) {
+            hasAccess = true;
+        }
+    }
+    
+    if (!hasAccess) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
