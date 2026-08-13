@@ -34,25 +34,41 @@ export async function GET(request: Request) {
 
             const lastChild = await prisma.account.findFirst({
                 where: { parentId: pid, companyId },
-                orderBy: { code: 'desc' }
+                orderBy: { createdAt: 'desc' }
             });
 
             let nextCode: string;
-            const parentCodeInt = parseInt(parent.code);
-
+            
+            // Generate sequence based on parent
             if (!lastChild) {
-                // Determine increment based on parent code pattern
-                if (parent.code.endsWith('000')) nextCode = (parentCodeInt + 100).toString();
-                else if (parent.code.endsWith('00')) nextCode = (parentCodeInt + 10).toString();
-                else nextCode = (parentCodeInt + 1).toString();
+                if (parent.code.endsWith('000')) {
+                    nextCode = (parseInt(parent.code) + 100).toString();
+                } else if (parent.code.endsWith('00')) {
+                    nextCode = (parseInt(parent.code) + 10).toString();
+                } else {
+                    // For parents like 1110 or 1121, append -0001
+                    nextCode = `${parent.code}-0001`;
+                }
             } else {
-                // Increment last child
-                const lastCodeInt = parseInt(lastChild.code);
-                nextCode = (lastCodeInt + 1).toString();
-
-                // Special case for root-to-level1 jump if only root exists
-                if (parent.code.endsWith('000') && lastCodeInt === parentCodeInt) {
-                    nextCode = (parentCodeInt + 100).toString();
+                if (lastChild.code.includes('-')) {
+                    // It has a sequence suffix (e.g., 1110-0045)
+                    const parts = lastChild.code.split('-');
+                    const seq = parseInt(parts[parts.length - 1]);
+                    const nextSeq = (seq + 1).toString().padStart(4, '0');
+                    parts[parts.length - 1] = nextSeq;
+                    nextCode = parts.join('-');
+                } else {
+                    // It doesn't have a dash (e.g., 1111)
+                    const lastCodeInt = parseInt(lastChild.code);
+                    if (parent.code.endsWith('000') && lastCodeInt === parseInt(parent.code)) {
+                        nextCode = (parseInt(parent.code) + 100).toString();
+                    } else if (parent.code.endsWith('00') || parent.code.endsWith('000')) {
+                        nextCode = (lastCodeInt + 1).toString();
+                    } else {
+                        // The parent is like 1110, last child is 1119. We shouldn't overflow to 1120.
+                        // We transition to dash format.
+                        nextCode = `${parent.code}-0001`;
+                    }
                 }
             }
 
