@@ -603,6 +603,9 @@ model PurchaseReturn {
   warehouseId    String
   date           DateTime
   totalAmount    Decimal              @default(0.0)
+  hasDiscount    Boolean              @default(false)
+  discountAmount Decimal              @default(0.0)
+  discountType   String?
   journalEntryId String?              @unique
   remarks        String?
   companyId      String
@@ -707,6 +710,9 @@ model PurchaseInvoice {
   dueDate        DateTime?
   totalAmount    Decimal
   taxAmount      Decimal               @default(0.0)
+  hasDiscount    Boolean               @default(false)
+  discountAmount Decimal               @default(0.0)
+  discountType   String?
   grnId          String?
   poId           String?
   journalEntryId String?               @unique
@@ -907,6 +913,9 @@ model SalesInvoice {
   dueDate        DateTime?
   totalAmount    Decimal
   taxAmount      Decimal            @default(0.0)
+  hasDiscount    Boolean            @default(false)
+  discountAmount Decimal            @default(0.0)
+  discountType   String?
   doId           String?
   journalEntryId String?            @unique
   companyId      String
@@ -954,6 +963,9 @@ model SalesReturn {
   customerId     String
   date           DateTime
   totalAmount    Decimal           @default(0.0)
+  hasDiscount    Boolean           @default(false)
+  discountAmount Decimal           @default(0.0)
+  discountType   String?
   journalEntryId String?           @unique
   remarks        String?
   companyId      String

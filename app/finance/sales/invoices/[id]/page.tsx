@@ -161,12 +161,19 @@ export default function SalesInvoiceDetailPage() {
                                         <td colSpan={2} className="py-12"></td>
                                         <td className="py-12 text-right">
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Subtotal Amount</p>
-                                            <p className="font-mono text-slate-500 font-bold">{Number(invoice.totalAmount - (invoice.taxAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                            <p className="font-mono text-slate-500 font-bold">{Number(invoice.totalAmount - (invoice.taxAmount || 0) + (invoice.hasDiscount ? Number(invoice.discountAmount || 0) : 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
 
                                             {invoice.taxAmount > 0 && (
                                                 <div className="mt-4">
                                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tax Total</p>
                                                     <p className="font-mono text-slate-500 font-bold">+{Number(invoice.taxAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                                </div>
+                                            )}
+
+                                            {invoice.hasDiscount && invoice.discountAmount > 0 && (
+                                                <div className="mt-4">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Discount</p>
+                                                    <p className="font-mono text-rose-500 font-bold">-{Number(invoice.discountAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                                                 </div>
                                             )}
                                         </td>

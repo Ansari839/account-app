@@ -35,6 +35,7 @@ export default function NewPurchaseInvoicePage() {
     const [warehouses, setWarehouses] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
     const [units, setUnits] = useState<any[]>([]);
+    const [taxCodes, setTaxCodes] = useState<any[]>([]);
     const [isGrnMandatory, setIsGrnMandatory] = useState(false);
 
     // Form Data
@@ -45,6 +46,9 @@ export default function NewPurchaseInvoicePage() {
         warehouseId: "",
         date: new Date().toISOString().split("T")[0],
         dueDate: "",
+        hasDiscount: false,
+        discountAmount: 0,
+        discountType: "FIXED",
         items: [],
     });
 
@@ -69,12 +73,13 @@ export default function NewPurchaseInvoicePage() {
 
     const fetchDropdowns = async () => {
         try {
-            const [supRes, accRes, whRes, prodRes, unitRes] = await Promise.all([
+            const [supRes, accRes, whRes, prodRes, unitRes, taxRes] = await Promise.all([
                 authenticatedFetch("/api/finance/parties/suppliers"),
                 authenticatedFetch('/api/accounts?isPosting=true'),
                 authenticatedFetch("/api/inventory/warehouses"),
                 authenticatedFetch("/api/inventory/products"),
                 authenticatedFetch("/api/inventory/units"),
+                authenticatedFetch("/api/finance/tax"),
             ]);
 
             const sups = supRes.ok ? (await supRes.json()).data || [] : [];
@@ -92,6 +97,10 @@ export default function NewPurchaseInvoicePage() {
             if (whRes.ok) setWarehouses((await whRes.json()).data || []);
             if (prodRes.ok) setProducts((await prodRes.json()).data || []);
             if (unitRes.ok) setUnits((await unitRes.json()).data || []);
+            if (taxRes.ok) {
+                const tJson = await taxRes.json();
+                setTaxCodes(tJson.data || []);
+            }
         } catch (e) { console.error(e); }
     };
 
@@ -172,7 +181,7 @@ export default function NewPurchaseInvoicePage() {
             ...prev,
             items: [
                 ...prev.items,
-                { id: Date.now().toString(), productId: "", productName: "", unitId: "", qty: 1, rate: 0, total: 0 }
+                { id: Date.now().toString(), productId: "", productName: "", unitId: "", qty: 1, rate: 0, taxCodeId: "", taxRate: 0, taxAmount: 0, total: 0 }
             ]
         }));
     };
@@ -203,7 +212,16 @@ export default function NewPurchaseInvoicePage() {
                         }
                     }
 
-                    updatedItem.total = Number(updatedItem.qty || 0) * Number(updatedItem.rate || 0);
+                    if (field === "taxCodeId") {
+                        const tax = taxCodes.find(t => t.id === value);
+                        updatedItem.taxRate = tax ? Number(tax.rate) : 0;
+                    }
+
+                    const subtotal = Number(updatedItem.qty || 0) * Number(updatedItem.rate || 0);
+                    const taxAmt = subtotal * ((updatedItem.taxRate || 0) / 100);
+                    updatedItem.taxAmount = taxAmt;
+                    updatedItem.total = subtotal + taxAmt;
+                    
                     return updatedItem;
                 }
                 return item;
@@ -213,7 +231,11 @@ export default function NewPurchaseInvoicePage() {
     };
 
     const calculateTotal = () => {
-        return formData.items.reduce((sum: number, item: any) => sum + (Number(item.total) || 0), 0);
+        let sum = formData.items.reduce((sum: number, item: any) => sum + (Number(item.total) || 0), 0);
+        if (formData.hasDiscount) {
+            sum -= Number(formData.discountAmount || 0);
+        }
+        return sum;
     };
 
     const handleSubmit = async () => {
@@ -432,11 +454,12 @@ export default function NewPurchaseInvoicePage() {
                     <div className="p-6 overflow-x-auto">
                         <div className="min-w-[800px]">
                             <div className="grid grid-cols-12 gap-4 mb-3 px-4 text-xs font-bold uppercase tracking-widest text-slate-400">
-                                <div className="col-span-4">Product</div>
+                                <div className="col-span-3">Product</div>
                                 <div className="col-span-2">Unit</div>
                                 {formData.sourceType !== "DIRECT" && <div className="col-span-1 text-center">Available</div>}
-                                <div className={formData.sourceType !== "DIRECT" ? "col-span-2" : "col-span-2"}>Bill Qty</div>
-                                <div className={formData.sourceType !== "DIRECT" ? "col-span-1" : "col-span-2"}>Rate</div>
+                                <div className={formData.sourceType !== "DIRECT" ? "col-span-1" : "col-span-2"}>Bill Qty</div>
+                                <div className={formData.sourceType !== "DIRECT" ? "col-span-1" : "col-span-1"}>Rate</div>
+                                <div className="col-span-2 text-right">Tax</div>
                                 <div className="col-span-2 text-right">Total</div>
                                 {formData.sourceType === "DIRECT" && <div className="col-span-1 text-center">Act</div>}
                             </div>
@@ -493,7 +516,7 @@ export default function NewPurchaseInvoicePage() {
                                             />
                                         </div>
                                         
-                                        <div className={formData.sourceType !== "DIRECT" ? "col-span-1" : "col-span-2"}>
+                                        <div className={formData.sourceType !== "DIRECT" ? "col-span-1" : "col-span-1"}>
                                             <input
                                                 type="number"
                                                 value={item.rate || ''}
@@ -502,6 +525,19 @@ export default function NewPurchaseInvoicePage() {
                                                 min="0"
                                                 className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-right"
                                             />
+                                        </div>
+
+                                        <div className="col-span-2">
+                                            <select
+                                                value={item.taxCodeId || ''}
+                                                onChange={e => updateItem(item.id, 'taxCodeId', e.target.value)}
+                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
+                                            >
+                                                <option value="">No Tax</option>
+                                                {taxCodes.map(t => (
+                                                    <option key={t.id} value={t.id}>{t.name} ({t.rate}%)</option>
+                                                ))}
+                                            </select>
                                         </div>
 
                                         <div className="col-span-2 flex items-center justify-end px-2">
@@ -530,6 +566,43 @@ export default function NewPurchaseInvoicePage() {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                {/* Discount Section */}
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm p-6 mb-8 mt-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                                Invoice Discount
+                            </h2>
+                            <p className="text-xs text-slate-400">Apply a document-level discount to this invoice.</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                className="sr-only peer" 
+                                checked={formData.hasDiscount}
+                                onChange={e => setFormData({...formData, hasDiscount: e.target.checked})}
+                            />
+                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    {formData.hasDiscount && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 animate-in fade-in slide-in-from-top-2">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Discount Amount</label>
+                                <input
+                                    type="number"
+                                    value={formData.discountAmount || ''}
+                                    onChange={e => setFormData({ ...formData, discountAmount: parseFloat(e.target.value) })}
+                                    placeholder="0.00"
+                                    min="0"
+                                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
