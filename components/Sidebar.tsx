@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Folders, FileText, ShoppingCart, TrendingUp, Package,
     ScrollText, Settings, ChevronDown, Menu, X, LogOut, Building2, Users,
-    Lock, Database
+    Lock, Database, Link2
 } from 'lucide-react';
 import CompanySwitcher from './CompanySwitcher';
 import { useCompany } from '@/context/CompanyContext';
@@ -32,7 +32,8 @@ const menuItems = [
     { name: 'Reports',          icon: ScrollText,      path: '/finance/reports',    permissionKey: 'reports',
       sub: ['trial-balance', 'profit-loss', 'balance-sheet', 'ledger', 'inventory', 'sales', 'purchase'] },
     // Settings: visible to CompanyAdmin/SuperAdmin only (handled separately)
-    { name: 'Settings',         icon: Settings,        path: '/admin/settings',     adminOnly: true },
+    { name: 'Settings',         icon: Settings,        path: '/admin/settings',     adminOnly: true,
+      sub: ['account-mapping'] },
 ];
 
 const adminItems = [

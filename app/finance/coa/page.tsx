@@ -5,7 +5,8 @@ import MainLayout from '@/components/MainLayout';
 import {
     BookOpen, Plus, Search, ChevronDown,
     ChevronRight, Folder, FileText,
-    Edit3, Trash2, PieChart, Layers, Info, X as CloseIcon
+    Edit3, Trash2, PieChart, Layers, Info, X as CloseIcon,
+    Sparkles, CheckCircle2, AlertCircle
 } from 'lucide-react';
 
 interface Account {
@@ -29,6 +30,8 @@ export default function ChartOfAccountsPage() {
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [showModal, setShowModal] = useState(false);
     const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+    const [seeding, setSeeding] = useState(false);
+    const [seedResult, setSeedResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [formData, setFormData] = useState({
         id: '',
         code: '',
@@ -58,12 +61,14 @@ export default function ChartOfAccountsPage() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [showModal]);
 
+    const getAuthHeaders = () => ({
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'x-company-id': localStorage.getItem('activeCompanyId') || '',
+    });
+
     const fetchAccounts = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch('/api/accounts', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await fetch('/api/accounts', { headers: getAuthHeaders() });
             if (res.ok) {
                 const data = await res.json();
                 setAccounts(data.accounts);
@@ -75,13 +80,37 @@ export default function ChartOfAccountsPage() {
         }
     };
 
+    const handleSeedCOA = async () => {
+        if (!confirm('Yeh action standard Pakistani Chart of Accounts seed karega.\n\nPehle se moujood accounts update NAHI honge (idempotent).\n\nContinue?')) return;
+        setSeeding(true);
+        setSeedResult(null);
+        try {
+            const res = await fetch('/api/finance/coa/seed', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+            const data = await res.json();
+            if (data.success) {
+                setSeedResult({ type: 'success', message: `✓ ${data.data.created} accounts created, ${data.data.skipped} already existed` });
+                fetchAccounts();
+                setExpandedIds(new Set()); // reset expand state
+            } else {
+                setSeedResult({ type: 'error', message: data.error || 'Seed failed' });
+            }
+        } catch (err) {
+            setSeedResult({ type: 'error', message: 'Network error. Please try again.' });
+        } finally {
+            setSeeding(false);
+            setTimeout(() => setSeedResult(null), 6000);
+        }
+    };
+
     useEffect(() => {
         const fetchSuggestedCode = async () => {
             if (!formData.parentId || editingAccount) return;
             try {
-                const token = localStorage.getItem('token');
                 const res = await fetch(`/api/accounts?suggestCode=true&parentId=${formData.parentId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: getAuthHeaders()
                 });
                 if (res.ok) {
                     const data = await res.json();
@@ -120,13 +149,12 @@ export default function ChartOfAccountsPage() {
     const handleSaveAccount = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('token');
             const method = editingAccount ? 'PATCH' : 'POST';
             const res = await fetch('/api/accounts', {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    ...getAuthHeaders()
                 },
                 body: JSON.stringify(formData),
             });
@@ -146,10 +174,9 @@ export default function ChartOfAccountsPage() {
     const handleDeleteAccount = async (id: string) => {
         if (!confirm('Are you sure you want to delete this account? This will check for children and transactions.')) return;
         try {
-            const token = localStorage.getItem('token');
             const res = await fetch(`/api/accounts?id=${id}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: getAuthHeaders()
             });
             if (res.ok) {
                 fetchAccounts();
@@ -325,6 +352,19 @@ export default function ChartOfAccountsPage() {
                             <Layers size={16} />
                             {expandedIds.size > accounts.length / 2 ? 'Collapse All' : 'Full Expand'}
                         </button>
+                        {accounts.length === 0 && (
+                            <button
+                                onClick={handleSeedCOA}
+                                disabled={seeding}
+                                className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+                            >
+                                {seeding ? (
+                                    <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Seeding...</>
+                                ) : (
+                                    <><Sparkles size={16} /> Auto Seed COA</>
+                                )}
+                            </button>
+                        )}
                         <button
                             onClick={() => {
                                 setEditingAccount(null);
@@ -338,6 +378,18 @@ export default function ChartOfAccountsPage() {
                         </button>
                     </div>
                 </div>
+
+                {/* Seed Result Toast */}
+                {seedResult && (
+                    <div className={`flex items-center gap-3 px-5 py-4 rounded-2xl border text-sm font-bold animate-in slide-in-from-top-2 duration-300 ${
+                        seedResult.type === 'success'
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-400'
+                    }`}>
+                        {seedResult.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                        {seedResult.message}
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     <div className="lg:col-span-3">

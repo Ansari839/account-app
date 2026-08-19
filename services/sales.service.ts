@@ -64,6 +64,9 @@ export interface SalesInvoiceInput {
     dueDate?: Date;
     doId?: string;
     orderId?: string;
+    hasDiscount?: boolean;
+    discountAmount?: number;
+    discountType?: string;
     items: {
         productId: string;
         variantId?: string;
@@ -400,7 +403,7 @@ export class SalesService {
                     });
                 }
 
-                const totalInvoiceAmount = totalSubtotal + totalTaxAmount;
+                const totalInvoiceAmount = totalSubtotal + totalTaxAmount - (data.hasDiscount ? Number(data.discountAmount || 0) : 0);
 
                 // DEBIT Customer Receivable
                 journalLines.push({
@@ -408,6 +411,29 @@ export class SalesService {
                     debit: totalInvoiceAmount,
                     narration: `Receivable from ${customer.name} for ${data.invoiceNo}`
                 });
+
+                // Handle Discount Journal Entry
+                if (data.hasDiscount && Number(data.discountAmount) > 0) {
+                    // Try to find sales discount account from mappings, or fallback to any EXPENSE/REVENUE account that might make sense (we'll look for 'sales_discount' mapping)
+                    const discountMapping = await tx.systemAccountMapping.findUnique({
+                        where: { companyId_key: { companyId: data.companyId, key: 'sales_discount' } }
+                    });
+                    
+                    let discountAccountId = discountMapping?.accountId;
+                    if (!discountAccountId) {
+                        // Fallback: search by code
+                        const fallbackAcc = await tx.account.findFirst({ where: { companyId: data.companyId, code: '4130' } });
+                        if (fallbackAcc) discountAccountId = fallbackAcc.id;
+                    }
+                    
+                    if (discountAccountId) {
+                        journalLines.push({
+                            accountId: discountAccountId,
+                            debit: Number(data.discountAmount), // Discount Expense
+                            narration: `Discount on Sales Invoice ${data.invoiceNo}`
+                        });
+                    }
+                }
 
                 // 2. Create Journal Entry (Voucher) - BEFORE Invoice
                 const voucherNo = `SALV-${Date.now()}`;
@@ -442,6 +468,9 @@ export class SalesService {
                         dueDate: data.dueDate,
                         totalAmount: totalInvoiceAmount,
                         taxAmount: totalTaxAmount,
+                        hasDiscount: data.hasDiscount || false,
+                        discountAmount: data.discountAmount || 0,
+                        discountType: data.discountType || null,
                         doId: data.doId,
                         journalEntryId: journalEntry.id, // Linked Here
                         items: {
@@ -561,11 +590,15 @@ export class SalesService {
         warehouseId: string;
         date: Date;
         remarks?: string;
+        hasDiscount?: boolean;
+        discountAmount?: number;
+        discountType?: string;
         items: {
             productId: string;
             variantId?: string;
             qty: number;
             rate: number;
+            taxCodeId?: string;
             unitId?: string;
         }[];
     }) {
@@ -606,15 +639,39 @@ export class SalesService {
 
             // 3. Process Items & Journal Lines
             const journalLines = [];
-            let totalReturnAmount = 0;
+            let totalReturnSubtotal = 0;
+            let totalReturnTax = 0;
             const returnItemsData = [];
 
             for (const item of data.items) {
                 const subtotal = item.qty * item.rate;
-                totalReturnAmount += subtotal;
+                totalReturnSubtotal += subtotal;
+                
+                // Handle Tax Reversal
+                let taxAmount = 0;
+                if (item.taxCodeId) {
+                    const taxCode = await tx.taxCode.findUnique({ where: { id: item.taxCodeId } });
+                    if (taxCode) {
+                        taxAmount = subtotal * (Number(taxCode.rate) / 100);
+                        totalReturnTax += taxAmount;
+
+                        if (taxCode.accountId) {
+                            journalLines.push({
+                                accountId: taxCode.accountId,
+                                debit: taxAmount, // Liability Reversal (DEBIT)
+                                credit: 0,
+                                narration: `Tax Reversal for Return ${returnNo}`
+                            });
+                        }
+                    }
+                }
 
                 const product = await tx.product.findUnique({ where: { id: item.productId } });
-                const salesAccount = product?.salesAccountId;
+                const returnMapping = await tx.systemAccountMapping.findUnique({
+                    where: { companyId_key: { companyId: data.companyId, key: 'sales_returns' } }
+                });
+                const salesAccount = returnMapping?.accountId || product?.salesAccountId;
+                
                 if (!salesAccount) throw new Error(`Product ${item.productId} missing Sales Account.`);
 
                 // DEBIT Revenue (Reversal)
@@ -625,7 +682,31 @@ export class SalesService {
                     narration: `Sales Return - ${product?.name}`
                 });
 
-                // Note: Reversing COGS not implemented to maintain structure simplicity as discussed.
+                // Reversing COGS
+                let costRate = 0;
+                if (product?.inventoryAccountId && product?.cogsAccountId) {
+                    const lastStock = await tx.stockLedger.findFirst({
+                        where: { productId: item.productId, qtyOut: { gt: 0 }, costRate: { gt: 0 } },
+                        orderBy: { date: 'desc' }
+                    });
+                    costRate = lastStock ? Number(lastStock.costRate) : 0;
+                    const costAmount = item.qty * costRate;
+
+                    if (costAmount > 0) {
+                        journalLines.push({
+                            accountId: product.inventoryAccountId,
+                            debit: costAmount, // Inventory IN
+                            credit: 0,
+                            narration: `Stock Return for ${product.name}`
+                        });
+                        journalLines.push({
+                            accountId: product.cogsAccountId,
+                            debit: 0,
+                            credit: costAmount, // COGS Reversed
+                            narration: `COGS Reversal for ${product.name}`
+                        });
+                    }
+                }
 
                 returnItemsData.push({
                     productId: item.productId,
@@ -633,8 +714,33 @@ export class SalesService {
                     unitId: item.unitId || null,
                     qty: item.qty,
                     rate: item.rate,
-                    total: subtotal
+                    taxCodeId: item.taxCodeId || null,
+                    taxAmount: taxAmount,
+                    total: subtotal + taxAmount
                 });
+            }
+
+            const totalReturnAmount = totalReturnSubtotal + totalReturnTax - (data.hasDiscount ? Number(data.discountAmount || 0) : 0);
+
+            // Reversing Discount (CREDIT Discount Account)
+            if (data.hasDiscount && Number(data.discountAmount) > 0) {
+                const discountMapping = await tx.systemAccountMapping.findUnique({
+                    where: { companyId_key: { companyId: data.companyId, key: 'sales_discount' } }
+                });
+                let discountAccountId = discountMapping?.accountId;
+                if (!discountAccountId) {
+                    const fallbackAcc = await tx.account.findFirst({ where: { companyId: data.companyId, code: '4130' } });
+                    if (fallbackAcc) discountAccountId = fallbackAcc.id;
+                }
+                
+                if (discountAccountId) {
+                    journalLines.push({
+                        accountId: discountAccountId,
+                        debit: 0,
+                        credit: Number(data.discountAmount), // Reverse Discount Expense
+                        narration: `Discount Reversal on Return ${returnNo}`
+                    });
+                }
             }
 
             // CREDIT Customer Link (Reversal of Receivable)
@@ -675,6 +781,9 @@ export class SalesService {
                     warehouseId: warehouse.id,
                     date: data.date,
                     totalAmount: totalReturnAmount,
+                    hasDiscount: data.hasDiscount || false,
+                    discountAmount: data.discountAmount || 0,
+                    discountType: data.discountType || null,
                     remarks: data.remarks,
                     journalEntryId: journalEntry.id,
                     items: {

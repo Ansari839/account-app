@@ -72,6 +72,9 @@ export interface InvoiceInput {
     dueDate?: Date;
     grnId?: string;
     poId?: string;
+    hasDiscount?: boolean;
+    discountAmount?: number;
+    discountType?: string;
     items: InvoiceItemInput[];
 }
 
@@ -278,7 +281,7 @@ export class PurchaseService {
                 });
             }
 
-            const totalInvoiceAmount = totalSubtotal + totalTaxAmount;
+            const totalInvoiceAmount = totalSubtotal + totalTaxAmount - (data.hasDiscount ? Number(data.discountAmount || 0) : 0);
 
             // CR Supplier Payable
             journalLines.push({
@@ -286,6 +289,27 @@ export class PurchaseService {
                 credit: totalInvoiceAmount,
                 narration: `Payable to ${supplier.name} for ${data.invoiceNo}`
             });
+
+            // Handle Discount Journal Entry (Income)
+            if (data.hasDiscount && Number(data.discountAmount) > 0) {
+                const discountMapping = await tx.systemAccountMapping.findUnique({
+                    where: { companyId_key: { companyId: data.companyId, key: 'purchase_discount' } }
+                });
+                
+                let discountAccountId = discountMapping?.accountId;
+                if (!discountAccountId) {
+                    const fallbackAcc = await tx.account.findFirst({ where: { companyId: data.companyId, code: '5130' } });
+                    if (fallbackAcc) discountAccountId = fallbackAcc.id;
+                }
+                
+                if (discountAccountId) {
+                    journalLines.push({
+                        accountId: discountAccountId,
+                        credit: Number(data.discountAmount), // Discount Income
+                        narration: `Discount on Purchase Invoice ${data.invoiceNo}`
+                    });
+                }
+            }
 
             // 2. Create Journal Entry (Voucher)
             // Generate a simple voucher number for now (VCH-...)
@@ -319,6 +343,9 @@ export class PurchaseService {
                     dueDate: data.dueDate,
                     totalAmount: totalInvoiceAmount,
                     taxAmount: totalTaxAmount,
+                    hasDiscount: data.hasDiscount || false,
+                    discountAmount: data.discountAmount || 0,
+                    discountType: data.discountType || null,
                     grnId: data.grnId,
                     poId: data.poId,
                     journalEntryId: journalEntry.id,
@@ -393,12 +420,16 @@ export class PurchaseService {
         warehouseId: string;
         date: Date;
         remarks?: string;
+        hasDiscount?: boolean;
+        discountAmount?: number;
+        discountType?: string;
         items: {
             productId: string;
             variantId?: string;
             unitId?: string;
             qty: number;
             rate: number;
+            taxCodeId?: string;
         }[];
     }) {
         // 0. Validate Stock Availability
@@ -441,16 +472,39 @@ export class PurchaseService {
 
             // 3. Process Items
             const journalLines = [];
-            let totalReturnAmount = 0;
+            let totalReturnSubtotal = 0;
+            let totalReturnTax = 0;
             const returnItemsData = [];
 
             for (const item of data.items) {
                 const subtotal = item.qty * item.rate;
-                totalReturnAmount += subtotal;
+                totalReturnSubtotal += subtotal;
+                
+                // Handle Tax Reversal
+                let taxAmount = 0;
+                if (item.taxCodeId) {
+                    const taxCode = await tx.taxCode.findUnique({ where: { id: item.taxCodeId } });
+                    if (taxCode) {
+                        taxAmount = subtotal * (Number(taxCode.rate) / 100);
+                        totalReturnTax += taxAmount;
+
+                        if (taxCode.accountId) {
+                            journalLines.push({
+                                accountId: taxCode.accountId,
+                                debit: 0,
+                                credit: taxAmount, // Asset Reversal (CREDIT)
+                                narration: `Input Tax Reversal for Return ${returnNo}`
+                            });
+                        }
+                    }
+                }
 
                 // CR Inventory/Expense (reversal)
                 const product = await tx.product.findUnique({ where: { id: item.productId } });
-                const creditAccount = product?.purchaseAccountId || product?.inventoryAccountId;
+                const returnMapping = await tx.systemAccountMapping.findUnique({
+                    where: { companyId_key: { companyId: data.companyId, key: 'purchase_returns' } }
+                });
+                const creditAccount = returnMapping?.accountId || product?.purchaseAccountId || product?.inventoryAccountId;
                 if (!creditAccount) throw new Error(`Product ${item.productId} missing mapping.`);
 
                 journalLines.push({
@@ -459,7 +513,6 @@ export class PurchaseService {
                     narration: `Purchase Return - ${product?.name}`
                 });
 
-                // Prepare Item Data
                 // Prepare Item Data
                 // @ts-ignore
                 const originalItem = invoice?.items.find(i => i.productId === item.productId && i.variantId === (item.variantId || null));
@@ -471,8 +524,33 @@ export class PurchaseService {
                     invoiceItemId: originalItem?.id || null,
                     qty: item.qty,
                     rate: item.rate,
-                    total: subtotal
+                    taxCodeId: item.taxCodeId || null,
+                    taxAmount: taxAmount,
+                    total: subtotal + taxAmount
                 });
+            }
+
+            const totalReturnAmount = totalReturnSubtotal + totalReturnTax - (data.hasDiscount ? Number(data.discountAmount || 0) : 0);
+
+            // Reversing Discount (DEBIT Discount Account)
+            if (data.hasDiscount && Number(data.discountAmount) > 0) {
+                const discountMapping = await tx.systemAccountMapping.findUnique({
+                    where: { companyId_key: { companyId: data.companyId, key: 'purchase_discount' } }
+                });
+                let discountAccountId = discountMapping?.accountId;
+                if (!discountAccountId) {
+                    const fallbackAcc = await tx.account.findFirst({ where: { companyId: data.companyId, code: '5130' } });
+                    if (fallbackAcc) discountAccountId = fallbackAcc.id;
+                }
+                
+                if (discountAccountId) {
+                    journalLines.push({
+                        accountId: discountAccountId,
+                        debit: Number(data.discountAmount), // Reverse Discount Income
+                        credit: 0,
+                        narration: `Discount Reversal on Purchase Return ${returnNo}`
+                    });
+                }
             }
 
             // DR Supplier (reversal)
@@ -513,6 +591,9 @@ export class PurchaseService {
                     warehouseId: warehouse.id,
                     invoiceId: invoice?.id,
                     totalAmount: totalReturnAmount,
+                    hasDiscount: data.hasDiscount || false,
+                    discountAmount: data.discountAmount || 0,
+                    discountType: data.discountType || null,
                     journalEntryId: journalEntry.id,
                     remarks: data.remarks,
                     items: {
