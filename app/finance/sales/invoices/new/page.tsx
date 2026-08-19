@@ -52,7 +52,7 @@ export default function NewSalesInvoicePage() {
 
     useEffect(() => {
         fetchSettings();
-        fetchDropdowns();
+        loadDropdowns();
     }, []);
 
     const fetchSettings = async () => {
