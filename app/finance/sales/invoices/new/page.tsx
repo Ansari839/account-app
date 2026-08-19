@@ -34,6 +34,7 @@ export default function NewSalesInvoicePage() {
     const [products, setProducts] = useState<any[]>([]);
     const [units, setUnits] = useState<any[]>([]);
     const [taxCodes, setTaxCodes] = useState<any[]>([]);
+    const [currency, setCurrency] = useState<{ symbol: string }>({ symbol: '$' });
     const [isDoMandatory, setIsDoMandatory] = useState(false);
 
     const [formData, setFormData] = useState<any>({
@@ -70,15 +71,16 @@ export default function NewSalesInvoicePage() {
         }
     };
 
-    const fetchDropdowns = async () => {
+    const loadDropdowns = async () => {
         try {
-            const [custRes, accRes, whRes, prodRes, unitRes, taxRes] = await Promise.all([
+            const [custRes, accRes, whRes, prodRes, unitRes, taxRes, currRes] = await Promise.all([
                 authenticatedFetch("/api/finance/parties/customers"),
                 authenticatedFetch('/api/accounts?type=ASSET&isPosting=true'),
                 authenticatedFetch("/api/inventory/warehouses"),
                 authenticatedFetch("/api/inventory/products"),
                 authenticatedFetch("/api/inventory/units"),
                 authenticatedFetch("/api/finance/tax"),
+                authenticatedFetch("/api/finance/currency"),
             ]);
 
             const custs = custRes.ok ? (await custRes.json()).data || [] : [];
@@ -102,6 +104,13 @@ export default function NewSalesInvoicePage() {
             if (taxRes.ok) {
                 const tJson = await taxRes.json();
                 setTaxCodes(tJson.data || []);
+            }
+            if (currRes.ok) {
+                const currJson = await currRes.json();
+                if (currJson.success) {
+                    const base = currJson.data.find((c: any) => c.isBase);
+                    if (base) setCurrency({ symbol: base.symbol });
+                }
             }
         } catch (e) {
             console.error("Failed to load dropdowns", e);
@@ -616,7 +625,7 @@ export default function NewSalesInvoicePage() {
                         <div>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Bill Total</p>
                             <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                                $ {calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                {currency.symbol} {calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </p>
                         </div>
                     </div>
