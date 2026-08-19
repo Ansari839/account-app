@@ -331,24 +331,6 @@ export class SalesService {
                     const subtotal = item.qty * item.rate;
                     totalSubtotal += subtotal;
 
-                    // Handle Tax
-                    let taxAmount = 0;
-                    if (item.taxCodeId) {
-                        const taxCode = await tx.taxCode.findUnique({ where: { id: item.taxCodeId } });
-                        if (taxCode) {
-                            taxAmount = subtotal * (Number(taxCode.rate) / 100);
-                            totalTaxAmount += taxAmount;
-
-                            if (taxCode.accountId) {
-                                journalLines.push({
-                                    accountId: taxCode.accountId,
-                                    credit: taxAmount, // Liability
-                                    narration: `Tax for ${data.invoiceNo}`
-                                });
-                            }
-                        }
-                    }
-
                     const product = await tx.product.findUnique({ where: { id: item.productId } });
                     if (!product) throw new Error(`Product ${item.productId} not found.`);
 
@@ -363,12 +345,7 @@ export class SalesService {
                     });
 
                     // COGS / INVENTORY (Perpetual Inventory)
-                    // PurchaseService does NOT do COGS/Inventory entry on Invoice if it's just "Purchase".
-                    // However, Sales DOES need it to balance inventory.
-                    // We will keep it because without it, Inventory Asset account never decreases.
-
                     let costRate = 0;
-                    // Logic to find cost... 
                     if (product.inventoryAccountId && product.cogsAccountId) {
                         const lastStock = await tx.stockLedger.findFirst({
                             where: { productId: item.productId, qtyIn: { gt: 0 }, costRate: { gt: 0 } },
@@ -397,13 +374,52 @@ export class SalesService {
                         unitId: item.unitId || null,
                         qty: item.qty,
                         rate: item.rate,
-                        taxCodeId: item.taxCodeId,
-                        taxAmount: taxAmount,
-                        total: subtotal + taxAmount
+                        total: subtotal
                     });
                 }
 
-                const totalInvoiceAmount = totalSubtotal + totalTaxAmount - (data.hasDiscount ? Number(data.discountAmount || 0) : 0);
+                // Credit Tax Accounts (Liabilities)
+                const calculatedTaxes = (data.taxes || []).map((t: any) => ({
+                    taxCodeId: t.taxCodeId || null,
+                    taxName: t.taxName,
+                    calculation: t.calculation,
+                    rate: Number(t.rate) || 0,
+                    baseAmount: Number(t.baseAmount) || 0,
+                    taxAmount: Number(t.taxAmount) || 0,
+                }));
+
+                for (const tax of calculatedTaxes) {
+                    if (tax.taxAmount > 0) {
+                        totalTaxAmount += tax.taxAmount;
+
+                        let taxAccId = null;
+                        if (tax.taxCodeId) {
+                            const tc = await tx.taxCode.findUnique({ where: { id: tax.taxCodeId } });
+                            taxAccId = tc?.accountId;
+                        }
+                        
+                        if (!taxAccId) {
+                            // Find default generic tax account for sales (Liability)
+                            const defTax = await tx.account.findFirst({
+                                where: { companyId: data.companyId, name: { contains: 'Tax' }, type: 'LIABILITY', isPosting: true }
+                            });
+                            taxAccId = defTax?.id;
+                        }
+
+                        if (!taxAccId) {
+                            throw new Error(`Could not resolve liability account for tax '${tax.taxName}'. Please link it to an account.`);
+                        }
+
+                        journalLines.push({
+                            accountId: taxAccId,
+                            credit: tax.taxAmount, // Liability increases
+                            narration: `Tax: ${tax.taxName} on Invoice ${invoiceNo}`
+                        });
+                    }
+                }
+
+                const discountAmount = data.hasDiscount ? Number(data.discountAmount || 0) : 0;
+                const totalInvoiceAmount = totalSubtotal + totalTaxAmount - discountAmount;
 
                 // DEBIT Customer Receivable
                 journalLines.push({
@@ -475,9 +491,12 @@ export class SalesService {
                         journalEntryId: journalEntry.id, // Linked Here
                         items: {
                             create: invoiceItems
+                        },
+                        taxes: {
+                            create: calculatedTaxes
                         }
                     },
-                    include: { items: true }
+                    include: { items: true, taxes: true }
                 });
 
                 // 4. Update Stock Ledger & Track Quantities

@@ -23,7 +23,7 @@ import {
 import { useNotifications } from '@/context/NotificationContext';
 import { cn } from '@/lib/utils';
 
-export default function NewSalesInvoicePage() {
+export default function NewPurchaseInvoicePage() {
     const router = useRouter();
     const { showNotification } = useNotifications();
 
@@ -31,20 +31,20 @@ export default function NewSalesInvoicePage() {
     
     // Master Data
     const [sources, setSources] = useState<any[]>([]);
-    const [customers, setCustomers] = useState<any[]>([]);
+    const [suppliers, setSuppliers] = useState<any[]>([]);
     const [warehouses, setWarehouses] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
     const [units, setUnits] = useState<any[]>([]);
     const [taxCodes, setTaxCodes] = useState<any[]>([]);
     const [accounts, setAccounts] = useState<any[]>([]);
-    const [isDoMandatory, setIsDoMandatory] = useState(false);
+    const [isGrnMandatory, setIsGrnMandatory] = useState(false);
     const [currency, setCurrency] = useState<{ symbol: string }>({ symbol: '$' });
 
     // Form Data
     const [formData, setFormData] = useState<any>({
-        sourceType: "SO", // SO | DO | DIRECT
+        sourceType: "PO", // PO | GRN | DIRECT
         sourceId: "",
-        customerId: "",
+        supplierId: "",
         warehouseId: "",
         date: new Date().toISOString().split("T")[0],
         dueDate: "",
@@ -65,10 +65,10 @@ export default function NewSalesInvoicePage() {
             const res = await authenticatedFetch("/api/settings/inventory");
             const json = await res.json();
             if (json.success) {
-                const mandatory = json.data.DO_MANDATORY === "true";
-                setIsDoMandatory(mandatory);
+                const mandatory = json.data.INVENTORY_GRN_MANDATORY === "true";
+                setIsGrnMandatory(mandatory);
                 if (mandatory) {
-                    setFormData((p: any) => ({ ...p, sourceType: "DO" }));
+                    setFormData((p: any) => ({ ...p, sourceType: "GRN" }));
                 }
             }
         } catch (e) { console.error(e); }
@@ -77,7 +77,7 @@ export default function NewSalesInvoicePage() {
     const fetchDropdowns = async () => {
         try {
             const [supRes, accRes, whRes, prodRes, unitRes, taxRes, currRes] = await Promise.all([
-                authenticatedFetch("/api/finance/parties/customers"),
+                authenticatedFetch("/api/finance/parties/suppliers"),
                 authenticatedFetch('/api/accounts?isPosting=true'),
                 authenticatedFetch("/api/inventory/warehouses"),
                 authenticatedFetch("/api/inventory/products"),
@@ -99,7 +99,7 @@ export default function NewSalesInvoicePage() {
                 }
             });
 
-            setCustomers(combined);
+            setSuppliers(combined);
             if (whRes.ok) setWarehouses((await whRes.json()).data || []);
             if (prodRes.ok) setProducts((await prodRes.json()).data || []);
             if (unitRes.ok) setUnits((await unitRes.json()).data || []);
@@ -120,23 +120,19 @@ export default function NewSalesInvoicePage() {
 
     const fetchSources = async (type: string) => {
         try {
-            const endpoint =
-                type === "SO"
-                    ? "/api/finance/sales/orders"
-                    : "/api/finance/sales/delivery-notes";
-
+            const endpoint = type === "PO"
+                ? "/api/finance/purchase/orders?status=OPEN"
+                : "/api/finance/purchase/grn";
             const res = await authenticatedFetch(endpoint);
             const json = await res.json();
             if (json.success) {
                 let data = json.data;
-                if (type === "DO") {
-                    data = data.filter((d: any) => !d.invoices || d.invoices.length === 0);
+                if (type === "GRN") {
+                    data = data.filter((g: any) => !g.invoices || g.invoices.length === 0);
                 }
                 setSources(data);
             }
-        } catch (e) {
-            console.error("Failed to load sources", e);
-        }
+        } catch (e) { console.error(e); }
     };
 
     useEffect(() => {
@@ -156,7 +152,7 @@ export default function NewSalesInvoicePage() {
         }
 
         let items: any[] = [];
-        if (formData.sourceType === "SO") {
+        if (formData.sourceType === "PO") {
             items = source.items.map((item: any) => {
                 const available = item.qty - (item.invoicedQty || 0);
                 return {
@@ -164,7 +160,7 @@ export default function NewSalesInvoicePage() {
                     productId: item.productId,
                     productName: item.product?.name,
                     unitId: item.unitId,
-                    soItemId: item.id,
+                    poItemId: item.id,
                     qtyAvailable: available,
                     qty: Math.max(0, available),
                     rate: item.rate,
@@ -177,19 +173,19 @@ export default function NewSalesInvoicePage() {
                 productId: item.productId,
                 productName: item.product?.name,
                 unitId: item.unitId,
-                doItemId: item.id,
-                soItemId: item.soItemId,
-                qtyAvailable: item.qtyShipped,
-                qty: item.qtyShipped,
-                rate: item.soItem?.rate || 0,
-                total: item.qtyShipped * (item.soItem?.rate || 0),
+                grnItemId: item.id,
+                poItemId: item.poItemId,
+                qtyAvailable: item.qtyReceived,
+                qty: item.qtyReceived,
+                rate: item.poItem?.rate || 0,
+                total: item.qtyReceived * (item.poItem?.rate || 0),
             }));
         }
 
         setFormData({
             ...formData,
             sourceId: id,
-            customerId: source.customerId,
+            supplierId: source.supplierId,
             items,
         });
     };
@@ -224,7 +220,7 @@ export default function NewSalesInvoicePage() {
                     if (field === "productId") {
                         const prod = products.find(p => p.id === value);
                         updatedItem.productName = prod?.name || "";
-                        updatedItem.rate = Number(prod?.salesPrice || 0);
+                        updatedItem.rate = Number(prod?.purchasePrice || 0);
                         if (prod?.baseUnitId) {
                             updatedItem.unitId = prod.baseUnitId;
                         } else if (prod?.baseUnit?.id) {
@@ -315,8 +311,8 @@ export default function NewSalesInvoicePage() {
     };
 
     const handleSubmit = async () => {
-        if (!formData.customerId) {
-            showNotification('error', 'Please select a Customer / Account.');
+        if (!formData.supplierId) {
+            showNotification('error', 'Please select a Supplier / Account.');
             return;
         }
 
@@ -334,7 +330,7 @@ export default function NewSalesInvoicePage() {
         if (formData.sourceType !== "DIRECT") {
             const overFullfilled = formData.items.some((it: any) => it.qty > it.qtyAvailable);
             if (overFullfilled) {
-                if (!confirm("One or more items exceed the remaining SO/DO quantity. An 'Addendum SO' will be automatically created for the excess. Proceed?")) {
+                if (!confirm("One or more items exceed the remaining PO/GRN quantity. An 'Addendum PO' will be automatically created for the excess. Proceed?")) {
                     return;
                 }
             }
@@ -345,19 +341,19 @@ export default function NewSalesInvoicePage() {
             const payload = {
                 ...formData,
                 items: validItems,
-                orderId: formData.sourceType === "SO" ? formData.sourceId : undefined,
-                doId: formData.sourceType === "DO" ? formData.sourceId : undefined,
+                poId: formData.sourceType === "PO" ? formData.sourceId : undefined,
+                grnId: formData.sourceType === "GRN" ? formData.sourceId : undefined,
             };
 
-            const res = await authenticatedFetch('/api/finance/sales/invoices', {
+            const res = await authenticatedFetch('/api/finance/purchase/invoices', {
                 method: 'POST',
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
 
             if (res.ok) {
-                showNotification('success', 'Sales Invoice created successfully!');
-                router.push('/finance/sales/invoices');
+                showNotification('success', 'Purchase Invoice created successfully!');
+                router.push('/finance/purchase/invoices');
             } else {
                 const json = await res.json();
                 showNotification('error', json.error || 'Failed to create invoice.');
@@ -369,14 +365,14 @@ export default function NewSalesInvoicePage() {
         }
     };
 
-    const customerOptions = customers.map(s => ({
+    const supplierOptions = suppliers.map(s => ({
         value: s.id,
         label: `${s.code} - ${s.name}`
     }));
 
     const sourceOptions = sources.map(s => ({
         value: s.id,
-        label: `${formData.sourceType === "SO" ? s.orderNo : s.doNo} - ${s.customer?.name || "Unknown"}`
+        label: `${formData.sourceType === "PO" ? s.poNo : s.grnNo} - ${s.supplier?.name || "Unknown"}`
     }));
 
     return (
@@ -403,31 +399,31 @@ export default function NewSalesInvoicePage() {
                         <div className="lg:col-span-4 space-y-4">
                             <div>
                                 <h1 className="text-4xl font-black text-white tracking-tight">New Bill</h1>
-                                <p className="text-slate-400 font-medium">Create a Sales Invoice</p>
+                                <p className="text-slate-400 font-medium">Create a Purchase Invoice</p>
                             </div>
                             
                             <div className="bg-slate-900/80 rounded-xl p-2 flex gap-1 border border-slate-800">
                                 <button 
-                                    onClick={() => setFormData({ ...formData, sourceType: "SO", sourceId: "", items: [] })}
-                                    disabled={isDoMandatory}
+                                    onClick={() => setFormData({ ...formData, sourceType: "PO", sourceId: "", items: [] })}
+                                    disabled={isGrnMandatory}
                                     className={cn(
                                         "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all",
-                                        formData.sourceType === "SO" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-slate-200",
-                                        isDoMandatory && "opacity-50 cursor-not-allowed"
+                                        formData.sourceType === "PO" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-slate-200",
+                                        isGrnMandatory && "opacity-50 cursor-not-allowed"
                                     )}
                                 >
-                                    <FileText size={14} /> SO
+                                    <FileText size={14} /> PO
                                 </button>
                                 <button 
-                                    onClick={() => setFormData({ ...formData, sourceType: "DO", sourceId: "", items: [] })}
+                                    onClick={() => setFormData({ ...formData, sourceType: "GRN", sourceId: "", items: [] })}
                                     className={cn(
                                         "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all",
-                                        formData.sourceType === "DO" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-slate-200"
+                                        formData.sourceType === "GRN" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-slate-200"
                                     )}
                                 >
-                                    <Truck size={14} /> DO
+                                    <Truck size={14} /> GRN
                                 </button>
-                                {!isDoMandatory && (
+                                {!isGrnMandatory && (
                                     <button 
                                         onClick={() => setFormData({ ...formData, sourceType: "DIRECT", sourceId: "", items: [] })}
                                         className={cn(
@@ -459,13 +455,13 @@ export default function NewSalesInvoicePage() {
                                 <>
                                     <div className="space-y-2">
                                         <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                            <Building2 size={14} /> Customer Account
+                                            <Building2 size={14} /> Supplier Account
                                         </label>
                                         <Combobox
-                                            options={customerOptions}
-                                            value={formData.customerId}
-                                            onChange={(val) => setFormData({ ...formData, customerId: val })}
-                                            placeholder="Select customer..."
+                                            options={supplierOptions}
+                                            value={formData.supplierId}
+                                            onChange={(val) => setFormData({ ...formData, supplierId: val })}
+                                            placeholder="Select supplier..."
                                             className="w-full bg-slate-900/50 border-slate-700 text-white"
                                         />
                                     </div>
@@ -515,7 +511,7 @@ export default function NewSalesInvoicePage() {
                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                     <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
                         <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
-                            <Receipt size={20} className="text-indigo-500" /> Invoice Items
+                            <Receipt size={20} className="text-indigo-500" /> Billed Items
                         </h2>
                         {formData.sourceType === "DIRECT" && (
                             <button 
