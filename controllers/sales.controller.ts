@@ -237,7 +237,8 @@ export class SalesController {
                     qty: Number(it.qty),
                     rate: Number(it.rate),
                     taxCodeId: it.taxCodeId || null
-                }))
+                })),
+                taxes: Array.isArray(body.taxes) ? body.taxes : []
             });
 
             return NextResponse.json({ success: true, data: invoice });

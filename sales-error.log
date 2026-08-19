@@ -1176,3 +1176,366 @@ Argument `invoiceNo` is missing.
     at async Server.requestListener (/home/abdullah/Next-js/account-app/node_modules/next/dist/server/lib/start-server.js:226:13)
 Data: {"sourceType":"DO","sourceId":"af6a28e0-7b34-481d-8b7b-7479cfdce2cd","customerId":"1cc3a14c-f70d-4b6a-bb6e-9b38bc20e481","warehouseId":"6ac0a987-c1c9-40ee-99d9-c7c459173aa4","date":"2026-01-14T00:00:00.000Z","items":[{"productId":"9aa16a61-c832-4bd9-8803-b7e50c93544d","productName":"Women Silk Scarf","unitId":"d9c034d1-8a9a-4f15-8492-3783a33e89e0","doItemId":"42e18f66-3f7a-4f1d-8edd-242aff347e3c","soItemId":"d22257c7-d2b0-4273-929d-6cdb4cef8274","qtyAvailable":"100","qty":"100","rate":700,"total":70000}],"doId":"af6a28e0-7b34-481d-8b7b-7479cfdce2cd"}
 
+[2026-08-19T13:43:41.080Z] Error in createSalesInvoice: 
+Invalid `tx.salesInvoice.create()` invocation in
+C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__c47a4428._.js:714:55
+
+  711     }
+  712 });
+  713 // 3. Create Sales Invoice (Linked to JE)
+→ 714 const invoice = await tx.salesInvoice.create({
+        data: {
+          companyId: "b4d5ff0f-cc6d-4a4b-86e2-2e9af4840f6e",
+          invoiceNo: "SI-2026-0001",
+          customerId: "72bbbb19-4f2c-4437-b08f-c569c8bf3c55",
+          warehouseId: "07dcb71c-7f18-46cf-95f3-fb279b6e9bd2",
+          orderId: null,
+          date: new Date("2026-08-20T00:00:00.000Z"),
+          dueDate: undefined,
+          totalAmount: 600000,
+          taxAmount: 0,
+          hasDiscount: false,
+          discountAmount: 0,
+          discountType: "FIXED",
+          doId: null,
+          journalEntryId: "c68c2e83-c5dc-480f-b3c3-2c2843981802",
+          items: {
+            create: [
+              {
+                productId: "dc71f88c-2c77-4e26-a69b-37b000cc584c",
+                variantId: null,
+                unitId: "0ca1fdf2-fa81-42bc-abaa-e71141fc8187",
+                qty: 1000,
+                rate: 300,
+                total: 300000
+              },
+              {
+                productId: "ec1d1f16-e2d3-4ab2-b474-63dead92d446",
+                variantId: null,
+                unitId: "a6402b1e-cd3f-429c-97e9-f855c379653e",
+                qty: 500,
+                rate: 600,
+                total: 300000
+              }
+            ]
+          },
+          taxes: {
+          ~~~~~
+            create: [
+              {
+                taxCodeId: "3136e75a-2bfa-42d8-8fe2-b80e27172c62",
+                taxName: "General Sales tax",
+                calculation: "NET_TOTAL",
+                rate: 18,
+                baseAmount: 0,
+                taxAmount: 0
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   createdAt?: DateTime,
+      ?   updatedAt?: DateTime,
+      ?   returns?: SalesReturnUncheckedCreateNestedManyWithoutInvoiceInput
+        },
+        include: {
+          items: true,
+          taxes: true
+        }
+      })
+
+Unknown argument `taxes`. Did you mean `date`? Available options are marked with ?.
+Stack: PrismaClientValidationError: 
+Invalid `tx.salesInvoice.create()` invocation in
+C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__c47a4428._.js:714:55
+
+  711     }
+  712 });
+  713 // 3. Create Sales Invoice (Linked to JE)
+→ 714 const invoice = await tx.salesInvoice.create({
+        data: {
+          companyId: "b4d5ff0f-cc6d-4a4b-86e2-2e9af4840f6e",
+          invoiceNo: "SI-2026-0001",
+          customerId: "72bbbb19-4f2c-4437-b08f-c569c8bf3c55",
+          warehouseId: "07dcb71c-7f18-46cf-95f3-fb279b6e9bd2",
+          orderId: null,
+          date: new Date("2026-08-20T00:00:00.000Z"),
+          dueDate: undefined,
+          totalAmount: 600000,
+          taxAmount: 0,
+          hasDiscount: false,
+          discountAmount: 0,
+          discountType: "FIXED",
+          doId: null,
+          journalEntryId: "c68c2e83-c5dc-480f-b3c3-2c2843981802",
+          items: {
+            create: [
+              {
+                productId: "dc71f88c-2c77-4e26-a69b-37b000cc584c",
+                variantId: null,
+                unitId: "0ca1fdf2-fa81-42bc-abaa-e71141fc8187",
+                qty: 1000,
+                rate: 300,
+                total: 300000
+              },
+              {
+                productId: "ec1d1f16-e2d3-4ab2-b474-63dead92d446",
+                variantId: null,
+                unitId: "a6402b1e-cd3f-429c-97e9-f855c379653e",
+                qty: 500,
+                rate: 600,
+                total: 300000
+              }
+            ]
+          },
+          taxes: {
+          ~~~~~
+            create: [
+              {
+                taxCodeId: "3136e75a-2bfa-42d8-8fe2-b80e27172c62",
+                taxName: "General Sales tax",
+                calculation: "NET_TOTAL",
+                rate: 18,
+                baseAmount: 0,
+                taxAmount: 0
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   createdAt?: DateTime,
+      ?   updatedAt?: DateTime,
+      ?   returns?: SalesReturnUncheckedCreateNestedManyWithoutInvoiceInput
+        },
+        include: {
+          items: true,
+          taxes: true
+        }
+      })
+
+Unknown argument `taxes`. Did you mean `date`? Available options are marked with ?.
+    at tr (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:10:1379)
+    at qr.handleRequestError (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:65:7815)
+    at qr.handleAndLogRequestError (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:65:7467)
+    at qr.request (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:65:7174)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:75:5816)
+    at async C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__c47a4428._.js:714:33
+    at async Proxy._transactionWithCallback (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:75:4390)
+    at async SalesService.createSalesInvoice (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__c47a4428._.js:522:20)
+    at async SalesController.createInvoice (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__c47a4428._.js:1615:29)
+    at async AppRouteRouteModule.do (C:\Abdullah\account-app\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (C:\Abdullah\account-app\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (C:\Abdullah\account-app\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:1422:9)
+    at async DevServer.renderPageComponent (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:1524:32)
+    at async DevServer.pipeImpl (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Abdullah\account-app\node_modules\next\dist\server\next-server.js:395:17)
+    at async DevServer.handleRequestImpl (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:909:17)
+    at async C:\Abdullah\account-app\node_modules\next\dist\server\dev\next-dev-server.js:387:20
+    at async Span.traceAsyncFn (C:\Abdullah\account-app\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (C:\Abdullah\account-app\node_modules\next\dist\server\dev\next-dev-server.js:383:24)
+    at async invokeRender (C:\Abdullah\account-app\node_modules\next\dist\server\lib\router-server.js:248:21)
+    at async handleRequest (C:\Abdullah\account-app\node_modules\next\dist\server\lib\router-server.js:447:24)
+    at async requestHandlerImpl (C:\Abdullah\account-app\node_modules\next\dist\server\lib\router-server.js:496:13)
+    at async Server.requestListener (C:\Abdullah\account-app\node_modules\next\dist\server\lib\start-server.js:226:13)
+Data: {"sourceType":"DIRECT","sourceId":"","customerId":"72bbbb19-4f2c-4437-b08f-c569c8bf3c55","warehouseId":"07dcb71c-7f18-46cf-95f3-fb279b6e9bd2","date":"2026-08-20T00:00:00.000Z","hasDiscount":false,"discountAmount":0,"discountType":"FIXED","items":[{"productId":"dc71f88c-2c77-4e26-a69b-37b000cc584c","variantId":null,"unitId":"0ca1fdf2-fa81-42bc-abaa-e71141fc8187","soItemId":null,"qty":1000,"rate":300,"taxCodeId":null},{"productId":"ec1d1f16-e2d3-4ab2-b474-63dead92d446","variantId":null,"unitId":"a6402b1e-cd3f-429c-97e9-f855c379653e","soItemId":null,"qty":500,"rate":600,"taxCodeId":null}],"taxes":[{"id":"1787146991476","taxCodeId":"3136e75a-2bfa-42d8-8fe2-b80e27172c62","taxName":"General Sales tax","calculation":"NET_TOTAL","rate":18,"taxAmount":0}],"companyId":"b4d5ff0f-cc6d-4a4b-86e2-2e9af4840f6e","doId":null,"orderId":null,"trackingNo":null,"trackingUrl":null}
+
+[2026-08-19T13:43:50.653Z] Error in createSalesInvoice: 
+Invalid `tx.salesInvoice.create()` invocation in
+C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__c47a4428._.js:714:55
+
+  711     }
+  712 });
+  713 // 3. Create Sales Invoice (Linked to JE)
+→ 714 const invoice = await tx.salesInvoice.create({
+        data: {
+          companyId: "b4d5ff0f-cc6d-4a4b-86e2-2e9af4840f6e",
+          invoiceNo: "SI-2026-0001",
+          customerId: "72bbbb19-4f2c-4437-b08f-c569c8bf3c55",
+          warehouseId: "07dcb71c-7f18-46cf-95f3-fb279b6e9bd2",
+          orderId: null,
+          date: new Date("2026-08-20T00:00:00.000Z"),
+          dueDate: undefined,
+          totalAmount: 600000,
+          taxAmount: 0,
+          hasDiscount: false,
+          discountAmount: 0,
+          discountType: "FIXED",
+          doId: null,
+          journalEntryId: "1b6ece52-1a00-46d1-baf5-bee7d78dfd35",
+          items: {
+            create: [
+              {
+                productId: "dc71f88c-2c77-4e26-a69b-37b000cc584c",
+                variantId: null,
+                unitId: "0ca1fdf2-fa81-42bc-abaa-e71141fc8187",
+                qty: 1000,
+                rate: 300,
+                total: 300000
+              },
+              {
+                productId: "ec1d1f16-e2d3-4ab2-b474-63dead92d446",
+                variantId: null,
+                unitId: "a6402b1e-cd3f-429c-97e9-f855c379653e",
+                qty: 500,
+                rate: 600,
+                total: 300000
+              }
+            ]
+          },
+          taxes: {
+          ~~~~~
+            create: [
+              {
+                taxCodeId: "3136e75a-2bfa-42d8-8fe2-b80e27172c62",
+                taxName: "General Sales tax",
+                calculation: "NET_TOTAL",
+                rate: 18,
+                baseAmount: 0,
+                taxAmount: 0
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   createdAt?: DateTime,
+      ?   updatedAt?: DateTime,
+      ?   returns?: SalesReturnUncheckedCreateNestedManyWithoutInvoiceInput
+        },
+        include: {
+          items: true,
+          taxes: true
+        }
+      })
+
+Unknown argument `taxes`. Did you mean `date`? Available options are marked with ?.
+Stack: PrismaClientValidationError: 
+Invalid `tx.salesInvoice.create()` invocation in
+C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__c47a4428._.js:714:55
+
+  711     }
+  712 });
+  713 // 3. Create Sales Invoice (Linked to JE)
+→ 714 const invoice = await tx.salesInvoice.create({
+        data: {
+          companyId: "b4d5ff0f-cc6d-4a4b-86e2-2e9af4840f6e",
+          invoiceNo: "SI-2026-0001",
+          customerId: "72bbbb19-4f2c-4437-b08f-c569c8bf3c55",
+          warehouseId: "07dcb71c-7f18-46cf-95f3-fb279b6e9bd2",
+          orderId: null,
+          date: new Date("2026-08-20T00:00:00.000Z"),
+          dueDate: undefined,
+          totalAmount: 600000,
+          taxAmount: 0,
+          hasDiscount: false,
+          discountAmount: 0,
+          discountType: "FIXED",
+          doId: null,
+          journalEntryId: "1b6ece52-1a00-46d1-baf5-bee7d78dfd35",
+          items: {
+            create: [
+              {
+                productId: "dc71f88c-2c77-4e26-a69b-37b000cc584c",
+                variantId: null,
+                unitId: "0ca1fdf2-fa81-42bc-abaa-e71141fc8187",
+                qty: 1000,
+                rate: 300,
+                total: 300000
+              },
+              {
+                productId: "ec1d1f16-e2d3-4ab2-b474-63dead92d446",
+                variantId: null,
+                unitId: "a6402b1e-cd3f-429c-97e9-f855c379653e",
+                qty: 500,
+                rate: 600,
+                total: 300000
+              }
+            ]
+          },
+          taxes: {
+          ~~~~~
+            create: [
+              {
+                taxCodeId: "3136e75a-2bfa-42d8-8fe2-b80e27172c62",
+                taxName: "General Sales tax",
+                calculation: "NET_TOTAL",
+                rate: 18,
+                baseAmount: 0,
+                taxAmount: 0
+              }
+            ]
+          },
+      ?   id?: String,
+      ?   createdAt?: DateTime,
+      ?   updatedAt?: DateTime,
+      ?   returns?: SalesReturnUncheckedCreateNestedManyWithoutInvoiceInput
+        },
+        include: {
+          items: true,
+          taxes: true
+        }
+      })
+
+Unknown argument `taxes`. Did you mean `date`? Available options are marked with ?.
+    at tr (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:10:1379)
+    at qr.handleRequestError (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:65:7815)
+    at qr.handleAndLogRequestError (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:65:7467)
+    at qr.request (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:65:7174)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async a (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:75:5816)
+    at async C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__c47a4428._.js:714:33
+    at async Proxy._transactionWithCallback (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:75:4390)
+    at async SalesService.createSalesInvoice (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__c47a4428._.js:522:20)
+    at async SalesController.createInvoice (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__c47a4428._.js:1615:29)
+    at async AppRouteRouteModule.do (C:\Abdullah\account-app\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (C:\Abdullah\account-app\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (C:\Abdullah\account-app\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:1422:9)
+    at async DevServer.renderPageComponent (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:1524:32)
+    at async DevServer.pipeImpl (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Abdullah\account-app\node_modules\next\dist\server\next-server.js:395:17)
+    at async DevServer.handleRequestImpl (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:909:17)
+    at async C:\Abdullah\account-app\node_modules\next\dist\server\dev\next-dev-server.js:387:20
+    at async Span.traceAsyncFn (C:\Abdullah\account-app\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (C:\Abdullah\account-app\node_modules\next\dist\server\dev\next-dev-server.js:383:24)
+    at async invokeRender (C:\Abdullah\account-app\node_modules\next\dist\server\lib\router-server.js:248:21)
+    at async handleRequest (C:\Abdullah\account-app\node_modules\next\dist\server\lib\router-server.js:447:24)
+    at async requestHandlerImpl (C:\Abdullah\account-app\node_modules\next\dist\server\lib\router-server.js:496:13)
+    at async Server.requestListener (C:\Abdullah\account-app\node_modules\next\dist\server\lib\start-server.js:226:13)
+Data: {"sourceType":"DIRECT","sourceId":"","customerId":"72bbbb19-4f2c-4437-b08f-c569c8bf3c55","warehouseId":"07dcb71c-7f18-46cf-95f3-fb279b6e9bd2","date":"2026-08-20T00:00:00.000Z","hasDiscount":false,"discountAmount":0,"discountType":"FIXED","items":[{"productId":"dc71f88c-2c77-4e26-a69b-37b000cc584c","variantId":null,"unitId":"0ca1fdf2-fa81-42bc-abaa-e71141fc8187","soItemId":null,"qty":1000,"rate":300,"taxCodeId":null},{"productId":"ec1d1f16-e2d3-4ab2-b474-63dead92d446","variantId":null,"unitId":"a6402b1e-cd3f-429c-97e9-f855c379653e","soItemId":null,"qty":500,"rate":600,"taxCodeId":null}],"taxes":[{"id":"1787146991476","taxCodeId":"3136e75a-2bfa-42d8-8fe2-b80e27172c62","taxName":"General Sales tax","calculation":"NET_TOTAL","rate":18,"taxAmount":0}],"companyId":"b4d5ff0f-cc6d-4a4b-86e2-2e9af4840f6e","doId":null,"orderId":null,"trackingNo":null,"trackingUrl":null}
+
+[2026-08-19T13:45:36.074Z] Error in createSalesInvoice: Transaction API error: A commit cannot be executed on an expired transaction. The timeout for this transaction was 5000 ms, however 5750 ms passed since the start of the transaction. Consider increasing the interactive transaction timeout or doing less work in the transaction.
+Stack: PrismaClientKnownRequestError: Transaction API error: A commit cannot be executed on an expired transaction. The timeout for this transaction was 5000 ms, however 5750 ms passed since the start of the transaction. Consider increasing the interactive transaction timeout or doing less work in the transaction.
+    at #a (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:57:12983)
+    at Dt.transaction (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:58:1815)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Proxy._transactionWithCallback (C:\Abdullah\account-app\node_modules\@prisma\client\runtime\client.js:75:4424)
+    at async SalesService.createSalesInvoice (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__38937ab2._.js:522:20)
+    at async SalesController.createInvoice (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__38937ab2._.js:1615:29)
+    at async AppRouteRouteModule.do (C:\Abdullah\account-app\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:37866)
+    at async AppRouteRouteModule.handle (C:\Abdullah\account-app\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:45156)
+    at async responseGenerator (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__6549fb63._.js:20122:38)
+    at async AppRouteRouteModule.handleResponse (C:\Abdullah\account-app\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:1:187713)
+    at async handleResponse (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__6549fb63._.js:20185:32)
+    at async Module.handler (C:\Abdullah\account-app\.next\dev\server\chunks\[root-of-the-server]__6549fb63._.js:20238:13)
+    at async DevServer.renderToResponseWithComponentsImpl (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:1422:9)
+    at async DevServer.renderPageComponent (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:1474:24)
+    at async DevServer.renderToResponseImpl (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:1524:32)
+    at async DevServer.pipeImpl (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:1018:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Abdullah\account-app\node_modules\next\dist\server\next-server.js:395:17)
+    at async DevServer.handleRequestImpl (C:\Abdullah\account-app\node_modules\next\dist\server\base-server.js:909:17)
+    at async C:\Abdullah\account-app\node_modules\next\dist\server\dev\next-dev-server.js:387:20
+    at async Span.traceAsyncFn (C:\Abdullah\account-app\node_modules\next\dist\trace\trace.js:157:20)
+    at async DevServer.handleRequest (C:\Abdullah\account-app\node_modules\next\dist\server\dev\next-dev-server.js:383:24)
+    at async invokeRender (C:\Abdullah\account-app\node_modules\next\dist\server\lib\router-server.js:248:21)
+    at async handleRequest (C:\Abdullah\account-app\node_modules\next\dist\server\lib\router-server.js:447:24)
+    at async requestHandlerImpl (C:\Abdullah\account-app\node_modules\next\dist\server\lib\router-server.js:496:13)
+    at async Server.requestListener (C:\Abdullah\account-app\node_modules\next\dist\server\lib\start-server.js:226:13)
+Data: {"sourceType":"DIRECT","sourceId":"","customerId":"72bbbb19-4f2c-4437-b08f-c569c8bf3c55","warehouseId":"07dcb71c-7f18-46cf-95f3-fb279b6e9bd2","date":"2026-08-20T00:00:00.000Z","hasDiscount":false,"discountAmount":0,"discountType":"FIXED","items":[{"productId":"dc71f88c-2c77-4e26-a69b-37b000cc584c","variantId":null,"unitId":"0ca1fdf2-fa81-42bc-abaa-e71141fc8187","soItemId":null,"qty":200,"rate":300,"taxCodeId":null}],"taxes":[{"id":"1787147123372","taxCodeId":"3136e75a-2bfa-42d8-8fe2-b80e27172c62","taxName":"General Sales tax","calculation":"NET_TOTAL","rate":18,"taxAmount":0}],"companyId":"b4d5ff0f-cc6d-4a4b-86e2-2e9af4840f6e","doId":null,"orderId":null,"trackingNo":null,"trackingUrl":null}
+

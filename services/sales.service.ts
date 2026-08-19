@@ -67,6 +67,7 @@ export interface SalesInvoiceInput {
     hasDiscount?: boolean;
     discountAmount?: number;
     discountType?: string;
+    taxes?: any[];
     items: {
         productId: string;
         variantId?: string;
