@@ -8,6 +8,7 @@ export class TaxService {
         name: string;
         code: string;
         rate: number;
+        accountId?: string;
     }) {
         if (data.rate < 0) {
             throw new Error("Tax rate cannot be negative.");
@@ -19,6 +20,7 @@ export class TaxService {
                 name: data.name,
                 code: data.code,
                 rate: data.rate,
+                accountId: data.accountId || null
             },
         });
     }
@@ -29,6 +31,7 @@ export class TaxService {
     static async getAllTaxCodes(companyId: string) {
         return prisma.taxCode.findMany({
             where: { companyId },
+            include: { account: true }, // Include account to show in UI or populate form
             orderBy: { name: 'asc' }
         });
     }
@@ -43,8 +46,16 @@ export class TaxService {
     /**
      * Update a Tax Code
      */
-    static async updateTaxCode(id: string, data: { name?: string; code?: string; rate?: number }) {
+    static async updateTaxCode(id: string, data: any) {
         if (data.rate !== undefined && data.rate < 0) throw new Error("Tax rate cannot be negative.");
-        return prisma.taxCode.update({ where: { id }, data });
+        return prisma.taxCode.update({ 
+            where: { id }, 
+            data: {
+                name: data.name,
+                code: data.code,
+                rate: data.rate,
+                accountId: data.accountId || null
+            } 
+        });
     }
 }

@@ -6,54 +6,49 @@ datasource db {
   provider = "postgresql"
 }
 
-// ============================================================
-// COMPANY & USER MANAGEMENT
-// ============================================================
-
 model Company {
-  id               String            @id @default(uuid())
+  id               String                 @id @default(uuid())
   name             String
   address          String?
   phone            String?
   email            String?
   website          String?
   logo             String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
   deletedAt        DateTime?
-  // Relations
   accounts         Account[]
+  auditLogs        AuditLog[]
+  backupSchedules  BackupSchedule[]
+  categories       Category[]
+  companySettings  CompanySetting[]
+  currencies       Currency[]
+  customers        Customer[]
+  deliveryOrders   DeliveryOrder[]
+  financialYears   FinancialYear[]
+  grns             GRN[]
+  journalEntries   JournalEntry[]
+  products         Product[]
+  purchaseInvoices PurchaseInvoice[]
+  purchaseOrders   PurchaseOrder[]
+  purchaseRequests PurchaseRequest[]
+  purchaseReturns  PurchaseReturn[]
+  salesInvoices    SalesInvoice[]
+  salesOrders      SalesOrder[]
+  salesQuotations  SalesQuotation[]
+  salesReturns     SalesReturn[]
+  stockLedgers     StockLedger[]
+  suppliers        Supplier[]
+  systemMappings   SystemAccountMapping[]
+  taxCodes         TaxCode[]
   transactions     Transaction[]
+  units            Unit[]
+  unitConversions  UnitConversion[]
   users            User[]
   userCompanies    UserCompany[]
-  products         Product[]
-  categories       Category[]
-  customers        Customer[]
-  suppliers        Supplier[]
-  warehouses       Warehouse[]
-  units            Unit[]
-  currencies       Currency[]
-  unitConversions  UnitConversion[]
-  taxCodes         TaxCode[]
-  financialYears   FinancialYear[]
-  journalEntries   JournalEntry[]
-  stockLedgers     StockLedger[]
-  voucherSequences VoucherSequence[]
-  companySettings  CompanySetting[]
-  auditLogs        AuditLog[]
-  purchaseOrders   PurchaseOrder[]
-  purchaseReturns  PurchaseReturn[]
-  grns             GRN[]
-  purchaseInvoices PurchaseInvoice[]
-  purchaseRequests PurchaseRequest[]
-  salesQuotations  SalesQuotation[]
-  salesOrders      SalesOrder[]
-  deliveryOrders   DeliveryOrder[]
-  salesInvoices    SalesInvoice[]
-  salesReturns     SalesReturn[]
   userPermissions  UserPermission[]
-  backupSchedules  BackupSchedule[]
-  systemMappings   SystemAccountMapping[]
+  voucherSequences VoucherSequence[]
+  warehouses       Warehouse[]
 }
 
 model UserCompany {
@@ -64,8 +59,8 @@ model UserCompany {
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
   company   Company  @relation(fields: [companyId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, companyId])
 }
@@ -90,29 +85,23 @@ model User {
   permissions    UserPermission[]
 }
 
-// ============================================================
-// RBAC (Direct User Permissions)
-// ============================================================
-
 model UserPermission {
   id             String   @id @default(uuid())
   userId         String
   companyId      String
-  module         String // e.g., "sales.orders"
+  module         String
   canRead        Boolean  @default(false)
   canWrite       Boolean  @default(false)
   canDelete      Boolean  @default(false)
-  canViewFinance Boolean  @default(false) // For viewing financial amounts
+  canViewFinance Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  user           User     @relation(fields: [userId], references: [id])
   company        Company  @relation(fields: [companyId], references: [id])
+  user           User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, companyId, module])
 }
 
-// Keeping Permission model if you want to store module definitions, 
-// but it's optional for direct strings. We can keep it to define valid modules.
 model Permission {
   id          String   @id @default(uuid())
   module      String
@@ -133,10 +122,6 @@ model UserRoleLimit {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
-
-// ============================================================
-// SETTINGS & CONFIG (Per Company)
-// ============================================================
 
 model CompanySetting {
   id        String   @id @default(uuid())
@@ -164,13 +149,9 @@ model AuditLog {
   ipAddress   String?
   userAgent   String?
   createdAt   DateTime @default(now())
-  user        User?    @relation(fields: [userId], references: [id])
   company     Company? @relation(fields: [companyId], references: [id])
+  user        User?    @relation(fields: [userId], references: [id])
 }
-
-// ============================================================
-// FINANCIAL YEAR (Per Company)
-// ============================================================
 
 model FinancialYear {
   id             String         @id @default(uuid())
@@ -189,10 +170,6 @@ model FinancialYear {
 
   @@unique([companyId, name])
 }
-
-// ============================================================
-// MASTER DATA (Per Company)
-// ============================================================
 
 model Currency {
   id        String     @id @default(uuid())
@@ -220,19 +197,19 @@ model Unit {
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
   deletedAt       DateTime?
-  company         Company               @relation(fields: [companyId], references: [id])
+  doItems         DeliveryOrderItem[]
+  grnItems        GRNItem[]
   products        Product[]
+  invoiceItems    PurchaseInvoiceItem[]
+  poItems         PurchaseOrderItem[]
+  returnItems     PurchaseReturnItem[]
+  salesItems      SalesInvoiceItem[]
+  salesOrderItems SalesOrderItem[]
+  salesQuoteItems SalesQuotationItem[]
+  salesRetItems   SalesReturnItem[]
+  company         Company               @relation(fields: [companyId], references: [id])
   conversionsFrom UnitConversion[]      @relation("FromUnit")
   conversionsTo   UnitConversion[]      @relation("ToUnit")
-  poItems         PurchaseOrderItem[]
-  grnItems        GRNItem[]
-  invoiceItems    PurchaseInvoiceItem[]
-  returnItems     PurchaseReturnItem[]
-  salesQuoteItems SalesQuotationItem[]
-  salesOrderItems SalesOrderItem[]
-  doItems         DeliveryOrderItem[]
-  salesInvItems   SalesInvoiceItem[]
-  salesRetItems   SalesReturnItem[]
 
   @@unique([companyId, code])
 }
@@ -247,9 +224,9 @@ model TaxCode {
   updatedAt            DateTime              @updatedAt
   deletedAt            DateTime?
   accountId            String?
-  company              Company               @relation(fields: [companyId], references: [id])
   products             Product[]
   purchaseInvoiceItems PurchaseInvoiceItem[]
+  purchaseInvoiceTaxes PurchaseInvoiceTax[]
   purchaseOrderItems   PurchaseOrderItem[]
   purchaseReturnItems  PurchaseReturnItem[]
   salesInvoiceItems    SalesInvoiceItem[]
@@ -257,6 +234,7 @@ model TaxCode {
   salesQuotationItems  SalesQuotationItem[]
   salesReturnItems     SalesReturnItem[]
   account              Account?              @relation("TaxAccount", fields: [accountId], references: [id])
+  company              Company               @relation(fields: [companyId], references: [id])
 
   @@unique([companyId, code])
 }
@@ -274,38 +252,34 @@ model UnitConversion {
   toUnit     Unit     @relation("ToUnit", fields: [toUnitId], references: [id])
 }
 
-// ============================================================
-// CHART OF ACCOUNTS (Per Company — already had companyId)
-// ============================================================
-
 model Account {
-  id                  String         @id @default(uuid())
+  id                  String                 @id @default(uuid())
   code                String
   name                String
   type                AccountType
   parentId            String?
-  level               Int            @default(0)
-  isPosting           Boolean        @default(true)
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  level               Int                    @default(0)
+  isPosting           Boolean                @default(true)
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
   deletedAt           DateTime?
   companyId           String?
   description         String?
-  openingBalance      Decimal        @default(0.0)
+  openingBalance      Decimal                @default(0.0)
   openingBalanceType  String?
-  company             Company?       @relation(fields: [companyId], references: [id])
-  parent              Account?       @relation("AccountHierarchy", fields: [parentId], references: [id])
-  children            Account[]      @relation("AccountHierarchy")
+  company             Company?               @relation(fields: [companyId], references: [id])
+  parent              Account?               @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children            Account[]              @relation("AccountHierarchy")
   entries             AccountEntry[]
-  customersReceivable Customer[]     @relation("ReceivableAccount")
+  customersReceivable Customer[]             @relation("ReceivableAccount")
   journalLines        JournalLine[]
-  productsCOGS        Product[]      @relation("COGSAccount")
-  productsInventory   Product[]      @relation("InventoryAccount")
-  productsPurchase    Product[]      @relation("PurchaseAccount")
-  productsSales       Product[]      @relation("SalesAccount")
-  suppliersPayable    Supplier[]     @relation("PayableAccount")
-  taxCodes            TaxCode[]      @relation("TaxAccount")
+  productsCOGS        Product[]              @relation("COGSAccount")
+  productsInventory   Product[]              @relation("InventoryAccount")
+  productsPurchase    Product[]              @relation("PurchaseAccount")
+  productsSales       Product[]              @relation("SalesAccount")
+  suppliersPayable    Supplier[]             @relation("PayableAccount")
   systemMappings      SystemAccountMapping[]
+  taxCodes            TaxCode[]              @relation("TaxAccount")
 
   @@unique([companyId, code])
 }
@@ -317,9 +291,8 @@ model SystemAccountMapping {
   accountId String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  company   Company  @relation(fields: [companyId], references: [id])
   account   Account  @relation(fields: [accountId], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id])
 
   @@unique([companyId, key])
 }
@@ -354,10 +327,6 @@ model AccountEntry {
   account       Account     @relation(fields: [accountId], references: [id])
   transaction   Transaction @relation(fields: [transactionId], references: [id])
 }
-
-// ============================================================
-// PARTIES (Per Company)
-// ============================================================
 
 model Customer {
   id                  String           @id @default(uuid())
@@ -394,20 +363,16 @@ model Supplier {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   deletedAt        DateTime?
-  company          Company           @relation(fields: [companyId], references: [id])
   grns             GRN[]
   invoices         PurchaseInvoice[]
   purchaseOrders   PurchaseOrder[]
   returns          PurchaseReturn[]
+  company          Company           @relation(fields: [companyId], references: [id])
   currency         Currency          @relation(fields: [currencyCode], references: [id])
   payableAccount   Account?          @relation("PayableAccount", fields: [payableAccountId], references: [id])
 
   @@unique([companyId, code])
 }
-
-// ============================================================
-// INVENTORY (Per Company)
-// ============================================================
 
 model Category {
   id        String     @id @default(uuid())
@@ -435,17 +400,17 @@ model Product {
   salesAccountId      String?
   purchaseAccountId   String?
   openingStock        Decimal               @default(0.0)
-  hsCode              String?
   companyId           String
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
   deletedAt           DateTime?
-  company             Company               @relation(fields: [companyId], references: [id])
+  hsCode              String?
   doItems             DeliveryOrderItem[]
   grnItems            GRNItem[]
   baseUnit            Unit                  @relation(fields: [baseUnitId], references: [id])
   category            Category?             @relation(fields: [categoryId], references: [id])
   cogsAccount         Account?              @relation("COGSAccount", fields: [cogsAccountId], references: [id])
+  company             Company               @relation(fields: [companyId], references: [id])
   inventoryAccount    Account?              @relation("InventoryAccount", fields: [inventoryAccountId], references: [id])
   purchaseAccount     Account?              @relation("PurchaseAccount", fields: [purchaseAccountId], references: [id])
   salesAccount        Account?              @relation("SalesAccount", fields: [salesAccountId], references: [id])
@@ -465,26 +430,25 @@ model Product {
 }
 
 model ProductVariant {
-  id           String        @id @default(uuid())
-  productId    String
-  name         String
-  sku          String?       @unique
-  price        Decimal?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  product      Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
-  stockEntries StockLedger[]
-
-  purchaseRequestItems PurchaseRequestItem[]
-  purchaseOrderItems   PurchaseOrderItem[]
-  grnItems             GRNItem[]
-  invoiceItems         PurchaseInvoiceItem[]
-  purchaseReturnItems  PurchaseReturnItem[]
-  salesQuotationItems  SalesQuotationItem[]
-  salesOrderItems      SalesOrderItem[]
+  id                   String                @id @default(uuid())
+  productId            String
+  name                 String
+  sku                  String?               @unique
+  price                Decimal?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
   deliveryOrderItems   DeliveryOrderItem[]
+  grnItems             GRNItem[]
+  product              Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  invoiceItems         PurchaseInvoiceItem[]
+  purchaseOrderItems   PurchaseOrderItem[]
+  purchaseRequestItems PurchaseRequestItem[]
+  purchaseReturnItems  PurchaseReturnItem[]
   salesInvoiceItems    SalesInvoiceItem[]
+  salesOrderItems      SalesOrderItem[]
+  salesQuotationItems  SalesQuotationItem[]
   salesReturnItems     SalesReturnItem[]
+  stockEntries         StockLedger[]
 }
 
 model Warehouse {
@@ -497,7 +461,6 @@ model Warehouse {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   deletedAt        DateTime?
-  company          Company           @relation(fields: [companyId], references: [id])
   deliveryOrders   DeliveryOrder[]
   grns             GRN[]
   purchaseInvoices PurchaseInvoice[]
@@ -507,13 +470,10 @@ model Warehouse {
   salesOrders      SalesOrder[]
   salesReturns     SalesReturn[]
   stockEntries     StockLedger[]
+  company          Company           @relation(fields: [companyId], references: [id])
 
   @@unique([companyId, code])
 }
-
-// ============================================================
-// JOURNAL & ACCOUNTING (Per Company)
-// ============================================================
 
 model JournalEntry {
   id              String           @id @default(uuid())
@@ -568,10 +528,6 @@ model StockLedger {
   warehouse   Warehouse       @relation(fields: [warehouseId], references: [id])
 }
 
-// ============================================================
-// PURCHASE MODULE (Per Company)
-// ============================================================
-
 model PurchaseOrder {
   id           String              @id @default(uuid())
   poNo         String
@@ -584,9 +540,9 @@ model PurchaseOrder {
   companyId    String
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
-  company      Company             @relation(fields: [companyId], references: [id])
   grns         GRN[]
   invoices     PurchaseInvoice[]
+  company      Company             @relation(fields: [companyId], references: [id])
   supplier     Supplier            @relation(fields: [supplierId], references: [id])
   warehouse    Warehouse?          @relation(fields: [warehouseId], references: [id])
   items        PurchaseOrderItem[]
@@ -604,14 +560,14 @@ model PurchaseReturn {
   warehouseId    String
   date           DateTime
   totalAmount    Decimal              @default(0.0)
-  hasDiscount    Boolean              @default(false)
-  discountAmount Decimal              @default(0.0)
-  discountType   String?
   journalEntryId String?              @unique
   remarks        String?
   companyId      String
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
+  discountAmount Decimal              @default(0.0)
+  discountType   String?
+  hasDiscount    Boolean              @default(false)
   company        Company              @relation(fields: [companyId], references: [id])
   invoice        PurchaseInvoice?     @relation(fields: [invoiceId], references: [id])
   journalEntry   JournalEntry?        @relation(fields: [journalEntryId], references: [id])
@@ -634,13 +590,13 @@ model PurchaseReturnItem {
   taxCodeId     String?
   taxAmount     Decimal              @default(0.0)
   total         Decimal
-  invoiceItem   PurchaseInvoiceItem? @relation(fields: [invoiceItemId], references: [id])
   unitId        String?
+  invoiceItem   PurchaseInvoiceItem? @relation(fields: [invoiceItemId], references: [id])
   product       Product              @relation(fields: [productId], references: [id])
-  variant       ProductVariant?      @relation(fields: [variantId], references: [id])
   return        PurchaseReturn       @relation(fields: [returnId], references: [id])
   taxCode       TaxCode?             @relation(fields: [taxCodeId], references: [id])
   unit          Unit?                @relation(fields: [unitId], references: [id])
+  variant       ProductVariant?      @relation(fields: [variantId], references: [id])
 }
 
 model PurchaseOrderItem {
@@ -655,14 +611,14 @@ model PurchaseOrderItem {
   total        Decimal
   invoicedQty  Decimal               @default(0.0)
   receivedQty  Decimal               @default(0.0)
+  unitId       String?
   grnItems     GRNItem[]
   invoiceItems PurchaseInvoiceItem[]
-  unitId       String?
   po           PurchaseOrder         @relation(fields: [poId], references: [id], onDelete: Cascade)
   product      Product               @relation(fields: [productId], references: [id])
-  variant      ProductVariant?       @relation(fields: [variantId], references: [id])
   taxCode      TaxCode?              @relation(fields: [taxCodeId], references: [id])
   unit         Unit?                 @relation(fields: [unitId], references: [id])
+  variant      ProductVariant?       @relation(fields: [variantId], references: [id])
 }
 
 model GRN {
@@ -699,8 +655,8 @@ model GRNItem {
   grn         GRN                @relation(fields: [grnId], references: [id])
   poItem      PurchaseOrderItem? @relation(fields: [poItemId], references: [id])
   product     Product            @relation(fields: [productId], references: [id])
-  variant     ProductVariant?    @relation(fields: [variantId], references: [id])
   unit        Unit?              @relation(fields: [unitId], references: [id])
+  variant     ProductVariant?    @relation(fields: [variantId], references: [id])
 }
 
 model PurchaseInvoice {
@@ -711,9 +667,6 @@ model PurchaseInvoice {
   dueDate        DateTime?
   totalAmount    Decimal
   taxAmount      Decimal               @default(0.0)
-  hasDiscount    Boolean               @default(false)
-  discountAmount Decimal               @default(0.0)
-  discountType   String?
   grnId          String?
   poId           String?
   journalEntryId String?               @unique
@@ -721,6 +674,9 @@ model PurchaseInvoice {
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   warehouseId    String?
+  discountAmount Decimal               @default(0.0)
+  discountType   String?
+  hasDiscount    Boolean               @default(false)
   company        Company               @relation(fields: [companyId], references: [id])
   grn            GRN?                  @relation(fields: [grnId], references: [id])
   journalEntry   JournalEntry?         @relation(fields: [journalEntryId], references: [id])
@@ -728,9 +684,23 @@ model PurchaseInvoice {
   supplier       Supplier              @relation(fields: [supplierId], references: [id])
   warehouse      Warehouse?            @relation(fields: [warehouseId], references: [id])
   items          PurchaseInvoiceItem[]
+  taxes          PurchaseInvoiceTax[]
   returns        PurchaseReturn[]
 
   @@unique([companyId, invoiceNo])
+}
+
+model PurchaseInvoiceTax {
+  id          String          @id @default(uuid())
+  invoiceId   String
+  taxCodeId   String?
+  taxName     String
+  calculation String          @default("NET_TOTAL")
+  rate        Decimal
+  baseAmount  Decimal
+  taxAmount   Decimal
+  invoice     PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  taxCode     TaxCode?        @relation(fields: [taxCodeId], references: [id])
 }
 
 model PurchaseInvoiceItem {
@@ -749,10 +719,10 @@ model PurchaseInvoiceItem {
   invoice     PurchaseInvoice      @relation(fields: [invoiceId], references: [id])
   poItem      PurchaseOrderItem?   @relation(fields: [poItemId], references: [id])
   product     Product              @relation(fields: [productId], references: [id])
-  variant     ProductVariant?      @relation(fields: [variantId], references: [id])
   taxCode     TaxCode?             @relation(fields: [taxCodeId], references: [id])
-  returnItems PurchaseReturnItem[]
   unit        Unit?                @relation(fields: [unitId], references: [id])
+  variant     ProductVariant?      @relation(fields: [variantId], references: [id])
+  returnItems PurchaseReturnItem[]
 }
 
 model PurchaseRequest {
@@ -778,13 +748,9 @@ model PurchaseRequestItem {
   qty         Decimal
   description String?
   product     Product         @relation(fields: [productId], references: [id])
-  variant     ProductVariant? @relation(fields: [variantId], references: [id])
   request     PurchaseRequest @relation(fields: [requestId], references: [id])
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
 }
-
-// ============================================================
-// SALES MODULE (Per Company)
-// ============================================================
 
 model SalesQuotation {
   id          String               @id @default(uuid())
@@ -797,8 +763,8 @@ model SalesQuotation {
   companyId   String
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
-  company     Company              @relation(fields: [companyId], references: [id])
   orders      SalesOrder[]
+  company     Company              @relation(fields: [companyId], references: [id])
   customer    Customer             @relation(fields: [customerId], references: [id])
   items       SalesQuotationItem[]
 
@@ -816,11 +782,11 @@ model SalesQuotationItem {
   taxAmount Decimal         @default(0.0)
   total     Decimal
   unitId    String?
-  unit      Unit?           @relation(fields: [unitId], references: [id])
   product   Product         @relation(fields: [productId], references: [id])
-  variant   ProductVariant? @relation(fields: [variantId], references: [id])
   quote     SalesQuotation  @relation(fields: [quoteId], references: [id])
   taxCode   TaxCode?        @relation(fields: [taxCodeId], references: [id])
+  unit      Unit?           @relation(fields: [unitId], references: [id])
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
 }
 
 model SalesOrder {
@@ -836,9 +802,9 @@ model SalesOrder {
   companyId      String
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
-  company        Company          @relation(fields: [companyId], references: [id])
   deliveryOrders DeliveryOrder[]
   invoices       SalesInvoice[]
+  company        Company          @relation(fields: [companyId], references: [id])
   customer       Customer         @relation(fields: [customerId], references: [id])
   quote          SalesQuotation?  @relation(fields: [quoteId], references: [id])
   warehouse      Warehouse?       @relation(fields: [warehouseId], references: [id])
@@ -859,14 +825,14 @@ model SalesOrderItem {
   total        Decimal
   fulfilledQty Decimal             @default(0.0)
   invoicedQty  Decimal             @default(0.0)
+  unitId       String?
   doItems      DeliveryOrderItem[]
   invoiceItems SalesInvoiceItem[]
-  unitId       String?
-  unit         Unit?               @relation(fields: [unitId], references: [id])
   order        SalesOrder          @relation(fields: [orderId], references: [id])
   product      Product             @relation(fields: [productId], references: [id])
-  variant      ProductVariant?     @relation(fields: [variantId], references: [id])
   taxCode      TaxCode?            @relation(fields: [taxCodeId], references: [id])
+  unit         Unit?               @relation(fields: [unitId], references: [id])
+  variant      ProductVariant?     @relation(fields: [variantId], references: [id])
 }
 
 model DeliveryOrder {
@@ -898,11 +864,11 @@ model DeliveryOrderItem {
   qty       Decimal
   soItemId  String?
   unitId    String?
-  unit      Unit?           @relation(fields: [unitId], references: [id])
   do        DeliveryOrder   @relation(fields: [doId], references: [id])
   product   Product         @relation(fields: [productId], references: [id])
-  variant   ProductVariant? @relation(fields: [variantId], references: [id])
   soItem    SalesOrderItem? @relation(fields: [soItemId], references: [id])
+  unit      Unit?           @relation(fields: [unitId], references: [id])
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
 }
 
 model SalesInvoice {
@@ -914,15 +880,15 @@ model SalesInvoice {
   dueDate        DateTime?
   totalAmount    Decimal
   taxAmount      Decimal            @default(0.0)
-  hasDiscount    Boolean            @default(false)
-  discountAmount Decimal            @default(0.0)
-  discountType   String?
   doId           String?
   journalEntryId String?            @unique
   companyId      String
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   orderId        String?
+  discountAmount Decimal            @default(0.0)
+  discountType   String?
+  hasDiscount    Boolean            @default(false)
   company        Company            @relation(fields: [companyId], references: [id])
   customer       Customer           @relation(fields: [customerId], references: [id])
   do             DeliveryOrder?     @relation(fields: [doId], references: [id])
@@ -948,12 +914,12 @@ model SalesInvoiceItem {
   doItemId    String?
   soItemId    String?
   unitId      String?
-  unit        Unit?             @relation(fields: [unitId], references: [id])
   invoice     SalesInvoice      @relation(fields: [invoiceId], references: [id])
   product     Product           @relation(fields: [productId], references: [id])
-  variant     ProductVariant?   @relation(fields: [variantId], references: [id])
   soItem      SalesOrderItem?   @relation(fields: [soItemId], references: [id])
   taxCode     TaxCode?          @relation(fields: [taxCodeId], references: [id])
+  unit        Unit?             @relation(fields: [unitId], references: [id])
+  variant     ProductVariant?   @relation(fields: [variantId], references: [id])
   returnItems SalesReturnItem[]
 }
 
@@ -964,15 +930,15 @@ model SalesReturn {
   customerId     String
   date           DateTime
   totalAmount    Decimal           @default(0.0)
-  hasDiscount    Boolean           @default(false)
-  discountAmount Decimal           @default(0.0)
-  discountType   String?
   journalEntryId String?           @unique
   remarks        String?
   companyId      String
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   warehouseId    String
+  discountAmount Decimal           @default(0.0)
+  discountType   String?
+  hasDiscount    Boolean           @default(false)
   company        Company           @relation(fields: [companyId], references: [id])
   customer       Customer          @relation(fields: [customerId], references: [id])
   invoice        SalesInvoice?     @relation(fields: [invoiceId], references: [id])
@@ -995,17 +961,13 @@ model SalesReturnItem {
   total         Decimal
   invoiceItemId String?
   unitId        String?
-  unit          Unit?             @relation(fields: [unitId], references: [id])
   invoiceItem   SalesInvoiceItem? @relation(fields: [invoiceItemId], references: [id])
   product       Product           @relation(fields: [productId], references: [id])
-  variant       ProductVariant?   @relation(fields: [variantId], references: [id])
   return        SalesReturn       @relation(fields: [returnId], references: [id])
   taxCode       TaxCode?          @relation(fields: [taxCodeId], references: [id])
+  unit          Unit?             @relation(fields: [unitId], references: [id])
+  variant       ProductVariant?   @relation(fields: [variantId], references: [id])
 }
-
-// ============================================================
-// VOUCHER SEQUENCE (Per Company)
-// ============================================================
 
 model VoucherSequence {
   id        String      @id @default(uuid())
@@ -1019,66 +981,58 @@ model VoucherSequence {
   @@unique([companyId, type])
 }
 
-// ============================================================
-// BACKUP SYSTEM
-// ============================================================
-
 model BackupSchedule {
-  id           String     @id @default(uuid())
-  companyId    String?    // null = global (super admin schedule)
-  frequency    BackupFrequency @default(DAILY)
-  cronTime     String     @default("0 2 * * *") // cron expression e.g. "0 2 * * *"
-  storagePath  String     @default("./backups") // local path or USB path
-  masterOnly   Boolean    @default(false)
-  isActive     Boolean    @default(true)
-  retainDaily  Int        @default(7)
-  retainWeekly Int        @default(4)
-  retainMonthly Int       @default(3)
-  retainQuarterly Int     @default(4)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  company      Company?   @relation(fields: [companyId], references: [id])
-  logs         BackupLog[]
-  approvals    BackupApproval[]
+  id              String           @id @default(uuid())
+  companyId       String?
+  frequency       BackupFrequency  @default(DAILY)
+  cronTime        String           @default("0 2 * * *")
+  storagePath     String           @default("./backups")
+  masterOnly      Boolean          @default(false)
+  isActive        Boolean          @default(true)
+  retainDaily     Int              @default(7)
+  retainWeekly    Int              @default(4)
+  retainMonthly   Int              @default(3)
+  retainQuarterly Int              @default(4)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  approvals       BackupApproval[]
+  logs            BackupLog[]
+  company         Company?         @relation(fields: [companyId], references: [id])
 }
 
 model BackupLog {
-  id           String      @id @default(uuid())
-  scheduleId   String?
-  companyId    String?
-  companyName  String?
-  backupType   BackupType  @default(DAILY)
-  status       BackupStatus @default(SUCCESS)
-  filePath     String?
-  fileName     String?
+  id            String          @id @default(uuid())
+  scheduleId    String?
+  companyId     String?
+  companyName   String?
+  backupType    BackupType      @default(DAILY)
+  status        BackupStatus    @default(SUCCESS)
+  filePath      String?
+  fileName      String?
   fileSizeBytes BigInt?
-  fileContent  String?     // JSON stored in DB (for Vercel/serverless)
-  errorMessage String?
-  triggeredBy  String      @default("CRON") // CRON | MANUAL
-  createdAt    DateTime    @default(now())
-  schedule     BackupSchedule? @relation(fields: [scheduleId], references: [id])
-  approval     BackupApproval?
+  fileContent   String?
+  errorMessage  String?
+  triggeredBy   String          @default("CRON")
+  createdAt     DateTime        @default(now())
+  approval      BackupApproval?
+  schedule      BackupSchedule? @relation(fields: [scheduleId], references: [id])
 }
 
 model BackupApproval {
-  id           String      @id @default(uuid())
-  scheduleId   String
-  logId        String?     @unique
-  fromType     BackupType  // e.g. DAILY files to be deleted
-  toType       BackupType  // e.g. WEEKLY consolidated backup
-  status       ApprovalStatus @default(PENDING)
-  companyId    String?
-  fileCount    Int         @default(0)
+  id             String         @id @default(uuid())
+  scheduleId     String
+  logId          String?        @unique
+  fromType       BackupType
+  toType         BackupType
+  status         ApprovalStatus @default(PENDING)
+  companyId      String?
+  fileCount      Int            @default(0)
   totalSizeBytes BigInt?
-  requestedAt  DateTime    @default(now())
-  resolvedAt   DateTime?
-  schedule     BackupSchedule @relation(fields: [scheduleId], references: [id])
-  log          BackupLog?  @relation(fields: [logId], references: [id])
+  requestedAt    DateTime       @default(now())
+  resolvedAt     DateTime?
+  log            BackupLog?     @relation(fields: [logId], references: [id])
+  schedule       BackupSchedule @relation(fields: [scheduleId], references: [id])
 }
-
-// ============================================================
-// ENUMS
-// ============================================================
 
 enum BackupFrequency {
   DAILY

@@ -23,10 +23,7 @@ const MAPPING_KEYS: { key: string; label: string; description: string; color: st
     { key: 'sales_returns',    label: 'Sales Returns',        description: 'Debit account when a Sale Return (Credit Note) is posted', color: 'amber' },
     { key: 'purchases',        label: 'Purchases (COGS)',     description: 'Debit account when a Purchase Invoice is posted',          color: 'blue' },
     { key: 'purchase_returns', label: 'Purchase Returns',     description: 'Credit account when a Purchase Return is posted',          color: 'orange' },
-    { key: 'input_tax',        label: 'Input Tax (GST Recv)', description: 'GST paid on purchases — Asset account',                   color: 'violet' },
-    { key: 'output_tax',       label: 'Output Tax (GST Pay)', description: 'GST collected on sales — Liability account',               color: 'rose' },
-    { key: 'accounts_receivable', label: 'Accounts Receivable', description: 'Debit when sale is made (customer owes)',               color: 'cyan' },
-    { key: 'accounts_payable',    label: 'Accounts Payable',   description: 'Credit when purchase is made (we owe supplier)',          color: 'purple' },
+    { key: 'purchase_discount', label: 'Purchase Discount',   description: 'Credit account when discount is received',                 color: 'violet' },
     { key: 'inventory',           label: 'Inventory / Stock',  description: 'Stock account for perpetual inventory (COGS auto-entry)', color: 'teal' },
     { key: 'cash',                label: 'Default Cash Account', description: 'Default cash account for payments & receipts',         color: 'slate' },
 ];

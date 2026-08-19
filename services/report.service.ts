@@ -177,14 +177,33 @@ export class ReportService {
             accountBalances.set(acc.id, net);
         }
 
-        // Phase B: Roll up balances to parents
-        // Sorted by level desc ensures children are processed before parents
+        // Phase B: Robust Recursive Rollup
+        const childrenMap = new Map<string, string[]>();
         for (const acc of allAccounts) {
             if (acc.parentId) {
-                const childBalance = accountBalances.get(acc.id) || 0;
-                const parentBalance = accountBalances.get(acc.parentId) || 0;
-                accountBalances.set(acc.parentId, parentBalance + childBalance);
+                if (!childrenMap.has(acc.parentId)) childrenMap.set(acc.parentId, []);
+                childrenMap.get(acc.parentId)!.push(acc.id);
             }
+        }
+
+        const finalBalances = new Map<string, number>();
+        const computeRollup = (accountId: string): number => {
+            if (finalBalances.has(accountId)) return finalBalances.get(accountId)!;
+            let total = accountBalances.get(accountId) || 0;
+            const children = childrenMap.get(accountId) || [];
+            for (const childId of children) {
+                total += computeRollup(childId);
+            }
+            finalBalances.set(accountId, total);
+            return total;
+        };
+
+        for (const acc of allAccounts) {
+            computeRollup(acc.id);
+        }
+
+        for (const [k, v] of finalBalances.entries()) {
+            accountBalances.set(k, v);
         }
 
         // 4. Construct the Report Structure
@@ -348,15 +367,33 @@ export class ReportService {
             accountBalances.set(acc.id, netDebit);
         }
 
-        // Phase B: Roll up balances to parents
-        // Sort by level descending to ensure children are processed before parents
-        const sortedForRollup = [...allAccounts].sort((a, b) => (b.level || 0) - (a.level || 0));
-        for (const acc of sortedForRollup) {
+        // Phase B: Robust Recursive Rollup
+        const childrenMap = new Map<string, string[]>();
+        for (const acc of allAccounts) {
             if (acc.parentId) {
-                const childBalance = accountBalances.get(acc.id) || 0;
-                const parentBalance = accountBalances.get(acc.parentId) || 0;
-                accountBalances.set(acc.parentId, parentBalance + childBalance);
+                if (!childrenMap.has(acc.parentId)) childrenMap.set(acc.parentId, []);
+                childrenMap.get(acc.parentId)!.push(acc.id);
             }
+        }
+
+        const finalBalances = new Map<string, number>();
+        const computeRollup = (accountId: string): number => {
+            if (finalBalances.has(accountId)) return finalBalances.get(accountId)!;
+            let total = accountBalances.get(accountId) || 0;
+            const children = childrenMap.get(accountId) || [];
+            for (const childId of children) {
+                total += computeRollup(childId);
+            }
+            finalBalances.set(accountId, total);
+            return total;
+        };
+
+        for (const acc of allAccounts) {
+            computeRollup(acc.id);
+        }
+
+        for (const [k, v] of finalBalances.entries()) {
+            accountBalances.set(k, v);
         }
 
         // 4. Calculate Net Profit (Income - Expense) to date

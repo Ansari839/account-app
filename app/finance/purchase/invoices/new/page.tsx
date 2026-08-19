@@ -36,7 +36,9 @@ export default function NewPurchaseInvoicePage() {
     const [products, setProducts] = useState<any[]>([]);
     const [units, setUnits] = useState<any[]>([]);
     const [taxCodes, setTaxCodes] = useState<any[]>([]);
+    const [accounts, setAccounts] = useState<any[]>([]);
     const [isGrnMandatory, setIsGrnMandatory] = useState(false);
+    const [currency, setCurrency] = useState<{ symbol: string }>({ symbol: '$' });
 
     // Form Data
     const [formData, setFormData] = useState<any>({
@@ -50,6 +52,7 @@ export default function NewPurchaseInvoicePage() {
         discountAmount: 0,
         discountType: "FIXED",
         items: [],
+        taxes: [],
     });
 
     useEffect(() => {
@@ -73,17 +76,20 @@ export default function NewPurchaseInvoicePage() {
 
     const fetchDropdowns = async () => {
         try {
-            const [supRes, accRes, whRes, prodRes, unitRes, taxRes] = await Promise.all([
+            const [supRes, accRes, whRes, prodRes, unitRes, taxRes, currRes] = await Promise.all([
                 authenticatedFetch("/api/finance/parties/suppliers"),
                 authenticatedFetch('/api/accounts?isPosting=true'),
                 authenticatedFetch("/api/inventory/warehouses"),
                 authenticatedFetch("/api/inventory/products"),
                 authenticatedFetch("/api/inventory/units"),
                 authenticatedFetch("/api/finance/tax"),
+                authenticatedFetch("/api/finance/currency"),
             ]);
 
             const sups = supRes.ok ? (await supRes.json()).data || [] : [];
             const accs = accRes.ok ? (await accRes.json()).accounts || [] : [];
+            setAccounts(accs);
+            
             const combined = [...sups];
             const existingIds = new Set(sups.map((s: any) => s.id));
             accs.forEach((a: any) => {
@@ -100,6 +106,14 @@ export default function NewPurchaseInvoicePage() {
             if (taxRes.ok) {
                 const tJson = await taxRes.json();
                 setTaxCodes(tJson.data || []);
+            }
+            
+            if (currRes.ok) {
+                const currJson = await currRes.json();
+                if (currJson.success) {
+                    const base = currJson.data.find((c: any) => c.isBase);
+                    if (base) setCurrency({ symbol: base.symbol });
+                }
             }
         } catch (e) { console.error(e); }
     };
@@ -209,18 +223,13 @@ export default function NewPurchaseInvoicePage() {
                         updatedItem.rate = Number(prod?.purchasePrice || 0);
                         if (prod?.baseUnitId) {
                             updatedItem.unitId = prod.baseUnitId;
+                        } else if (prod?.baseUnit?.id) {
+                            updatedItem.unitId = prod.baseUnit.id;
                         }
                     }
 
-                    if (field === "taxCodeId") {
-                        const tax = taxCodes.find(t => t.id === value);
-                        updatedItem.taxRate = tax ? Number(tax.rate) : 0;
-                    }
-
                     const subtotal = Number(updatedItem.qty || 0) * Number(updatedItem.rate || 0);
-                    const taxAmt = subtotal * ((updatedItem.taxRate || 0) / 100);
-                    updatedItem.taxAmount = taxAmt;
-                    updatedItem.total = subtotal + taxAmt;
+                    updatedItem.total = subtotal; // No more tax in item total
                     
                     return updatedItem;
                 }
@@ -230,12 +239,75 @@ export default function NewPurchaseInvoicePage() {
         });
     };
 
-    const calculateTotal = () => {
-        let sum = formData.items.reduce((sum: number, item: any) => sum + (Number(item.total) || 0), 0);
-        if (formData.hasDiscount) {
-            sum -= Number(formData.discountAmount || 0);
-        }
-        return sum;
+    const calculateSummary = () => {
+        const subtotal = formData.items.reduce((sum: number, item: any) => sum + ((Number(item.qty) || 0) * (Number(item.rate) || 0)), 0);
+        const discount = formData.hasDiscount ? Number(formData.discountAmount || 0) : 0;
+        
+        let currentTotal = subtotal - discount;
+        let taxTotal = 0;
+        
+        // Calculate cascading taxes
+        const calculatedTaxes = (formData.taxes || []).map((tax: any) => {
+            const baseAmount = tax.calculation === 'PREVIOUS_TOTAL' ? currentTotal : (subtotal - discount);
+            // If they typed a rate, calculate it. Otherwise, use the manually entered taxAmount.
+            const rate = Number(tax.rate) || 0;
+            const taxAmount = rate > 0 ? (baseAmount * (rate / 100)) : (Number(tax.taxAmount) || 0);
+            
+            taxTotal += taxAmount;
+            currentTotal += taxAmount;
+            
+            return { ...tax, baseAmount, taxAmount };
+        });
+
+        const grandTotal = subtotal - discount + taxTotal;
+        
+        return { subtotal, discount, taxTotal, grandTotal, calculatedTaxes };
+    };
+
+    const handleAddTax = () => {
+        setFormData((prev: any) => ({
+            ...prev,
+            taxes: [
+                ...(prev.taxes || []),
+                { id: Date.now().toString(), taxCodeId: "", taxName: "", calculation: "NET_TOTAL", rate: 0, taxAmount: 0 }
+            ]
+        }));
+    };
+
+    const handleRemoveTax = (id: string) => {
+        setFormData((prev: any) => ({
+            ...prev,
+            taxes: (prev.taxes || []).filter((t: any) => t.id !== id)
+        }));
+    };
+
+    const updateTax = (id: string, field: string, value: any) => {
+        setFormData((prev: any) => ({
+            ...prev,
+            taxes: (prev.taxes || []).map((t: any) => {
+                if (t.id === id) {
+                    const updated = { ...t, [field]: value };
+                    if (field === 'taxCodeId') {
+                        if (value === 'MANUAL') {
+                            updated.taxName = 'Manual Tax';
+                        } else {
+                            const tc = taxCodes.find(x => x.id === value);
+                            if (tc) {
+                                updated.taxName = tc.name;
+                                updated.rate = Number(tc.rate);
+                            }
+                        }
+                    }
+                    // If they manually type tax amount, zero out the rate
+                    if (field === 'taxAmount') {
+                        updated.taxAmount = isNaN(value) ? 0 : value;
+                        updated.rate = 0; // It becomes a fixed amount charge
+                    }
+                    return updated;
+                }
+                return t;
+            })
+        }));
     };
 
     const handleSubmit = async () => {
@@ -458,8 +530,7 @@ export default function NewPurchaseInvoicePage() {
                                 <div className="col-span-2">Unit</div>
                                 {formData.sourceType !== "DIRECT" && <div className="col-span-1 text-center">Available</div>}
                                 <div className={formData.sourceType !== "DIRECT" ? "col-span-1" : "col-span-2"}>Bill Qty</div>
-                                <div className={formData.sourceType !== "DIRECT" ? "col-span-1" : "col-span-1"}>Rate</div>
-                                <div className="col-span-2 text-right">Tax</div>
+                                <div className={formData.sourceType !== "DIRECT" ? "col-span-2" : "col-span-2"}>Rate</div>
                                 <div className="col-span-2 text-right">Total</div>
                                 {formData.sourceType === "DIRECT" && <div className="col-span-1 text-center">Act</div>}
                             </div>
@@ -491,7 +562,7 @@ export default function NewPurchaseInvoicePage() {
                                                 onChange={e => updateItem(item.id, 'unitId', e.target.value)}
                                                 className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
                                             >
-                                                <option value="">Unit</option>
+                                                <option value="">Select Unit</option>
                                                 {units.map(u => (
                                                     <option key={u.id} value={u.id}>{u.name}</option>
                                                 ))}
@@ -527,19 +598,6 @@ export default function NewPurchaseInvoicePage() {
                                             />
                                         </div>
 
-                                        <div className="col-span-2">
-                                            <select
-                                                value={item.taxCodeId || ''}
-                                                onChange={e => updateItem(item.id, 'taxCodeId', e.target.value)}
-                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
-                                            >
-                                                <option value="">No Tax</option>
-                                                {taxCodes.map(t => (
-                                                    <option key={t.id} value={t.id}>{t.name} ({t.rate}%)</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
                                         <div className="col-span-2 flex items-center justify-end px-2">
                                             <span className="font-black text-slate-800 dark:text-white">
                                                 {item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -561,6 +619,95 @@ export default function NewPurchaseInvoicePage() {
                                 {formData.items.length === 0 && (
                                     <div className="text-center p-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 font-bold">
                                         No items. Please select a source or add items.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Taxes & Charges Section */}
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden mt-6">
+                    <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+                        <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                            <Receipt size={20} className="text-indigo-500" /> Taxes & Charges
+                        </h2>
+                        <button 
+                            onClick={handleAddTax}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
+                        >
+                            <Plus size={16} /> Add Tax
+                        </button>
+                    </div>
+
+                    <div className="p-6 overflow-x-auto">
+                        <div className="min-w-[700px]">
+                            <div className="grid grid-cols-12 gap-4 mb-3 px-4 text-xs font-bold uppercase tracking-widest text-slate-400">
+                                <div className="col-span-3">Tax Type</div>
+                                <div className="col-span-3">Calculate On</div>
+                                <div className="col-span-2 text-right">Base Amount</div>
+                                <div className="col-span-1 text-right">Rate %</div>
+                                <div className="col-span-2 text-right">Tax Amount</div>
+                                <div className="col-span-1 text-center">Act</div>
+                            </div>
+
+                            <div className="space-y-3">
+                                {(formData.taxes || []).map((tax: any, index: number) => {
+                                    const computed = calculateSummary().calculatedTaxes[index];
+                                    return (
+                                        <div key={tax.id} className="grid grid-cols-12 gap-4 items-center bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 transition-all hover:border-indigo-200 dark:hover:border-indigo-500/30">
+                                            <div className="col-span-3">
+                                                <select
+                                                    value={tax.taxCodeId || ''}
+                                                    onChange={e => updateTax(tax.id, 'taxCodeId', e.target.value)}
+                                                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
+                                                >
+                                                    <option value="">Select Tax...</option>
+                                                    {taxCodes.map(t => (
+                                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                                    ))}
+                                                    <option value="MANUAL">Manual Tax</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-span-3">
+                                                <select
+                                                    value={tax.calculation}
+                                                    onChange={e => updateTax(tax.id, 'calculation', e.target.value)}
+                                                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
+                                                >
+                                                    <option value="NET_TOTAL">Net Total (Subtotal - Discount)</option>
+                                                    <option value="PREVIOUS_TOTAL">Previous Row Total (Cascading)</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-span-2 text-right font-medium text-slate-500">
+                                                {computed?.baseAmount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </div>
+                                            <div className="col-span-1">
+                                                <input
+                                                    type="number"
+                                                    value={tax.rate || ''}
+                                                    onChange={e => updateTax(tax.id, 'rate', parseFloat(e.target.value))}
+                                                    placeholder="0"
+                                                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-right"
+                                                />
+                                            </div>
+                                            <div className="col-span-2 text-right font-black text-slate-800 dark:text-white">
+                                                {computed?.taxAmount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </div>
+                                            <div className="col-span-1 flex justify-center">
+                                                <button 
+                                                    onClick={() => handleRemoveTax(tax.id)}
+                                                    className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {(formData.taxes || []).length === 0 && (
+                                    <div className="text-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 font-bold text-sm">
+                                        No taxes added. Click "Add Tax" to apply document-level taxes.
                                     </div>
                                 )}
                             </div>
@@ -609,15 +756,47 @@ export default function NewPurchaseInvoicePage() {
             {/* Sticky Footer */}
             <div className="fixed bottom-0 left-0 lg:left-64 right-0 p-4 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                            <Calculator size={24} />
+                    <div className="flex items-center gap-6 md:gap-8 overflow-x-auto pb-2 md:pb-0">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subtotal</span>
+                            <span className="text-lg font-bold text-slate-700 dark:text-slate-300">
+                                {currency.symbol} {calculateSummary().subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
                         </div>
-                        <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Bill Total</p>
-                            <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                                $ {calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </p>
+                        
+                        <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
+                        
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tax Amount</span>
+                            <span className="text-lg font-bold text-slate-700 dark:text-slate-300">
+                                + {currency.symbol} {calculateSummary().taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                        </div>
+
+                        {formData.hasDiscount && (
+                            <>
+                                <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Discount</span>
+                                    <span className="text-lg font-bold text-rose-500">
+                                        - {currency.symbol} {calculateSummary().discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                            </>
+                        )}
+
+                        <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
+
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 hidden md:flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                <Calculator size={24} />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Grand Total</p>
+                                <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mt-0.5">
+                                    {currency.symbol} {calculateSummary().grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </p>
+                            </div>
                         </div>
                     </div>
 

@@ -11,6 +11,12 @@ async function resolveCustomerId(companyId: string, id: string) {
     // If it's NOT an account, assume it's a Customer ID (or invalid) and return as is.
     if (!account) return id;
 
+    const baseCurr = await prisma.currency.findFirst({ where: { companyId, isBase: true } }) 
+            || await prisma.currency.findFirst({ where: { companyId } });
+    if (!baseCurr) {
+        throw new Error("No currency found. Please configure a currency in settings first.");
+    }
+
     // It IS an account. Check for existing linked Customer.
     let customer = await prisma.customer.findFirst({
         where: { receivableAccountId: account.id }
@@ -19,7 +25,7 @@ async function resolveCustomerId(companyId: string, id: string) {
     if (!customer) {
         // Check generic by name
         customer = await prisma.customer.findFirst({
-            where: { name: `Cash Customer - ${account.name}`, currencyCode: 'PKR' }
+            where: { name: `Cash Customer - ${account.name}` }
         });
 
         if (!customer) {
@@ -41,7 +47,7 @@ async function resolveCustomerId(companyId: string, id: string) {
                         code: `CUST-${nextSeq.toString().padStart(4, '0')}`,
                         name: `Cash Customer - ${account.name}`,
                         receivableAccountId: account.id,
-                        currencyCode: 'PKR'
+                        currencyCode: baseCurr.id
                     }
                 });
             } catch (e) {
@@ -52,7 +58,7 @@ async function resolveCustomerId(companyId: string, id: string) {
                         code: `CUST-${Date.now()}`,
                         name: `Cash Customer - ${account.name}`,
                         receivableAccountId: account.id,
-                        currencyCode: 'PKR'
+                        currencyCode: baseCurr.id
                     }
                 });
             }

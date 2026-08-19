@@ -123,12 +123,18 @@ export class PurchaseController {
                         const lastNum = parseInt(lastSupplier.code.split('-')[1]);
                         if (!isNaN(lastNum)) nextSupSeq = lastNum + 1;
                     }
+                    const baseCurr = await prisma.currency.findFirst({ where: { companyId, isBase: true } }) 
+                            || await prisma.currency.findFirst({ where: { companyId } });
+                    if (!baseCurr) {
+                        throw new Error("No currency found. Please configure a currency in settings first.");
+                    }
+
                     supplier = await prisma.supplier.create({
                         data: {
                             companyId,
                             code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
                             name: account.name,
-                            currencyCode: 'PKR', // Default currency
+                            currencyCode: baseCurr.id,
                             payableAccountId: account.id
                         }
                     });
@@ -591,7 +597,7 @@ export class PurchaseController {
             if (error) return error;
 
             const body = await req.json();
-            const { poId, grnId, warehouseId, date, dueDate, items } = body;
+            const { poId, grnId, warehouseId, date, dueDate, items, taxes, hasDiscount, discountAmount, discountType } = body;
             let supplierId = body.supplierId;
 
             // Resolve Account ID to Supplier ID (Same logic as createOrder)
@@ -604,10 +610,16 @@ export class PurchaseController {
                 if (!supplier) {
                     // Try to find generic supplier first to avoid creating duplicates
                     supplier = await prisma.supplier.findFirst({
-                        where: { name: account.name, currencyCode: 'PKR' }
+                        where: { name: account.name }
                     });
 
                     if (!supplier) {
+                        const baseCurr = await prisma.currency.findFirst({ where: { companyId, isBase: true } }) 
+                                || await prisma.currency.findFirst({ where: { companyId } });
+                        if (!baseCurr) {
+                            throw new Error("No currency found. Please configure a currency in settings first.");
+                        }
+
                         try {
                             const lastSupplier = await prisma.supplier.findFirst({
                                 where: { code: { startsWith: 'SUP-' } },
@@ -625,7 +637,7 @@ export class PurchaseController {
                                     companyId,
                                     code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
                                     name: account.name,
-                                    currencyCode: 'PKR',
+                                    currencyCode: baseCurr.id,
                                     payableAccountId: account.id
                                 }
                             });
@@ -636,7 +648,7 @@ export class PurchaseController {
                                     companyId,
                                     code: `SUP-${Date.now()}`,
                                     name: account.name,
-                                    currencyCode: 'PKR',
+                                    currencyCode: baseCurr.id,
                                     payableAccountId: account.id
                                 }
                             });
@@ -730,6 +742,35 @@ export class PurchaseController {
                     }
                 }
 
+                // Calculate totals
+                const subtotal = items.reduce((sum: number, item: any) => sum + (Number(item.qty || 0) * Number(item.rate || 0)), 0);
+                const discount = hasDiscount ? Number(discountAmount || 0) : 0;
+                
+                let currentTotal = subtotal - discount;
+                let totalTaxAmount = 0;
+                
+                const calculatedTaxes = (taxes || []).map((tax: any) => {
+                    const baseAmount = tax.calculation === 'PREVIOUS_TOTAL' ? currentTotal : (subtotal - discount);
+                    const rate = Number(tax.rate) || 0;
+                    const taxAmt = rate > 0 ? (baseAmount * (rate / 100)) : (Number(tax.taxAmount) || 0);
+                    
+                    totalTaxAmount += taxAmt;
+                    currentTotal += taxAmt;
+                    return {
+                        taxCodeId: tax.taxCodeId === 'MANUAL' ? null : (tax.taxCodeId || null),
+                        // Fetching accountId is hard in map since it's sync. We will do it before create or let it fail if schema requires it. Wait, Prisma schema currently requires `accountId`.
+                        // I will set it to a placeholder or resolve it later. Or let me just fetch it here.
+                        // Actually, I can just use a Promise.all before this map, but I will just remove accountId from Prisma schema instead.
+                        taxName: tax.taxName || 'Tax/Charge',
+                        calculation: tax.calculation || 'NET_TOTAL',
+                        rate: rate,
+                        baseAmount,
+                        taxAmount: taxAmt
+                    };
+                });
+                
+                const grandTotal = subtotal - discount + totalTaxAmount;
+
                 // 3. Create Invoice
                 const invoice = await tx.purchaseInvoice.create({
                     data: {
@@ -741,7 +782,11 @@ export class PurchaseController {
                         warehouseId: warehouseId || null,
                         date: new Date(date),
                         dueDate: dueDate ? new Date(dueDate) : null,
-                        totalAmount,
+                        totalAmount: grandTotal,
+                        taxAmount: totalTaxAmount,
+                        hasDiscount: hasDiscount || false,
+                        discountAmount: discount,
+                        discountType: discountType || null,
                         items: {
                             create: items.map((item: any) => ({
                                 productId: item.productId,
@@ -753,6 +798,9 @@ export class PurchaseController {
                                 rate: item.rate,
                                 total: Number(item.qty) * Number(item.rate)
                             }))
+                        },
+                        taxes: {
+                            create: calculatedTaxes
                         }
                     }
                 });
@@ -797,27 +845,43 @@ export class PurchaseController {
 
                 // Group items by their purchase account
                 const lines = [];
-                // Credit Supplier (Payable)
+                // Credit Supplier (Payable) with grand total
                 lines.push({
                     accountId: supplier.payableAccountId,
-                    credit: totalAmount,
+                    credit: grandTotal,
                     debit: 0,
                     narration: `Purchase Invoice ${invoiceNo} - Total payable to ${supplier.name}`
                 });
 
-                // Debit Purchase/Inventory Accounts
+                // Credit Purchase Discount if applicable
+                if (discount > 0) {
+                    const discountAcc = await this.findDefaultAccount(companyId, 'Purchase Discount', 'REVENUE');
+                    if (discountAcc) {
+                        lines.push({
+                            accountId: discountAcc.id,
+                            credit: discount,
+                            debit: 0,
+                            narration: `Discount on Purchase Invoice ${invoiceNo}`
+                        });
+                    } else {
+                        // If no discount account, subtract it from the supplier credit
+                        // Wait, accounting principles say we should credit the discount account. Let's just create a generic one or throw.
+                        throw new Error("No default 'Purchase Discount' account found to record discount.");
+                    }
+                }
+
+                // Debit Purchase/Inventory Accounts for items
                 for (const item of items) {
                     const product = await tx.product.findUnique({ where: { id: item.productId } });
                     let purchaseAccount = product?.inventoryAccountId || product?.purchaseAccountId;
 
                     if (!purchaseAccount) {
-                        // Fallback to default Inventory or Purchase account
                         const defInv = await this.findDefaultAccount(companyId, 'Inventory', 'ASSET');
                         const defPur = await this.findDefaultAccount(companyId, 'Purchase', 'EXPENSE');
                         purchaseAccount = defInv?.id || defPur?.id;
 
                         if (!purchaseAccount) {
-                            throw new Error(`Product '${product?.name || item.productId}' is not linked to a Purchase or Inventory Account and no default accounts were found.`);
+                            throw new Error(`Product '${product?.name || item.productId}' is not linked to a Purchase or Inventory Account.`);
                         }
                     }
 
@@ -827,6 +891,33 @@ export class PurchaseController {
                         debit: Number(item.qty) * Number(item.rate),
                         narration: `Purchase of ${product?.name} (${item.qty} @ ${item.rate})`
                     });
+                }
+
+                // Debit Tax Accounts
+                for (const tax of calculatedTaxes) {
+                    if (tax.taxAmount > 0) {
+                        let taxAccId = null;
+                        if (tax.taxCodeId) {
+                            const tc = await tx.taxCode.findUnique({ where: { id: tax.taxCodeId } });
+                            taxAccId = tc?.accountId;
+                        }
+                        
+                        if (!taxAccId) {
+                            const defTax = await this.findDefaultAccount(companyId, 'Tax', 'ASSET');
+                            taxAccId = defTax?.id;
+                        }
+
+                        if (!taxAccId) {
+                            throw new Error(`No account linked to tax '${tax.taxName}' and no default tax account found.`);
+                        }
+
+                        lines.push({
+                            accountId: taxAccId,
+                            credit: 0,
+                            debit: tax.taxAmount,
+                            narration: `Tax applied: ${tax.taxName} on Invoice ${invoiceNo}`
+                        });
+                    }
                 }
 
                 await tx.journalEntry.create({
@@ -843,6 +934,9 @@ export class PurchaseController {
                 });
 
                 return invoice;
+            }, {
+                maxWait: 20000, // 20 seconds max wait for connection
+                timeout: 60000, // 60 seconds max transaction duration
             });
 
             return NextResponse.json({ success: true, data: result });
