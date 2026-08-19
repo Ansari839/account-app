@@ -855,7 +855,7 @@ export class PurchaseController {
 
                 // Credit Purchase Discount if applicable
                 if (discount > 0) {
-                    const discountAcc = await this.findDefaultAccount(companyId, 'Purchase Discount', 'REVENUE');
+                    const discountAcc = await this.findDefaultAccount(companyId, 'Purchase Discount', 'INCOME');
                     if (discountAcc) {
                         lines.push({
                             accountId: discountAcc.id,
