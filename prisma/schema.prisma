@@ -83,6 +83,7 @@ model User {
   company        Company?         @relation(fields: [companyId], references: [id])
   companies      UserCompany[]
   permissions    UserPermission[]
+  journalEntries JournalEntry[]   @relation("JournalCreator")
 }
 
 model UserPermission {
@@ -400,6 +401,9 @@ model Product {
   cogsAccountId       String?
   salesAccountId      String?
   purchaseAccountId   String?
+  canBeSold           Boolean               @default(true)
+  canBePurchased      Boolean               @default(true)
+  isManufactured      Boolean               @default(false)
   openingStock        Decimal               @default(0.0)
   companyId           String
   createdAt           DateTime              @default(now())
@@ -488,8 +492,11 @@ model JournalEntry {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   financialYearId String?
+  createdById     String?
+  isViewed        Boolean          @default(false)
   company         Company          @relation(fields: [companyId], references: [id])
   financialYear   FinancialYear?   @relation(fields: [financialYearId], references: [id])
+  createdBy       User?            @relation("JournalCreator", fields: [createdById], references: [id])
   lines           JournalLine[]
   purchaseInvoice PurchaseInvoice?
   purchaseReturn  PurchaseReturn?
@@ -521,6 +528,7 @@ model StockLedger {
   refType     String
   refId       String
   companyId   String
+  isEFS       Boolean         @default(false)
   createdAt   DateTime        @default(now())
   variantId   String?
   company     Company         @relation(fields: [companyId], references: [id])
@@ -714,6 +722,7 @@ model PurchaseInvoiceItem {
   taxCodeId   String?
   taxAmount   Decimal              @default(0.0)
   total       Decimal
+  isEFS       Boolean              @default(false)
   grnItemId   String?
   poItemId    String?
   unitId      String?

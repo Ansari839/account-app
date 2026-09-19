@@ -33,8 +33,24 @@ export class ProductService {
         purchaseAccountId?: string;
         openingStock?: number;
         hsCode?: string;
+        canBeSold?: boolean;
+        canBePurchased?: boolean;
+        isManufactured?: boolean;
         variants?: { name: string; sku?: string; price?: number }[];
     }) {
+        // Check for duplicate product (Same Name + Same Category + Same Unit)
+        const existing = await prisma.product.findFirst({
+            where: {
+                companyId,
+                name: { equals: data.name, mode: 'insensitive' },
+                categoryId: data.categoryId,
+                baseUnitId: data.baseUnitId
+            }
+        });
+        if (existing) {
+            throw new Error(`A product with the name "${data.name}" already exists in this category and unit.`);
+        }
+
         // Auto-generate SKU if not provided
         if (!data.code || data.code.trim() === "") {
             const count = await prisma.product.count({ where: { companyId } });
@@ -94,6 +110,9 @@ export class ProductService {
                 cogsAccountId: data.cogsAccountId,
                 salesAccountId: data.salesAccountId,
                 purchaseAccountId: data.purchaseAccountId,
+                canBeSold: data.canBeSold ?? true,
+                canBePurchased: data.canBePurchased ?? true,
+                isManufactured: data.isManufactured ?? false,
                 openingStock: data.openingStock,
                 hsCode: data.hsCode,
                 variants: {

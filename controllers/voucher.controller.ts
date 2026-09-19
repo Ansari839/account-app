@@ -11,8 +11,11 @@ export class VoucherController {
             const { companyId, error } = AuthUtils.getCompanyId(req);
             if (error) return error;
 
+            const user = await AuthUtils.getAuthUser(req);
+            const userId = user?.userId;
+
             const body = await req.json();
-            const entry = await JournalService.createEntry({ ...body, companyId });
+            const entry = await JournalService.createEntry({ ...body, companyId, userId });
             return NextResponse.json({ success: true, data: entry });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });

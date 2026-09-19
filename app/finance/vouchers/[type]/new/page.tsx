@@ -190,8 +190,9 @@ export default function VoucherCreatePage() {
     };
 
     const removeLine = (index: number) => {
-        if (lines.length <= 2) {
-            showNotification('error', 'Journal must have at least 2 lines');
+        const minLines = (type === 'payment' || type === 'receipt') ? 1 : 2;
+        if (lines.length <= minLines) {
+            showNotification('error', `Voucher must have at least ${minLines} line${minLines > 1 ? 's' : ''}`);
             return;
         }
         setLines(lines.filter((_, i) => i !== index));
@@ -450,11 +451,11 @@ export default function VoucherCreatePage() {
                     ) : (
                         <>
                             {/* Lines Table */}
-                            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-slate-900/50">
+                            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm bg-white dark:bg-slate-900/50">
                                 <table className="w-full text-sm text-left">
-                            <thead className="text-xs text-slate-600 dark:text-slate-300 uppercase font-black tracking-widest bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
+                            <thead className="text-xs text-slate-600 dark:text-slate-300 uppercase font-black tracking-widest bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 rounded-t-2xl">
                                 <tr>
-                                    <th className="px-5 py-4 w-[35%]">Account</th>
+                                    <th className="px-5 py-4 w-[35%] rounded-tl-2xl">Account</th>
                                     <th className="px-5 py-4 w-[30%]">Narration</th>
                                     {type === 'journal' || type === 'contra' ? (
                                         <>
@@ -464,7 +465,7 @@ export default function VoucherCreatePage() {
                                     ) : (
                                         <th className="px-5 py-4 w-[20%] text-right">Amount</th>
                                     )}
-                                    <th className="px-5 py-4 w-12 text-center">Act</th>
+                                    <th className="px-5 py-4 w-12 text-center rounded-tr-2xl">Act</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">

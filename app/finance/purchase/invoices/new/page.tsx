@@ -102,7 +102,11 @@ export default function NewPurchaseInvoicePage() {
             setSuppliers(combined);
             if (whRes.ok) setWarehouses((await whRes.json()).data || []);
             if (prodRes.ok) setProducts((await prodRes.json()).data || []);
-            if (unitRes.ok) setUnits((await unitRes.json()).data || []);
+            if (unitRes.ok) {
+                const uJson = await unitRes.json();
+                console.log("Fetched units:", uJson);
+                setUnits(uJson.data || []);
+            }
             if (taxRes.ok) {
                 const tJson = await taxRes.json();
                 setTaxCodes(tJson.data || []);
@@ -115,7 +119,9 @@ export default function NewPurchaseInvoicePage() {
                     if (base) setCurrency({ symbol: base.symbol });
                 }
             }
-        } catch (e) { console.error(e); }
+        } catch (error) {
+            console.error("Error fetching dropdowns:", error);
+        }
     };
 
     const fetchSources = async (type: string) => {
@@ -195,7 +201,7 @@ export default function NewPurchaseInvoicePage() {
             ...prev,
             items: [
                 ...prev.items,
-                { id: Date.now().toString(), productId: "", productName: "", unitId: "", qty: 1, rate: 0, taxCodeId: "", taxRate: 0, taxAmount: 0, total: 0 }
+                { id: Date.now().toString(), productId: "", productName: "", unitId: "", qty: 1, rate: 0, taxCodeId: "", taxRate: 0, taxAmount: 0, total: 0, isEFS: false }
             ]
         }));
     };
@@ -223,8 +229,16 @@ export default function NewPurchaseInvoicePage() {
                         updatedItem.rate = Number(prod?.purchasePrice || 0);
                         if (prod?.baseUnitId) {
                             updatedItem.unitId = prod.baseUnitId;
+                            setUnits((prev: any) => {
+                                if (prev.some((u: any) => u.id === prod.baseUnitId)) return prev;
+                                return [...prev, { id: prod.baseUnitId, name: prod.baseUnit?.name || 'Unit' }];
+                            });
                         } else if (prod?.baseUnit?.id) {
                             updatedItem.unitId = prod.baseUnit.id;
+                            setUnits((prev: any) => {
+                                if (prev.some((u: any) => u.id === prod.baseUnit.id)) return prev;
+                                return [...prev, { id: prod.baseUnit.id, name: prod.baseUnit.name || 'Unit' }];
+                            });
                         }
                     }
 
@@ -316,11 +330,6 @@ export default function NewPurchaseInvoicePage() {
             return;
         }
 
-        if (formData.sourceType === "DIRECT" && !formData.warehouseId) {
-            showNotification('error', 'Please select a Warehouse for direct invoices.');
-            return;
-        }
-
         const validItems = formData.items.filter((i: any) => i.productId && Number(i.qty) > 0);
         if (validItems.length === 0) {
             showNotification('error', 'Please add at least one valid item.');
@@ -392,10 +401,12 @@ export default function NewPurchaseInvoicePage() {
                 </div>
 
                 {/* Premium Dark Header Card */}
-                <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-indigo-500/10 relative overflow-hidden border border-slate-800">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-indigo-500/10 relative border border-slate-800 z-10">
+                    <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                    </div>
                     
-                    <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <div className="relative z-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
                         <div className="lg:col-span-4 space-y-4">
                             <div>
                                 <h1 className="text-4xl font-black text-white tracking-tight">New Bill</h1>
@@ -529,8 +540,8 @@ export default function NewPurchaseInvoicePage() {
                                 <div className="col-span-3">Product</div>
                                 <div className="col-span-2">Unit</div>
                                 {formData.sourceType !== "DIRECT" && <div className="col-span-1 text-center">Available</div>}
-                                <div className={formData.sourceType !== "DIRECT" ? "col-span-1" : "col-span-2"}>Bill Qty</div>
-                                <div className={formData.sourceType !== "DIRECT" ? "col-span-2" : "col-span-2"}>Rate</div>
+                                <div className="col-span-2">Bill Qty</div>
+                                <div className="col-span-2">Rate</div>
                                 <div className="col-span-2 text-right">Total</div>
                                 {formData.sourceType === "DIRECT" && <div className="col-span-1 text-center">Act</div>}
                             </div>
@@ -538,7 +549,7 @@ export default function NewPurchaseInvoicePage() {
                             <div className="space-y-3">
                                 {formData.items.map((item: any, index: number) => (
                                     <div key={item.id} className="grid grid-cols-12 gap-4 items-center bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 transition-all hover:border-indigo-200 dark:hover:border-indigo-500/30">
-                                        <div className="col-span-4">
+                                        <div className="col-span-3">
                                             {formData.sourceType !== "DIRECT" ? (
                                                 <div className="px-2 font-bold text-slate-800 dark:text-slate-200">
                                                     {item.productName}
@@ -558,7 +569,7 @@ export default function NewPurchaseInvoicePage() {
                                         </div>
                                         <div className="col-span-2">
                                             <select
-                                                value={item.unitId}
+                                                value={item.unitId || ''}
                                                 onChange={e => updateItem(item.id, 'unitId', e.target.value)}
                                                 className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
                                             >
@@ -568,14 +579,13 @@ export default function NewPurchaseInvoicePage() {
                                                 ))}
                                             </select>
                                         </div>
-                                        
                                         {formData.sourceType !== "DIRECT" && (
                                             <div className="col-span-1 text-center text-sm">
                                                 <span className="font-bold text-slate-500">{item.qtyAvailable}</span>
                                             </div>
                                         )}
 
-                                        <div className={formData.sourceType !== "DIRECT" ? "col-span-2" : "col-span-2"}>
+                                        <div className="col-span-2">
                                             <input
                                                 type="number"
                                                 value={item.qty || ''}
@@ -587,7 +597,7 @@ export default function NewPurchaseInvoicePage() {
                                             />
                                         </div>
                                         
-                                        <div className={formData.sourceType !== "DIRECT" ? "col-span-1" : "col-span-1"}>
+                                        <div className="col-span-2">
                                             <input
                                                 type="number"
                                                 value={item.rate || ''}

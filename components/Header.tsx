@@ -5,6 +5,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useNotifications } from '@/context/NotificationContext';
 import { useCompany } from '@/context/CompanyContext';
 import { Search, Moon, Sun, Bell, LogOut } from 'lucide-react';
+import { authenticatedFetch } from '@/lib/api-client';
 
 export default function Header() {
     const { theme, toggleTheme } = useTheme();
@@ -17,7 +18,36 @@ export default function Header() {
             setUser(JSON.parse(storedUser));
         }
     }, []);
-    const { clearCompany } = useCompany();
+    const { clearCompany, activeCompany } = useCompany();
+    const [activeFY, setActiveFY] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+        if (!activeCompany?.id) {
+            setActiveFY(null);
+            return;
+        }
+        
+        const fetchFY = async () => {
+            try {
+                const res = await authenticatedFetch('/api/finance/fiscal-year', { cache: 'no-store' });
+                const json = await res.json();
+                if (json.success && Array.isArray(json.data)) {
+                    const active = json.data.find((fy: any) => fy.isOpen === true);
+                    if (active) {
+                        setActiveFY(active.name);
+                    } else {
+                        setActiveFY('No Active FY');
+                    }
+                } else {
+                    setActiveFY('API Error');
+                }
+            } catch (err) {
+                console.error('Failed to fetch FY:', err);
+                setActiveFY('Fetch Error');
+            }
+        };
+        fetchFY();
+    }, [activeCompany?.id]);
 
     const handleLogout = async () => {
         try {
@@ -79,7 +109,7 @@ export default function Header() {
 
                 {/* FY Badge */}
                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 shadow-sm hover:shadow-md hover:bg-emerald-500/10 transition-all cursor-default">
-                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 tracking-wider">FY 2025</span>
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 tracking-wider">{activeFY || 'Loading...'}</span>
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
                 </div>
 

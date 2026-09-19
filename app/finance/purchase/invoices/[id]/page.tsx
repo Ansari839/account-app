@@ -116,7 +116,10 @@ export default function PurchaseInvoiceDetailPage() {
                                                 <p className="font-bold text-slate-800 dark:text-slate-200">{it.product?.name}</p>
                                                 <p className="text-[10px] font-mono text-slate-500 uppercase">{it.product?.code}</p>
                                             </td>
-                                            <td className="px-6 py-5 text-center font-mono font-bold">{Number(it.qty).toLocaleString()}</td>
+                                            <td className="px-6 py-5 text-center font-mono font-bold">
+                                                {Number(it.qty).toLocaleString()}
+                                                {it.unit?.name && <span className="text-[10px] text-slate-400 ml-1 font-sans">{it.unit.name}</span>}
+                                            </td>
                                             <td className="px-6 py-5 text-right font-mono">{Number(it.rate).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                             <td className="px-6 py-5 text-right font-black text-slate-900 dark:text-white">
                                                 {Number(it.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -131,13 +134,26 @@ export default function PurchaseInvoiceDetailPage() {
                                             {Number(invoice.totalAmount - (invoice.taxAmount || 0) + (invoice.hasDiscount ? Number(invoice.discountAmount || 0) : 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
-                                    {invoice.taxAmount > 0 && (
-                                        <tr>
-                                            <td colSpan={3} className="px-6 py-2 text-right font-black text-slate-400 uppercase tracking-widest text-[10px]">Tax</td>
-                                            <td className="px-6 py-2 text-right font-mono text-slate-500 font-bold">
-                                                +{Number(invoice.taxAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                            </td>
-                                        </tr>
+                                    {invoice.taxes?.length > 0 ? (
+                                        invoice.taxes.map((tax: any) => (
+                                            <tr key={tax.id}>
+                                                <td colSpan={3} className="px-6 py-2 text-right font-black text-slate-400 uppercase tracking-widest text-[10px]">
+                                                    {tax.taxName} {Number(tax.rate) > 0 ? `(${Number(tax.rate)}%)` : ''}
+                                                </td>
+                                                <td className="px-6 py-2 text-right font-mono text-slate-500 font-bold">
+                                                    +{Number(tax.taxAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        invoice.taxAmount > 0 && (
+                                            <tr>
+                                                <td colSpan={3} className="px-6 py-2 text-right font-black text-slate-400 uppercase tracking-widest text-[10px]">Tax</td>
+                                                <td className="px-6 py-2 text-right font-mono text-slate-500 font-bold">
+                                                    +{Number(invoice.taxAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                </td>
+                                            </tr>
+                                        )
                                     )}
                                     {invoice.hasDiscount && invoice.discountAmount > 0 && (
                                         <tr>

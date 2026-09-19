@@ -5,38 +5,30 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Download, Plus, FileText, ShoppingCart, PackageOpen, LineChart, Users, ClipboardList, Wallet } from 'lucide-react';
 import StatCard from './StatCard';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import PaymentLogs from './PaymentLogs';
 
 interface Stats {
     monthlySales: number;
+    totalPurchases: number;
     totalReceivables: number;
+    totalPayables: number;
     totalStockItems: number;
     netProfit: number;
+    currency?: string;
+    chartData?: { name: string, revenue: number }[];
+    activeFY?: string;
 }
-
-const chartData = [
-  { name: 'Jan', revenue: 4200 },
-  { name: 'Feb', revenue: 3800 },
-  { name: 'Mar', revenue: 5100 },
-  { name: 'Apr', revenue: 4900 },
-  { name: 'May', revenue: 6200 },
-  { name: 'Jun', revenue: 5800 },
-  { name: 'Jul', revenue: 7500 },
-  { name: 'Aug', revenue: 8400 },
-  { name: 'Sep', revenue: 7900 },
-  { name: 'Oct', revenue: 9200 },
-  { name: 'Nov', revenue: 10500 },
-  { name: 'Dec', revenue: 12000 },
-];
 
 export default function CompanyAdminDashboard({ stats, loading }: { stats: Stats | null, loading: boolean }) {
     const router = useRouter();
 
+    const currencySymbol = stats?.currency || '$';
+
     const statCards = [
-        { label: 'Monthly Sales', value: stats ? `$${stats.monthlySales.toLocaleString()}` : '$0', icon: LineChart, change: '+12.5%', color: 'indigo' },
-        { label: 'Receivables', value: stats ? `$${stats.totalReceivables.toLocaleString()}` : '$0', icon: Users, change: '-2.4%', color: 'rose' },
-        { label: 'Inventory Items', value: stats ? stats.totalStockItems.toString() : '0', icon: ClipboardList, change: '+5.1%', color: 'emerald' },
-        { label: 'Net Profit (Est)', value: stats ? `$${(stats.monthlySales * 0.2).toLocaleString()}` : '$0', icon: Wallet, change: '+8.2%', color: 'purple' }
+        { label: 'Total FY Sales', value: stats ? `${currencySymbol}${stats.monthlySales.toLocaleString()}` : `${currencySymbol}0`, icon: LineChart, change: '+12.5%', color: 'indigo' },
+        { label: 'Total FY Purchases', value: stats ? `${currencySymbol}${stats.totalPurchases.toLocaleString()}` : `${currencySymbol}0`, icon: PackageOpen, change: '+8.3%', color: 'sky' },
+        { label: 'Receivables', value: stats ? `${currencySymbol}${stats.totalReceivables.toLocaleString()}` : `${currencySymbol}0`, icon: Users, change: '-2.4%', color: 'rose' },
+        { label: 'Payables', value: stats ? `${currencySymbol}${stats.totalPayables.toLocaleString()}` : `${currencySymbol}0`, icon: Wallet, change: '+4.1%', color: 'amber' }
     ];
 
     return (
@@ -46,7 +38,9 @@ export default function CompanyAdminDashboard({ stats, loading }: { stats: Stats
                     <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-500 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
                         Financial Overview
                     </h1>
-                    <p className="text-slate-500 mt-1">Company performance metrics.</p>
+                    <p className="text-slate-500 mt-1">
+                        Company performance metrics. {stats?.activeFY ? <span className="font-semibold text-indigo-600 dark:text-indigo-400 ml-2">Active: {stats.activeFY}</span> : ''}
+                    </p>
                 </div>
                 <div className="flex gap-3">
                     <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/40 backdrop-blur-md rounded-xl text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
@@ -66,29 +60,8 @@ export default function CompanyAdminDashboard({ stats, loading }: { stats: Stats
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 bg-white/50 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 rounded-3xl p-8 h-[400px] relative">
-                    <h3 className="text-lg font-bold mb-2 text-slate-900 dark:text-white">Revenue Trend</h3>
-                    <div className="h-[280px] w-full mt-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.6}/>
-                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b8" opacity={0.15} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={(val) => `$${val/1000}k`} />
-                                <Tooltip 
-                                    contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                                    itemStyle={{ color: '#fff', fontWeight: 'bold' }}
-                                    formatter={(value: any) => [`$${Number(value).toLocaleString()}`, 'Revenue']}
-                                />
-                                <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
+                <div className="lg:col-span-2">
+                    <PaymentLogs currencySymbol={currencySymbol} />
                 </div>
 
                 <div className="bg-white/50 dark:bg-slate-900/40 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 rounded-3xl p-8">

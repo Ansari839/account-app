@@ -535,7 +535,8 @@ export class PurchaseController {
                     journalEntry: { include: { lines: { include: { account: true } } } },
                     items: {
                         include: { product: true, poItem: true, unit: true }
-                    }
+                    },
+                    taxes: true
                 }
             });
 
@@ -600,96 +601,91 @@ export class PurchaseController {
             const { poId, grnId, warehouseId, date, dueDate, items, taxes, hasDiscount, discountAmount, discountType } = body;
             let supplierId = body.supplierId;
 
-            // Resolve Account ID to Supplier ID (Same logic as createOrder)
-            const account = await prisma.account.findUnique({ where: { id: supplierId } });
-            if (account) {
-                let supplier = await prisma.supplier.findFirst({
-                    where: { payableAccountId: account.id }
-                });
+            // Resolve Account ID to Supplier ID (Moved inside transaction to utilize maxWait and timeout)
 
-                if (!supplier) {
-                    // Try to find generic supplier first to avoid creating duplicates
-                    supplier = await prisma.supplier.findFirst({
-                        where: { name: account.name }
+            // Generate Invoice Number (Moved inside transaction)
+
+            const result = await prisma.$transaction(async (tx) => {
+                // 1. Fetch Setting: GRN Mandatory (per company)
+                const setting = await tx.companySetting.findUnique({
+                    where: { companyId_key: { companyId, key: 'INVENTORY_GRN_MANDATORY' } }
+                });
+                const grnMandatory = setting?.value === 'true';
+
+                if (grnMandatory && !grnId) {
+                    throw new Error("GRN is mandatory for creating Purchase Invoices.");
+                }
+
+                // Generate Invoice Number
+                const lastInvoice = await tx.purchaseInvoice.findFirst({
+                    where: { invoiceNo: { startsWith: `PI-${new Date().getFullYear()}-` } },
+                    orderBy: { invoiceNo: 'desc' }
+                });
+                let txNextInvoiceSeq = 1;
+                if (lastInvoice) {
+                    const parts = lastInvoice.invoiceNo.split('-');
+                    const lastSeq = parseInt(parts[parts.length - 1]);
+                    if (!isNaN(lastSeq)) txNextInvoiceSeq = lastSeq + 1;
+                }
+                const txInvoiceNo = `PI-${new Date().getFullYear()}-${txNextInvoiceSeq.toString().padStart(4, '0')}`;
+                // Resolve Account ID to Supplier ID (Same logic as createOrder)
+                const account = await tx.account.findUnique({ where: { id: supplierId } });
+                if (account) {
+                    let supplier = await tx.supplier.findFirst({
+                        where: { payableAccountId: account.id }
                     });
 
                     if (!supplier) {
-                        const baseCurr = await prisma.currency.findFirst({ where: { companyId, isBase: true } }) 
-                                || await prisma.currency.findFirst({ where: { companyId } });
-                        if (!baseCurr) {
-                            throw new Error("No currency found. Please configure a currency in settings first.");
-                        }
+                        // Try to find generic supplier first to avoid creating duplicates
+                        supplier = await tx.supplier.findFirst({
+                            where: { name: account.name }
+                        });
 
-                        try {
-                            const lastSupplier = await prisma.supplier.findFirst({
-                                where: { code: { startsWith: 'SUP-' } },
-                                orderBy: { code: 'desc' }
-                            });
-                            let nextSupSeq = 1;
-                            if (lastSupplier) {
-                                const lastNum = parseInt(lastSupplier.code.split('-')[1]);
-                                if (!isNaN(lastNum)) nextSupSeq = lastNum + 1;
+                        if (!supplier) {
+                            const baseCurr = await tx.currency.findFirst({ where: { companyId, isBase: true } }) 
+                                    || await tx.currency.findFirst({ where: { companyId } });
+                            if (!baseCurr) {
+                                throw new Error("No currency found. Please configure a currency in settings first.");
                             }
 
-                            // Use upsert-like logic or randomized code on fail
-                            supplier = await prisma.supplier.create({
-                                data: {
-                                    companyId,
-                                    code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
-                                    name: account.name,
-                                    currencyCode: baseCurr.id,
-                                    payableAccountId: account.id
+                            try {
+                                const lastSupplier = await tx.supplier.findFirst({
+                                    where: { code: { startsWith: 'SUP-' } },
+                                    orderBy: { code: 'desc' }
+                                });
+                                let nextSupSeq = 1;
+                                if (lastSupplier) {
+                                    const lastNum = parseInt(lastSupplier.code.split('-')[1]);
+                                    if (!isNaN(lastNum)) nextSupSeq = lastNum + 1;
                                 }
-                            });
-                        } catch (e) {
-                            // Fallback with random code
-                            supplier = await prisma.supplier.create({
-                                data: {
-                                    companyId,
-                                    code: `SUP-${Date.now()}`,
-                                    name: account.name,
-                                    currencyCode: baseCurr.id,
-                                    payableAccountId: account.id
-                                }
-                            });
+
+                                // Use upsert-like logic or randomized code on fail
+                                supplier = await tx.supplier.create({
+                                    data: {
+                                        companyId,
+                                        code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
+                                        name: account.name,
+                                        currencyCode: baseCurr.id,
+                                        payableAccountId: account.id
+                                    }
+                                });
+                            } catch (e) {
+                                // Fallback with random code
+                                supplier = await tx.supplier.create({
+                                    data: {
+                                        companyId,
+                                        code: `SUP-${Date.now()}`,
+                                        name: account.name,
+                                        currencyCode: baseCurr.id,
+                                        payableAccountId: account.id
+                                    }
+                                });
+                            }
                         }
-                    } else if (!supplier.payableAccountId) {
-                        // Update existing generic supplier to link to this account? 
-                        // No, better not touch existing if it has different link. But here we assume it matches name.
                     }
+                    supplierId = supplier.id;
                 }
-                supplierId = supplier.id;
-            }
 
-            // 1. Fetch Setting: GRN Mandatory (per company)
-            const setting = await prisma.companySetting.findUnique({
-                where: { companyId_key: { companyId, key: 'INVENTORY_GRN_MANDATORY' } }
-            });
-            const grnMandatory = setting?.value === 'true';
-
-            if (grnMandatory && !grnId) {
-                return NextResponse.json({ success: false, error: "GRN is mandatory for creating Purchase Invoices." }, { status: 400 });
-            }
-
-            // Enforce Warehouse for Direct Invoices (No GRN)
-            if (!grnId && !warehouseId) {
-                return NextResponse.json({ success: false, error: "Warehouse is required for Direct Purchase Invoices to update inventory." }, { status: 400 });
-            }
-
-            // Generate Invoice Number
-            const lastInvoice = await prisma.purchaseInvoice.findFirst({
-                where: { invoiceNo: { startsWith: `PI-${new Date().getFullYear()}-` } },
-                orderBy: { invoiceNo: 'desc' }
-            });
-            let nextInvoiceSeq = 1;
-            if (lastInvoice) {
-                const parts = lastInvoice.invoiceNo.split('-');
-                const lastSeq = parseInt(parts[parts.length - 1]);
-                if (!isNaN(lastSeq)) nextInvoiceSeq = lastSeq + 1;
-            }
-            const invoiceNo = `PI-${new Date().getFullYear()}-${nextInvoiceSeq.toString().padStart(4, '0')}`;
-
-            const result = await prisma.$transaction(async (tx) => {
                 const totalAmount = items.reduce((sum: number, item: any) => sum + (Number(item.qty || 0) * Number(item.rate || 0)), 0);
 
                 // 2. Handle Over-fulfillment (Addendum PO)
@@ -775,7 +771,7 @@ export class PurchaseController {
                 const invoice = await tx.purchaseInvoice.create({
                     data: {
                         companyId,
-                        invoiceNo,
+                        invoiceNo: txInvoiceNo,
                         supplierId,
                         poId: poId || null,
                         grnId: grnId || null,
@@ -806,22 +802,31 @@ export class PurchaseController {
                 });
 
                 // 3.1 Handle Stock for Direct Invoices (No GRN)
-                if (!grnId && warehouseId) {
-                    for (const item of items) {
-                        await tx.stockLedger.create({
-                            data: {
-                                companyId,
-                                productId: item.productId,
-                                variantId: item.variantId || null,
-                                warehouseId,
-                                date: new Date(date),
-                                qtyIn: item.qty,
-                                qtyOut: 0,
-                                costRate: Number(item.rate),
-                                refType: 'INVOICE',
-                                refId: invoice.id
-                            }
-                        });
+                if (!grnId) {
+                    // Try to get warehouseId
+                    let finalWarehouseId = warehouseId;
+                    if (!finalWarehouseId) {
+                        const defaultWH = await tx.warehouse.findFirst({ where: { companyId, isDefault: true } });
+                        if (defaultWH) finalWarehouseId = defaultWH.id;
+                    }
+
+                    if (finalWarehouseId) {
+                        for (const item of items) {
+                            await tx.stockLedger.create({
+                                data: {
+                                    companyId,
+                                    productId: item.productId,
+                                    variantId: item.variantId || null,
+                                    warehouseId: finalWarehouseId,
+                                    date: new Date(date),
+                                    qtyIn: item.qty,
+                                    qtyOut: 0,
+                                    costRate: Number(item.rate),
+                                    refType: 'INVOICE',
+                                    refId: invoice.id
+                                }
+                            });
+                        }
                     }
                 }
 
@@ -841,7 +846,7 @@ export class PurchaseController {
                     throw new Error(`Supplier '${supplier?.name || supplierId}' is not linked to a Payable Account. Please check supplier settings.`);
                 }
 
-                const journalNo = `JV-${invoiceNo}`;
+                const journalNo = `JV-${txInvoiceNo}`;
 
                 // Group items by their purchase account
                 const lines = [];
@@ -850,18 +855,25 @@ export class PurchaseController {
                     accountId: supplier.payableAccountId,
                     credit: grandTotal,
                     debit: 0,
-                    narration: `Purchase Invoice ${invoiceNo} - Total payable to ${supplier.name}`
+                    narration: `Purchase Invoice ${txInvoiceNo} - Total payable to ${supplier.name}`
                 });
 
                 // Credit Purchase Discount if applicable
                 if (discount > 0) {
-                    const discountAcc = await this.findDefaultAccount(companyId, 'Purchase Discount', 'INCOME');
+                    const discountAcc = await tx.account.findFirst({
+                        where: {
+                            companyId,
+                            name: { contains: 'Purchase Discount', mode: 'insensitive' },
+                            type: 'INCOME',
+                            isPosting: true
+                        }
+                    });
                     if (discountAcc) {
                         lines.push({
                             accountId: discountAcc.id,
                             credit: discount,
                             debit: 0,
-                            narration: `Discount on Purchase Invoice ${invoiceNo}`
+                            narration: `Discount on Purchase Invoice ${txInvoiceNo}`
                         });
                     } else {
                         // If no discount account, subtract it from the supplier credit
@@ -876,8 +888,12 @@ export class PurchaseController {
                     let purchaseAccount = product?.inventoryAccountId || product?.purchaseAccountId;
 
                     if (!purchaseAccount) {
-                        const defInv = await this.findDefaultAccount(companyId, 'Inventory', 'ASSET');
-                        const defPur = await this.findDefaultAccount(companyId, 'Purchase', 'EXPENSE');
+                        const defInv = await tx.account.findFirst({
+                            where: { companyId, name: { contains: 'Inventory', mode: 'insensitive' }, type: 'ASSET', isPosting: true }
+                        });
+                        const defPur = await tx.account.findFirst({
+                            where: { companyId, name: { contains: 'Purchase', mode: 'insensitive' }, type: 'EXPENSE', isPosting: true }
+                        });
                         purchaseAccount = defInv?.id || defPur?.id;
 
                         if (!purchaseAccount) {
@@ -903,7 +919,9 @@ export class PurchaseController {
                         }
                         
                         if (!taxAccId) {
-                            const defTax = await this.findDefaultAccount(companyId, 'Tax', 'ASSET');
+                            const defTax = await tx.account.findFirst({
+                                where: { companyId, name: { contains: 'Tax', mode: 'insensitive' }, type: 'ASSET', isPosting: true }
+                            });
                             taxAccId = defTax?.id;
                         }
 
@@ -915,7 +933,7 @@ export class PurchaseController {
                             accountId: taxAccId,
                             credit: 0,
                             debit: tax.taxAmount,
-                            narration: `Tax applied: ${tax.taxName} on Invoice ${invoiceNo}`
+                            narration: `Tax applied: ${tax.taxName} on Invoice ${txInvoiceNo}`
                         });
                     }
                 }
@@ -926,8 +944,8 @@ export class PurchaseController {
                         number: journalNo,
                         date: new Date(date),
                         type: 'PURCHASE',
-                        reference: invoiceNo,
-                        narration: `Purchase Invoice ${invoiceNo} for ${supplier.name} ${poId ? 'against PO' : ''}`,
+                        reference: txInvoiceNo,
+                        narration: `Purchase Invoice ${txInvoiceNo} for ${supplier.name} ${poId ? 'against PO' : ''}`,
                         lines: { create: lines },
                         purchaseInvoice: { connect: { id: invoice.id } }
                     }

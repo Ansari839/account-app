@@ -711,36 +711,104 @@ export class ReportService {
      * Dashboard Statistics
      */
     static async getDashboardStats(companyId: string) {
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        // Find active FY
+        const activeFY = await prisma.financialYear.findFirst({
+            where: { companyId, isOpen: true },
+            orderBy: { startDate: 'desc' }
+        });
+
+        let startDate, endDate;
+        if (activeFY) {
+            startDate = activeFY.startDate;
+            endDate = activeFY.endDate;
+        } else {
+            const now = new Date();
+            startDate = new Date(now.getFullYear(), 0, 1);
+            endDate = new Date(now.getFullYear(), 11, 31);
+        }
 
         const sales = await prisma.journalLine.aggregate({
             where: {
                 account: { type: AccountType.INCOME, companyId },
-                entry: { date: { gte: startOfMonth }, status: true }
+                entry: { date: { gte: startDate, lte: endDate }, status: true }
             },
-            _sum: { credit: true }
+            _sum: { credit: true, debit: true }
         });
+        const totalSales = (sales._sum.credit?.toNumber() || 0) - (sales._sum.debit?.toNumber() || 0);
 
         const receivables = await prisma.journalLine.aggregate({
             where: {
                 account: { name: { contains: 'Receivable' }, companyId },
-                entry: { status: true }
+                entry: { date: { lte: endDate }, status: true }
+            },
+            _sum: { debit: true, credit: true }
+        });
+
+        const payables = await prisma.journalLine.aggregate({
+            where: {
+                account: { name: { contains: 'Payable' }, companyId },
+                entry: { date: { lte: endDate }, status: true }
+            },
+            _sum: { debit: true, credit: true }
+        });
+
+        const purchases = await prisma.journalLine.aggregate({
+            where: {
+                account: { type: AccountType.EXPENSE, name: { contains: 'Purchase' }, companyId },
+                entry: { date: { gte: startDate, lte: endDate }, status: true }
             },
             _sum: { debit: true, credit: true }
         });
 
         const stock = await prisma.stockLedger.groupBy({
             by: ['productId'],
-            where: { companyId }, // Fixed: Added companyId filter
+            where: { companyId, date: { lte: endDate } },
             _sum: { qtyIn: true, qtyOut: true }
+        });
+        
+        // Generate chart data: grouped by month within FY
+        const salesLines = await prisma.journalLine.findMany({
+            where: {
+                account: { type: AccountType.INCOME, companyId },
+                entry: { date: { gte: startDate, lte: endDate }, status: true }
+            },
+            select: { credit: true, debit: true, entry: { select: { date: true } } }
+        });
+
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const chartDataMap = new Map<string, number>();
+
+        let current = new Date(startDate);
+        while (current <= endDate) {
+            const m = monthNames[current.getMonth()];
+            if (!chartDataMap.has(m)) chartDataMap.set(m, 0);
+            current.setMonth(current.getMonth() + 1);
+        }
+
+        for (const line of salesLines) {
+            const m = monthNames[line.entry.date.getMonth()];
+            const net = (line.credit?.toNumber() || 0) - (line.debit?.toNumber() || 0);
+            if (chartDataMap.has(m)) {
+                chartDataMap.set(m, chartDataMap.get(m)! + net);
+            }
+        }
+
+        const chartData = Array.from(chartDataMap.entries()).map(([name, revenue]) => ({ name, revenue }));
+
+        const currency = await prisma.currency.findFirst({
+            where: { companyId, isBase: true }
         });
 
         return {
-            monthlySales: sales._sum.credit?.toNumber() || 0,
+            monthlySales: totalSales,
+            totalPurchases: (purchases._sum.debit?.toNumber() || 0) - (purchases._sum.credit?.toNumber() || 0),
             totalReceivables: (receivables._sum.debit?.toNumber() || 0) - (receivables._sum.credit?.toNumber() || 0),
+            totalPayables: (payables._sum.credit?.toNumber() || 0) - (payables._sum.debit?.toNumber() || 0),
             totalStockItems: stock.length,
-            netProfit: 0 // Placeholder, requires P&L calculation
+            netProfit: totalSales * 0.2, // Estimated
+            currency: currency?.symbol || '$',
+            chartData,
+            activeFY: activeFY?.name || 'Current Year'
         };
     }
 

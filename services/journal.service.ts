@@ -91,6 +91,7 @@ export class JournalService {
                     reference: data.reference,
                     narration: data.narration,
                     financialYearId: activeYear.id,
+                    createdById: data.userId,
                     lines: {
                         create: data.lines.map(line => ({
                             accountId: line.accountId,
@@ -104,7 +105,7 @@ export class JournalService {
             });
 
             // Audit Log
-            await AuditService.log(data.userId || null, "CREATE", "JOURNAL", entry.id, null, entry);
+            await AuditService.log(data.userId || null, "CREATE", "JOURNAL", entry.id, null, entry, companyId, txClient);
 
             return entry;
         };

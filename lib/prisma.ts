@@ -16,7 +16,7 @@ const pool = globalForPrisma.pool ?? new Pool({
   connectionString,
   max: process.env.NODE_ENV === 'development' ? 5 : 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  connectionTimeoutMillis: 30000,
 })
 
 const adapter = new PrismaPg(pool)
@@ -29,3 +29,4 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 export default prisma
+// Force Turbopack Cache Invalidation

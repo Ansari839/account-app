@@ -43,6 +43,7 @@ export interface GRNItemInput {
     qtyReceived: number;
     qtyRejected?: number;
     rate?: number;
+    isEFS?: boolean;
 }
 
 export interface GRNInput {
@@ -63,6 +64,7 @@ export interface InvoiceItemInput {
     qty: number;
     rate: number;
     taxCodeId?: string;
+    isEFS?: boolean;
 }
 
 export interface InvoiceInput {
@@ -72,6 +74,7 @@ export interface InvoiceInput {
     dueDate?: Date;
     grnId?: string;
     poId?: string;
+    warehouseId?: string;
     hasDiscount?: boolean;
     discountAmount?: number;
     discountType?: string;
@@ -206,6 +209,7 @@ export class PurchaseService {
                         qtyIn: item.qtyReceived,
                         qtyOut: 0,
                         costRate: item.rate || 0,
+                        isEFS: item.isEFS || false,
                         refType: "GRN",
                         refId: grn.id
                     }
@@ -277,7 +281,8 @@ export class PurchaseService {
                     rate: item.rate,
                     taxCodeId: item.taxCodeId,
                     taxAmount: taxAmount,
-                    total: subtotal + taxAmount
+                    total: subtotal + taxAmount,
+                    isEFS: item.isEFS || false
                 });
             }
 
@@ -381,13 +386,19 @@ export class PurchaseService {
                     if (!defaultWH && !data.poId) throw new Error("No default warehouse found to post stock for invoice without GRN.");
 
                     // If PO is linked, try to get warehouse from PO
-                    let warehouseId = defaultWH?.id;
-                    if (data.poId) {
+                    // 1. Try to get warehouse from frontend form data
+                    // 2. Fallback to PO warehouse if linked
+                    // 3. Fallback to default warehouse
+                    let warehouseId = data.warehouseId;
+                    if (!warehouseId && data.poId) {
                         const po = await tx.purchaseOrder.findUnique({ where: { id: data.poId } });
                         if (po?.warehouseId) warehouseId = po.warehouseId;
                     }
+                    if (!warehouseId) {
+                        warehouseId = defaultWH?.id;
+                    }
 
-                    if (!warehouseId) throw new Error("Warehouse ID could not be determined for stock posting.");
+                    if (!warehouseId) throw new Error("Warehouse ID could not be determined for stock posting. Please create a default warehouse or select one.");
 
                     await tx.stockLedger.create({
                         data: {
@@ -399,7 +410,8 @@ export class PurchaseService {
                             qtyIn: item.qty,
                             qtyOut: 0,
                             costRate: item.rate,
-                            refType: "INVOICE",
+                            isEFS: item.isEFS || false,
+                            refType: "PURCHASE_INVOICE",
                             refId: invoice.id
                         }
                     });

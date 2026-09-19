@@ -1,11 +1,13 @@
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export class AuditService {
     /**
      * Log a system action (with optional companyId)
      */
-    static async log(userId: string | null, action: string, module: string, entityId?: string, before?: any, after?: any, companyId?: string) {
-        return await prisma.auditLog.create({
+    static async log(userId: string | null, action: string, module: string, entityId?: string, before?: any, after?: any, companyId?: string, txClient?: Prisma.TransactionClient) {
+        const client = txClient || prisma;
+        return await client.auditLog.create({
             data: {
                 userId,
                 action,

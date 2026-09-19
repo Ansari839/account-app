@@ -36,6 +36,9 @@ export default function NewProductPage() {
         name: '', 
         categoryId: '', 
         baseUnitId: '', 
+        canBeSold: true,
+        canBePurchased: true,
+        isManufactured: false,
         variants: [] as Variant[],
         // Notice: Accounting fields are omitted from UI, backend will handle or we'll set it at Category level later
     });
@@ -120,6 +123,9 @@ export default function NewProductPage() {
             cogsAccountId: null,
             salesAccountId: null,
             purchaseAccountId: null,
+            canBeSold: formData.canBeSold,
+            canBePurchased: formData.canBePurchased,
+            isManufactured: formData.isManufactured,
             variants: formData.variants.map((v: any) => ({
                 ...v,
                 price: Number(v.price) || 0
@@ -247,6 +253,50 @@ export default function NewProductPage() {
                                     onChange={e => setFormData({ ...formData, hsCode: e.target.value })}
                                 />
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-slate-800 p-8 bg-slate-950/50">
+                        <h3 className="text-lg font-bold text-white mb-6">Product Behavior</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <label className="flex items-center gap-3 p-4 rounded-xl border border-slate-800 bg-slate-900/50 cursor-pointer hover:border-violet-500/50 transition-colors">
+                                <input 
+                                    type="checkbox" 
+                                    className="w-5 h-5 rounded border-slate-700 text-violet-500 focus:ring-violet-500 bg-slate-800"
+                                    checked={formData.canBeSold}
+                                    onChange={(e) => setFormData({...formData, canBeSold: e.target.checked})}
+                                />
+                                <div>
+                                    <div className="text-sm font-bold text-white">Can be Sold</div>
+                                    <div className="text-xs text-slate-500">Available in Sales Invoices</div>
+                                </div>
+                            </label>
+                            
+                            <label className="flex items-center gap-3 p-4 rounded-xl border border-slate-800 bg-slate-900/50 cursor-pointer hover:border-violet-500/50 transition-colors">
+                                <input 
+                                    type="checkbox" 
+                                    className="w-5 h-5 rounded border-slate-700 text-violet-500 focus:ring-violet-500 bg-slate-800"
+                                    checked={formData.canBePurchased}
+                                    onChange={(e) => setFormData({...formData, canBePurchased: e.target.checked})}
+                                />
+                                <div>
+                                    <div className="text-sm font-bold text-white">Can be Purchased</div>
+                                    <div className="text-xs text-slate-500">Available in Purchase Invoices</div>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center gap-3 p-4 rounded-xl border border-slate-800 bg-slate-900/50 cursor-pointer hover:border-violet-500/50 transition-colors">
+                                <input 
+                                    type="checkbox" 
+                                    className="w-5 h-5 rounded border-slate-700 text-violet-500 focus:ring-violet-500 bg-slate-800"
+                                    checked={formData.isManufactured}
+                                    onChange={(e) => setFormData({...formData, isManufactured: e.target.checked})}
+                                />
+                                <div>
+                                    <div className="text-sm font-bold text-white">Is Manufactured</div>
+                                    <div className="text-xs text-slate-500">Produced internally via Job Work</div>
+                                </div>
+                            </label>
                         </div>
                     </div>
                 </div>
