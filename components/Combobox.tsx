@@ -15,10 +15,13 @@ interface ComboboxProps {
     disabled?: boolean;
     id?: string;
     placeholder?: string;
+    searchPlaceholder?: string;
     onKeyDown?: (e: React.KeyboardEvent) => void;
+    position?: 'top' | 'bottom';
+    forceDark?: boolean;
 }
 
-export default function Combobox({ options, value, onChange, placeholder = "Select...", className, disabled = false, id, onKeyDown }: ComboboxProps) {
+export default function Combobox({ options, value, onChange, placeholder = "Select...", searchPlaceholder = "Search...", className, disabled = false, id, onKeyDown, position = 'bottom', forceDark = false }: ComboboxProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -86,13 +89,13 @@ export default function Combobox({ options, value, onChange, placeholder = "Sele
     };
 
     return (
-        <div className={`relative ${className}`} ref={wrapperRef}>
+        <div className="relative" ref={wrapperRef}>
             <button
                 type="button"
                 id={id}
                 ref={triggerRef}
                 disabled={disabled}
-                className={`w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950/50 flex justify-between items-center transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full p-2.5 rounded-xl border flex justify-between items-center transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${forceDark ? 'border-slate-700 bg-slate-900/50 text-white focus:ring-offset-slate-900' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950/50 dark:focus:ring-offset-slate-900'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className || ''}`}
                 onPointerDown={() => setIsPointer(true)}
                 onFocus={() => {
                     if (!disabled && !isOpen && !isPointer) {
@@ -115,20 +118,23 @@ export default function Combobox({ options, value, onChange, placeholder = "Sele
                     }
                 }}
             >
-                <span className={`block truncate ${!selectedOption ? 'text-slate-400' : 'text-slate-900 dark:text-white font-medium'}`}>
+                <span className={`block truncate ${!selectedOption ? (forceDark ? 'text-slate-400' : 'text-slate-400') : (forceDark ? 'text-white font-medium' : 'text-slate-900 dark:text-white font-medium')}`}>
                     {selectedOption?.label || placeholder}
                 </span>
-                <span className="text-slate-400 text-xs">▼</span>
+                <span className={`text-xs ${forceDark ? 'text-slate-500' : 'text-slate-400'}`}>▼</span>
             </button>
 
             {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-h-60 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 sticky top-0">
+                <div 
+                    className={`absolute z-[999] w-full border rounded-xl shadow-2xl max-h-60 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 ${forceDark ? 'bg-slate-900 border-slate-700' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
+                    style={position === 'top' ? { bottom: '100%', marginBottom: '4px' } : { top: '100%', marginTop: '4px' }}
+                >
+                    <div className={`p-2 border-b sticky top-0 ${forceDark ? 'border-slate-800 bg-slate-900' : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50'}`}>
                         <input
                             ref={inputRef}
                             type="text"
-                            className="w-full p-2.5 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/50 outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-slate-400 text-slate-900 dark:text-white transition-all shadow-sm"
-                            placeholder="Search account..."
+                            className={`w-full p-2.5 text-sm rounded-lg border outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all shadow-sm ${forceDark ? 'border-slate-700 bg-slate-800/50 placeholder:text-slate-500 text-white' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/50 placeholder:text-slate-400 text-slate-900 dark:text-white'}`}
+                            placeholder={searchPlaceholder}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onKeyDown={handleKeyDown}
@@ -142,10 +148,10 @@ export default function Combobox({ options, value, onChange, placeholder = "Sele
                                     key={option.value}
                                     className={`p-3 text-sm rounded-lg cursor-pointer transition-colors ${
                                         option.value === value 
-                                            ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold' 
+                                            ? (forceDark ? 'bg-indigo-500/20 text-indigo-400 font-bold' : 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold')
                                             : highlightedIndex === idx
-                                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium'
-                                                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                                ? (forceDark ? 'bg-slate-800 text-white font-medium' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium')
+                                                : (forceDark ? 'text-slate-300 hover:bg-slate-800/50' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50')
                                     }`}
                                     onClick={() => {
                                         onChange(option.value);

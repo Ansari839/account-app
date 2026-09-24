@@ -39,6 +39,8 @@ export default function NewProductPage() {
         canBeSold: true,
         canBePurchased: true,
         isManufactured: false,
+        stage: '', // RAW, GREY, FINISH
+        isService: false,
         variants: [] as Variant[],
         // Notice: Accounting fields are omitted from UI, backend will handle or we'll set it at Category level later
     });
@@ -126,6 +128,8 @@ export default function NewProductPage() {
             canBeSold: formData.canBeSold,
             canBePurchased: formData.canBePurchased,
             isManufactured: formData.isManufactured,
+            stage: formData.isManufactured ? (formData.stage || null) : null,
+            isService: formData.isService,
             variants: formData.variants.map((v: any) => ({
                 ...v,
                 price: Number(v.price) || 0
@@ -285,16 +289,47 @@ export default function NewProductPage() {
                                 </div>
                             </label>
 
+                            <label className="flex flex-col p-4 rounded-xl border border-slate-800 bg-slate-900/50 hover:border-violet-500/50 transition-colors">
+                                <div className="flex items-center gap-3 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="w-5 h-5 rounded border-slate-700 text-violet-500 focus:ring-violet-500 bg-slate-800"
+                                        checked={formData.isManufactured}
+                                        onChange={(e) => setFormData({...formData, isManufactured: e.target.checked})}
+                                    />
+                                    <div>
+                                        <div className="text-sm font-bold text-white">Is Manufactured</div>
+                                        <div className="text-xs text-slate-500">Produced internally via Job Work</div>
+                                    </div>
+                                </div>
+                                {formData.isManufactured && (
+                                    <div className="mt-4 pt-4 border-t border-slate-800">
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Stage <span className="text-rose-500">*</span></label>
+                                        <select
+                                            className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-violet-500 text-sm"
+                                            value={formData.stage}
+                                            onChange={e => setFormData({ ...formData, stage: e.target.value })}
+                                            required={formData.isManufactured}
+                                        >
+                                            <option value="">Select Stage...</option>
+                                            <option value="RAW">RAW (e.g. Yarn)</option>
+                                            <option value="GREY">GREY (e.g. Kora Fabric)</option>
+                                            <option value="FINISH">FINISH (e.g. Dyed Fabric)</option>
+                                        </select>
+                                    </div>
+                                )}
+                            </label>
+
                             <label className="flex items-center gap-3 p-4 rounded-xl border border-slate-800 bg-slate-900/50 cursor-pointer hover:border-violet-500/50 transition-colors">
                                 <input 
                                     type="checkbox" 
                                     className="w-5 h-5 rounded border-slate-700 text-violet-500 focus:ring-violet-500 bg-slate-800"
-                                    checked={formData.isManufactured}
-                                    onChange={(e) => setFormData({...formData, isManufactured: e.target.checked})}
+                                    checked={formData.isService}
+                                    onChange={(e) => setFormData({...formData, isService: e.target.checked})}
                                 />
                                 <div>
-                                    <div className="text-sm font-bold text-white">Is Manufactured</div>
-                                    <div className="text-xs text-slate-500">Produced internally via Job Work</div>
+                                    <div className="text-sm font-bold text-white">Is Service</div>
+                                    <div className="text-xs text-slate-500">Dyeing, Weaving, Freight (No Stock)</div>
                                 </div>
                             </label>
                         </div>

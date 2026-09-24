@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextResponse } from 'next/server';
 import { JournalEntry } from '@prisma/client';
 import { cookies } from 'next/headers';
@@ -28,51 +29,56 @@ export async function GET(request: Request) {
 
     try {
         if (suggestCode && parentId) {
-            const pid = parentId;
-            const parent = await prisma.account.findUnique({ where: { id: pid } });
-            if (!parent) return NextResponse.json({ error: 'Parent not found' }, { status: 404 });
+            try {
+                const pid = parentId;
+                const parent = await prisma.account.findUnique({ where: { id: pid } });
+                if (!parent) return NextResponse.json({ error: 'Parent not found' }, { status: 404 });
 
-            const lastChild = await prisma.account.findFirst({
-                where: { parentId: pid, companyId },
-                orderBy: { createdAt: 'desc' }
-            });
+                const lastChild = await prisma.account.findFirst({
+                    where: { parentId: pid, companyId },
+                    orderBy: { createdAt: 'desc' }
+                });
 
-            let nextCode: string;
-            
-            // Generate sequence based on parent
-            if (!lastChild) {
-                if (parent.code.endsWith('000')) {
-                    nextCode = (parseInt(parent.code) + 100).toString();
-                } else if (parent.code.endsWith('00')) {
-                    nextCode = (parseInt(parent.code) + 10).toString();
-                } else {
-                    // For parents like 1110 or 1121, append -0001
-                    nextCode = `${parent.code}-0001`;
-                }
-            } else {
-                if (lastChild.code.includes('-')) {
-                    // It has a sequence suffix (e.g., 1110-0045)
-                    const parts = lastChild.code.split('-');
-                    const seq = parseInt(parts[parts.length - 1]);
-                    const nextSeq = (seq + 1).toString().padStart(4, '0');
-                    parts[parts.length - 1] = nextSeq;
-                    nextCode = parts.join('-');
-                } else {
-                    // It doesn't have a dash (e.g., 1111)
-                    const lastCodeInt = parseInt(lastChild.code);
-                    if (parent.code.endsWith('000') && lastCodeInt === parseInt(parent.code)) {
+                let nextCode = '';
+                
+                // Generate sequence based on parent
+                if (!lastChild) {
+                    if (parent.code.endsWith('000')) {
                         nextCode = (parseInt(parent.code) + 100).toString();
-                    } else if (parent.code.endsWith('00') || parent.code.endsWith('000')) {
-                        nextCode = (lastCodeInt + 1).toString();
+                    } else if (parent.code.endsWith('00')) {
+                        nextCode = (parseInt(parent.code) + 10).toString();
+                    } else if (parent.code.endsWith('0')) {
+                        nextCode = (parseInt(parent.code) + 1).toString();
                     } else {
-                        // The parent is like 1110, last child is 1119. We shouldn't overflow to 1120.
-                        // We transition to dash format.
+                        // For parents like 1111 or 1121, append -0001
                         nextCode = `${parent.code}-0001`;
                     }
+                } else {
+                    if (lastChild.code.includes('-')) {
+                        // It has a sequence suffix (e.g., 1110-0045)
+                        const parts = lastChild.code.split('-');
+                        const seq = parseInt(parts[parts.length - 1]);
+                        const nextSeq = (seq + 1).toString().padStart(4, '0');
+                        parts[parts.length - 1] = nextSeq;
+                        nextCode = parts.join('-');
+                    } else {
+                        // It doesn't have a dash (e.g., 1111)
+                        const lastCodeInt = parseInt(lastChild.code);
+                        if (parent.code.endsWith('000') && lastCodeInt === parseInt(parent.code)) {
+                            nextCode = (parseInt(parent.code) + 100).toString();
+                        } else if (parent.code.endsWith('00') || parent.code.endsWith('000') || parent.code.endsWith('0')) {
+                            nextCode = (lastCodeInt + 1).toString();
+                        } else {
+                            // The parent is like 1111, last child is 1112.
+                            nextCode = `${parent.code}-0001`;
+                        }
+                    }
                 }
+                
+                return NextResponse.json({ nextCode: nextCode || `${parent.code}-0001` });
+            } catch (e: any) {
+                return NextResponse.json({ nextCode: `${parentId.substring(0, 4)}-ERROR`, error: e.message });
             }
-
-            return NextResponse.json({ nextCode });
         }
 
         const isPosting = searchParams.get('isPosting');

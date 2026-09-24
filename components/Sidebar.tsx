@@ -31,6 +31,8 @@ const menuItems = [
       sub: ['Products', 'Categories', 'Warehouses'] },
     { name: 'Reports',          icon: ScrollText,      path: '/finance/reports',    permissionKey: 'reports',
       sub: ['trial-balance', 'profit-loss', 'balance-sheet', 'ledger', 'inventory', 'sales', 'purchase'] },
+    { name: 'Production',       icon: Package,         path: '/finance/production', permissionKey: 'production',
+      sub: ['BOM', 'Execution'] },
     // Settings: visible to CompanyAdmin/SuperAdmin only (handled separately)
     { name: 'Settings',         icon: Settings,        path: '/admin/settings',     adminOnly: true,
       sub: ['account-mapping'] },

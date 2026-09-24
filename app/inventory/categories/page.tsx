@@ -38,6 +38,12 @@ export default function CategoriesPage() {
     const columns: Column<any>[] = [
         { header: 'Name', accessor: 'name' },
         { header: 'Parent Category', accessor: (row: any) => row.parent?.name || '-' },
+        { 
+            header: 'Type', 
+            accessor: (row: any) => row.isService 
+                ? <span className="px-2 py-1 text-xs font-bold bg-emerald-100 text-emerald-700 rounded-md">Service</span> 
+                : <span className="px-2 py-1 text-xs font-bold bg-slate-100 text-slate-700 rounded-md">Physical</span> 
+        },
         { header: 'Products', accessor: (row: any) => row._count?.products || 0 },
         {
             header: 'Actions',

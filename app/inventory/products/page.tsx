@@ -28,6 +28,22 @@ export default function ProductsPage() {
         }
     };
 
+    const handleDelete = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this product?")) return;
+        try {
+            const res = await authenticatedFetch(`/api/inventory/products/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchProducts();
+            } else {
+                const json = await res.json();
+                alert(json.error || "Failed to delete product. Ensure it has no stock transactions.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("An error occurred while deleting the product.");
+        }
+    };
+
     const columns: Column<any>[] = [
         { header: 'P-Code', accessor: 'code' },
         { header: 'Product Name', accessor: 'name' },
@@ -52,6 +68,13 @@ export default function ProductsPage() {
                         onClick={() => router.push(`/inventory/products/${row.id}/edit`)}
                     >
                         📝
+                    </button>
+                    <button 
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                        title="Delete"
+                        onClick={() => handleDelete(row.id)}
+                    >
+                        🗑
                     </button>
                 </div>
             )

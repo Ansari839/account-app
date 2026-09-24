@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
 import { cn } from '@/lib/utils';
+import Combobox from '@/components/Combobox';
 
 export default function NewCategoryPage() {
     const router = useRouter();
@@ -21,20 +22,32 @@ export default function NewCategoryPage() {
 
     const [formData, setFormData] = useState({
         name: '',
-        parentId: ''
+        parentId: '',
+        isService: false,
+        wipAccountId: ''
     });
 
+    const [accounts, setAccounts] = useState<any[]>([]);
+
     useEffect(() => {
-        const fetchCategories = async () => {
+        const fetchData = async () => {
             try {
-                const res = await authenticatedFetch('/api/inventory/categories');
-                const json = await res.json();
-                if (json.success) setCategories(json.data);
+                const [resCat, resAcc] = await Promise.all([
+                    authenticatedFetch('/api/inventory/categories'),
+                    authenticatedFetch('/api/accounts')
+                ]);
+                const jsonCat = await resCat.json();
+                if (jsonCat.success) setCategories(jsonCat.data);
+
+                if (resAcc.ok) {
+                    const jsonAcc = await resAcc.json();
+                    setAccounts(jsonAcc.accounts || []);
+                }
             } catch (e) {
                 console.error(e);
             }
         };
-        fetchCategories();
+        fetchData();
     }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -53,7 +66,9 @@ export default function NewCategoryPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: formData.name,
-                    parentId: formData.parentId || null
+                    parentId: formData.parentId || null,
+                    isService: formData.isService,
+                    wipAccountId: formData.isService ? (formData.wipAccountId || null) : null
                 })
             });
 
@@ -89,8 +104,10 @@ export default function NewCategoryPage() {
                 </div>
 
                 {/* Premium Dark Header Card */}
-                <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-pink-500/10 relative overflow-hidden border border-slate-800">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-pink-500/10 relative border border-slate-800">
+                    <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                    </div>
                     
                     <div className="relative z-10">
                         <h1 className="text-4xl font-black text-white tracking-tight">New Category</h1>
@@ -124,6 +141,52 @@ export default function NewCategoryPage() {
                                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                             </div>
+
+                            <div className="flex items-center gap-3 pt-4 border-t border-slate-800">
+                                <div className="relative flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="isService"
+                                        className="w-5 h-5 rounded border-slate-700 bg-slate-900/50 text-pink-500 focus:ring-pink-500/30 transition-colors"
+                                        checked={formData.isService}
+                                        onChange={e => setFormData({ ...formData, isService: e.target.checked })}
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="isService" className="text-sm font-bold text-white cursor-pointer select-none">
+                                        Is Service Category?
+                                    </label>
+                                    <p className="text-xs font-medium text-slate-500">
+                                        Check this if this category is for services (e.g., Weaving, Dyeing) instead of physical items.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {formData.isService && (
+                                <div className="space-y-2 pt-4 border-t border-slate-800 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                        WIP Clearing Account (Optional)
+                                    </label>
+                                    <Combobox
+                                        options={[
+                                            { value: '', label: '— Select Current Asset Account —' },
+                                            ...accounts.filter(a => a.type === 'ASSET').map(a => ({
+                                                value: a.id,
+                                                label: `(${a.code}) ${a.name}`
+                                            }))
+                                        ]}
+                                        value={formData.wipAccountId || ''}
+                                        onChange={(val) => setFormData({ ...formData, wipAccountId: val })}
+                                        placeholder="— Select Current Asset Account —"
+                                        searchPlaceholder="Search accounts..."
+                                        forceDark={true}
+                                        position="bottom"
+                                    />
+                                    <p className="text-xs font-medium text-slate-500 mt-1">
+                                        When a Purchase Invoice is made for this service, its amount will be debited to this account.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

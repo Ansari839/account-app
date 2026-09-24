@@ -7,7 +7,8 @@ import { PackageOpen, Truck, Loader2 } from "lucide-react";
 export default function InventorySettings() {
     const [settings, setSettings] = useState({
         INVENTORY_GRN_MANDATORY: false,
-        INVENTORY_DO_MANDATORY: false
+        INVENTORY_DO_MANDATORY: false,
+        ENABLE_PRODUCTION_MODULE: false
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -23,7 +24,8 @@ export default function InventorySettings() {
             if (json.success) {
                 setSettings({
                     INVENTORY_GRN_MANDATORY: json.data.INVENTORY_GRN_MANDATORY === 'true',
-                    INVENTORY_DO_MANDATORY: json.data.INVENTORY_DO_MANDATORY === 'true'
+                    INVENTORY_DO_MANDATORY: json.data.INVENTORY_DO_MANDATORY === 'true',
+                    ENABLE_PRODUCTION_MODULE: json.data.ENABLE_PRODUCTION_MODULE === 'true'
                 });
             }
         } catch (error) {
@@ -44,7 +46,8 @@ export default function InventorySettings() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     INVENTORY_GRN_MANDATORY: newSettings.INVENTORY_GRN_MANDATORY,
-                    INVENTORY_DO_MANDATORY: newSettings.INVENTORY_DO_MANDATORY
+                    INVENTORY_DO_MANDATORY: newSettings.INVENTORY_DO_MANDATORY,
+                    ENABLE_PRODUCTION_MODULE: newSettings.ENABLE_PRODUCTION_MODULE
                 })
             });
         } catch (error) {
@@ -122,6 +125,31 @@ export default function InventorySettings() {
                             className="sr-only peer"
                             checked={settings.INVENTORY_DO_MANDATORY}
                             onChange={(e) => handleToggle('INVENTORY_DO_MANDATORY', e.target.checked)}
+                            disabled={saving}
+                        />
+                        <div className="w-12 h-7 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+
+                {/* Production Module Toggle */}
+                <div className="flex items-start justify-between p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 hover:border-indigo-300 dark:hover:border-indigo-800 hover:shadow-lg hover:shadow-indigo-500/5 transition-all group">
+                    <div className="flex-1">
+                        <div className="flex items-center gap-4 mb-3">
+                            <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center group-hover:scale-110 group-hover:border-indigo-300 transition-all">
+                                <Loader2 className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                            <p className="font-black text-lg text-slate-900 dark:text-white">Enable Production & Consumption</p>
+                        </div>
+                        <p className="text-sm font-medium text-slate-500 ml-13 pl-13">
+                            When enabled, you can manage Bill of Materials (BOM) and track production overheads / WIP inventory.
+                        </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer ml-4">
+                        <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={settings.ENABLE_PRODUCTION_MODULE}
+                            onChange={(e) => handleToggle('ENABLE_PRODUCTION_MODULE', e.target.checked)}
                             disabled={saving}
                         />
                         <div className="w-12 h-7 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>

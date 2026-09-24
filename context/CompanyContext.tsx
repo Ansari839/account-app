@@ -140,21 +140,18 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
                     
                     if (!sessRes.ok) {
                         const errData = await sessRes.text();
-                        alert(`Session API failed: ${sessRes.status} ${errData}`);
+                        console.error(`Session API failed: ${sessRes.status} ${errData}`);
                     }
                 } catch (err: any) {
-                    alert(`Failed to call company-session API: ${err.message}`);
-                    console.error('Failed to set company session:', err);
-                }
+                        console.error('Failed to set company session:', err);
+                    }
 
                 setPermissions(json.data);
             } else {
-                alert(`Permissions API failed: ${JSON.stringify(json)}`);
                 console.error('[fetchPermissions] Failed:', json);
                 setPermissions([]);
             }
         } catch (err: any) {
-            alert(`fetchPermissions error: ${err.message}`);
             console.error('[CompanyContext] fetchPermissions error:', err);
             if (fetchingForCompanyId.current === companyId) {
                 setPermissions([]);

@@ -519,7 +519,7 @@ export default function NewPurchaseInvoicePage() {
                 </div>
 
                 {/* Items Section */}
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-visible">
                     <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
                         <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
                             <Receipt size={20} className="text-indigo-500" /> Billed Items
@@ -534,7 +534,7 @@ export default function NewPurchaseInvoicePage() {
                         )}
                     </div>
 
-                    <div className="p-6 overflow-x-auto">
+                    <div className="p-6 overflow-visible">
                         <div className="min-w-[800px]">
                             <div className="grid grid-cols-12 gap-4 mb-3 px-4 text-xs font-bold uppercase tracking-widest text-slate-400">
                                 <div className="col-span-3">Product</div>
@@ -555,29 +555,25 @@ export default function NewPurchaseInvoicePage() {
                                                     {item.productName}
                                                 </div>
                                             ) : (
-                                                <select
+                                                <Combobox
+                                                    options={products.map(p => ({ value: p.id, label: `${p.name} (${p.code})` }))}
                                                     value={item.productId}
-                                                    onChange={e => updateItem(item.id, 'productId', e.target.value)}
-                                                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
-                                                >
-                                                    <option value="">Select product...</option>
-                                                    {products.map(p => (
-                                                        <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
-                                                    ))}
-                                                </select>
+                                                    onChange={(val) => updateItem(item.id, 'productId', val)}
+                                                    placeholder="Select product..."
+                                                    searchPlaceholder="Search products..."
+                                                    className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                                />
                                             )}
                                         </div>
                                         <div className="col-span-2">
-                                            <select
+                                            <Combobox
+                                                options={units.map(u => ({ value: u.id, label: u.name }))}
                                                 value={item.unitId || ''}
-                                                onChange={e => updateItem(item.id, 'unitId', e.target.value)}
-                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
-                                            >
-                                                <option value="">Select Unit</option>
-                                                {units.map(u => (
-                                                    <option key={u.id} value={u.id}>{u.name}</option>
-                                                ))}
-                                            </select>
+                                                onChange={(val) => updateItem(item.id, 'unitId', val)}
+                                                placeholder="Select Unit..."
+                                                searchPlaceholder="Search units..."
+                                                className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                            />
                                         </div>
                                         {formData.sourceType !== "DIRECT" && (
                                             <div className="col-span-1 text-center text-sm">
@@ -637,7 +633,7 @@ export default function NewPurchaseInvoicePage() {
                 </div>
 
                 {/* Taxes & Charges Section */}
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden mt-6">
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-visible mt-6">
                     <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
                         <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
                             <Receipt size={20} className="text-indigo-500" /> Taxes & Charges
@@ -650,7 +646,7 @@ export default function NewPurchaseInvoicePage() {
                         </button>
                     </div>
 
-                    <div className="p-6 overflow-x-auto">
+                    <div className="p-6 overflow-visible">
                         <div className="min-w-[700px]">
                             <div className="grid grid-cols-12 gap-4 mb-3 px-4 text-xs font-bold uppercase tracking-widest text-slate-400">
                                 <div className="col-span-3">Tax Type</div>
@@ -667,27 +663,30 @@ export default function NewPurchaseInvoicePage() {
                                     return (
                                         <div key={tax.id} className="grid grid-cols-12 gap-4 items-center bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 transition-all hover:border-indigo-200 dark:hover:border-indigo-500/30">
                                             <div className="col-span-3">
-                                                <select
+                                                <Combobox
+                                                    options={[
+                                                        ...taxCodes.map(t => ({ value: t.id, label: t.name })),
+                                                        { value: 'MANUAL', label: 'Manual Tax' }
+                                                    ]}
                                                     value={tax.taxCodeId || ''}
-                                                    onChange={e => updateTax(tax.id, 'taxCodeId', e.target.value)}
-                                                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
-                                                >
-                                                    <option value="">Select Tax...</option>
-                                                    {taxCodes.map(t => (
-                                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                                    ))}
-                                                    <option value="MANUAL">Manual Tax</option>
-                                                </select>
+                                                    onChange={(val) => updateTax(tax.id, 'taxCodeId', val)}
+                                                    placeholder="Select Tax..."
+                                                    searchPlaceholder="Search taxes..."
+                                                    className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                                />
                                             </div>
                                             <div className="col-span-3">
-                                                <select
+                                                <Combobox
+                                                    options={[
+                                                        { value: 'NET_TOTAL', label: 'Net Total (Subtotal - Discount)' },
+                                                        { value: 'PREVIOUS_TOTAL', label: 'Previous Row Total (Cascading)' }
+                                                    ]}
                                                     value={tax.calculation}
-                                                    onChange={e => updateTax(tax.id, 'calculation', e.target.value)}
-                                                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
-                                                >
-                                                    <option value="NET_TOTAL">Net Total (Subtotal - Discount)</option>
-                                                    <option value="PREVIOUS_TOTAL">Previous Row Total (Cascading)</option>
-                                                </select>
+                                                    onChange={(val) => updateTax(tax.id, 'calculation', val)}
+                                                    placeholder="Calculate On..."
+                                                    searchPlaceholder="Search options..."
+                                                    className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                                />
                                             </div>
                                             <div className="col-span-2 text-right font-medium text-slate-500">
                                                 {computed?.baseAmount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}

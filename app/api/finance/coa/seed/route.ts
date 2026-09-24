@@ -45,6 +45,7 @@ const SEED_ACCOUNTS: SeedAccount[] = [
     { code: '2130', name: 'Accrued Expenses', type: 'LIABILITY', isPosting: true, parentCode: '2100', description: 'Expenses incurred but not yet paid' },
     { code: '2140', name: 'Short-term Loans', type: 'LIABILITY', isPosting: true, parentCode: '2100' },
     { code: '2150', name: 'Advance from Customers', type: 'LIABILITY', isPosting: true, parentCode: '2100', description: 'Customer deposits received before delivery' },
+    { code: '2160', name: 'WIP Clearing Account', type: 'LIABILITY', isPosting: true, parentCode: '2100', systemKey: 'WIP_CLEARING_ACCOUNT', description: 'Temporary clearing account for unapplied production overheads' },
     { code: '2200', name: 'Long-term Liabilities', type: 'LIABILITY', isPosting: false, parentCode: '2000' },
     { code: '2210', name: 'Long-term Loans', type: 'LIABILITY', isPosting: true, parentCode: '2200' },
 

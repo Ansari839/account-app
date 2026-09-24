@@ -2,6 +2,8 @@
 import { NextRequest } from "next/server";
 import { InventoryController } from "@/controllers/inventory.controller";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
     return InventoryController.listCategories(req);
 }

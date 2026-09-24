@@ -20,6 +20,16 @@ export class InventoryController {
         }
     }
 
+    static async getProduct(id: string) {
+        try {
+            const data = await ProductService.get(id);
+            if (!data) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+            return NextResponse.json({ success: true, data });
+        } catch (e: any) {
+            return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+        }
+    }
+
     static async createProduct(req: Request) {
         try {
             const { companyId, error } = AuthUtils.getCompanyId(req);
@@ -107,6 +117,16 @@ export class InventoryController {
             if (error) return error;
 
             const data = await CategoryService.list(companyId);
+            return NextResponse.json({ success: true, data });
+        } catch (e: any) {
+            return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+        }
+    }
+
+    static async getCategory(id: string) {
+        try {
+            const data = await CategoryService.get(id);
+            if (!data) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
             return NextResponse.json({ success: true, data });
         } catch (e: any) {
             return NextResponse.json({ success: false, error: e.message }, { status: 500 });

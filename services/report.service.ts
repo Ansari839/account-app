@@ -570,7 +570,7 @@ export class ReportService {
         if (variantId) where.variantId = variantId;
 
         const summary = await prisma.stockLedger.groupBy({
-            by: ['productId', 'warehouseId'],
+            by: ['productId', 'warehouseId', 'stage'],
             where,
             _sum: { qtyIn: true, qtyOut: true }
         });
@@ -586,6 +586,7 @@ export class ReportService {
                 productName: prod?.name,
                 productCode: prod?.code,
                 warehouse: wh?.name,
+                stage: s.stage || 'RAW',
                 stock
             };
         });
@@ -600,7 +601,7 @@ export class ReportService {
         if (variantId) where.variantId = variantId;
 
         const summary = await prisma.stockLedger.groupBy({
-            by: ['productId', 'variantId'],
+            by: ['productId', 'variantId', 'stage'],
             where,
             _sum: { qtyIn: true, qtyOut: true }
         });
@@ -621,6 +622,7 @@ export class ReportService {
                 productCode: variant?.sku || prod?.code,
                 category: prod?.category?.name || '-',
                 unit: prod?.baseUnit?.name || '-',
+                stage: s.stage || 'RAW',
                 stock
             };
         });

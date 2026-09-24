@@ -215,6 +215,111 @@ async function main() {
     }
   });
 
+  // 7. Seeding Units
+  console.log("📏 Seeding Units (UOM)...");
+  const units = [
+    { code: 'KG', name: 'Kilograms' },
+    { code: 'MTR', name: 'Meters' },
+    { code: 'PCS', name: 'Pieces' },
+    { code: 'LBS', name: 'Pounds' }
+  ];
+
+  for (const u of units) {
+    await prisma.unit.upsert({
+      where: { companyId_code: { companyId: 'default-company', code: u.code } },
+      update: u,
+      create: { ...u, companyId: 'default-company' }
+    });
+  }
+
+  // 8. Seeding Categories
+  console.log("📂 Seeding Categories...");
+  const categories = [
+    { name: 'RAW MATERIAL' },
+    { name: 'PROCESS-SERVICE' },
+    { name: 'FINISHED GOODS' }
+  ];
+
+  for (const c of categories) {
+    // Check if category exists since there is no unique constraint on name
+    const existing = await prisma.category.findFirst({
+        where: { companyId: 'default-company', name: c.name }
+    });
+    if (!existing) {
+        await prisma.category.create({
+            data: { ...c, companyId: 'default-company' }
+        });
+    }
+  }
+
+  // 9. Seeding Products & Services
+  console.log("📦 Seeding Products & Services...");
+  const unitKg = await prisma.unit.findFirst({ where: { code: 'KG', companyId: 'default-company' } });
+  const unitMtr = await rawPrismaUnit('MTR');
+  async function rawPrismaUnit(code: string) { return await prisma.unit.findFirst({ where: { code, companyId: 'default-company' }}); }
+  const unitPcs = await rawPrismaUnit('PCS');
+
+  const catRaw = await prisma.category.findFirst({ where: { name: 'RAW MATERIAL', companyId: 'default-company' } });
+  const catService = await prisma.category.findFirst({ where: { name: 'PROCESS-SERVICE', companyId: 'default-company' } });
+  const catFG = await prisma.category.findFirst({ where: { name: 'FINISHED GOODS', companyId: 'default-company' } });
+
+  const products = [
+    // Raw Material
+    {
+      code: 'YARN-30S',
+      name: '30s Cotton Yarn',
+      baseUnitId: unitKg!.id,
+      categoryId: catRaw!.id,
+      canBeSold: false,
+      canBePurchased: true,
+      isManufactured: false,
+      isService: false
+    },
+    // Services
+    {
+      code: 'SRV-WEAVING',
+      name: 'Weaving Service',
+      baseUnitId: unitMtr!.id,
+      categoryId: catService!.id,
+      canBeSold: false,
+      canBePurchased: true,
+      isManufactured: false,
+      isService: true
+    },
+    {
+      code: 'SRV-DYEING',
+      name: 'Dyeing Service',
+      baseUnitId: unitKg!.id, // dyeing can be kg or mtr, keeping kg as base
+      categoryId: catService!.id,
+      canBeSold: false,
+      canBePurchased: true,
+      isManufactured: false,
+      isService: true
+    },
+    // Finished Goods
+    {
+      code: 'FG-FABRIC',
+      name: 'Dyed Cotton Fabric',
+      baseUnitId: unitMtr!.id,
+      categoryId: catFG!.id,
+      canBeSold: true,
+      canBePurchased: false,
+      isManufactured: true,
+      isService: false
+    }
+  ];
+
+  for (const p of products) {
+    const existingP = await prisma.product.findFirst({
+        where: { companyId: 'default-company', code: p.code }
+    });
+    if (!existingP) {
+        await prisma.product.create({
+            data: { ...p, companyId: 'default-company' }
+        });
+    }
+  }
+
   console.log(`✅ Created admin: ${adminEmail} (Pass: Admin@123)`);
   console.log(`🎉 Seeding finished successfully.`)
 }

@@ -43,6 +43,7 @@ export async function GET(req: NextRequest) {
             data: permissionKeys,
         });
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[Permissions API Error]', error);
+        return NextResponse.json({ error: error?.message || String(error) }, { status: 500 });
     }
 }

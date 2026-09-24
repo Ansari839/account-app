@@ -784,16 +784,23 @@ export class PurchaseController {
                         discountAmount: discount,
                         discountType: discountType || null,
                         items: {
-                            create: items.map((item: any) => ({
-                                productId: item.productId,
-                                variantId: item.variantId || null,
-                                unitId: item.unitId || null,
-                                poItemId: item.poItemId || null,
-                                grnItemId: item.grnItemId || null,
-                                qty: item.qty,
-                                rate: item.rate,
-                                total: Number(item.qty) * Number(item.rate)
-                            }))
+                            create: items.map((item: any) => {
+                                const itemTotal = Number(item.qty) * Number(item.rate);
+                                const itemRatio = subtotal > 0 ? (itemTotal / subtotal) : 0;
+                                const itemTax = totalTaxAmount * itemRatio;
+                                
+                                return {
+                                    productId: item.productId,
+                                    variantId: item.variantId || null,
+                                    unitId: item.unitId || null,
+                                    poItemId: item.poItemId || null,
+                                    grnItemId: item.grnItemId || null,
+                                    qty: item.qty,
+                                    rate: item.rate,
+                                    total: itemTotal,
+                                    taxAmount: itemTax
+                                };
+                            })
                         },
                         taxes: {
                             create: calculatedTaxes
@@ -812,20 +819,23 @@ export class PurchaseController {
 
                     if (finalWarehouseId) {
                         for (const item of items) {
-                            await tx.stockLedger.create({
-                                data: {
-                                    companyId,
-                                    productId: item.productId,
-                                    variantId: item.variantId || null,
-                                    warehouseId: finalWarehouseId,
-                                    date: new Date(date),
-                                    qtyIn: item.qty,
-                                    qtyOut: 0,
-                                    costRate: Number(item.rate),
-                                    refType: 'INVOICE',
-                                    refId: invoice.id
-                                }
-                            });
+                            const product = await tx.product.findUnique({ where: { id: item.productId } });
+                            if (product && !product.isService) {
+                                await tx.stockLedger.create({
+                                    data: {
+                                        companyId,
+                                        productId: item.productId,
+                                        variantId: item.variantId || null,
+                                        warehouseId: finalWarehouseId,
+                                        date: new Date(date),
+                                        qtyIn: item.qty,
+                                        qtyOut: 0,
+                                        costRate: Number(item.rate),
+                                        refType: 'INVOICE',
+                                        refId: invoice.id
+                                    }
+                                });
+                            }
                         }
                     }
                 }
@@ -884,8 +894,17 @@ export class PurchaseController {
 
                 // Debit Purchase/Inventory Accounts for items
                 for (const item of items) {
-                    const product = await tx.product.findUnique({ where: { id: item.productId } });
+                    const product = await tx.product.findUnique({ 
+                        where: { id: item.productId },
+                        include: { category: true }
+                    });
+                    
                     let purchaseAccount = product?.inventoryAccountId || product?.purchaseAccountId;
+
+                    // If it's a service and has a WIP account linked to its category, use that
+                    if (!purchaseAccount && product?.category?.isService && product.category.wipAccountId) {
+                        purchaseAccount = product.category.wipAccountId;
+                    }
 
                     if (!purchaseAccount) {
                         const defInv = await tx.account.findFirst({

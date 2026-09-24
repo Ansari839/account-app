@@ -263,14 +263,22 @@ export class PurchaseService {
                 }
 
                 // Handle Product Account Mapping (DR Inventory/Expense)
-                const product = await tx.product.findUnique({ where: { id: item.productId } });
-                const debitAccount = product?.purchaseAccountId || product?.inventoryAccountId;
-                if (!debitAccount) throw new Error(`Product ${item.productId} is missing Purchase/Inventory Account mapping.`);
+                const product = await tx.product.findUnique({ 
+                    where: { id: item.productId },
+                    include: { category: true }
+                });
+                
+                let debitAccount = product?.purchaseAccountId || product?.inventoryAccountId;
+                if (product?.category?.isService && product.category.wipAccountId) {
+                    debitAccount = product.category.wipAccountId;
+                }
+                
+                if (!debitAccount) throw new Error(`Product ${item.productId} is missing Purchase/Inventory/WIP Account mapping.`);
 
                 journalLines.push({
                     accountId: debitAccount,
                     debit: subtotal,
-                    narration: `Purchase of ${product.name}`
+                    narration: `Purchase of ${product?.name}`
                 });
 
                 invoiceItems.push({

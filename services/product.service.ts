@@ -36,6 +36,7 @@ export class ProductService {
         canBeSold?: boolean;
         canBePurchased?: boolean;
         isManufactured?: boolean;
+        stage?: 'RAW' | 'GREY' | 'FINISH';
         variants?: { name: string; sku?: string; price?: number }[];
     }) {
         // Check for duplicate product (Same Name + Same Category + Same Unit)
@@ -53,8 +54,28 @@ export class ProductService {
 
         // Auto-generate SKU if not provided
         if (!data.code || data.code.trim() === "") {
-            const count = await prisma.product.count({ where: { companyId } });
-            data.code = `PROD-${(count + 1).toString().padStart(4, '0')}`;
+            const lastProduct = await prisma.product.findFirst({
+                where: { companyId, code: { startsWith: 'PROD-' } },
+                orderBy: { createdAt: 'desc' }
+            });
+            let nextNum = 1;
+            if (lastProduct && lastProduct.code) {
+                const parts = lastProduct.code.split('-');
+                if (parts.length > 1) {
+                    const num = parseInt(parts[1], 10);
+                    if (!isNaN(num)) nextNum = num + 1;
+                }
+            }
+            // Just in case the calculated code exists (e.g. if createdAt order was messed up)
+            // we loop to find an available one.
+            let nextCode = `PROD-${nextNum.toString().padStart(4, '0')}`;
+            let codeExists = await prisma.product.count({ where: { companyId, code: nextCode } });
+            while (codeExists > 0) {
+                nextNum++;
+                nextCode = `PROD-${nextNum.toString().padStart(4, '0')}`;
+                codeExists = await prisma.product.count({ where: { companyId, code: nextCode } });
+            }
+            data.code = nextCode;
         }
 
         // --- Assign Default Accounts if Missing ---
@@ -113,6 +134,7 @@ export class ProductService {
                 canBeSold: data.canBeSold ?? true,
                 canBePurchased: data.canBePurchased ?? true,
                 isManufactured: data.isManufactured ?? false,
+                stage: data.stage,
                 openingStock: data.openingStock,
                 hsCode: data.hsCode,
                 variants: {
@@ -133,6 +155,22 @@ export class ProductService {
     static async getProductByCode(companyId: string, code: string) {
         return prisma.product.findFirst({
             where: { companyId, code },
+            include: {
+                category: true,
+                baseUnit: true,
+                taxCode: true,
+                inventoryAccount: true,
+                variants: true
+            }
+        });
+    }
+
+    /**
+     * Get Product by ID
+     */
+    static async get(id: string) {
+        return prisma.product.findUnique({
+            where: { id },
             include: {
                 category: true,
                 baseUnit: true,

@@ -11,7 +11,7 @@ export async function GET(req: Request) {
         const settings = await prisma.companySetting.findMany({
             where: {
                 companyId,
-                key: { in: ['INVENTORY_GRN_MANDATORY', 'INVENTORY_DO_MANDATORY'] }
+                key: { in: ['INVENTORY_GRN_MANDATORY', 'INVENTORY_DO_MANDATORY', 'ENABLE_PRODUCTION_MODULE'] }
             }
         });
 
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
         if (error) return error;
 
         const body = await req.json();
-        const { INVENTORY_GRN_MANDATORY, INVENTORY_DO_MANDATORY } = body;
+        const { INVENTORY_GRN_MANDATORY, INVENTORY_DO_MANDATORY, ENABLE_PRODUCTION_MODULE } = body;
 
         // Upsert settings per company
         await prisma.companySetting.upsert({
@@ -45,6 +45,14 @@ export async function POST(req: Request) {
             create: { companyId, key: 'INVENTORY_DO_MANDATORY', value: String(INVENTORY_DO_MANDATORY), type: 'BOOLEAN', group: 'INVENTORY' },
             update: { value: String(INVENTORY_DO_MANDATORY) }
         });
+
+        if (ENABLE_PRODUCTION_MODULE !== undefined) {
+            await prisma.companySetting.upsert({
+                where: { companyId_key: { companyId, key: 'ENABLE_PRODUCTION_MODULE' } },
+                create: { companyId, key: 'ENABLE_PRODUCTION_MODULE', value: String(ENABLE_PRODUCTION_MODULE), type: 'BOOLEAN', group: 'INVENTORY' },
+                update: { value: String(ENABLE_PRODUCTION_MODULE) }
+            });
+        }
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

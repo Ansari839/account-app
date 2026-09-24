@@ -405,8 +405,26 @@ export default function ReportViewer() {
                     )
                 },
                 { header: 'Category', accessor: (row: any) => <span className="text-sm font-medium">{row.category}</span> },
+                { header: 'Stage', accessor: (row: any) => <span className="text-xs uppercase font-bold bg-indigo-100 dark:bg-indigo-500/20 px-2 py-1 rounded-md text-indigo-600 dark:text-indigo-400">{row.stage}</span> },
                 { header: 'Unit', accessor: (row: any) => <span className="text-xs uppercase font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full text-slate-500">{row.unit}</span> },
                 { header: 'Current Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-lg">{row.stock}</span> : <span className="text-rose-500 font-black font-mono text-lg">{row.stock}</span> },
+            ];
+            return (
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                    <DataTable data={rowWithIds} columns={columns} />
+                </div>
+            );
+        }
+
+        // --- STOCK SUMMARY ---
+        if (reportPath === 'stock-summary') {
+            const rowWithIds = data.map((r: any, i: number) => ({ ...r, id: `ss-${i}` }));
+            const columns: Column<any>[] = [
+                { header: 'Product Code', accessor: (row: any) => <span className="font-mono text-slate-500">{row.productCode || '-'}</span> },
+                { header: 'Product Name', accessor: (row: any) => <span className="font-bold">{row.productName || '-'}</span> },
+                { header: 'Warehouse', accessor: (row: any) => <span className="text-slate-600 dark:text-slate-300 font-medium">{row.warehouse || '-'}</span> },
+                { header: 'Stage', accessor: (row: any) => <span className="text-xs uppercase font-bold bg-indigo-100 dark:bg-indigo-500/20 px-2 py-1 rounded-md text-indigo-600 dark:text-indigo-400">{row.stage}</span> },
+                { header: 'Available Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono">{row.stock.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> : <span className="text-rose-500 font-black font-mono">{row.stock}</span> },
             ];
             return (
                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -638,7 +656,7 @@ export default function ReportViewer() {
                         {renderReportContent()}
 
                         <div className="hidden print:flex justify-between mt-16 text-xs font-bold text-slate-400 py-4 border-t-2 border-slate-200">
-                            <p>Generated on {new Date().toLocaleString()} by Premium Accounting System</p>
+                            <p suppressHydrationWarning>Generated on {new Date().toLocaleString()} by Premium Accounting System</p>
                             <p>Page 1 of 1</p>
                         </div>
                     </div>
