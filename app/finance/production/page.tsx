@@ -131,6 +131,7 @@ export default function ProductionDashboard() {
                                                     <tr>
                                                         <th scope="col" className="px-6 py-4">Item Code</th>
                                                         <th scope="col" className="px-6 py-4">Product Name</th>
+                                                        <th scope="col" className="px-6 py-4">Composition</th>
                                                         <th scope="col" className="px-6 py-4 text-right">Available Stock</th>
                                                     </tr>
                                                 </thead>
@@ -142,6 +143,9 @@ export default function ProductionDashboard() {
                                                             </td>
                                                             <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">
                                                                 {product.name}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-sm font-medium text-amber-600 dark:text-amber-400">
+                                                                {product.composition || '-'}
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <div className="flex items-center justify-end gap-1.5">

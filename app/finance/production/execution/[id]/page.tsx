@@ -129,29 +129,77 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
                                         <tr>
                                             <th className="px-4 py-3 rounded-tl-xl">Material</th>
                                             <th className="px-4 py-3 text-right">Quantity</th>
+                                            <th className="px-4 py-3 text-right">Rate</th>
                                             <th className="px-4 py-3 text-right">Cost Value</th>
                                             <th className="px-4 py-3 rounded-tr-xl text-center">Stage</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {record.inputs.map((input: any) => (
-                                            <tr key={input.id} className="border-b dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                                <td className="px-4 py-4 font-medium text-slate-900 dark:text-slate-200">
-                                                    {input.product?.name}
-                                                    {input.lotNumber && <div className="text-xs text-slate-400 mt-1">Lot: {input.lotNumber}</div>}
-                                                </td>
-                                                <td className="px-4 py-4 text-right font-medium">
-                                                    {input.quantity} {input.product?.baseUnit?.code}
-                                                </td>
-                                                <td className="px-4 py-4 text-right text-emerald-600 dark:text-emerald-400 font-medium">
-                                                    {Number(input.costValue).toLocaleString(undefined, {minimumFractionDigits: 2})}
-                                                </td>
-                                                <td className="px-4 py-4 text-center">
-                                                    {input.inputStage ? (
-                                                        <span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-xs font-bold text-slate-500">{input.inputStage}</span>
-                                                    ) : '-'}
-                                                </td>
-                                            </tr>
+                                            <React.Fragment key={input.id}>
+                                                <tr className="border-b dark:border-slate-800 last:border-0 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                    <td className="px-4 py-4 font-bold text-slate-900 dark:text-slate-100 align-middle">
+                                                        {input.product?.name}
+                                                        {input.lotNumber && <div className="text-xs font-normal text-slate-400 mt-1">Lot: {input.lotNumber}</div>}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-right font-medium align-middle">
+                                                        {input.quantity} {input.product?.baseUnit?.code}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-right text-slate-500 font-medium align-middle">
+                                                        {(Number(input.costValue) / Number(input.quantity || 1)).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-right text-emerald-600 dark:text-emerald-400 font-bold align-middle">
+                                                        {Number(input.costValue).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center align-middle">
+                                                        {input.inputStage ? (
+                                                            <span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-xs font-bold text-slate-500">{input.inputStage}</span>
+                                                        ) : '-'}
+                                                    </td>
+                                                </tr>
+                                                {input.hierarchy?.materials?.map((mat: any, idx: number) => (
+                                                    <tr key={`mat-${input.id}-${idx}`} className="border-b dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50">
+                                                        <td className="px-4 py-3 pl-8 text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                                                            <span className="text-slate-300 dark:text-slate-600">└─</span>
+                                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-500 dark:bg-indigo-500/10 uppercase tracking-wider">Material</span>
+                                                            {mat.name}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right text-sm text-slate-600 dark:text-slate-400">
+                                                            {mat.quantity.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4})} {mat.unit}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right text-sm text-slate-500">
+                                                            {(mat.cost / (mat.quantity || 1)).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                            {mat.cost.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center text-sm text-slate-500">
+                                                            {mat.stage}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {input.hierarchy?.services?.map((svc: any, idx: number) => (
+                                                    <tr key={`svc-${input.id}-${idx}`} className="border-b dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50">
+                                                        <td className="px-4 py-3 pl-8 text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                                                            <span className="text-slate-300 dark:text-slate-600">└─</span>
+                                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-600 dark:bg-amber-500/10 uppercase tracking-wider">Service</span>
+                                                            {svc.name}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right text-sm text-slate-600 dark:text-slate-400">
+                                                            {svc.quantity ? `${svc.quantity.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4})} ${svc.unit}` : '-'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right text-sm text-slate-500">
+                                                            {svc.quantity ? (svc.cost / svc.quantity).toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                            {svc.cost.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center text-sm text-slate-500">
+                                                            -
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
                                         ))}
                                     </tbody>
                                 </table>

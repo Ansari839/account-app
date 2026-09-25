@@ -19,6 +19,61 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         });
 
         if (!record) return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
+
+        // Calculate cost breakdown for inputs based on their latest production
+        for (let i = 0; i < record.inputs.length; i++) {
+            const input = record.inputs[i];
+            
+            // Find latest production for this input to get its cost composition
+            const latestProd = await prisma.productionRecord.findFirst({
+                where: { 
+                    companyId, 
+                    outputProductId: input.productId,
+                    outputStage: input.inputStage
+                },
+                orderBy: { date: 'desc' },
+                include: {
+                    inputs: { include: { product: { include: { baseUnit: true } } } },
+                    overheads: { include: { unit: true, purchaseInvoiceItem: { include: { product: { include: { baseUnit: true } } } } } }
+                }
+            });
+
+            if (latestProd && Number(latestProd.totalCost) > 0) {
+                const totalLatestCost = Number(latestProd.totalCost);
+                const outQty = Number(latestProd.outputQuantity) || 1;
+                
+                // Ratios relative to the consumed input's quantity & cost
+                const qtyRatio = Number(input.quantity) / outQty;
+                const costRatio = Number(input.costValue) / totalLatestCost;
+
+                const hierarchy = {
+                    materials: [] as any[],
+                    services: [] as any[]
+                };
+
+                latestProd.inputs.forEach((inp: any) => {
+                    hierarchy.materials.push({
+                        name: inp.product.name,
+                        stage: inp.inputStage || 'RAW',
+                        quantity: Number(inp.quantity) * qtyRatio,
+                        unit: inp.product.baseUnit?.code || '-',
+                        cost: Number(inp.costValue) * costRatio
+                    });
+                });
+
+                latestProd.overheads.forEach((ov: any) => {
+                    hierarchy.services.push({
+                        name: ov.description,
+                        quantity: Number(ov.quantity) * qtyRatio,
+                        unit: ov.unit?.code || ov.purchaseInvoiceItem?.product?.baseUnit?.code || '-',
+                        cost: Number(ov.amount) * costRatio
+                    });
+                });
+
+                (input as any).hierarchy = hierarchy;
+            }
+        }
+
         return NextResponse.json({ success: true, data: record });
     } catch (e: any) {
         return NextResponse.json({ success: false, error: e.message }, { status: 500 });

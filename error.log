@@ -1,9 +1,0 @@
-Delete failed: 
-Invalid `prisma.productionRecord.findFirst()` invocation in
-/home/abdullah/Next-js/account-app/test-delete3.ts:5:50
-
-  2 
-  3 async function run() {
-  4   try {
-→ 5     const record = await prisma.productionRecord.findFirst(
-

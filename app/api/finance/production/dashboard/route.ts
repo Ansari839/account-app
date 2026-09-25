@@ -39,9 +39,78 @@ export async function GET(request: NextRequest) {
         
         const unconsumedServices = serviceItems.filter(item => Number(item.qty) > Number(item.consumedQty));
 
+        // Fetch the latest ProductionRecord for each product to determine composition
+        const latestProductions = await prisma.productionRecord.findMany({
+            where: { companyId },
+            orderBy: { date: 'desc' },
+            include: {
+                inputs: {
+                    include: { product: { include: { baseUnit: true, category: true } } }
+                }
+            }
+        });
+        
+        const latestProdMap = new Map();
+        latestProductions.forEach(prod => {
+            const key = `${prod.outputProductId}-${prod.outputStage || 'RAW'}`;
+            if (!latestProdMap.has(key)) {
+                latestProdMap.set(key, prod);
+            }
+        });
+        
+        const productMap = new Map();
+        products.forEach(p => productMap.set(p.id, p));
+
+        const getYarnComposition = (productId: string, stage: string, targetQty: number, depth = 0): any[] => {
+            if (depth > 10) return []; // safeguard
+            
+            // Try to find the product in productMap first
+            let product = productMap.get(productId);
+            let catName = product?.category?.name?.toUpperCase() || "";
+
+            // If it's a YARN, return itself
+            if (catName.includes("YARN") || catName.includes("RAW")) {
+                return [{
+                    productId: productId,
+                    productName: product.name,
+                    qty: targetQty,
+                    unit: product.baseUnit?.code || '-'
+                }];
+            }
+            
+            const prodKey = `${productId}-${stage}`;
+            const latestProd = latestProdMap.get(prodKey);
+            
+            if (!latestProd) {
+                // Fallback to itself if we can't trace further (but at depth 0, we don't want to show anything if it's not a yarn)
+                return depth > 0 && product ? [{
+                    productId: product.id,
+                    productName: product.name,
+                    qty: targetQty,
+                    unit: product.baseUnit?.code || '-'
+                }] : [];
+            }
+            
+            const outQty = Number(latestProd.outputQuantity) || 1;
+            const ratio = targetQty / outQty;
+            
+            const result: any[] = [];
+            latestProd.inputs.forEach((input: any) => {
+                const inputReq = Number(input.quantity) * ratio;
+                // Add input.product to productMap if not there (since we included it in query)
+                if (!productMap.has(input.productId)) {
+                    productMap.set(input.productId, input.product);
+                }
+                const subYarns = getYarnComposition(input.productId, input.inputStage || "RAW", inputReq, depth + 1);
+                result.push(...subYarns);
+            });
+            
+            return result;
+        };
+
         // Fetch stock ledger sums grouped by productId
         const ledger = await prisma.stockLedger.groupBy({
-            by: ['productId'],
+            by: ['productId', 'stage'],
             _sum: {
                 qtyIn: true,
                 qtyOut: true
@@ -49,17 +118,32 @@ export async function GET(request: NextRequest) {
             where: { companyId }
         });
 
-        // Map balances to products
-        const productBalances = products.map(product => {
-            const stock = ledger.find(l => l.productId === product.id);
-            const inQty = Number(stock?._sum?.qtyIn || 0);
-            const outQty = Number(stock?._sum?.qtyOut || 0);
-            const balance = inQty - outQty;
-
-            return {
-                ...product,
-                stockBalance: balance
-            };
+        // Map balances to products per stage
+        const productBalances: any[] = [];
+        
+        products.forEach(product => {
+            const productStocks = ledger.filter(l => l.productId === product.id);
+            
+            // If no stock exists, maybe show it as RAW by default or just show it once
+            if (productStocks.length === 0) {
+                productBalances.push({
+                    ...product,
+                    stockBalance: 0,
+                    stage: "RAW"
+                });
+            } else {
+                productStocks.forEach(stock => {
+                    const inQty = Number(stock._sum?.qtyIn || 0);
+                    const outQty = Number(stock._sum?.qtyOut || 0);
+                    const balance = inQty - outQty;
+                    
+                    productBalances.push({
+                        ...product,
+                        stockBalance: balance,
+                        stage: stock.stage || "RAW"
+                    });
+                });
+            }
         }); // Show all products regardless of stock balance
 
         // Group by Category
@@ -96,12 +180,41 @@ export async function GET(request: NextRequest) {
                     products: []
                 };
             }
+            let compositionStr = "N/A";
+            const yarnComps = getYarnComposition(p.id, p.stage || "RAW", p.stockBalance > 0 ? p.stockBalance : 1);
+            
+            if (yarnComps.length > 0) {
+                const aggregated = new Map();
+                let totalQty = 0;
+                yarnComps.forEach((y: any) => {
+                    if (!aggregated.has(y.productId)) {
+                        aggregated.set(y.productId, { ...y });
+                    } else {
+                        aggregated.get(y.productId).qty += y.qty;
+                    }
+                    totalQty += y.qty;
+                });
+                
+                if (totalQty > 0) {
+                    const comps: string[] = [];
+                    aggregated.forEach((y: any) => {
+                        const pct = (y.qty / totalQty) * 100;
+                        const actualQty = p.stockBalance > 0 ? y.qty : 0;
+                        const formattedQty = actualQty.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        comps.push(`${y.productName} ${pct.toFixed(0)}% (${formattedQty} ${y.unit})`);
+                    });
+                    compositionStr = comps.join(' + ');
+                }
+            }
+
             groupedData[catId].products.push({
-                id: p.id,
-                name: p.name,
+                id: `${p.id}-${p.stage}`,
+                name: `${p.name} ${p.stage ? `(${p.stage})` : ''}`,
                 code: p.code,
                 unit: p.baseUnit?.code || p.baseUnitId || '-',
-                stockBalance: p.stockBalance
+                stockBalance: p.stockBalance,
+                stage: p.stage,
+                composition: compositionStr
             });
         });
 
