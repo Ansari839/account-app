@@ -124,7 +124,7 @@ export default function NewDeliveryNotePage() {
             const res = await authenticatedFetch("/api/finance/sales/delivery-notes", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...formData, items: validItems }),
+                body: JSON.stringify({ ...formData, items: validItems, isExport: false }),
             });
 
             const json = await res.json();

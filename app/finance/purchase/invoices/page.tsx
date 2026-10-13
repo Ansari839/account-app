@@ -108,12 +108,20 @@ export default function PurchaseInvoicesPage() {
                         Manage bills to be paid to suppliers.
                     </p>
                 </div>
-                <button
-                    onClick={() => router.push('/finance/purchase/invoices/new')}
-                    className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all flex items-center gap-2"
-                >
-                    <span className="text-xl">+</span> Add Invoice
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => router.push('/finance/purchase/invoices/import/new')}
+                        className="bg-fuchsia-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-fuchsia-500/20 hover:bg-fuchsia-700 transition-all flex items-center gap-2"
+                    >
+                        <span className="text-xl">+</span> Add Import Invoice
+                    </button>
+                    <button
+                        onClick={() => router.push('/finance/purchase/invoices/new')}
+                        className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                    >
+                        <span className="text-xl">+</span> Add Invoice
+                    </button>
+                </div>
             </div>
 
             <DataTable data={invoices} columns={columns} isLoading={loading} />

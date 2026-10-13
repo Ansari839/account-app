@@ -24,9 +24,9 @@ const menuItems = [
     { name: 'Vouchers',         icon: FileText,        path: '/finance/vouchers',   permissionKey: 'vouchers',
       sub: ['Journal', 'Payment', 'Receipt'] },
     { name: 'Purchase',         icon: ShoppingCart,    path: '/finance/purchase',   permissionKey: 'purchase',
-      sub: ['orders', 'grn', 'invoices', 'returns'] },
+      sub: ['orders', 'grn', 'invoices', 'invoices/import', 'returns'] },
     { name: 'Sales',            icon: TrendingUp,      path: '/finance/sales',      permissionKey: 'sales',
-      sub: ['orders', 'delivery-notes', 'invoices', 'returns'] },
+      sub: ['orders', 'delivery-notes', 'invoices', 'invoices/export', 'returns'] },
     { name: 'Inventory',        icon: Package,         path: '/inventory',          permissionKey: 'inventory',
       sub: ['Products', 'Categories', 'Warehouses'] },
     { name: 'Reports',          icon: ScrollText,      path: '/finance/reports',    permissionKey: 'reports',
@@ -190,8 +190,14 @@ export default function Sidebar() {
                                         
                                         if (!hasSubAccess) return null;
 
-                                        const subPath = `${item.path}/${sub.toLowerCase()}`;
-                                        const isSubActive = pathname === subPath;
+                                        const subPath = sub.includes('/') ? `${item.path}/${sub}` : `${item.path}/${sub.toLowerCase()}`;
+                                        
+                                        let label = sub;
+                                        if (sub === 'invoices/import') label = 'Import Bills';
+                                        else if (sub === 'invoices/export') label = 'Export Invoices';
+                                        else label = sub.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+                                        const isSubActive = pathname === subPath || pathname.startsWith(`${subPath}/`);
                                         return (
                                             <Link
                                                 key={sub}
@@ -203,7 +209,7 @@ export default function Sidebar() {
                                                         : "text-slate-400 hover:text-white hover:bg-slate-800/30"
                                                 )}
                                             >
-                                                {sub.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                                                {label}
                                             </Link>
                                         );
                                     })}

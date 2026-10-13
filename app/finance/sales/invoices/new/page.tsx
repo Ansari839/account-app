@@ -347,6 +347,7 @@ export default function NewSalesInvoicePage() {
                 items: validItems,
                 orderId: formData.sourceType === "SO" ? formData.sourceId : undefined,
                 doId: formData.sourceType === "DO" ? formData.sourceId : undefined,
+                isExport: false
             };
 
             const res = await authenticatedFetch('/api/finance/sales/invoices', {

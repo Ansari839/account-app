@@ -108,12 +108,20 @@ export default function SalesInvoicesPage() {
                         Manage billings and receivables from customers.
                     </p>
                 </div>
-                <button
-                    onClick={() => router.push('/finance/sales/invoices/new')}
-                    className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all flex items-center gap-2"
-                >
-                    <span className="text-xl">+</span> Add Invoice
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => router.push('/finance/sales/invoices/export/new')}
+                        className="bg-cyan-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-cyan-500/20 hover:bg-cyan-700 transition-all flex items-center gap-2"
+                    >
+                        <span className="text-xl">+</span> Add Export Invoice
+                    </button>
+                    <button
+                        onClick={() => router.push('/finance/sales/invoices/new')}
+                        className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                    >
+                        <span className="text-xl">+</span> Add Invoice
+                    </button>
+                </div>
             </div>
 
             <DataTable data={invoices} columns={columns} isLoading={loading} />

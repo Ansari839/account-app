@@ -116,6 +116,9 @@ export async function POST(req: NextRequest) {
 
             const totalOutputCost = rawMaterialCost + serviceCost;
             
+            // Determine if the output is EFS (if any input is EFS)
+            const isOutputEFS = inputs.some((input: any) => input.isEFS === true);
+            
             // Generate Batch Number (Journal No)
             const lastRecord = await tx.productionRecord.findFirst({
                 where: { companyId },
@@ -155,7 +158,8 @@ export async function POST(req: NextRequest) {
                     costRate: outputCostRate,
                     refType: 'PRODUCTION',
                     refId: record.id,
-                    stage: processStage
+                    stage: processStage,
+                    isEFS: isOutputEFS
                 }
             });
 
@@ -178,7 +182,8 @@ export async function POST(req: NextRequest) {
                         costRate: Number(input.costRate),
                         refType: 'PRODUCTION',
                         refId: record.id,
-                        stage: inputStageValue || null
+                        stage: inputStageValue || null,
+                        isEFS: input.isEFS || false
                     }
                 });
             }

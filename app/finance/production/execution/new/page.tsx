@@ -73,11 +73,24 @@ export default function ProductionExecutionWizard() {
         setOverheads([]);
     };
 
-    const handleInputProductChange = (index: number, pid: string) => {
+    const handleInputProductChange = (index: number, val: string) => {
         const newInputs = [...inputs];
+        if (!val) {
+            newInputs[index].productId = "";
+            newInputs[index].isEFS = false;
+            newInputs[index].costRate = "0";
+            setInputs(newInputs);
+            return;
+        }
+
+        const [pid, isEFSStr] = val.split('|');
+        const isEFS = isEFSStr === 'true';
+        
         newInputs[index].productId = pid;
+        newInputs[index].isEFS = isEFS;
+        
         const reqStage = processStage === "FINISH" ? "GREY" : "RAW";
-        const key = `${pid}-${reqStage}`;
+        const key = `${pid}-${reqStage}-${isEFS ? 'EFS' : 'STD'}`;
         if (stockRates[key]) {
             newInputs[index].costRate = stockRates[key].rate.toFixed(2);
         } else {
@@ -149,9 +162,10 @@ export default function ProductionExecutionWizard() {
             const finalInputs = activeTab === "FINISH" ? [{
                 productId: outputProductId,
                 quantity: inputQuantity,
-                costRate: stockRates[`${outputProductId}-GREY`]?.rate || 0,
+                costRate: stockRates[`${outputProductId}-GREY-STD`]?.rate || stockRates[`${outputProductId}-GREY-EFS`]?.rate || 0, // Fallback, but ideally frontend selects
                 stage: "GREY",
-                lotNumber: ""
+                lotNumber: "",
+                isEFS: stockRates[`${outputProductId}-GREY-EFS`]?.qty > 0 ? true : false
             }] : inputs;
 
             const payload = {
@@ -280,7 +294,8 @@ export default function ProductionExecutionWizard() {
                                     </div>
                                     {outputProductId && (
                                         <div className="mt-2 text-xs text-slate-400">
-                                            Grey Fabric in Stock: <span className="text-amber-400 font-semibold">{stockRates[`${outputProductId}-GREY`]?.qty || 0}</span> {outProduct?.baseUnit?.code}
+                                            Grey Fabric in Stock: <span className="text-amber-400 font-semibold">{(stockRates[`${outputProductId}-GREY-STD`]?.qty || 0) + (stockRates[`${outputProductId}-GREY-EFS`]?.qty || 0)}</span> {outProduct?.baseUnit?.code}
+                                            {stockRates[`${outputProductId}-GREY-EFS`]?.qty > 0 && <span className="ml-2 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-md">Includes EFS Stock</span>}
                                         </div>
                                     )}
                                 </div>
@@ -327,18 +342,27 @@ export default function ProductionExecutionWizard() {
                                 <div key={idx} className="bg-slate-950 border border-slate-800 p-4 rounded-2xl grid grid-cols-12 gap-4 items-center">
                                     <div className="col-span-12 md:col-span-4">
                                         <label className="block text-[10px] text-slate-500 mb-1 uppercase">Material (Raw/Yarn)</label>
-                                        <select value={input.productId} onChange={e => handleInputProductChange(idx, e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-emerald-500/50 hover:bg-slate-800 transition-all outline-none appearance-none cursor-pointer">
+                                        <select value={input.productId ? `${input.productId}|${input.isEFS}` : ""} onChange={e => handleInputProductChange(idx, e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-emerald-500/50 hover:bg-slate-800 transition-all outline-none appearance-none cursor-pointer">
                                             <option value="">Select Material...</option>
                                             {activeTab === "GREY" ? (
-                                                products.filter(p => p.category?.name?.toLowerCase().includes('yarn')).map(p => <option key={p.id} value={p.id}>{p.name}</option>)
+                                                products.filter(p => p.category?.name?.toLowerCase().includes('yarn')).flatMap(p => {
+                                                    const options = [];
+                                                    const stdQty = stockRates[`${p.id}-RAW-STD`]?.qty || 0;
+                                                    const efsQty = stockRates[`${p.id}-RAW-EFS`]?.qty || 0;
+                                                    if (stdQty > 0 || efsQty === 0) options.push(<option key={`${p.id}-std`} value={`${p.id}|false`}>{p.name} (STD)</option>);
+                                                    if (efsQty > 0) options.push(<option key={`${p.id}-efs`} value={`${p.id}|true`}>{p.name} (EFS) - Stock: {efsQty}</option>);
+                                                    return options;
+                                                })
                                             ) : (
                                                 products.filter(p => {
-                                                    const stockKey = `${p.id}-GREY`;
-                                                    return (stockRates[stockKey]?.qty || 0) > 0;
-                                                }).map(p => {
-                                                    const stockKey = `${p.id}-GREY`;
-                                                    const qty = stockRates[stockKey]?.qty || 0;
-                                                    return <option key={p.id} value={p.id}>{p.name} (Stock: {qty})</option>;
+                                                    return (stockRates[`${p.id}-GREY-STD`]?.qty || 0) > 0 || (stockRates[`${p.id}-GREY-EFS`]?.qty || 0) > 0;
+                                                }).flatMap(p => {
+                                                    const options = [];
+                                                    const stdQty = stockRates[`${p.id}-GREY-STD`]?.qty || 0;
+                                                    const efsQty = stockRates[`${p.id}-GREY-EFS`]?.qty || 0;
+                                                    if (stdQty > 0) options.push(<option key={`${p.id}-std`} value={`${p.id}|false`}>{p.name} (STD) - Stock: {stdQty}</option>);
+                                                    if (efsQty > 0) options.push(<option key={`${p.id}-efs`} value={`${p.id}|true`}>{p.name} (EFS) - Stock: {efsQty}</option>);
+                                                    return options;
                                                 })
                                             )}
                                         </select>
@@ -347,7 +371,7 @@ export default function ProductionExecutionWizard() {
                                         <label className="block text-[10px] text-slate-500 mb-1 uppercase">Qty</label>
                                         <input type="number" value={input.quantity} onChange={e => { const n = [...inputs]; n[idx].quantity = e.target.value; setInputs(n); }} className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="0" />
                                         <div className="absolute -bottom-5 left-1 text-[10px] text-slate-500 whitespace-nowrap">
-                                            In Stock: {stockRates[`${input.productId}-${input.stage || 'RAW'}`]?.qty || 0}
+                                            In Stock: {stockRates[`${input.productId}-${input.stage || 'RAW'}-${input.isEFS ? 'EFS' : 'STD'}`]?.qty || 0}
                                         </div>
                                     </div>
                                     <div className="col-span-4 md:col-span-2">

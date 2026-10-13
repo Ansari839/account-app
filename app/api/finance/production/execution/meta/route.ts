@@ -73,14 +73,14 @@ export async function GET(req: NextRequest) {
         // Current Stock Balances and Rates to auto-fill input rates
         const rawLedgers = await prisma.stockLedger.findMany({
             where: { companyId },
-            select: { productId: true, qtyIn: true, qtyOut: true, costRate: true, stage: true }
+            select: { productId: true, qtyIn: true, qtyOut: true, costRate: true, stage: true, isEFS: true }
         });
 
-        const stockRates: Record<string, { qty: number, rate: number }> = {};
+        const stockRates: Record<string, { qty: number, rate: number, isEFS: boolean }> = {};
         for (const l of rawLedgers) {
-            const key = `${l.productId}-${l.stage || 'RAW'}`;
+            const key = `${l.productId}-${l.stage || 'RAW'}-${l.isEFS ? 'EFS' : 'STD'}`;
             if (!stockRates[key]) {
-                stockRates[key] = { qty: 0, rate: 0 };
+                stockRates[key] = { qty: 0, rate: 0, isEFS: !!l.isEFS };
             }
             const s = stockRates[key];
             
@@ -121,7 +121,8 @@ export async function GET(req: NextRequest) {
 
         for (const [productId, items] of Object.entries(itemsByProduct)) {
             // Find current stock for this product (purchased items are usually RAW)
-            const stockKey = `${productId}-RAW`;
+            // For now, matching standard non-EFS for available lots logic unless EFS is added later
+            const stockKey = `${productId}-RAW-STD`;
             let remainingStock = stockRates[stockKey] ? stockRates[stockKey].qty : 0;
             
             for (const item of (items as any[])) {
