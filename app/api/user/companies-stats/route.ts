@@ -11,7 +11,7 @@ export async function GET(req: Request) {
 
         // Get companies the user belongs to
         const userCompanies = await prisma.userCompany.findMany({
-            where: { userId: user.id },
+            where: { userId: user.userId },
             select: { companyId: true }
         });
 

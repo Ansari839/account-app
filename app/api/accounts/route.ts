@@ -94,13 +94,19 @@ export async function GET(request: Request) {
         const accounts = await prisma.account.findMany({
             where,
             include: {
-                parent: { select: { name: true, code: true } },
-                _count: { select: { children: true } }
+                Account: { select: { name: true, code: true } },
+                _count: { select: { other_Account: true } }
             },
             orderBy: { code: 'asc' },
         });
 
-        return NextResponse.json({ accounts });
+        const formattedAccounts = accounts.map(acc => ({
+            ...acc,
+            parent: acc.Account,
+            _count: { children: acc._count?.other_Account || 0 }
+        }));
+
+        return NextResponse.json({ accounts: formattedAccounts });
     } catch (error) {
         console.error('Fetch accounts error:', error);
         return NextResponse.json({ error: 'Failed to fetch accounts' }, { status: 500 });

@@ -18,24 +18,56 @@ import { cn } from '@/lib/utils';
 // stored in UserPermission.module).  Items WITHOUT a permissionKey
 // are always shown to any authenticated user.
 // ─────────────────────────────────────────────────────────────
-const menuItems = [
+type SubMenuItem = string | { name: string; path: string; permissionKey?: string };
+
+interface MenuItem {
+    name: string;
+    icon: any;
+    path: string;
+    permissionKey?: string;
+    adminOnly?: boolean;
+    sub?: SubMenuItem[];
+}
+
+const menuItems: MenuItem[] = [
     { name: 'Dashboard',        icon: LayoutDashboard, path: '/finance/dashboard'  },          // always visible
     { name: 'Chart of Accounts', icon: Folders,        path: '/finance/coa',        permissionKey: 'chart-of-accounts' },
     { name: 'Vouchers',         icon: FileText,        path: '/finance/vouchers',   permissionKey: 'vouchers',
-      sub: ['Journal', 'Payment', 'Receipt'] },
+      sub: ['Journal', 'Payment', 'Receipt', 'Contra'] },
     { name: 'Purchase',         icon: ShoppingCart,    path: '/finance/purchase',   permissionKey: 'purchase',
       sub: ['orders', 'grn', 'invoices', 'invoices/import', 'returns'] },
     { name: 'Sales',            icon: TrendingUp,      path: '/finance/sales',      permissionKey: 'sales',
       sub: ['orders', 'delivery-notes', 'invoices', 'invoices/export', 'returns'] },
     { name: 'Inventory',        icon: Package,         path: '/inventory',          permissionKey: 'inventory',
-      sub: ['Products', 'Categories', 'Warehouses'] },
+      sub: [
+          { name: 'Overview', path: '/inventory' },
+          'Products',
+          'Categories',
+          'Warehouses'
+      ] },
     { name: 'Reports',          icon: ScrollText,      path: '/finance/reports',    permissionKey: 'reports',
-      sub: ['trial-balance', 'profit-loss', 'balance-sheet', 'ledger', 'inventory', 'sales', 'purchase'] },
+      sub: [
+          { name: 'All Reports', path: '/finance/reports' },
+          'trial-balance',
+          'profit-loss',
+          'balance-sheet',
+          'ledger',
+          'inventory',
+          'sales',
+          'purchase'
+      ] },
     { name: 'Production',       icon: Package,         path: '/finance/production', permissionKey: 'production',
-      sub: ['BOM', 'Execution'] },
+      sub: [
+          { name: 'Dashboard', path: '/finance/production' },
+          'BOM',
+          'Execution'
+      ] },
     // Settings: visible to CompanyAdmin/SuperAdmin only (handled separately)
     { name: 'Settings',         icon: Settings,        path: '/admin/settings',     adminOnly: true,
-      sub: ['account-mapping'] },
+      sub: [
+          { name: 'System Settings', path: '/admin/settings' },
+          { name: 'Account Mapping', path: '/admin/settings/account-mapping' }
+      ] },
 ];
 
 const adminItems = [
@@ -48,8 +80,9 @@ const adminItems = [
 export default function Sidebar() {
     const pathname = usePathname();
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [openDropdown, setOpenDropdown] = useState<string | null>(null);
     const [user, setUser] = useState<{ fullName: string; email: string; isSuperAdmin?: boolean } | null>(null);
-    const { canAccess, permissionsRefreshing, activeCompany, permissionsLoaded, clearCompany } = useCompany();
+    const { canAccess, permissionsRefreshing, activeCompany, permissionsLoaded, clearCompany, isManufacturing } = useCompany();
 
     useEffect(() => {
         const userStr = localStorage.getItem('user');
@@ -85,10 +118,55 @@ export default function Sidebar() {
     const canSeeModule = (moduleKey: string) => canAccess(moduleKey, 'VIEW');
 
     const visibleMenuItems = menuItems.filter((item: any) => {
+        if (item.permissionKey === 'production' && !isManufacturing) return false;
         if (item.adminOnly)      return hasFullAccess;   // Settings — admin only
         if (!item.permissionKey) return true;            // Dashboard — always visible
         return canSeeModule(item.permissionKey);
     });
+
+    // Auto-open the dropdown for the currently active route
+    useEffect(() => {
+        if (!pathname) return;
+        const activeItem = visibleMenuItems.find(item => item.sub && pathname.startsWith(item.path));
+        if (activeItem) {
+            setOpenDropdown(activeItem.name);
+        }
+    }, [pathname]);
+
+    const handleToggleDropdown = (itemName: string) => {
+        if (isCollapsed) {
+            setIsCollapsed(false);
+            setOpenDropdown(itemName);
+        } else {
+            setOpenDropdown(prev => (prev === itemName ? null : itemName));
+        }
+    };
+
+    const getSubDetails = (parentItem: MenuItem, sub: SubMenuItem) => {
+        if (typeof sub === 'object') {
+            const isSubActive = pathname === sub.path || (sub.path !== parentItem.path && pathname.startsWith(`${sub.path}/`));
+            return {
+                label: sub.name,
+                subPath: sub.path,
+                hasAccess: isSuperAdmin || !sub.permissionKey || canSeeModule(sub.permissionKey),
+                isSubActive
+            };
+        }
+
+        const parentModule = SIDEBAR_PERMISSION_MAP[parentItem.name];
+        const subModuleKey = parentModule ? `${parentModule}.${sub.toLowerCase()}` : '';
+        const hasAccess = isSuperAdmin || !subModuleKey || canSeeModule(subModuleKey);
+        const subPath = sub.includes('/') ? `${parentItem.path}/${sub}` : `${parentItem.path}/${sub.toLowerCase()}`;
+        
+        let label = sub;
+        if (sub === 'invoices/import') label = 'Import Bills';
+        else if (sub === 'invoices/export') label = 'Export Invoices';
+        else label = sub.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+        const isSubActive = pathname === subPath || pathname.startsWith(`${subPath}/`);
+
+        return { label, subPath, hasAccess, isSubActive };
+    };
 
     return (
         <aside
@@ -139,8 +217,74 @@ export default function Sidebar() {
                     </div>
                 )}
                 {permissionsLoaded && visibleMenuItems.map((item) => {
-                    const isActive = pathname.startsWith(item.path);
+                    const isSectionActive = pathname.startsWith(item.path);
                     const Icon = item.icon;
+                    const hasSub = !!(item.sub && item.sub.length > 0);
+                    const isOpen = openDropdown === item.name;
+
+                    if (hasSub) {
+                        return (
+                            <div key={item.name} className="space-y-1">
+                                <button
+                                    type="button"
+                                    onClick={() => handleToggleDropdown(item.name)}
+                                    className={cn(
+                                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative text-left",
+                                        isSectionActive
+                                            ? "bg-indigo-500/10 text-indigo-400 font-medium"
+                                            : "hover:bg-slate-800/50 hover:text-white text-slate-300"
+                                    )}
+                                    aria-expanded={isOpen}
+                                >
+                                    <Icon size={22} className={cn(
+                                        "transition-colors flex-shrink-0",
+                                        isSectionActive ? "text-indigo-400" : "text-slate-400 group-hover:text-indigo-400"
+                                    )} />
+
+                                    {!isCollapsed && (
+                                        <span className="flex-1 truncate">{item.name}</span>
+                                    )}
+
+                                    {!isCollapsed && (
+                                        <ChevronDown size={14} className={cn(
+                                            "transition-transform duration-200 opacity-50 group-hover:opacity-100 flex-shrink-0",
+                                            isOpen && "rotate-180 opacity-100 text-indigo-400"
+                                        )} />
+                                    )}
+
+                                    {isSectionActive && (
+                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-500 rounded-r-full" />
+                                    )}
+                                </button>
+
+                                {/* Sub-menu rendering */}
+                                {!isCollapsed && isOpen && (
+                                    <div className="ml-9 border-l border-slate-700/50 space-y-1 py-1 animate-in slide-in-from-top-1 duration-200">
+                                        {item.sub!.map((sub, idx) => {
+                                            const { label, subPath, hasAccess, isSubActive } = getSubDetails(item, sub);
+                                            if (!hasAccess) return null;
+
+                                            const key = typeof sub === 'string' ? sub : sub.path;
+                                            return (
+                                                <Link
+                                                    key={`${key}-${idx}`}
+                                                    href={subPath}
+                                                    className={cn(
+                                                        "block px-4 py-2 text-sm rounded-md transition-colors",
+                                                        isSubActive
+                                                            ? "text-indigo-400 font-medium bg-indigo-500/10"
+                                                            : "text-slate-400 hover:text-white hover:bg-slate-800/30"
+                                                    )}
+                                                >
+                                                    {label}
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
 
                     return (
                         <div key={item.name} className="space-y-1">
@@ -148,73 +292,24 @@ export default function Sidebar() {
                                 href={item.path}
                                 className={cn(
                                     "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
-                                    isActive
+                                    isSectionActive
                                         ? "bg-indigo-500/10 text-indigo-400 font-medium"
-                                        : "hover:bg-slate-800/50 hover:text-white"
+                                        : "hover:bg-slate-800/50 hover:text-white text-slate-300"
                                 )}
                             >
                                 <Icon size={22} className={cn(
-                                    "transition-colors",
-                                    isActive ? "text-indigo-400" : "text-slate-400 group-hover:text-indigo-400"
+                                    "transition-colors flex-shrink-0",
+                                    isSectionActive ? "text-indigo-400" : "text-slate-400 group-hover:text-indigo-400"
                                 )} />
 
                                 {!isCollapsed && (
                                     <span className="flex-1 truncate">{item.name}</span>
                                 )}
 
-                                {!isCollapsed && item.sub && (
-                                    <ChevronDown size={14} className={cn(
-                                        "transition-transform duration-200 opacity-40",
-                                        isActive && "rotate-180 opacity-100"
-                                    )} />
-                                )}
-
-                                {isActive && (
+                                {isSectionActive && (
                                     <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-500 rounded-r-full" />
                                 )}
                             </Link>
-
-                            {/* Sub-menu rendering */}
-                            {!isCollapsed && item.sub && isActive && (
-                                <div className="ml-9 border-l border-slate-700/50 space-y-1 py-1 animate-in slide-in-from-top-1 duration-200">
-                                    {item.sub.map((sub) => {
-                                        // Check permission for this specific sub-module
-                                        // e.g. parent is 'purchase', sub is 'orders' => module is 'purchase.orders'
-                                        // Note: For 'vouchers', the sub might be 'Journal', so we lowercase it.
-                                        const parentModule = SIDEBAR_PERMISSION_MAP[item.name];
-                                        const subModuleKey = parentModule ? `${parentModule}.${sub.toLowerCase()}` : '';
-                                        
-                                        // Only show if SuperAdmin, or if the user has VIEW access to this specific sub-module.
-                                        // Wait, hasPermission will return true if they have 'purchase.VIEW' or 'purchase.orders.VIEW'.
-                                        const hasSubAccess = isSuperAdmin || !subModuleKey || canSeeModule(subModuleKey);
-                                        
-                                        if (!hasSubAccess) return null;
-
-                                        const subPath = sub.includes('/') ? `${item.path}/${sub}` : `${item.path}/${sub.toLowerCase()}`;
-                                        
-                                        let label = sub;
-                                        if (sub === 'invoices/import') label = 'Import Bills';
-                                        else if (sub === 'invoices/export') label = 'Export Invoices';
-                                        else label = sub.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-
-                                        const isSubActive = pathname === subPath || pathname.startsWith(`${subPath}/`);
-                                        return (
-                                            <Link
-                                                key={sub}
-                                                href={subPath}
-                                                className={cn(
-                                                    "block px-4 py-2 text-sm rounded-md transition-colors",
-                                                    isSubActive
-                                                        ? "text-indigo-400 font-medium bg-indigo-500/10"
-                                                        : "text-slate-400 hover:text-white hover:bg-slate-800/30"
-                                                )}
-                                            >
-                                                {label}
-                                            </Link>
-                                        );
-                                    })}
-                                </div>
-                            )}
                         </div>
                     );
                 })}

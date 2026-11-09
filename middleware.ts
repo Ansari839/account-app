@@ -20,6 +20,7 @@ const PUBLIC_ROUTES = [
 const NO_COMPANY_ROUTES = [
     "/auth/select-company",
     "/api/user/companies",
+    "/api/user/permissions",
     "/api/auth/company-session",
     "/api/auth/clear-session",
     "/api/auth/change-password",
@@ -47,12 +48,12 @@ export async function middleware(request: NextRequest) {
     if (path.startsWith('/api/')) {
         const token = request.headers.get("Authorization")?.split(" ")[1];
         if (!token) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
         }
 
         const payload = await AuthUtils.verifyToken(token);
         if (!payload) {
-            return NextResponse.json({ error: "Invalid Token" }, { status: 401 });
+            return NextResponse.json({ success: false, error: "Invalid Token" }, { status: 401 });
         }
 
         /* Temporarily disable until change-password is implemented

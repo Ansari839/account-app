@@ -14,12 +14,22 @@ export async function GET(req: Request) {
             orderBy: { createdAt: 'desc' },
             include: {
                 _count: {
-                    select: { users: true }
+                    select: { UserCompany: true }
+                },
+                CompanySetting: {
+                    where: { key: "ENABLE_MANUFACTURING" },
+                    select: { value: true }
                 }
             }
         });
 
-        return NextResponse.json({ success: true, data: companies });
+        const formatted = companies.map(c => ({
+            ...c,
+            isManufacturing: c.CompanySetting?.[0]?.value === 'true',
+            CompanySetting: undefined
+        }));
+
+        return NextResponse.json({ success: true, data: formatted });
     } catch (error: any) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
@@ -63,6 +73,17 @@ export async function POST(req: Request) {
                     isDefault: true
                 }
             });
+
+            if (body.isManufacturing) {
+                await prisma.companySetting.create({
+                    data: {
+                        companyId: company.id,
+                        key: "ENABLE_MANUFACTURING",
+                        value: "true",
+                        type: "BOOLEAN"
+                    }
+                });
+            }
         }
 
         return NextResponse.json({ success: true, data: company });

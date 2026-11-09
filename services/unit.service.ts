@@ -57,14 +57,34 @@ export class UnitService {
      * Get all units (scoped to company)
      */
     static async getAllUnits(companyId: string) {
-        return prisma.unit.findMany({
+        const units = await prisma.unit.findMany({
             where: { companyId },
             orderBy: { name: 'asc' },
             include: {
-                conversionsFrom: { include: { toUnit: true } },
-                conversionsTo: { include: { fromUnit: true } }
+                UnitConversion_UnitConversion_fromUnitIdToUnit: {
+                    include: {
+                        Unit_UnitConversion_toUnitIdToUnit: true
+                    }
+                },
+                UnitConversion_UnitConversion_toUnitIdToUnit: {
+                    include: {
+                        Unit_UnitConversion_fromUnitIdToUnit: true
+                    }
+                }
             }
         });
+
+        return units.map(u => ({
+            ...u,
+            conversionsFrom: u.UnitConversion_UnitConversion_fromUnitIdToUnit?.map(c => ({
+                ...c,
+                toUnit: c.Unit_UnitConversion_toUnitIdToUnit
+            })) || [],
+            conversionsTo: u.UnitConversion_UnitConversion_toUnitIdToUnit?.map(c => ({
+                ...c,
+                fromUnit: c.Unit_UnitConversion_fromUnitIdToUnit
+            })) || []
+        }));
     }
 
     /**

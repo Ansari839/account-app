@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { authenticatedFetch } from "@/lib/api-client";
 import { PackageOpen, Truck, Loader2 } from "lucide-react";
+import SettingsLoading from "./SettingsLoading";
 
 export default function InventorySettings() {
     const [settings, setSettings] = useState({
@@ -59,13 +60,10 @@ export default function InventorySettings() {
 
     if (loading) {
         return (
-            <div className="flex flex-col items-center justify-center h-64 gap-4 animate-in fade-in duration-500">
-                <div className="relative">
-                    <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full"></div>
-                    <Loader2 className="w-12 h-12 text-indigo-600 dark:text-indigo-400 animate-spin relative z-10" />
-                </div>
-                <p className="text-sm font-bold text-slate-500 animate-pulse uppercase tracking-widest">Loading Settings...</p>
-            </div>
+            <SettingsLoading 
+                title="Loading Inventory Settings..." 
+                description="Fetching stock rules, mandatory GRN / DO workflows, and modules." 
+            />
         );
     }
 

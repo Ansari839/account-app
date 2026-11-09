@@ -6,7 +6,7 @@ import { authenticatedFetch } from '@/lib/api-client';
 import { useNotifications } from '@/context/NotificationContext';
 
 interface UserCompany {
-    company: { id: string; name: string };
+    Company: { id: string; name: string };
     role: string;
     isDefault: boolean;
 }
@@ -18,7 +18,7 @@ interface User {
     isActive: boolean;
     isSuperAdmin: boolean;
     lastLoginAt: string | null;
-    companies: UserCompany[];
+    UserCompany: UserCompany[];
 }
 
 interface Company {
@@ -126,7 +126,7 @@ export default function AdminUsersPage() {
                 // Update selectedUser state directly to reflect UI instantly
                 const updatedUser = {
                     ...selectedUser,
-                    companies: selectedUser.companies.filter(c => c.company.id !== companyId)
+                    UserCompany: selectedUser.UserCompany.filter(c => c.Company.id !== companyId)
                 };
                 setSelectedUser(updatedUser);
                 
@@ -195,12 +195,12 @@ export default function AdminUsersPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-wrap gap-2">
-                                                {user.companies.map((uc) => (
-                                                    <span key={uc.company.id} className="bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide" title={uc.role}>
-                                                        {uc.company.name} <span className="opacity-60 font-black uppercase tracking-widest ml-1">({uc.role})</span>
+                                                {user.UserCompany.map((uc) => (
+                                                    <span key={uc.Company.id} className="bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide" title={uc.role}>
+                                                        {uc.Company.name} <span className="opacity-60 font-black uppercase tracking-widest ml-1">({uc.role})</span>
                                                     </span>
                                                 ))}
-                                                {user.companies.length === 0 && <span className="text-slate-400 dark:text-slate-500 text-xs italic font-medium">No access</span>}
+                                                {user.UserCompany.length === 0 && <span className="text-slate-400 dark:text-slate-500 text-xs italic font-medium">No access</span>}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-center">
@@ -265,19 +265,19 @@ export default function AdminUsersPage() {
                             <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">Assign Company</h2>
                             <p className="text-slate-500 dark:text-slate-400 text-sm mb-6 font-medium">Assign access for <span className="font-bold text-slate-700 dark:text-slate-300">{selectedUser.fullName}</span>.</p>
                             
-                            {selectedUser.companies.length > 0 && (
+                            {selectedUser.UserCompany.length > 0 && (
                                 <div className="mb-6 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                                     <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Currently Assigned</h3>
                                     <div className="space-y-2">
-                                        {selectedUser.companies.map((uc) => (
-                                            <div key={uc.company.id} className="flex items-center justify-between bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                        {selectedUser.UserCompany.map((uc) => (
+                                            <div key={uc.Company.id} className="flex items-center justify-between bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700">
                                                 <div>
-                                                    <div className="text-sm font-bold text-slate-700 dark:text-slate-200">{uc.company.name}</div>
+                                                    <div className="text-sm font-bold text-slate-700 dark:text-slate-200">{uc.Company.name}</div>
                                                     <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">{uc.role}</div>
                                                 </div>
                                                 <button 
                                                     type="button" 
-                                                    onClick={() => handleRemoveCompany(uc.company.id)}
+                                                    onClick={() => handleRemoveCompany(uc.Company.id)}
                                                     className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-md transition-colors"
                                                     title="Remove Access"
                                                 >

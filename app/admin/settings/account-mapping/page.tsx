@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { Link2, Save, CheckCircle2, AlertCircle, RefreshCw, BookOpen } from 'lucide-react';
+import SettingsLoading from '@/components/settings/SettingsLoading';
 
 interface AccountOption {
     id: string;
@@ -177,10 +178,10 @@ export default function AccountMappingPage() {
                 )}
 
                 {isLoading ? (
-                    <div className="h-64 flex flex-col items-center justify-center gap-3">
-                        <div className="animate-spin w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
-                        <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Loading Mappings...</p>
-                    </div>
+                    <SettingsLoading 
+                        title="Loading Account Mappings..." 
+                        description="Fetching system account definitions and current mapping configuration." 
+                    />
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         {MAPPING_KEYS.map(({ key, label, description, color }) => {

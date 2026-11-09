@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Clock, HardDrive, ToggleLeft, ToggleRight, Play, Download, CheckCircle2, XCircle, AlertTriangle, Loader2, Plus, Trash2, RefreshCw } from 'lucide-react';
 import { authenticatedFetch } from '@/lib/api-client';
 import { useNotifications } from '@/context/NotificationContext';
+import SettingsLoading from './SettingsLoading';
 
 interface Schedule {
     id: string;
@@ -196,11 +197,14 @@ export default function BackupSettings() {
         }
     };
 
-    if (loading) return (
-        <div className="flex items-center justify-center py-20">
-            <Loader2 className="animate-spin text-indigo-400" size={32} />
-        </div>
-    );
+    if (loading) {
+        return (
+            <SettingsLoading 
+                title="Loading Backup Settings..." 
+                description="Checking backup schedules, storage targets, and backup history." 
+            />
+        );
+    }
 
     return (
         <div className="space-y-6">

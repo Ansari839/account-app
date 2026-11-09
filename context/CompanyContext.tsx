@@ -34,6 +34,7 @@ export interface CompanyInfo {
     logo?: string | null;
     role: CompanyRole;
     isDefault: boolean;
+    isManufacturing?: boolean;
 }
 
 interface CompanyContextType {
@@ -46,6 +47,8 @@ interface CompanyContextType {
     permissionsLoaded: boolean;
     /** True while permissions are being re-fetched (company switch) */
     permissionsRefreshing: boolean;
+    /** Whether the active company has manufacturing enabled */
+    isManufacturing: boolean;
     /** Check if the current user can VIEW (or do `action` on) a module */
     canAccess: (moduleKey: string, action?: 'VIEW' | 'CREATE' | 'EDIT' | 'DELETE') => boolean;
     switchCompany: (companyOrId: string | CompanyInfo) => Promise<void>;
@@ -69,6 +72,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     const [permissions,          setPermissions]           = useState<string[]>([]);
     const [permissionsLoaded,    setPermissionsLoaded]     = useState(false);
     const [permissionsRefreshing,setPermissionsRefreshing] = useState(false);
+    const [isManufacturing,      setIsManufacturing]      = useState(false);
 
     // Track the company we last started fetching for (to discard stale responses)
     const fetchingForCompanyId = useRef<string | null>(null);
@@ -80,7 +84,14 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
         fetchingForCompanyId.current = companyId;
 
-        if (role === 'ADMIN' || role === 'OWNER') {
+        // Check if SuperAdmin from localStorage
+        let isSuperAdmin = false;
+        try {
+            const u = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+            if (u) isSuperAdmin = JSON.parse(u).isSuperAdmin || false;
+        } catch { /* ignore */ }
+
+        if (isSuperAdmin || role === 'ADMIN' || role === 'OWNER') {
             const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
             if (token) {
                 try {
@@ -90,7 +101,13 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
                         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                         body: JSON.stringify({ companyId: company.id })
                     });
-                    if (!sessRes.ok) {
+                    if (sessRes.ok) {
+                        const sessJson = await sessRes.json();
+                        if (fetchingForCompanyId.current === companyId && typeof sessJson.isManufacturing !== 'undefined') {
+                            setIsManufacturing(!!sessJson.isManufacturing);
+                            setActiveCompany(prev => prev && prev.id === companyId ? { ...prev, isManufacturing: !!sessJson.isManufacturing } : prev);
+                        }
+                    } else {
                         alert(`Admin Session API failed: ${sessRes.status}`);
                     }
                 } catch (err: any) {
@@ -130,6 +147,11 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
             if (fetchingForCompanyId.current !== companyId) return;
 
             if (json.success && Array.isArray(json.data)) {
+                if (typeof json.isManufacturing !== 'undefined') {
+                    setIsManufacturing(!!json.isManufacturing);
+                    setActiveCompany(prev => prev && prev.id === companyId ? { ...prev, isManufacturing: !!json.isManufacturing } : prev);
+                }
+
                 try {
                     const sessRes = await fetch('/api/auth/company-session', {
                         method: 'POST',
@@ -247,6 +269,11 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         moduleKey: string,
         action: 'VIEW' | 'CREATE' | 'EDIT' | 'DELETE' = 'VIEW',
     ): boolean => {
+        // Manufacturing guard: If company is not manufacturing, production module is disabled for all users
+        if ((moduleKey === 'production' || moduleKey.startsWith('production.')) && !isManufacturing) {
+            return false;
+        }
+
         // 1. SuperAdmin — read from localStorage (set on login, never changes mid-session)
         try {
             const u = localStorage.getItem('user');
@@ -275,7 +302,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
             p === `${moduleKey}${suffix}` ||
             (p.startsWith(`${moduleKey}.`) && p.endsWith(suffix))
         );
-    }, [permissions, permissionsLoaded, activeCompany]);
+    }, [permissions, permissionsLoaded, activeCompany, isManufacturing]);
 
     // ── Context value ──────────────────────────────────────────────────────
 
@@ -287,6 +314,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
             permissions,
             permissionsLoaded,
             permissionsRefreshing,
+            isManufacturing,
             canAccess,
             switchCompany,
             setCompanies,

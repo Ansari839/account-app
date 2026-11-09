@@ -5,16 +5,16 @@ import prisma from "@/lib/prisma";
 export async function GET(req: NextRequest) {
     try {
         const auth = await AuthUtils.getAuthUser(req);
-        if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        if (!auth) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
         const companyId = req.nextUrl.searchParams.get('companyId');
-        if (!companyId) return NextResponse.json({ error: "companyId is required" }, { status: 400 });
+        if (!companyId) return NextResponse.json({ success: false, error: "companyId is required" }, { status: 400 });
 
         // Get users and their direct permissions
         const users = await prisma.userCompany.findMany({
             where: { companyId },
             include: {
-                user: {
+                User: {
                     select: {
                         id: true,
                         fullName: true,
@@ -34,13 +34,13 @@ export async function GET(req: NextRequest) {
             success: true,
             data: {
                 users: users.map(uc => ({
-                    id: uc.user.id,
-                    fullName: uc.user.fullName,
-                    email: uc.user.email,
+                    id: uc.User.id,
+                    fullName: uc.User.fullName,
+                    email: uc.User.email,
                     companyRole: uc.role,
-                    isSuperAdmin: uc.user.isSuperAdmin,
+                    isSuperAdmin: uc.User.isSuperAdmin,
                     permissions: allPermissions
-                        .filter(p => p.userId === uc.user.id)
+                        .filter(p => p.userId === uc.User.id)
                         .map(p => ({
                             module: p.module,
                             canRead: p.canRead,
@@ -52,34 +52,35 @@ export async function GET(req: NextRequest) {
             }
         });
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }
 
 export async function POST(req: NextRequest) {
     try {
         const auth = await AuthUtils.getAuthUser(req);
-        if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        if (!auth) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
 
+        const authUserId = auth.userId || auth.id;
         const { companyId, userId, modules, action, value } = await req.json();
         
         // Verify requester has permission to modify access (must be SUPER_ADMIN or COMPANY ADMIN/OWNER)
-        const requester = await prisma.user.findUnique({ where: { id: auth.userId } });
+        const requester = await prisma.user.findUnique({ where: { id: authUserId } });
         let canManage = requester?.isSuperAdmin || false;
         
         if (!canManage) {
             const requesterCompany = await prisma.userCompany.findUnique({
-                where: { userId_companyId: { userId: auth.userId, companyId } }
+                where: { userId_companyId: { userId: authUserId, companyId } }
             });
             canManage = !!requesterCompany && (requesterCompany.role === 'ADMIN' || requesterCompany.role === 'OWNER');
         }
 
         if (!canManage) {
-            return NextResponse.json({ error: "Only Super Admins or Company Admins can manage permissions" }, { status: 403 });
+            return NextResponse.json({ success: false, error: "Only Super Admins or Company Admins can manage permissions" }, { status: 403 });
         }
 
         if (!companyId || !userId || !modules || !Array.isArray(modules) || !action) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+            return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
         }
 
         // Action can be: 'read', 'write', 'delete', 'finance'

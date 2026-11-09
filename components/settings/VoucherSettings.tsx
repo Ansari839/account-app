@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { authenticatedFetch } from '@/lib/api-client';
 import { useCompany } from '@/context/CompanyContext';
+import SettingsLoading from './SettingsLoading';
 
 interface VoucherSequence {
     type: string;
@@ -67,7 +68,14 @@ export default function VoucherSettings() {
         }
     };
 
-    if (loading) return <div>Loading settings...</div>;
+    if (loading) {
+        return (
+            <SettingsLoading 
+                title="Loading Voucher Settings..." 
+                description="Fetching numbering sequences and voucher prefixes." 
+            />
+        );
+    }
 
     return (
         <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">

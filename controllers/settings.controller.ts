@@ -39,7 +39,8 @@ export class SettingsController {
             if (error) return error;
 
             const company = await prisma.company.findUnique({ where: { id: companyId } });
-            return NextResponse.json({ success: true, data: company });
+            const isManufacturing = await CompanySettingsService.getBoolean(companyId, "ENABLE_MANUFACTURING", false);
+            return NextResponse.json({ success: true, data: { ...company, isManufacturing } });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         }
@@ -62,7 +63,19 @@ export class SettingsController {
                 }
             });
 
-            return NextResponse.json({ success: true, data: company });
+            if (typeof body.isManufacturing !== 'undefined') {
+                await CompanySettingsService.set(
+                    companyId,
+                    "ENABLE_MANUFACTURING",
+                    String(!!body.isManufacturing),
+                    "BOOLEAN"
+                );
+            }
+
+            return NextResponse.json({ 
+                success: true, 
+                data: { ...company, isManufacturing: !!body.isManufacturing } 
+            });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         }

@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "@/components/MainLayout";
 import { authenticatedFetch } from "@/lib/api-client";
-import { PackageSearch, Loader2, ArrowRight, Layers } from "lucide-react";
+import { PackageSearch, Loader2, ArrowRight, Layers, Factory } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useCompany } from "@/context/CompanyContext";
 
 export default function ProductionDashboard() {
     const router = useRouter();
+    const { isManufacturing, permissionsLoaded } = useCompany();
     const [categories, setCategories] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -35,6 +37,30 @@ export default function ProductionDashboard() {
     };
 
     const activeCategory = categories.find(c => c.id === activeTab);
+
+    if (permissionsLoaded && !isManufacturing) {
+        return (
+            <MainLayout>
+                <div className="max-w-xl mx-auto my-24 p-8 text-center space-y-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xl">
+                    <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mx-auto">
+                        <Factory size={32} />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white">Manufacturing Module Disabled</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                        The Production, BOM, and Material Execution modules are only available for Manufacturing companies. This company is currently configured as a Commercial / Trading business.
+                    </p>
+                    <div className="pt-4">
+                        <button
+                            onClick={() => router.push('/admin/settings')}
+                            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+                        >
+                            Open Company Settings
+                        </button>
+                    </div>
+                </div>
+            </MainLayout>
+        );
+    }
 
     return (
         <MainLayout>

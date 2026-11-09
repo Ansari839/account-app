@@ -3,10 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import { authenticatedFetch } from '@/lib/api-client';
 import { useNotifications } from '@/context/NotificationContext';
+import { useCompany } from '@/context/CompanyContext';
 import DataTable from '@/components/DataTable';
 
 export default function UnitSettings() {
     const { showNotification } = useNotifications();
+    const { activeCompany } = useCompany();
     const [units, setUnits] = useState([]);
     const [formData, setFormData] = useState({ id: '', code: '', name: '' });
     const [isLoading, setIsLoading] = useState(true);
@@ -17,13 +19,13 @@ export default function UnitSettings() {
         authenticatedFetch('/api/finance/units')
             .then(res => res.json())
             .then(json => {
-                if (json.success) setUnits(json.data);
+                if (json.success && Array.isArray(json.data)) setUnits(json.data);
                 setIsLoading(false);
             })
             .catch(() => setIsLoading(false));
     };
 
-    useEffect(() => { loadUnits(); }, []);
+    useEffect(() => { loadUnits(); }, [activeCompany?.id]);
 
     const handleSubmit = async () => {
         if (!formData.code || !formData.name) {

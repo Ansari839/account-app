@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { authenticatedFetch } from '@/lib/api-client';
 import { useNotifications } from '@/context/NotificationContext';
+import { useCompany } from '@/context/CompanyContext';
 
 interface Company {
     id: string;
@@ -12,18 +13,20 @@ interface Company {
     phone?: string;
     website?: string;
     address?: string;
+    isManufacturing?: boolean;
     _count?: {
-        users: number;
+        UserCompany: number;
     }
 }
 
 export default function AdminCompaniesPage() {
     const { showNotification } = useNotifications();
+    const { activeCompany, switchCompany } = useCompany();
     const [companies, setCompanies] = useState<Company[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState({
-        name: '', email: '', phone: '', website: '', address: ''
+        name: '', email: '', phone: '', website: '', address: '', isManufacturing: false
     });
 
     const fetchCompanies = async () => {
@@ -59,7 +62,7 @@ export default function AdminCompaniesPage() {
             const data = await res.json();
             if (data.success) {
                 showNotification('success', 'Company created successfully');
-                setFormData({ name: '', email: '', phone: '', website: '', address: '' });
+                setFormData({ name: '', email: '', phone: '', website: '', address: '', isManufacturing: false });
                 setIsModalOpen(false);
                 fetchCompanies();
             } else {
@@ -74,6 +77,58 @@ export default function AdminCompaniesPage() {
     const [cloneModalOpen, setCloneModalOpen] = useState(false);
     const [cloneSource, setCloneSource] = useState<{ id: string; name: string } | null>(null);
     const [cloneName, setCloneName] = useState('');
+
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editingCompanyId, setEditingCompanyId] = useState<string | null>(null);
+    const [editFormData, setEditFormData] = useState({
+        name: '', email: '', phone: '', website: '', address: '', isManufacturing: false
+    });
+
+    const handleEditClick = (company: Company) => {
+        setEditingCompanyId(company.id);
+        setEditFormData({
+            name: company.name || '',
+            email: company.email || '',
+            phone: company.phone || '',
+            website: company.website || '',
+            address: company.address || '',
+            isManufacturing: !!company.isManufacturing
+        });
+        setEditModalOpen(true);
+    };
+
+    const handleEditSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingCompanyId) return;
+
+        try {
+            const res = await authenticatedFetch(`/api/admin/companies/${editingCompanyId}`, {
+                method: 'PUT',
+                body: JSON.stringify(editFormData),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.success) {
+                showNotification('success', 'Company details updated successfully');
+                setEditModalOpen(false);
+                const editedId = editingCompanyId;
+                setEditingCompanyId(null);
+                fetchCompanies();
+                if (activeCompany && activeCompany.id === editedId) {
+                    await switchCompany({
+                        ...activeCompany,
+                        name: editFormData.name,
+                        isManufacturing: editFormData.isManufacturing
+                    });
+                }
+            } else {
+                showNotification('error', data.error || 'Failed to update company');
+            }
+        } catch (error) {
+            console.error(error);
+            showNotification('error', 'Failed to update company');
+        }
+    };
 
     const handleClone = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -127,8 +182,19 @@ export default function AdminCompaniesPage() {
                                     <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center text-2xl font-black text-white shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
                                         {company.name.substring(0, 2).toUpperCase()}
                                     </div>
-                                    <div className="bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-md text-[10px] text-slate-500 dark:text-slate-400 font-bold tracking-widest uppercase border border-slate-200 dark:border-slate-700">
-                                        ID: {company.id.substring(0, 8)}...
+                                    <div className="flex items-center gap-2">
+                                        {company.isManufacturing ? (
+                                            <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider">
+                                                🏭 Factory
+                                            </span>
+                                        ) : (
+                                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border border-slate-200 dark:border-slate-700">
+                                                🏢 Commercial
+                                            </span>
+                                        )}
+                                        <div className="bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-md text-[10px] text-slate-500 dark:text-slate-400 font-bold tracking-widest uppercase border border-slate-200 dark:border-slate-700">
+                                            ID: {company.id.substring(0, 8)}...
+                                        </div>
                                     </div>
                                 </div>
                                 <h3 className="text-xl font-black text-slate-900 dark:text-white mb-3 truncate" title={company.name}>{company.name}</h3>
@@ -139,7 +205,7 @@ export default function AdminCompaniesPage() {
                                         </div>
                                     )}
                                     <div className="flex items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-800/50">
-                                        <span className="opacity-70">👥</span> <span className="font-bold text-slate-900 dark:text-white">{company._count?.users || 0}</span> Users
+                                        <span className="opacity-70">👥</span> <span className="font-bold text-slate-900 dark:text-white">{company._count?.UserCompany || 0}</span> Users
                                     </div>
                                 </div>
                                 <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
@@ -153,7 +219,10 @@ export default function AdminCompaniesPage() {
                                     >
                                         Clone
                                     </button>
-                                    <button className="text-xs px-4 py-2 rounded-lg text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:text-indigo-300 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 font-bold transition-all active:scale-95">
+                                    <button
+                                        onClick={() => handleEditClick(company)}
+                                        className="text-xs px-4 py-2 rounded-lg text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:text-indigo-300 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 font-bold transition-all active:scale-95"
+                                    >
                                         Edit Details →
                                     </button>
                                 </div>
@@ -216,6 +285,18 @@ export default function AdminCompaniesPage() {
                                         className="w-full mt-1.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all font-medium h-24 resize-none"
                                     />
                                 </div>
+                                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800 dark:text-white">Manufacturing Company</div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400">Enable Bill of Materials (BOM) & Production Dashboard</div>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.isManufacturing}
+                                        onChange={e => setFormData({ ...formData, isManufacturing: e.target.checked })}
+                                        className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 cursor-pointer"
+                                    />
+                                </div>
                                 <div className="flex justify-end gap-3 pt-6">
                                     <button
                                         type="button"
@@ -267,6 +348,94 @@ export default function AdminCompaniesPage() {
                                         className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
                                     >
                                         Clone Company
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Edit Company Modal */}
+                {editModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg p-8 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6 tracking-tight">Edit Company Details</h2>
+                            <form onSubmit={handleEditSubmit} className="space-y-5">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Company Name *</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        value={editFormData.name}
+                                        onChange={e => setEditFormData({ ...editFormData, name: e.target.value })}
+                                        className="w-full mt-1.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all font-medium"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Email</label>
+                                        <input
+                                            type="email"
+                                            value={editFormData.email}
+                                            onChange={e => setEditFormData({ ...editFormData, email: e.target.value })}
+                                            className="w-full mt-1.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all font-medium"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Phone</label>
+                                        <input
+                                            type="text"
+                                            value={editFormData.phone}
+                                            onChange={e => setEditFormData({ ...editFormData, phone: e.target.value })}
+                                            className="w-full mt-1.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all font-medium"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Website</label>
+                                    <input
+                                        type="text"
+                                        value={editFormData.website}
+                                        onChange={e => setEditFormData({ ...editFormData, website: e.target.value })}
+                                        className="w-full mt-1.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all font-medium"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Address</label>
+                                    <textarea
+                                        value={editFormData.address}
+                                        onChange={e => setEditFormData({ ...editFormData, address: e.target.value })}
+                                        className="w-full mt-1.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all font-medium h-24 resize-none"
+                                    />
+                                </div>
+                                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800 dark:text-white">Manufacturing Company</div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400">Enable Bill of Materials (BOM) & Production Dashboard</div>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={editFormData.isManufacturing}
+                                        onChange={e => setEditFormData({ ...editFormData, isManufacturing: e.target.checked })}
+                                        className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 cursor-pointer"
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-3 pt-6">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setEditModalOpen(false);
+                                            setEditingCompanyId(null);
+                                        }}
+                                        className="px-5 py-2.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+                                    >
+                                        Save Changes
                                     </button>
                                 </div>
                             </form>

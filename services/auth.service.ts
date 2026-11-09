@@ -30,7 +30,7 @@ export class AuthService {
         const userCompanies = await prisma.userCompany.findMany({
             where: { userId: user.id },
             include: {
-                company: {
+                Company: {
                     select: {
                         id: true,
                         name: true,
@@ -45,11 +45,11 @@ export class AuthService {
 
         // If user has no UserCompany entries, fallback to their default companyId
         let companies = userCompanies.map(uc => ({
-            id: uc.company.id,
-            name: uc.company.name,
-            email: uc.company.email,
-            phone: uc.company.phone,
-            logo: uc.company.logo,
+            id: uc.Company.id,
+            name: uc.Company.name,
+            email: uc.Company.email,
+            phone: uc.Company.phone,
+            logo: uc.Company.logo,
             role: uc.role,
             isDefault: uc.isDefault,
         }));

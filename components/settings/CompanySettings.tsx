@@ -1,17 +1,27 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { Building2, Mail, Phone, Globe, MapPin, Save, Loader2 } from 'lucide-react';
+import { Building2, Mail, Phone, Globe, MapPin, Save, Loader2, Factory } from 'lucide-react';
 import { authenticatedFetch } from '@/lib/api-client';
 import { useNotifications } from '@/context/NotificationContext';
+import { useCompany } from '@/context/CompanyContext';
+import SettingsLoading from './SettingsLoading';
 import { cn } from '@/lib/utils';
 
 export default function CompanySettings() {
     const { showNotification } = useNotifications();
+    const { activeCompany, switchCompany } = useCompany();
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [profile, setProfile] = useState({
-        name: '', address: '', phone: '', email: '', website: ''
+    const [profile, setProfile] = useState<{
+        name: string;
+        address: string;
+        phone: string;
+        email: string;
+        website: string;
+        isManufacturing?: boolean;
+    }>({
+        name: '', address: '', phone: '', email: '', website: '', isManufacturing: false
     });
 
     useEffect(() => {
@@ -32,8 +42,14 @@ export default function CompanySettings() {
                 body: JSON.stringify(profile)
             });
             const json = await res.json();
-            if (json.success) showNotification('success', 'Company profile updated');
-            else showNotification('error', json.error || 'Failed to update');
+            if (json.success) {
+                showNotification('success', 'Company profile updated');
+                if (activeCompany) {
+                    await switchCompany({ ...activeCompany, isManufacturing: profile.isManufacturing });
+                }
+            } else {
+                showNotification('error', json.error || 'Failed to update');
+            }
         } catch (e) {
             showNotification('error', 'Update failed');
         } finally {
@@ -43,10 +59,10 @@ export default function CompanySettings() {
 
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center p-12 text-muted-foreground animate-in fade-in">
-                <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary" />
-                <p className="text-sm font-medium">Loading profile...</p>
-            </div>
+            <SettingsLoading
+                title="Loading Company Profile..."
+                description="Fetching company details, address, and operational configurations."
+            />
         );
     }
 
@@ -136,6 +152,50 @@ export default function CompanySettings() {
                         onChange={e => setProfile({ ...profile, address: e.target.value })}
                         className="w-full p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-800 dark:text-white transition-all placeholder:text-slate-400 h-32 resize-none"
                     />
+                </div>
+
+                {/* Business Nature / Manufacturing Module Toggle */}
+                <div className="md:col-span-2 lg:col-span-3 pt-6 border-t border-slate-200 dark:border-slate-800">
+                    <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 transition-all hover:border-slate-300 dark:hover:border-slate-700">
+                        <div className="flex items-start gap-4">
+                            <div className={cn(
+                                "p-3 rounded-2xl transition-colors shrink-0",
+                                profile.isManufacturing 
+                                    ? "bg-indigo-500/10 text-indigo-500" 
+                                    : "bg-slate-200 dark:bg-slate-800 text-slate-400"
+                            )}>
+                                <Factory size={26} />
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-3">
+                                    <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                                        Manufacturing & Production Facility
+                                    </h4>
+                                    <span className={cn(
+                                        "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border",
+                                        profile.isManufacturing 
+                                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
+                                            : "bg-slate-200 dark:bg-slate-800 text-slate-400 border-transparent"
+                                    )}>
+                                        {profile.isManufacturing ? 'Enabled' : 'Disabled'}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
+                                    Turn this ON only if this company manufactures products. When enabled, the <strong>Production Dashboard, Bill of Materials (BOM), and Material Execution</strong> will be visible in the navigation. Commercial or Trading companies should keep this off.
+                                </p>
+                            </div>
+                        </div>
+
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                            <input
+                                type="checkbox"
+                                checked={!!profile.isManufacturing}
+                                onChange={e => setProfile({ ...profile, isManufacturing: e.target.checked })}
+                                className="sr-only peer"
+                            />
+                            <div className="w-14 h-7 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
                 </div>
             </div>
 

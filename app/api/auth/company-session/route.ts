@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { AuthUtils } from '@/lib/auth-utils';
+import { CompanySettingsService } from '@/services/settings.service';
 import { SignJWT } from 'jose';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_CHANGE_ME_IN_PROD';
@@ -92,7 +93,8 @@ export async function POST(request: NextRequest) {
             .setExpirationTime('8h')
             .sign(secret);
 
-        const response = NextResponse.json({ success: true });
+        const isManufacturing = await CompanySettingsService.getBoolean(companyId, "ENABLE_MANUFACTURING", false);
+        const response = NextResponse.json({ success: true, isManufacturing });
         response.cookies.set('__session', sessionToken, {
             httpOnly: true,
             sameSite: 'lax',

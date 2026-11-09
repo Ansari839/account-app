@@ -15,13 +15,25 @@ if (!connectionString) {
 const pool = globalForPrisma.pool ?? new Pool({
   connectionString,
   max: process.env.NODE_ENV === 'development' ? 5 : 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 30000,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 10000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
 })
+
+pool.on('error', (err) => {
+  console.error('[pg pool background error]:', err.message);
+});
 
 const adapter = new PrismaPg(pool)
 
-const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter })
+const prisma = globalForPrisma.prisma ?? new PrismaClient({
+    adapter,
+    transactionOptions: {
+        maxWait: 30000,   // max 30s wait for transaction slot
+        timeout: 60000,   // max 60s for transaction to complete
+    },
+})
 
 if (process.env.NODE_ENV !== 'production') {
     globalForPrisma.prisma = prisma

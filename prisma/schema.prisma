@@ -541,6 +541,11 @@ model PurchaseInvoice {
   isImport            Boolean               @default(false)
   exchangeRate        Decimal               @default(1.0)
   foreignTotal        Decimal               @default(0.0)
+  beneficiaryName     String?
+  gdNumber            String?
+  blNumber            String?
+  customsExchangeRate Decimal?              @default(1.0)
+  docExchangeRate     Decimal?              @default(1.0)
   ProductionOverhead  ProductionOverhead[]
   Company             Company               @relation(fields: [companyId], references: [id])
   GRN                 GRN?                  @relation(fields: [grnId], references: [id])
@@ -568,6 +573,12 @@ model PurchaseInvoiceItem {
   foreignRate        Decimal?
   foreignAmount      Decimal?
   isEFS              Boolean              @default(false)
+  assessedRate       Decimal?             @default(0.0)
+  assessedValuePKR   Decimal?             @default(0.0)
+  cdAmount           Decimal?             @default(0.0)
+  rdAmount           Decimal?             @default(0.0)
+  acdAmount          Decimal?             @default(0.0)
+  itpRate            Decimal?             @default(0.0)
   grnItemId          String?
   poItemId           String?
   unitId             String?
@@ -929,6 +940,8 @@ model StockLedger {
   refId          String
   companyId      String
   isEFS          Boolean          @default(false)
+  itpRate        Decimal?         @default(0.0)
+  batchNo        String?
   createdAt      DateTime         @default(now())
   variantId      String?
   stage          ProductionStage? @default(RAW)

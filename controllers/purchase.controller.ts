@@ -1445,7 +1445,24 @@ export class PurchaseController {
             if (error) return error;
 
             const body = await req.json();
-            const { supplierId, warehouseId, date, dueDate, items, gdTaxes, exchangeRate, hasDiscount, discountAmount, discountType, foreignTotal } = body;
+            const { 
+                supplierId, 
+                warehouseId, 
+                date, 
+                dueDate, 
+                items, 
+                gdTaxes, 
+                exchangeRate, 
+                docExchangeRate,
+                customsExchangeRate,
+                beneficiaryName,
+                gdNumber,
+                blNumber,
+                hasDiscount, 
+                discountAmount, 
+                discountType, 
+                foreignTotal 
+            } = body;
 
             const result = await prisma.$transaction(async (tx) => {
                 // Generate Invoice Number
@@ -1464,7 +1481,8 @@ export class PurchaseController {
                 const supplier = await tx.supplier.findUnique({ where: { id: supplierId } });
                 if (!supplier) throw new Error("Supplier not found");
 
-                const xRate = Number(exchangeRate) || 1.0;
+                const docRate = Number(docExchangeRate || exchangeRate || 1.0);
+                const customsRate = Number(customsExchangeRate || exchangeRate || 1.0);
                 let subtotalPKR = 0;
 
                 // Process Items
@@ -1472,10 +1490,19 @@ export class PurchaseController {
                     const fRate = Number(item.foreignRate) || 0;
                     const qty = Number(item.qty) || 0;
                     const fTotal = fRate * qty;
-                    const pkrRate = fRate * xRate;
-                    const pkrTotal = fTotal * xRate;
+                    const pkrRate = fRate * docRate;
+                    const pkrTotal = fTotal * docRate;
 
                     subtotalPKR += pkrTotal;
+
+                    // Assessed Value and ITP Calculations:
+                    // ITP Rate = (Assessed Value PKR + RD + CD + ACD) / QTY
+                    const assessedRate = Number(item.assessedRate) || 0;
+                    const assessedValuePKR = (assessedRate * qty) * customsRate;
+                    const cdAmount = Number(item.cdAmount) || 0;
+                    const rdAmount = Number(item.rdAmount) || 0;
+                    const acdAmount = Number(item.acdAmount) || 0;
+                    const itpRate = qty > 0 ? ((assessedValuePKR + rdAmount + cdAmount + acdAmount) / qty) : 0;
 
                     return {
                         productId: item.productId,
@@ -1486,7 +1513,13 @@ export class PurchaseController {
                         foreignAmount: fTotal,
                         rate: pkrRate,
                         total: pkrTotal,
-                        isEFS: Boolean(item.isEFS)
+                        isEFS: Boolean(item.isEFS),
+                        assessedRate,
+                        assessedValuePKR,
+                        cdAmount,
+                        rdAmount,
+                        acdAmount,
+                        itpRate
                     };
                 });
 
@@ -1538,7 +1571,12 @@ export class PurchaseController {
                         discountAmount: discount,
                         discountType: discountType || null,
                         isImport: true,
-                        exchangeRate: xRate,
+                        exchangeRate: docRate,
+                        docExchangeRate: docRate,
+                        customsExchangeRate: customsRate,
+                        beneficiaryName: beneficiaryName || null,
+                        gdNumber: gdNumber || null,
+                        blNumber: blNumber || null,
                         foreignTotal: Number(foreignTotal) || processedItems.reduce((acc: number, item: any) => acc + item.foreignAmount, 0),
                         items: {
                             create: processedItems.map((item: any) => {
@@ -1558,7 +1596,13 @@ export class PurchaseController {
                                     rate: item.rate,
                                     total: item.total + itemCapitalizedTax, // Include capitalized tax in total for stock value
                                     taxAmount: itemTotalTax,
-                                    isEFS: item.isEFS
+                                    isEFS: item.isEFS,
+                                    assessedRate: item.assessedRate,
+                                    assessedValuePKR: item.assessedValuePKR,
+                                    cdAmount: item.cdAmount,
+                                    rdAmount: item.rdAmount,
+                                    acdAmount: item.acdAmount,
+                                    itpRate: item.itpRate
                                 };
                             })
                         },
@@ -1600,6 +1644,8 @@ export class PurchaseController {
                                     qtyIn: item.qty,
                                     qtyOut: 0,
                                     costRate: Number(item.total) / Number(item.qty || 1), // Capitalized cost rate
+                                    itpRate: Number(item.itpRate || 0),
+                                    batchNo: invoice.gdNumber || null,
                                     refType: 'IMPORT_INVOICE',
                                     refId: invoice.id,
                                     isEFS: item.isEFS
@@ -1615,12 +1661,14 @@ export class PurchaseController {
                 }
 
                 const lines = [];
+                const descBeneficiary = beneficiaryName ? ` (Beneficiary: ${beneficiaryName})` : '';
+                const descGD = gdNumber ? ` [GD: ${gdNumber}]` : '';
                 // Credit Supplier for Goods Value (Subtotal - Discount)
                 lines.push({
                     accountId: supplier.payableAccountId,
                     credit: subtotalPKR - discount,
                     debit: 0,
-                    narration: `Import Invoice ${invoiceNo} - Goods Value payable to ${supplier.name}`
+                    narration: `Import Invoice ${invoiceNo}${descGD}${descBeneficiary} - Goods Value payable to ${supplier.name}`
                 });
 
                 // Debit Inventory for Items

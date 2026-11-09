@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { authenticatedFetch } from '@/lib/api-client';
 import { useNotifications } from '@/context/NotificationContext';
 import { useCompany } from '@/context/CompanyContext';
+import SettingsLoading from './SettingsLoading';
 
 interface UserPermission {
     module: string;
@@ -161,7 +162,14 @@ export default function UserAccessPlugboard() {
 
     const selectedUser = users.find(u => u.id === selectedUserId);
 
-    if (loading) return <div className="text-center py-12 text-slate-500">Loading plugboard...</div>;
+    if (loading) {
+        return (
+            <SettingsLoading 
+                title="Loading Access Control..." 
+                description="Retrieving user permissions matrix and module access levels." 
+            />
+        );
+    }
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

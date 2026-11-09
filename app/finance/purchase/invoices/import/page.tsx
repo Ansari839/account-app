@@ -45,13 +45,18 @@ export default function NewImportInvoicePage() {
         sourceType: "PO", // PO | GRN | DIRECT
         sourceId: "",
         supplierId: "",
+        beneficiaryName: "",
+        gdNumber: "",
+        blNumber: "",
         warehouseId: "",
         date: new Date().toISOString().split("T")[0],
         dueDate: "",
         hasDiscount: false,
         discountAmount: 0,
         discountType: "FIXED",
-        exchangeRate: 1.0,
+        exchangeRate: 1.0, // Fallback
+        docExchangeRate: 1.0, // Bank Doc Retirement Rate
+        customsExchangeRate: 1.0, // Customs GD Currency Rate
         foreignTotal: 0,
         items: [],
         gdTaxes: [],
@@ -209,9 +214,62 @@ export default function NewImportInvoicePage() {
             ...prev,
             items: [
                 ...prev.items,
-                { id: Date.now().toString(), productId: "", productName: "", unitId: "", qty: 1, foreignRate: 0, rate: 0, foreignAmount: 0, total: 0, isEFS: false }
+                { 
+                    id: Date.now().toString(), 
+                    productId: "", 
+                    productName: "", 
+                    unitId: "", 
+                    qty: 1, 
+                    foreignRate: 0, 
+                    rate: 0, 
+                    foreignAmount: 0, 
+                    total: 0, 
+                    isEFS: false,
+                    assessedRate: 0,
+                    cdAmount: 0,
+                    rdAmount: 0,
+                    acdAmount: 0,
+                    itpRate: 0,
+                    assessedValuePKR: 0
+                }
             ]
         }));
+    };
+
+    const handleExchangeRateChange = (field: 'docExchangeRate' | 'customsExchangeRate', value: number) => {
+        const numVal = isNaN(value) ? 0 : value;
+        setFormData((prev: any) => {
+            const docXRate = field === 'docExchangeRate' ? numVal : Number(prev.docExchangeRate || 1);
+            const customsXRate = field === 'customsExchangeRate' ? numVal : Number(prev.customsExchangeRate || 1);
+
+            const updatedItems = prev.items.map((item: any) => {
+                const qty = Number(item.qty || 0);
+                const foreignRate = Number(item.foreignRate || 0);
+                const subtotalFC = qty * foreignRate;
+                const assessedRate = Number(item.assessedRate || 0);
+                const assessedValuePKR = (assessedRate * qty) * customsXRate;
+                const cd = Number(item.cdAmount || 0);
+                const rd = Number(item.rdAmount || 0);
+                const acd = Number(item.acdAmount || 0);
+                const itpRate = qty > 0 ? ((assessedValuePKR + cd + rd + acd) / qty) : 0;
+
+                return {
+                    ...item,
+                    foreignAmount: subtotalFC,
+                    rate: foreignRate * docXRate,
+                    total: subtotalFC * docXRate,
+                    assessedValuePKR,
+                    itpRate
+                };
+            });
+
+            return {
+                ...prev,
+                [field]: numVal,
+                exchangeRate: docXRate,
+                items: updatedItems
+            };
+        });
     };
 
     const handleRemoveItem = (id: string) => {
@@ -223,10 +281,13 @@ export default function NewImportInvoicePage() {
 
     const updateItem = (id: string, field: string, value: any) => {
         setFormData((prev: any) => {
+            const customsXRate = Number(prev.customsExchangeRate || prev.exchangeRate || 1);
+            const docXRate = Number(prev.docExchangeRate || prev.exchangeRate || 1);
+
             const newItems = prev.items.map((item: any) => {
                 if (item.id === id) {
                     let refinedValue = value;
-                    if (field === "qty" || field === "foreignRate" || field === "rate") {
+                    if (["qty", "foreignRate", "rate", "assessedRate", "cdAmount", "rdAmount", "acdAmount"].includes(field)) {
                         refinedValue = isNaN(value) ? 0 : value;
                     }
                     const updatedItem = { ...item, [field]: refinedValue };
@@ -250,9 +311,22 @@ export default function NewImportInvoicePage() {
                         }
                     }
 
-                    const subtotal = Number(updatedItem.qty || 0) * Number(updatedItem.foreignRate || 0);
-                    updatedItem.foreignAmount = subtotal; 
-                    updatedItem.total = subtotal; // Placeholder, backend handles actual PKR total based on exchange rate
+                    const qty = Number(updatedItem.qty || 0);
+                    const foreignRate = Number(updatedItem.foreignRate || 0);
+                    const subtotalFC = qty * foreignRate;
+                    updatedItem.foreignAmount = subtotalFC; 
+                    updatedItem.rate = foreignRate * docXRate;
+                    updatedItem.total = subtotalFC * docXRate;
+
+                    // ITP Rate Formula: (Assessed Value in PKR + RD + CD + ACD) / QTY
+                    const assessedRate = Number(updatedItem.assessedRate || 0);
+                    const assessedValuePKR = (assessedRate * qty) * customsXRate;
+                    const cd = Number(updatedItem.cdAmount || 0);
+                    const rd = Number(updatedItem.rdAmount || 0);
+                    const acd = Number(updatedItem.acdAmount || 0);
+                    
+                    updatedItem.assessedValuePKR = assessedValuePKR;
+                    updatedItem.itpRate = qty > 0 ? ((assessedValuePKR + cd + rd + acd) / qty) : 0;
                     
                     return updatedItem;
                 }
@@ -458,9 +532,9 @@ export default function NewImportInvoicePage() {
                             </div>
                         </div>
                         
-                        <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-3 gap-5">
                             {formData.sourceType !== "DIRECT" ? (
-                                <div className="md:col-span-2 space-y-2">
+                                <div className="md:col-span-3 space-y-2">
                                     <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
                                         <FileText size={14} /> Link {formData.sourceType}
                                     </label>
@@ -476,14 +550,26 @@ export default function NewImportInvoicePage() {
                                 <>
                                     <div className="space-y-2">
                                         <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                            <Building2 size={14} /> Supplier Account
+                                            <Building2 size={14} /> Import Account / Supplier
                                         </label>
                                         <Combobox
                                             options={supplierOptions}
                                             value={formData.supplierId}
                                             onChange={(val) => setFormData({ ...formData, supplierId: val })}
-                                            placeholder="Select supplier..."
+                                            placeholder="Select import account..."
                                             className="w-full bg-slate-900/50 border-slate-700 text-white"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                            <Building2 size={14} /> Beneficiary Name (Foreign Exporter)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.beneficiaryName || ''}
+                                            onChange={(e) => setFormData({ ...formData, beneficiaryName: e.target.value })}
+                                            placeholder="e.g. Shaoxing Textiles Co."
+                                            className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -491,7 +577,7 @@ export default function NewImportInvoicePage() {
                                             <Warehouse size={14} /> Target Warehouse
                                         </label>
                                         <select
-                                            className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                            className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                                             value={formData.warehouseId}
                                             onChange={(e) => setFormData({ ...formData, warehouseId: e.target.value })}
                                         >
@@ -502,6 +588,33 @@ export default function NewImportInvoicePage() {
                                 </>
                             )}
 
+                            {/* GD & BL Info */}
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-widest">
+                                    <FileText size={14} /> GD Number
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.gdNumber || ''}
+                                    onChange={(e) => setFormData({ ...formData, gdNumber: e.target.value })}
+                                    placeholder="e.g. KAPE-HC-12345-2026"
+                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-indigo-500/30 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                    <FileText size={14} /> BL Number
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.blNumber || ''}
+                                    onChange={(e) => setFormData({ ...formData, blNumber: e.target.value })}
+                                    placeholder="e.g. MAEU12345678"
+                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                />
+                            </div>
+
                             <div className="space-y-2">
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
                                     <Calendar size={14} /> Invoice Date
@@ -510,31 +623,41 @@ export default function NewImportInvoicePage() {
                                     type="date"
                                     value={formData.date}
                                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                                 />
                             </div>
+
+                            {/* Dual Exchange Rates */}
                             <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <Calendar size={14} /> Due Date
-                                </label>
-                                <input
-                                    type="date"
-                                    value={formData.dueDate}
-                                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <Calculator size={14} /> Exchange Rate (PKR)
+                                <label className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-widest" title="Commercial Bank exchange rate charged when retiring shipping documents">
+                                    <Calculator size={14} /> Bank Doc Rate (PKR)
                                 </label>
                                 <input
                                     type="number"
-                                    value={formData.exchangeRate || ''}
-                                    onChange={(e) => setFormData({ ...formData, exchangeRate: parseFloat(e.target.value) })}
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                    step="0.0001"
+                                    value={formData.docExchangeRate || ''}
+                                    onChange={(e) => handleExchangeRateChange('docExchangeRate', parseFloat(e.target.value))}
+                                    placeholder="e.g. 280.50"
+                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-emerald-500/40 text-emerald-300 outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-bold"
                                 />
+                                <span className="text-[10px] text-slate-500 block">Supplier commercial cost rate</span>
                             </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-widest" title="Customs/National Bank exchange rate printed on GD for duties">
+                                    <Calculator size={14} /> Customs GD Rate (PKR)
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.0001"
+                                    value={formData.customsExchangeRate || ''}
+                                    onChange={(e) => handleExchangeRateChange('customsExchangeRate', parseFloat(e.target.value))}
+                                    placeholder="e.g. 278.20"
+                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-amber-500/40 text-amber-300 outline-none focus:ring-2 focus:ring-amber-500 text-sm font-bold"
+                                />
+                                <span className="text-[10px] text-slate-500 block">GD duty assessment currency rate</span>
+                            </div>
+
                             <div className="space-y-2">
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
                                     <Calculator size={14} /> Foreign Total (Invoice Val)
@@ -543,8 +666,10 @@ export default function NewImportInvoicePage() {
                                     type="number"
                                     value={formData.foreignTotal || ''}
                                     onChange={(e) => setFormData({ ...formData, foreignTotal: parseFloat(e.target.value) })}
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="0.00"
+                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
                                 />
+                                <span className="text-[10px] text-slate-500 block">Foreign currency sum</span>
                             </div>
                         </div>
                     </div>
@@ -579,94 +704,164 @@ export default function NewImportInvoicePage() {
                                 {formData.sourceType === "DIRECT" && <div className="col-span-1 text-center">Act</div>}
                             </div>
 
-                            <div className="space-y-3">
-                                {formData.items.map((item: any, index: number) => (
-                                    <div key={item.id} className="grid grid-cols-12 gap-4 items-center bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 transition-all hover:border-indigo-200 dark:hover:border-indigo-500/30">
-                                        <div className="col-span-3">
-                                            {formData.sourceType !== "DIRECT" ? (
-                                                <div className="px-2 font-bold text-slate-800 dark:text-slate-200">
-                                                    {item.productName}
+                            <div className="space-y-4">
+                                {formData.items.map((item: any, index: number) => {
+                                    const qty = Number(item.qty || 0);
+                                    const assessedVal = Number(item.assessedValuePKR || 0);
+                                    const itpRate = Number(item.itpRate || 0);
+
+                                    return (
+                                        <div key={item.id} className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3 transition-all hover:border-indigo-300 dark:hover:border-indigo-500/40">
+                                            {/* Tier 1: Product, Qty, Commercial Supplier Rate */}
+                                            <div className="grid grid-cols-12 gap-3 items-center">
+                                                <div className="col-span-4">
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Product</label>
+                                                    {formData.sourceType !== "DIRECT" ? (
+                                                        <div className="px-3 py-2 font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                                                            {item.productName}
+                                                        </div>
+                                                    ) : (
+                                                        <Combobox
+                                                            options={products.map(p => ({ value: p.id, label: `${p.name} (${p.code})` }))}
+                                                            value={item.productId}
+                                                            onChange={(val) => updateItem(item.id, 'productId', val)}
+                                                            placeholder="Select product..."
+                                                            searchPlaceholder="Search products..."
+                                                            className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                                        />
+                                                    )}
                                                 </div>
-                                            ) : (
-                                                <Combobox
-                                                    options={products.map(p => ({ value: p.id, label: `${p.name} (${p.code})` }))}
-                                                    value={item.productId}
-                                                    onChange={(val) => updateItem(item.id, 'productId', val)}
-                                                    placeholder="Select product..."
-                                                    searchPlaceholder="Search products..."
-                                                    className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-                                                />
-                                            )}
-                                        </div>
-                                        <div className="col-span-1">
-                                            <Combobox
-                                                options={units.map(u => ({ value: u.id, label: u.name }))}
-                                                value={item.unitId || ''}
-                                                onChange={(val) => updateItem(item.id, 'unitId', val)}
-                                                placeholder="Unit..."
-                                                searchPlaceholder="Search units..."
-                                                className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-                                            />
-                                        </div>
-                                        {formData.sourceType !== "DIRECT" && (
-                                            <div className="col-span-1 text-center text-sm">
-                                                <span className="font-bold text-slate-500">{item.qtyAvailable}</span>
+
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Unit</label>
+                                                    <Combobox
+                                                        options={units.map(u => ({ value: u.id, label: u.name }))}
+                                                        value={item.unitId || ''}
+                                                        onChange={(val) => updateItem(item.id, 'unitId', val)}
+                                                        placeholder="Unit..."
+                                                        searchPlaceholder="Search units..."
+                                                        className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                                    />
+                                                </div>
+
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Bill Qty</label>
+                                                    <input
+                                                        type="number"
+                                                        value={item.qty || ''}
+                                                        onChange={e => updateItem(item.id, 'qty', parseFloat(e.target.value))}
+                                                        placeholder="0"
+                                                        min="0"
+                                                        max={formData.sourceType !== "DIRECT" ? item.qtyAvailable : undefined}
+                                                        className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-400 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-right"
+                                                    />
+                                                </div>
+                                                
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Supplier Rate ($)</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.001"
+                                                        value={item.foreignRate || ''}
+                                                        onChange={e => updateItem(item.id, 'foreignRate', parseFloat(e.target.value))}
+                                                        placeholder="0.00"
+                                                        min="0"
+                                                        className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-right text-slate-900 dark:text-white"
+                                                    />
+                                                </div>
+
+                                                <div className="col-span-1 text-center">
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">EFS</label>
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="sr-only peer" 
+                                                            checked={item.isEFS}
+                                                            onChange={e => updateItem(item.id, 'isEFS', e.target.checked)}
+                                                        />
+                                                        <div className="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-slate-600 peer-checked:bg-amber-500"></div>
+                                                    </label>
+                                                    {item.isEFS && <span className="text-[9px] block font-black text-amber-500 tracking-tighter">ONLY CONSUM</span>}
+                                                </div>
+
+                                                <div className="col-span-1 flex justify-center items-center pt-4">
+                                                    {formData.sourceType === "DIRECT" && (
+                                                        <button 
+                                                            onClick={() => handleRemoveItem(item.id)}
+                                                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
+                                                            title="Remove Item"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
-                                        )}
 
-                                        <div className="col-span-2">
-                                            <input
-                                                type="number"
-                                                value={item.qty || ''}
-                                                onChange={e => updateItem(item.id, 'qty', parseFloat(e.target.value))}
-                                                placeholder="0"
-                                                min="0"
-                                                max={formData.sourceType !== "DIRECT" ? item.qtyAvailable : undefined}
-                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-400 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-right"
-                                            />
-                                        </div>
-                                        
-                                        <div className="col-span-2">
-                                            <input
-                                                type="number"
-                                                value={item.foreignRate || ''}
-                                                onChange={e => updateItem(item.id, 'foreignRate', parseFloat(e.target.value))}
-                                                placeholder="0.00"
-                                                min="0"
-                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-right"
-                                            />
-                                        </div>
+                                            {/* Tier 2: Customs Assessed Value & ITP Formula Breakdown */}
+                                            <div className="bg-white/80 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800/80 flex flex-wrap items-center gap-4 text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Assessed Rate ($):</span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.001"
+                                                        value={item.assessedRate || ''}
+                                                        onChange={e => updateItem(item.id, 'assessedRate', parseFloat(e.target.value))}
+                                                        placeholder="Assessed $"
+                                                        className="w-24 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-medium text-xs text-slate-800 dark:text-slate-200"
+                                                    />
+                                                </div>
 
-                                        <div className="col-span-1 flex justify-center items-center">
-                                            <label className="relative inline-flex items-center cursor-pointer">
-                                                <input 
-                                                    type="checkbox" 
-                                                    className="sr-only peer" 
-                                                    checked={item.isEFS}
-                                                    onChange={e => updateItem(item.id, 'isEFS', e.target.checked)}
-                                                />
-                                                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
-                                            </label>
-                                        </div>
+                                                <div className="flex items-center gap-1.5 text-slate-500">
+                                                    <span className="text-[10px] font-bold uppercase">Assessed PKR:</span>
+                                                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                                                        Rs. {assessedVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                    </span>
+                                                </div>
 
-                                        <div className="col-span-2 flex items-center justify-end px-2">
-                                            <span className="font-black text-slate-800 dark:text-white">
-                                                {item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                            </span>
-                                        </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">CD:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={item.cdAmount || ''}
+                                                        onChange={e => updateItem(item.id, 'cdAmount', parseFloat(e.target.value))}
+                                                        placeholder="CD"
+                                                        className="w-20 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-medium text-xs text-slate-800 dark:text-slate-200"
+                                                    />
+                                                </div>
 
-                                        {formData.sourceType === "DIRECT" && (
-                                            <div className="col-span-1 flex justify-center">
-                                                <button 
-                                                    onClick={() => handleRemoveItem(item.id)}
-                                                    className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">RD:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={item.rdAmount || ''}
+                                                        onChange={e => updateItem(item.id, 'rdAmount', parseFloat(e.target.value))}
+                                                        placeholder="RD"
+                                                        className="w-20 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-medium text-xs text-slate-800 dark:text-slate-200"
+                                                    />
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">ACD:</span>
+                                                    <input
+                                                        type="number"
+                                                        value={item.acdAmount || ''}
+                                                        onChange={e => updateItem(item.id, 'acdAmount', parseFloat(e.target.value))}
+                                                        placeholder="ACD"
+                                                        className="w-20 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-medium text-xs text-slate-800 dark:text-slate-200"
+                                                    />
+                                                </div>
+
+                                                {/* Calculated ITP Rate Badge */}
+                                                <div className="ml-auto flex items-center gap-2">
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">(Assessed+RD+CD+ACD)/Qty:</span>
+                                                    <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-500 dark:text-amber-400 rounded-lg font-black text-xs">
+                                                        ITP Rate: Rs. {itpRate.toFixed(2)} / unit
+                                                    </span>
+                                                </div>
                                             </div>
-                                        )}
-                                    </div>
-                                ))}
+                                        </div>
+                                    );
+                                })}
                                 {formData.items.length === 0 && (
                                     <div className="text-center p-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 font-bold">
                                         No items. Please select a source or add items.

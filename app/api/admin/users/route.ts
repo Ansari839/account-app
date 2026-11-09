@@ -19,9 +19,9 @@ export async function GET(req: Request) {
                 isSuperAdmin: true,
                 lastLoginAt: true,
                 createdAt: true,
-                companies: {
+                UserCompany: {
                     select: {
-                        company: { select: { id: true, name: true } },
+                        Company: { select: { id: true, name: true } },
                         role: true,
                         isDefault: true
                     }
