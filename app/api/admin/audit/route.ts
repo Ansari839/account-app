@@ -13,13 +13,18 @@ export async function GET(req: Request) {
             orderBy: { createdAt: 'desc' },
             take: 100, // Limit to last 100
             include: {
-                user: {
+                User: {
                     select: { fullName: true, email: true }
                 }
             }
         });
 
-        return NextResponse.json({ success: true, data: logs });
+        const formatted = logs.map(l => ({
+            ...l,
+            user: l.User
+        }));
+
+        return NextResponse.json({ success: true, data: formatted });
     } catch (error: any) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
