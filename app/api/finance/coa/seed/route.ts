@@ -46,6 +46,9 @@ const SEED_ACCOUNTS: SeedAccount[] = [
     { code: '2140', name: 'Short-term Loans', type: 'LIABILITY', isPosting: true, parentCode: '2100' },
     { code: '2150', name: 'Advance from Customers', type: 'LIABILITY', isPosting: true, parentCode: '2100', description: 'Customer deposits received before delivery' },
     { code: '2160', name: 'WIP Clearing Account', type: 'LIABILITY', isPosting: true, parentCode: '2100', systemKey: 'WIP_CLEARING_ACCOUNT', description: 'Temporary clearing account for unapplied production overheads' },
+    { code: '2170', name: 'Customs Duties & Clearing Payable', type: 'LIABILITY', isPosting: true, parentCode: '2100', systemKey: 'customs_payable', description: 'Customs duties, taxes & GD charges payable to WeBOC / Customs' },
+    { code: '2180', name: 'Marine Insurance Payable', type: 'LIABILITY', isPosting: true, parentCode: '2100', systemKey: 'insurance_payable', description: 'Marine insurance payable for import shipments' },
+    { code: '2190', name: 'Clearing Agent & Port Charges Payable', type: 'LIABILITY', isPosting: true, parentCode: '2100', systemKey: 'port_charges_payable', description: 'Port terminal handling (QICT/KICT/SAPT) and clearing agent charges' },
     { code: '2200', name: 'Long-term Liabilities', type: 'LIABILITY', isPosting: false, parentCode: '2000' },
     { code: '2210', name: 'Long-term Loans', type: 'LIABILITY', isPosting: true, parentCode: '2200' },
 

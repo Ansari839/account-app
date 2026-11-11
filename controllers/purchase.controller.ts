@@ -1689,60 +1689,119 @@ export class PurchaseController {
                     });
                 }
 
-                // Handle Taxes Journal
-                let customsPayableTotal = 0;
+                // Handle Taxes & Landed Charges Journal Entries
+                const customsAcc = await tx.account.findFirst({
+                    where: { 
+                        companyId, 
+                        OR: [
+                            { code: '2170' },
+                            { name: { contains: 'Customs Duties', mode: 'insensitive' } },
+                            { name: { contains: 'Customs Payable', mode: 'insensitive' } }
+                        ],
+                        type: 'LIABILITY',
+                        isPosting: true
+                    }
+                });
+
+                const insuranceAcc = await tx.account.findFirst({
+                    where: {
+                        companyId,
+                        OR: [
+                            { code: '2180' },
+                            { name: { contains: 'Marine Insurance', mode: 'insensitive' } },
+                            { name: { contains: 'Insurance Payable', mode: 'insensitive' } }
+                        ],
+                        type: 'LIABILITY',
+                        isPosting: true
+                    }
+                });
+
+                const portAcc = await tx.account.findFirst({
+                    where: {
+                        companyId,
+                        OR: [
+                            { code: '2190' },
+                            { name: { contains: 'Port Charges', mode: 'insensitive' } },
+                            { name: { contains: 'Clearing Agent', mode: 'insensitive' } }
+                        ],
+                        type: 'LIABILITY',
+                        isPosting: true
+                    }
+                });
+
+                const fallbackAp = await tx.account.findFirst({
+                    where: { companyId, name: { contains: 'Accounts Payable', mode: 'insensitive' }, type: 'LIABILITY', isPosting: true }
+                });
+
+                const defaultCustomsPayableId = customsAcc?.id || fallbackAp?.id;
+
                 for (const tax of processedTaxes) {
                     if (tax.taxAmount > 0) {
-                        customsPayableTotal += tax.taxAmount;
-                        
+                        const taxNameLower = (tax.taxName || '').toLowerCase();
+
                         if (!tax.isCapitalized) {
-                            // If not capitalized, it means it's adjustable, so debit the Tax Receivable Account
-                            let taxAccId = tax.accountId;
-                            if (!taxAccId && tax.taxCodeId) {
+                            // Non-capitalized taxes (Sales Tax, Additional Sales Tax, Advance Income Tax Sec 148)
+                            // DEBIT: Tax Receivable / Input Tax Asset Account
+                            let taxDebitAccId = tax.accountId;
+                            if (!taxDebitAccId && tax.taxCodeId) {
                                 const tc = await tx.taxCode.findUnique({ where: { id: tax.taxCodeId } });
-                                taxAccId = tc?.accountId;
+                                taxDebitAccId = tc?.accountId;
                             }
-                            if (!taxAccId) {
-                                const defTax = await tx.account.findFirst({ where: { companyId, name: { contains: 'Tax', mode: 'insensitive' }, type: 'ASSET' } });
-                                taxAccId = defTax?.id;
+                            if (!taxDebitAccId) {
+                                if (taxNameLower.includes('income') || taxNameLower.includes('148') || taxNameLower.includes('wht')) {
+                                    const incTaxAcc = await tx.account.findFirst({ 
+                                        where: { companyId, name: { contains: 'Advance Income Tax', mode: 'insensitive' }, type: 'ASSET', isPosting: true } 
+                                    });
+                                    taxDebitAccId = incTaxAcc?.id;
+                                } else {
+                                    const stAcc = await tx.account.findFirst({ 
+                                        where: { companyId, name: { contains: 'Input Tax', mode: 'insensitive' }, type: 'ASSET', isPosting: true } 
+                                    });
+                                    taxDebitAccId = stAcc?.id;
+                                }
                             }
-                            if (!taxAccId) throw new Error(`No account linked to tax '${tax.taxName}'.`);
+                            if (!taxDebitAccId) {
+                                const defTax = await tx.account.findFirst({ where: { companyId, name: { contains: 'Tax', mode: 'insensitive' }, type: 'ASSET', isPosting: true } });
+                                taxDebitAccId = defTax?.id;
+                            }
+                            if (!taxDebitAccId) throw new Error(`No account linked to tax '${tax.taxName}'.`);
 
                             lines.push({
-                                accountId: taxAccId,
+                                accountId: taxDebitAccId,
                                 credit: 0,
                                 debit: tax.taxAmount,
-                                narration: `GD Tax ${tax.taxName} on ${invoiceNo}`
+                                narration: `GD Adjustable Tax: ${tax.taxName} on ${invoiceNo}`
+                            });
+
+                            // CREDIT: Customs / GD Payable
+                            lines.push({
+                                accountId: defaultCustomsPayableId!,
+                                credit: tax.taxAmount,
+                                debit: 0,
+                                narration: `GD Payable for ${tax.taxName} on ${invoiceNo}`
+                            });
+                        } else {
+                            // Capitalized Charges (CD, RD, ACD, Marine Insurance, Landing Charges)
+                            // (DEBIT is already booked into Inventory Asset Account above)
+                            // CREDIT: Dedicated Liability Account
+                            let creditAccId = null;
+
+                            if (taxNameLower.includes('insurance')) {
+                                creditAccId = tax.accountId || insuranceAcc?.id || defaultCustomsPayableId;
+                            } else if (taxNameLower.includes('landing') || taxNameLower.includes('port') || taxNameLower.includes('clearing')) {
+                                creditAccId = tax.accountId || portAcc?.id || defaultCustomsPayableId;
+                            } else {
+                                // CD, RD, ACD, etc.
+                                creditAccId = tax.accountId || defaultCustomsPayableId;
+                            }
+
+                            lines.push({
+                                accountId: creditAccId!,
+                                credit: tax.taxAmount,
+                                debit: 0,
+                                narration: `Payable for ${tax.taxName} on ${invoiceNo}`
                             });
                         }
-                        // If capitalized, it's already debited to Inventory above
-                    }
-                }
-
-                // Credit Customs Payable for all GD Taxes
-                if (customsPayableTotal > 0) {
-                    // Try to find Customs Payable account
-                    const customsAcc = await tx.account.findFirst({
-                        where: { companyId, name: { contains: 'Customs Payable', mode: 'insensitive' }, type: 'LIABILITY' }
-                    });
-                    if (customsAcc) {
-                        lines.push({
-                            accountId: customsAcc.id,
-                            credit: customsPayableTotal,
-                            debit: 0,
-                            narration: `Customs/GD Duties Payable for ${invoiceNo}`
-                        });
-                    } else {
-                        // Fallback to Accounts Payable
-                        const apAcc = await tx.account.findFirst({
-                            where: { companyId, name: { contains: 'Accounts Payable', mode: 'insensitive' }, type: 'LIABILITY' }
-                        });
-                        lines.push({
-                            accountId: apAcc!.id,
-                            credit: customsPayableTotal,
-                            debit: 0,
-                            narration: `Customs/GD Duties Payable for ${invoiceNo}`
-                        });
                     }
                 }
 

@@ -15,7 +15,13 @@ import {
     Calendar,
     Warehouse,
     Calculator,
-    FileText
+    FileText,
+    ShieldCheck,
+    Anchor,
+    Percent,
+    DollarSign,
+    Coins,
+    Sparkles
 } from "lucide-react";
 import { useNotifications } from '@/context/NotificationContext';
 import { cn } from '@/lib/utils';
@@ -34,6 +40,15 @@ export default function NewImportInvoicePage() {
     const [taxCodes, setTaxCodes] = useState<any[]>([]);
     const [accounts, setAccounts] = useState<any[]>([]);
     const [currency, setCurrency] = useState<{ symbol: string }>({ symbol: '$' });
+
+    // Insurance & Landing Charges States
+    const [insuranceType, setInsuranceType] = useState<'PERCENT' | 'FC' | 'PKR'>('PERCENT');
+    const [insuranceValue, setInsuranceValue] = useState<number>(1.0); // Standard Customs: 1%
+    const [insuranceAccountId, setInsuranceAccountId] = useState<string>('');
+
+    const [landingType, setLandingType] = useState<'PERCENT' | 'FC' | 'PKR'>('PERCENT');
+    const [landingValue, setLandingValue] = useState<number>(1.0); // Standard Customs: 1%
+    const [landingAccountId, setLandingAccountId] = useState<string>('');
 
     // Form Data - Direct Import Bill (No PO / GRN)
     const [formData, setFormData] = useState<any>({
@@ -94,6 +109,13 @@ export default function NewImportInvoicePage() {
             const accs = accRes.ok ? (await accRes.json()).accounts || [] : [];
             setAccounts(accs);
             
+            // Auto select default accounts for Insurance and Landing
+            const defaultInsAcc = accs.find((a: any) => a.code === '2180' || a.name.toLowerCase().includes('insurance'));
+            if (defaultInsAcc) setInsuranceAccountId(defaultInsAcc.id);
+
+            const defaultPortAcc = accs.find((a: any) => a.code === '2190' || a.name.toLowerCase().includes('port') || a.name.toLowerCase().includes('clearing'));
+            if (defaultPortAcc) setLandingAccountId(defaultPortAcc.id);
+
             const combined = [...sups];
             const existingIds = new Set(sups.map((s: any) => s.id));
             accs.forEach((a: any) => {
@@ -166,9 +188,9 @@ export default function NewImportInvoicePage() {
                 const subtotalFC = qty * foreignRate;
                 const assessedRate = Number(item.assessedRate || 0);
                 const assessedValuePKR = (assessedRate * qty) * customsXRate;
-                const cd = Number(item.cdAmount || 0);
-                const rd = Number(item.rdAmount || 0);
-                const acd = Number(item.acdAmount || 0);
+                const cd = item.isEFS ? 0 : Number(item.cdAmount || 0);
+                const rd = item.isEFS ? 0 : Number(item.rdAmount || 0);
+                const acd = item.isEFS ? 0 : Number(item.acdAmount || 0);
                 const itpRate = qty > 0 ? ((assessedValuePKR + cd + rd + acd) / qty) : 0;
 
                 return {
@@ -210,6 +232,16 @@ export default function NewImportInvoicePage() {
                     }
                     const updatedItem = { ...item, [field]: refinedValue };
                     
+                    // When EFS is toggled, zero out all non-EFS duties (CD, RD, ACD)
+                    if (field === "isEFS") {
+                        updatedItem.isEFS = Boolean(value);
+                        if (value === true) {
+                            updatedItem.cdAmount = 0;
+                            updatedItem.rdAmount = 0;
+                            updatedItem.acdAmount = 0;
+                        }
+                    }
+
                     if (field === "productId") {
                         const prod = products.find(p => p.id === value);
                         updatedItem.productName = prod?.name || "";
@@ -234,9 +266,9 @@ export default function NewImportInvoicePage() {
                     // ITP Rate Formula: (Assessed Value in PKR + RD + CD + ACD) / QTY
                     const assessedRate = Number(updatedItem.assessedRate || 0);
                     const assessedValuePKR = (assessedRate * qty) * customsXRate;
-                    const cd = Number(updatedItem.cdAmount || 0);
-                    const rd = Number(updatedItem.rdAmount || 0);
-                    const acd = Number(updatedItem.acdAmount || 0);
+                    const cd = updatedItem.isEFS ? 0 : Number(updatedItem.cdAmount || 0);
+                    const rd = updatedItem.isEFS ? 0 : Number(updatedItem.rdAmount || 0);
+                    const acd = updatedItem.isEFS ? 0 : Number(updatedItem.acdAmount || 0);
                     
                     updatedItem.assessedValuePKR = assessedValuePKR;
                     updatedItem.itpRate = qty > 0 ? ((assessedValuePKR + cd + rd + acd) / qty) : 0;
@@ -247,6 +279,36 @@ export default function NewImportInvoicePage() {
             });
             return { ...prev, items: newItems };
         });
+    };
+
+    // Calculate Insurance in PKR
+    const calculateInsurancePKR = () => {
+        const customsXRate = Number(formData.customsExchangeRate || 1);
+        const foreignTotal = formData.items.reduce((sum: number, it: any) => sum + ((Number(it.qty) || 0) * (Number(it.foreignRate) || 0)), 0);
+        const val = Number(insuranceValue) || 0;
+        if (insuranceType === 'PERCENT') {
+            return (foreignTotal * (val / 100)) * customsXRate;
+        } else if (insuranceType === 'FC') {
+            return val * customsXRate;
+        } else {
+            return val;
+        }
+    };
+
+    // Calculate Landing Charges in PKR (Standard Customs Rule: 1% of CIF)
+    const calculateLandingPKR = () => {
+        const customsXRate = Number(formData.customsExchangeRate || 1);
+        const foreignTotal = formData.items.reduce((sum: number, it: any) => sum + ((Number(it.qty) || 0) * (Number(it.foreignRate) || 0)), 0);
+        const insPKR = calculateInsurancePKR();
+        const val = Number(landingValue) || 0;
+        if (landingType === 'PERCENT') {
+            const cifPKR = (foreignTotal * customsXRate) + insPKR;
+            return cifPKR * (val / 100);
+        } else if (landingType === 'FC') {
+            return val * customsXRate;
+        } else {
+            return val;
+        }
     };
 
     const calculateSummary = () => {
@@ -268,9 +330,13 @@ export default function NewImportInvoicePage() {
             return { ...tax, baseAmount, taxAmount };
         });
 
-        const grandTotal = subtotal - discount + taxTotal;
+        const insPKR = calculateInsurancePKR();
+        const landPKR = calculateLandingPKR();
+        const gdChargesTotal = insPKR + landPKR;
+
+        const grandTotal = subtotal - discount + taxTotal + gdChargesTotal;
         
-        return { subtotal, discount, taxTotal, grandTotal, calculatedTaxes };
+        return { subtotal, discount, taxTotal, gdChargesTotal, insPKR, landPKR, grandTotal, calculatedTaxes };
     };
 
     const handleAddTax = () => {
@@ -281,6 +347,28 @@ export default function NewImportInvoicePage() {
                 { id: Date.now().toString(), taxCodeId: "", taxName: "", calculation: "NET_TOTAL", rate: 0, taxAmount: 0, isCapitalized: false, accountId: null }
             ]
         }));
+    };
+
+    // Helper: Auto-load standard GD duties for Non-EFS Commercial Imports
+    const handleLoadStandardDuties = () => {
+        const customsAcc = accounts.find((a: any) => a.code === '2170' || a.name.toLowerCase().includes('customs'));
+        const inputStAcc = accounts.find((a: any) => a.code === '1160' || a.name.toLowerCase().includes('input tax'));
+        const advItAcc = accounts.find((a: any) => a.code === '1170' || a.name.toLowerCase().includes('advance income'));
+
+        const standardDuties = [
+            { id: Date.now().toString() + '1', taxCodeId: '', taxName: 'Customs Duty (CD)', calculation: 'NET_TOTAL', rate: 11, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
+            { id: Date.now().toString() + '2', taxCodeId: '', taxName: 'Additional Customs Duty (ACD)', calculation: 'NET_TOTAL', rate: 4, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
+            { id: Date.now().toString() + '3', taxCodeId: '', taxName: 'Regulatory Duty (RD)', calculation: 'NET_TOTAL', rate: 5, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
+            { id: Date.now().toString() + '4', taxCodeId: '', taxName: 'Sales Tax (ST 18%)', calculation: 'PREVIOUS_TOTAL', rate: 18, taxAmount: 0, isCapitalized: false, accountId: inputStAcc?.id || null },
+            { id: Date.now().toString() + '5', taxCodeId: '', taxName: 'Additional Sales Tax (AST 3%)', calculation: 'PREVIOUS_TOTAL', rate: 3, taxAmount: 0, isCapitalized: false, accountId: inputStAcc?.id || null },
+            { id: Date.now().toString() + '6', taxCodeId: '', taxName: 'Advance Income Tax (Sec 148)', calculation: 'PREVIOUS_TOTAL', rate: 2, taxAmount: 0, isCapitalized: false, accountId: advItAcc?.id || null }
+        ];
+
+        setFormData((prev: any) => ({
+            ...prev,
+            gdTaxes: [...(prev.gdTaxes || []), ...standardDuties]
+        }));
+        showNotification('success', 'Standard Pakistan Customs GD Duties (CD, ACD, RD, ST 18%, AST 3%, IT Sec 148) loaded!');
     };
 
     const handleRemoveTax = (id: string) => {
@@ -333,9 +421,37 @@ export default function NewImportInvoicePage() {
 
         setIsSubmitting(true);
         try {
+            const summary = calculateSummary();
+            const finalTaxes = [...(formData.gdTaxes || [])];
+
+            // Append Insurance to gdTaxes if amount > 0
+            if (summary.insPKR > 0) {
+                finalTaxes.push({
+                    taxName: `Marine Insurance (${insuranceType === 'PERCENT' ? `${insuranceValue}%` : insuranceType === 'FC' ? `$${insuranceValue}` : 'Fixed PKR'})`,
+                    rate: insuranceType === 'PERCENT' ? Number(insuranceValue) : 0,
+                    baseAmount: summary.subtotal,
+                    taxAmount: summary.insPKR,
+                    isCapitalized: true,
+                    accountId: insuranceAccountId || null
+                });
+            }
+
+            // Append Landing Charges to gdTaxes if amount > 0
+            if (summary.landPKR > 0) {
+                finalTaxes.push({
+                    taxName: `Landing Charges (${landingType === 'PERCENT' ? `${landingValue}%` : landingType === 'FC' ? `$${landingValue}` : 'Fixed PKR'})`,
+                    rate: landingType === 'PERCENT' ? Number(landingValue) : 0,
+                    baseAmount: summary.subtotal + summary.insPKR,
+                    taxAmount: summary.landPKR,
+                    isCapitalized: true,
+                    accountId: landingAccountId || null
+                });
+            }
+
             const payload = {
                 ...formData,
-                items: validItems
+                items: validItems,
+                gdTaxes: finalTaxes
             };
 
             const res = await authenticatedFetch('/api/finance/purchase/invoices/import', {
@@ -345,7 +461,7 @@ export default function NewImportInvoicePage() {
             });
 
             if (res.ok) {
-                showNotification('success', 'Import Invoice created successfully!');
+                showNotification('success', 'Import Invoice created and Journal Entry posted successfully!');
                 router.push('/finance/purchase/invoices');
             } else {
                 const json = await res.json();
@@ -372,6 +488,9 @@ export default function NewImportInvoicePage() {
         };
     });
 
+    const isAnyEfs = formData.items.some((it: any) => it.isEFS);
+    const summary = calculateSummary();
+
     return (
         <MainLayout>
             <div className="w-full max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6 pb-36 animate-in fade-in duration-500">
@@ -383,9 +502,16 @@ export default function NewImportInvoicePage() {
                     >
                         <ArrowLeft size={16} /> Back to Invoices
                     </button>
-                    <span className="text-xs font-bold px-3 py-1 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20 rounded-full uppercase tracking-wider">
-                        Direct Import Purchase
-                    </span>
+                    <div className="flex items-center gap-3">
+                        {isAnyEfs && (
+                            <span className="flex items-center gap-1.5 text-xs font-black px-3.5 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/30 rounded-full uppercase tracking-wider">
+                                <ShieldCheck size={14} /> EFS Duty Exempted Scheme
+                            </span>
+                        )}
+                        <span className="text-xs font-bold px-3 py-1 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20 rounded-full uppercase tracking-wider">
+                            Direct Import Purchase (GD)
+                        </span>
+                    </div>
                 </div>
 
                 {/* Import Hero Card */}
@@ -542,9 +668,16 @@ export default function NewImportInvoicePage() {
                 {/* Items Section */}
                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-visible">
                     <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
-                        <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
-                            <Receipt size={20} className="text-indigo-500" /> Billed Items
-                        </h2>
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                                <Receipt size={20} className="text-indigo-500" /> Billed Items
+                            </h2>
+                            {isAnyEfs && (
+                                <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-500 font-extrabold text-xs rounded-xl">
+                                    ● EFS ACTIVE: CD, RD, ACD, ST, IT = 0 (Exempt)
+                                </span>
+                            )}
+                        </div>
                         <button 
                             onClick={handleAddItem}
                             className="flex items-center gap-2 px-5 py-2.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
@@ -642,7 +775,7 @@ export default function NewImportInvoicePage() {
                                                         />
                                                         <div className="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-slate-600 peer-checked:bg-amber-500"></div>
                                                     </label>
-                                                    {item.isEFS && <span className="text-[9px] block font-black text-amber-500 tracking-tighter">ONLY CONSUM</span>}
+                                                    {item.isEFS && <span className="text-[9px] block font-black text-amber-500 tracking-tighter">DUTY-FREE</span>}
                                                 </div>
 
                                                 <div className="col-span-1 flex justify-center items-center pt-4">
@@ -670,38 +803,47 @@ export default function NewImportInvoicePage() {
                                                     />
                                                 </div>
 
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">CD (PKR):</span>
-                                                    <input
-                                                        type="number"
-                                                        value={item.cdAmount || ''}
-                                                        onChange={e => updateItem(item.id, 'cdAmount', parseFloat(e.target.value))}
-                                                        placeholder="CD"
-                                                        className="w-28 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
-                                                    />
-                                                </div>
+                                                {item.isEFS ? (
+                                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                                                        <ShieldCheck size={16} />
+                                                        <span>EFS EXEMPT: CD, RD & ACD = Rs. 0 (Duty-Free under SRO 957(I)/2021)</span>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">CD (PKR):</span>
+                                                            <input
+                                                                type="number"
+                                                                value={item.cdAmount || ''}
+                                                                onChange={e => updateItem(item.id, 'cdAmount', parseFloat(e.target.value))}
+                                                                placeholder="CD"
+                                                                className="w-28 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
+                                                            />
+                                                        </div>
 
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">RD (PKR):</span>
-                                                    <input
-                                                        type="number"
-                                                        value={item.rdAmount || ''}
-                                                        onChange={e => updateItem(item.id, 'rdAmount', parseFloat(e.target.value))}
-                                                        placeholder="RD"
-                                                        className="w-28 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
-                                                    />
-                                                </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">RD (PKR):</span>
+                                                            <input
+                                                                type="number"
+                                                                value={item.rdAmount || ''}
+                                                                onChange={e => updateItem(item.id, 'rdAmount', parseFloat(e.target.value))}
+                                                                placeholder="RD"
+                                                                className="w-28 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
+                                                            />
+                                                        </div>
 
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">ACD (PKR):</span>
-                                                    <input
-                                                        type="number"
-                                                        value={item.acdAmount || ''}
-                                                        onChange={e => updateItem(item.id, 'acdAmount', parseFloat(e.target.value))}
-                                                        placeholder="ACD"
-                                                        className="w-28 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
-                                                    />
-                                                </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">ACD (PKR):</span>
+                                                            <input
+                                                                type="number"
+                                                                value={item.acdAmount || ''}
+                                                                onChange={e => updateItem(item.id, 'acdAmount', parseFloat(e.target.value))}
+                                                                placeholder="ACD"
+                                                                className="w-28 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
+                                                            />
+                                                        </div>
+                                                    </>
+                                                )}
 
                                                 {/* Calculated ITP Rate Badge */}
                                                 <div className="ml-auto flex items-center gap-3">
@@ -731,24 +873,172 @@ export default function NewImportInvoicePage() {
                     </div>
                 </div>
 
+                {/* Insurance & Landing Charges Section */}
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm p-6">
+                    <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center text-sky-600 dark:text-sky-400">
+                                <Anchor size={20} />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
+                                    Landed Charges (Insurance & Landing Charges)
+                                </h3>
+                                <p className="text-xs text-slate-400">
+                                    Marine Insurance & Port Landing Charges capitalized into inventory cost (IAS 2).
+                                </p>
+                            </div>
+                        </div>
+                        <span className="text-xs font-bold px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded-full">
+                            ● Capitalized to Stock Value
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* 1. Marine Insurance */}
+                        <div className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                                    <ShieldCheck size={16} className="text-sky-500" /> Marine Insurance
+                                </label>
+                                <span className="text-xs font-extrabold text-sky-600 dark:text-sky-400">
+                                    Calculated: Rs. {summary.insPKR.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-12 gap-3 items-center">
+                                <div className="col-span-5">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Calculation Method</label>
+                                    <div className="relative">
+                                        <select
+                                            value={insuranceType}
+                                            onChange={(e) => setInsuranceType(e.target.value as any)}
+                                            className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs outline-none focus:ring-2 focus:ring-sky-500"
+                                        >
+                                            <option value="PERCENT">% (Percentage of C&F)</option>
+                                            <option value="FC">$ (Foreign Currency at GD Rate)</option>
+                                            <option value="PKR">PKR (Direct Rupees)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="col-span-3">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                                        {insuranceType === 'PERCENT' ? 'Rate (%)' : insuranceType === 'FC' ? 'Amount ($)' : 'Amount (PKR)'}
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={insuranceValue}
+                                        onChange={(e) => setInsuranceValue(parseFloat(e.target.value) || 0)}
+                                        placeholder="0.00"
+                                        className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm text-right outline-none focus:ring-2 focus:ring-sky-500"
+                                    />
+                                </div>
+
+                                <div className="col-span-4">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Credit Account (Payable)</label>
+                                    <Combobox
+                                        options={accounts.map(a => ({ value: a.id, label: `${a.code} - ${a.name}` }))}
+                                        value={insuranceAccountId}
+                                        onChange={(val) => setInsuranceAccountId(val)}
+                                        placeholder="Insurance Payable..."
+                                        className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. Landing Charges */}
+                        <div className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                                    <Anchor size={16} className="text-amber-500" /> Landing Charges
+                                </label>
+                                <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400">
+                                    Calculated: Rs. {summary.landPKR.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-12 gap-3 items-center">
+                                <div className="col-span-5">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Calculation Method</label>
+                                    <div className="relative">
+                                        <select
+                                            value={landingType}
+                                            onChange={(e) => setLandingType(e.target.value as any)}
+                                            className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs outline-none focus:ring-2 focus:ring-amber-500"
+                                        >
+                                            <option value="PERCENT">% (Standard 1% of CIF)</option>
+                                            <option value="FC">$ (Foreign Currency at GD Rate)</option>
+                                            <option value="PKR">PKR (Direct Rupees)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="col-span-3">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                                        {landingType === 'PERCENT' ? 'Rate (%)' : landingType === 'FC' ? 'Amount ($)' : 'Amount (PKR)'}
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={landingValue}
+                                        onChange={(e) => setLandingValue(parseFloat(e.target.value) || 0)}
+                                        placeholder="0.00"
+                                        className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm text-right outline-none focus:ring-2 focus:ring-amber-500"
+                                    />
+                                </div>
+
+                                <div className="col-span-4">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Credit Account (Payable)</label>
+                                    <Combobox
+                                        options={accounts.map(a => ({ value: a.id, label: `${a.code} - ${a.name}` }))}
+                                        value={landingAccountId}
+                                        onChange={(val) => setLandingAccountId(val)}
+                                        placeholder="Port/Clearing Payable..."
+                                        className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Taxes & Charges Section */}
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-visible mt-6">
-                    <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
-                        <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
-                            <Receipt size={20} className="text-indigo-500" /> Taxes & Charges
-                        </h2>
-                        <button 
-                            onClick={handleAddTax}
-                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
-                        >
-                            <Plus size={16} /> Add Tax
-                        </button>
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-visible">
+                    <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-wrap justify-between items-center gap-4 bg-slate-50/50 dark:bg-slate-900/50">
+                        <div>
+                            <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                                <Receipt size={20} className="text-indigo-500" /> Customs Duties & Taxes (GD)
+                            </h2>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                                CD, RD, ACD (Capitalized to Stock), and Sales Tax 18% & Advance Income Tax Sec 148 (Adjustable Receivables).
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {!isAnyEfs && (
+                                <button
+                                    onClick={handleLoadStandardDuties}
+                                    className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30 rounded-xl font-bold text-xs hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors"
+                                    title="Auto-fill CD, ACD, RD, ST 18%, AST 3%, IT Sec 148"
+                                >
+                                    <Sparkles size={14} /> + Add Standard GD Duties (CD, RD, ST, IT)
+                                </button>
+                            )}
+                            <button 
+                                onClick={handleAddTax}
+                                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
+                            >
+                                <Plus size={16} /> Add Tax
+                            </button>
+                        </div>
                     </div>
 
                     <div className="p-6 overflow-visible">
-                        <div className="min-w-[700px]">
+                        <div className="w-full">
                             <div className="grid grid-cols-12 gap-4 mb-3 px-4 text-xs font-bold uppercase tracking-widest text-slate-400">
-                                <div className="col-span-2">Tax Type</div>
+                                <div className="col-span-2">Tax Type / Name</div>
                                 <div className="col-span-2">Account</div>
                                 <div className="col-span-2">Calculate On</div>
                                 <div className="col-span-1 text-right">Base</div>
@@ -760,46 +1050,42 @@ export default function NewImportInvoicePage() {
 
                             <div className="space-y-3">
                                 {(formData.gdTaxes || []).map((tax: any, index: number) => {
-                                    const computed = calculateSummary().calculatedTaxes[index];
+                                    const computed = summary.calculatedTaxes[index];
                                     return (
                                         <div key={tax.id} className="grid grid-cols-12 gap-4 items-center bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 transition-all hover:border-indigo-200 dark:hover:border-indigo-500/30">
                                             <div className="col-span-2">
-                                                <Combobox
-                                                    options={[
-                                                        ...taxCodes.map(t => ({ value: t.id, label: t.name })),
-                                                        { value: 'MANUAL', label: 'Manual Tax' }
-                                                    ]}
-                                                    value={tax.taxCodeId || ''}
-                                                    onChange={(val) => updateTax(tax.id, 'taxCodeId', val)}
-                                                    placeholder="Select Tax..."
-                                                    searchPlaceholder="Search taxes..."
-                                                    className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                                <input
+                                                    type="text"
+                                                    value={tax.taxName || ''}
+                                                    onChange={(e) => updateTax(tax.id, 'taxName', e.target.value)}
+                                                    placeholder="Tax / Duty Name..."
+                                                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
                                                 />
                                             </div>
                                             <div className="col-span-2">
                                                 <Combobox
-                                                    options={accounts.map(a => ({ value: a.id, label: a.name }))}
+                                                    options={accounts.map(a => ({ value: a.id, label: `${a.code} - ${a.name}` }))}
                                                     value={tax.accountId || ''}
                                                     onChange={(val) => updateTax(tax.id, 'accountId', val)}
-                                                    placeholder="Account..."
+                                                    placeholder="Target Account..."
                                                     searchPlaceholder="Search accounts..."
-                                                    className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                                    className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200"
                                                 />
                                             </div>
                                             <div className="col-span-2">
                                                 <Combobox
                                                     options={[
-                                                        { value: 'NET_TOTAL', label: 'Net Total (Subtotal - Discount)' },
+                                                        { value: 'NET_TOTAL', label: 'Net Total (Goods Value)' },
                                                         { value: 'PREVIOUS_TOTAL', label: 'Previous Row Total (Cascading)' }
                                                     ]}
                                                     value={tax.calculation}
                                                     onChange={(val) => updateTax(tax.id, 'calculation', val)}
                                                     placeholder="Calculate On..."
                                                     searchPlaceholder="Search options..."
-                                                    className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                                    className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200"
                                                 />
                                             </div>
-                                            <div className="col-span-1 text-right font-medium text-slate-500">
+                                            <div className="col-span-1 text-right font-medium text-slate-500 text-xs">
                                                 {computed?.baseAmount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                             </div>
                                             <div className="col-span-1">
@@ -808,13 +1094,13 @@ export default function NewImportInvoicePage() {
                                                     value={tax.rate || ''}
                                                     onChange={e => updateTax(tax.id, 'rate', parseFloat(e.target.value))}
                                                     placeholder="0"
-                                                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium text-right"
+                                                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-medium text-right"
                                                 />
                                             </div>
-                                            <div className="col-span-2 text-right font-black text-slate-800 dark:text-white">
+                                            <div className="col-span-2 text-right font-black text-slate-800 dark:text-white text-sm">
                                                 {computed?.taxAmount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                             </div>
-                                            <div className="col-span-1 flex justify-center items-center">
+                                            <div className="col-span-1 flex flex-col items-center justify-center">
                                                 <label className="relative inline-flex items-center cursor-pointer">
                                                     <input 
                                                         type="checkbox" 
@@ -824,6 +1110,9 @@ export default function NewImportInvoicePage() {
                                                     />
                                                     <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
                                                 </label>
+                                                <span className="text-[9px] font-bold text-slate-400 mt-0.5">
+                                                    {tax.isCapitalized ? 'Stock Cost' : 'Receivable'}
+                                                </span>
                                             </div>
                                             <div className="col-span-1 flex justify-center">
                                                 <button 
@@ -837,8 +1126,8 @@ export default function NewImportInvoicePage() {
                                     );
                                 })}
                                 {(formData.gdTaxes || []).length === 0 && (
-                                    <div className="text-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 font-bold text-sm">
-                                        No taxes added. Click "Add Tax" to apply document-level taxes.
+                                    <div className="text-center p-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 font-bold text-sm">
+                                        No customs duties added yet. Click "+ Add Standard GD Duties" for commercial imports, or leave blank if 100% EFS exempt.
                                     </div>
                                 )}
                             </div>
@@ -881,19 +1170,26 @@ export default function NewImportInvoicePage() {
                 </div>
 
                 {/* Sticky Action Footer */}
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl rounded-[2.5rem] p-4 flex flex-col md:flex-row items-center justify-between gap-6 max-w-[1700px] w-[95%] transition-all">
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl rounded-[2.5rem] p-4 flex flex-col md:flex-row items-center justify-between gap-6 max-w-[1700px] w-[95%] transition-all">
                     <div className="flex items-center gap-8 w-full md:w-auto justify-between md:justify-start px-2">
                         <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subtotal</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Goods Value (FC)</p>
                             <p className="text-sm font-black text-slate-700 dark:text-slate-200">
-                                Rs. {calculateSummary().subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                Rs. {summary.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </p>
                         </div>
 
                         <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tax Amount</p>
+                            <p className="text-[10px] font-bold text-sky-500 uppercase tracking-widest">Insurance & Landing</p>
+                            <p className="text-sm font-black text-sky-600 dark:text-sky-400">
+                                + Rs. {summary.gdChargesTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </p>
+                        </div>
+
+                        <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Duties & Taxes</p>
                             <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                                + Rs. {calculateSummary().taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                + Rs. {summary.taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </p>
                         </div>
 
@@ -904,9 +1200,9 @@ export default function NewImportInvoicePage() {
                                 <Calculator size={24} />
                             </div>
                             <div>
-                                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Grand Total</p>
+                                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Total Landed Value</p>
                                 <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mt-0.5">
-                                    Rs. {calculateSummary().grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    Rs. {summary.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                 </p>
                             </div>
                         </div>
