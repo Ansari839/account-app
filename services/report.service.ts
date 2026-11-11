@@ -11,10 +11,10 @@ export class ReportService {
         const opening = await prisma.journalLine.aggregate({
             where: {
                 OR: [
-                    { accountId, account: { companyId } },
-                    { accountId, account: { companyId: null } }
+                    { accountId, Account: { companyId } },
+                    { accountId, Account: { companyId: null } }
                 ],
-                entry: {
+                JournalEntry: {
                     date: { lt: startDate },
                     status: true
                 }
@@ -33,30 +33,33 @@ export class ReportService {
         const transactions = await prisma.journalLine.findMany({
             where: {
                 OR: [
-                    { accountId, account: { companyId } },
-                    { accountId, account: { companyId: null } }
+                    { accountId, Account: { companyId } },
+                    { accountId, Account: { companyId: null } }
                 ],
-                entry: {
+                JournalEntry: {
                     date: { gte: startDate, lte: endDate },
                     status: true
                 }
             },
-            include: { entry: true },
-            orderBy: { entry: { date: 'asc' } }
+            include: { JournalEntry: true },
+            orderBy: { JournalEntry: { date: 'asc' } }
         });
 
         return {
             openingBalance,
-            transactions: transactions.map(t => ({
-                id: t.id,
-                voucherNo: t.entry.number,
-                date: t.entry.date,
-                type: t.entry.type,
-                narration: t.narration || t.entry.narration,
-                debit: t.debit,
-                credit: t.credit,
-                ref: t.entry.reference
-            }))
+            transactions: transactions.map(t => {
+                const entry = (t as any).JournalEntry || (t as any).entry;
+                return {
+                    id: t.id,
+                    voucherNo: entry?.number,
+                    date: entry?.date,
+                    type: entry?.type,
+                    narration: t.narration || entry?.narration,
+                    debit: t.debit,
+                    credit: t.credit,
+                    ref: entry?.reference
+                };
+            })
         };
     }
 
@@ -69,10 +72,10 @@ export class ReportService {
             by: ['accountId'],
             where: {
                 OR: [
-                    { account: { companyId } },
-                    { account: { companyId: null } }
+                    { Account: { companyId } },
+                    { Account: { companyId: null } }
                 ],
-                entry: { date: { lte: endDate }, status: true }
+                JournalEntry: { date: { lte: endDate }, status: true }
             },
             _sum: { debit: true, credit: true }
         });
@@ -108,9 +111,9 @@ export class ReportService {
      * Day Book
      */
     static async getDayBook(companyId: string, date: Date) {
-        return await prisma.journalEntry.findMany({
+        const entries = await prisma.journalEntry.findMany({
             where: {
-                lines: { some: { account: { companyId } } },
+                lines: { some: { Account: { companyId } } },
                 date: {
                     gte: new Date(date.setHours(0, 0, 0, 0)),
                     lte: new Date(date.setHours(23, 59, 59, 999))
@@ -118,10 +121,18 @@ export class ReportService {
                 status: true
             },
             include: {
-                lines: { include: { account: true } }
+                lines: { include: { Account: true } }
             },
             orderBy: { createdAt: 'asc' }
         });
+
+        return entries.map(e => ({
+            ...e,
+            lines: e.lines.map(l => ({
+                ...l,
+                account: (l as any).Account || (l as any).account
+            }))
+        }));
     }
 
     /**
@@ -145,10 +156,10 @@ export class ReportService {
             by: ['accountId'],
             where: {
                 OR: [
-                    { account: { companyId } },
-                    { account: { companyId: null } }
+                    { Account: { companyId } },
+                    { Account: { companyId: null } }
                 ],
-                entry: {
+                JournalEntry: {
                     date: { gte: startDate, lte: endDate },
                     status: true
                 }
@@ -301,10 +312,10 @@ export class ReportService {
         const lines = await prisma.journalLine.findMany({
             where: {
                 accountId: { in: cashAccountIds },
-                account: { companyId },
-                entry: { date: { gte: startDate, lte: endDate }, status: true }
+                Account: { companyId },
+                JournalEntry: { date: { gte: startDate, lte: endDate }, status: true }
             },
-            include: { entry: { include: { lines: { include: { account: true } } } } }
+            include: { JournalEntry: { include: { lines: { include: { Account: true } } } } }
         });
 
         const inflows: any[] = [];
@@ -312,15 +323,16 @@ export class ReportService {
         let netCashFlow = 0;
 
         for (const line of lines) {
+            const entry = (line as any).JournalEntry || (line as any).entry;
             const amount = (line.debit?.toNumber() || 0) - (line.credit?.toNumber() || 0);
-            const otherLines = line.entry.lines.filter(l => l.id !== line.id);
-            const category = otherLines[0]?.account.type || 'UNCATEGORIZED';
+            const otherLines = entry?.lines?.filter((l: any) => l.id !== line.id) || [];
+            const category = otherLines[0]?.Account?.type || otherLines[0]?.account?.type || 'UNCATEGORIZED';
 
             if (amount > 0) {
-                inflows.push({ date: line.entry.date, amount, category, ref: line.entry.number });
+                inflows.push({ date: entry?.date, amount, category, ref: entry?.number });
                 netCashFlow += amount;
             } else if (amount < 0) {
-                outflows.push({ date: line.entry.date, amount: Math.abs(amount), category, ref: line.entry.number });
+                outflows.push({ date: entry?.date, amount: Math.abs(amount), category, ref: entry?.number });
                 netCashFlow += amount;
             }
         }
@@ -346,10 +358,10 @@ export class ReportService {
             by: ['accountId'],
             where: {
                 OR: [
-                    { account: { companyId } },
-                    { account: { companyId: null } }
+                    { Account: { companyId } },
+                    { Account: { companyId: null } }
                 ],
-                entry: { date: { lte: endDate }, status: true }
+                JournalEntry: { date: { lte: endDate }, status: true }
             },
             _sum: { debit: true, credit: true }
         });
@@ -402,10 +414,10 @@ export class ReportService {
             by: ['accountId'],
             where: {
                 OR: [
-                    { account: { companyId, type: { in: [AccountType.INCOME, AccountType.EXPENSE] } } },
-                    { account: { companyId: null, type: { in: [AccountType.INCOME, AccountType.EXPENSE] } } }
+                    { Account: { companyId, type: { in: [AccountType.INCOME, AccountType.EXPENSE] } } },
+                    { Account: { companyId: null, type: { in: [AccountType.INCOME, AccountType.EXPENSE] } } }
                 ],
-                entry: { date: { lte: endDate }, status: true }
+                JournalEntry: { date: { lte: endDate }, status: true }
             },
             _sum: { debit: true, credit: true }
         });
@@ -529,11 +541,11 @@ export class ReportService {
             const lines = await prisma.journalLine.findMany({
                 where: {
                     accountId: acc.id,
-                    account: { companyId },
-                    entry: { date: { lte: endDate }, status: true }
+                    Account: { companyId },
+                    JournalEntry: { date: { lte: endDate }, status: true }
                 },
-                include: { entry: true },
-                orderBy: { entry: { date: 'asc' } }
+                include: { JournalEntry: true },
+                orderBy: { JournalEntry: { date: 'asc' } }
             });
 
             const netBalance = lines.reduce((s, l) => s + (l.debit?.toNumber() || 0) - (l.credit?.toNumber() || 0), 0);
@@ -542,7 +554,8 @@ export class ReportService {
             let b0_30 = 0, b31_60 = 0, b61_90 = 0, b90_plus = 0;
             const now = endDate.getTime();
             for (const l of lines) {
-                const diffDays = Math.floor((now - l.entry.date.getTime()) / (1000 * 60 * 60 * 24));
+                const entry = (l as any).JournalEntry || (l as any).entry;
+                const diffDays = Math.floor((now - entry.date.getTime()) / (1000 * 60 * 60 * 24));
                 const amount = (l.debit?.toNumber() || 0) - (l.credit?.toNumber() || 0);
                 if (diffDays <= 30) b0_30 += amount;
                 else if (diffDays <= 60) b31_60 += amount;
@@ -735,8 +748,8 @@ export class ReportService {
 
         const sales = await prisma.journalLine.aggregate({
             where: {
-                account: { type: AccountType.INCOME, companyId },
-                entry: { date: { gte: startDate, lte: endDate }, status: true }
+                Account: { type: AccountType.INCOME, companyId },
+                JournalEntry: { date: { gte: startDate, lte: endDate }, status: true }
             },
             _sum: { credit: true, debit: true }
         });
@@ -744,24 +757,24 @@ export class ReportService {
 
         const receivables = await prisma.journalLine.aggregate({
             where: {
-                account: { name: { contains: 'Receivable' }, companyId },
-                entry: { date: { lte: endDate }, status: true }
+                Account: { name: { contains: 'Receivable' }, companyId },
+                JournalEntry: { date: { lte: endDate }, status: true }
             },
             _sum: { debit: true, credit: true }
         });
 
         const payables = await prisma.journalLine.aggregate({
             where: {
-                account: { name: { contains: 'Payable' }, companyId },
-                entry: { date: { lte: endDate }, status: true }
+                Account: { name: { contains: 'Payable' }, companyId },
+                JournalEntry: { date: { lte: endDate }, status: true }
             },
             _sum: { debit: true, credit: true }
         });
 
         const purchases = await prisma.journalLine.aggregate({
             where: {
-                account: { type: AccountType.EXPENSE, name: { contains: 'Purchase' }, companyId },
-                entry: { date: { gte: startDate, lte: endDate }, status: true }
+                Account: { type: AccountType.EXPENSE, name: { contains: 'Purchase' }, companyId },
+                JournalEntry: { date: { gte: startDate, lte: endDate }, status: true }
             },
             _sum: { debit: true, credit: true }
         });
@@ -775,10 +788,10 @@ export class ReportService {
         // Generate chart data: grouped by month within FY
         const salesLines = await prisma.journalLine.findMany({
             where: {
-                account: { type: AccountType.INCOME, companyId },
-                entry: { date: { gte: startDate, lte: endDate }, status: true }
+                Account: { type: AccountType.INCOME, companyId },
+                JournalEntry: { date: { gte: startDate, lte: endDate }, status: true }
             },
-            select: { credit: true, debit: true, entry: { select: { date: true } } }
+            select: { credit: true, debit: true, JournalEntry: { select: { date: true } } }
         });
 
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -792,7 +805,8 @@ export class ReportService {
         }
 
         for (const line of salesLines) {
-            const m = monthNames[line.entry.date.getMonth()];
+            const entry = (line as any).JournalEntry || (line as any).entry;
+            const m = monthNames[entry.date.getMonth()];
             const net = (line.credit?.toNumber() || 0) - (line.debit?.toNumber() || 0);
             if (chartDataMap.has(m)) {
                 chartDataMap.set(m, chartDataMap.get(m)! + net);
@@ -834,8 +848,8 @@ export class ReportService {
 
         const globalSales = await prisma.journalLine.aggregate({
             where: {
-                account: { type: AccountType.INCOME },
-                entry: { date: { gte: startOfMonth }, status: true }
+                Account: { type: AccountType.INCOME },
+                JournalEntry: { date: { gte: startOfMonth }, status: true }
             },
             _sum: { credit: true }
         });
@@ -914,8 +928,8 @@ export class ReportService {
         const taxes = await prisma.journalLine.groupBy({
             by: ['accountId'],
             where: {
-                account: { name: { contains: 'Tax' }, companyId },
-                entry: { date: { gte: startDate, lte: endDate }, status: true }
+                Account: { name: { contains: 'Tax' }, companyId },
+                JournalEntry: { date: { gte: startDate, lte: endDate }, status: true }
             },
             _sum: { debit: true, credit: true }
         });
@@ -938,7 +952,7 @@ export class ReportService {
      */
     static async getVoucherRegister(companyId: string, type: string, startDate: Date, endDate: Date) {
         const where: any = {
-            lines: { some: { account: { companyId } } },
+            lines: { some: { Account: { companyId } } },
             date: { gte: startDate, lte: endDate },
             status: true
         };
@@ -946,13 +960,21 @@ export class ReportService {
             where.type = type;
         }
 
-        return await prisma.journalEntry.findMany({
+        const entries = await prisma.journalEntry.findMany({
             where,
             include: {
-                lines: { include: { account: true } }
+                lines: { include: { Account: true } }
             },
             orderBy: { date: 'asc' }
         });
+
+        return entries.map(e => ({
+            ...e,
+            lines: e.lines.map(l => ({
+                ...l,
+                account: (l as any).Account || (l as any).account
+            }))
+        }));
     }
 
     /**
@@ -1014,7 +1036,7 @@ export class ReportService {
         const purchaseLines = await prisma.journalLine.aggregate({
             where: {
                 accountId: { in: directAccountIds },
-                entry: { date: { gte: startDate, lte: endDate }, status: true }
+                JournalEntry: { date: { gte: startDate, lte: endDate }, status: true }
             },
             _sum: { debit: true, credit: true }
         });
@@ -1030,7 +1052,7 @@ export class ReportService {
         const salesLines = await prisma.journalLine.aggregate({
             where: {
                 accountId: { in: incomeAccountIds },
-                entry: { date: { gte: startDate, lte: endDate }, status: true }
+                JournalEntry: { date: { gte: startDate, lte: endDate }, status: true }
             },
             _sum: { debit: true, credit: true }
         });

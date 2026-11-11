@@ -37,21 +37,17 @@ export class ProductService {
         canBeSold?: boolean;
         canBePurchased?: boolean;
         isManufactured?: boolean;
+        isService?: boolean;
         stage?: 'RAW' | 'GREY' | 'FINISH';
         variants?: { name: string; sku?: string; price?: number }[];
     }) {
-        // Check for duplicate product (Same Name + Same Category + Same Unit)
-        const existing = await prisma.product.findFirst({
-            where: {
-                companyId,
-                name: { equals: data.name, mode: 'insensitive' },
-                categoryId: data.categoryId,
-                baseUnitId: data.baseUnitId
-            }
-        });
-        if (existing) {
-            throw new Error(`A product with the name "${data.name}" already exists in this category and unit.`);
+        // HS Code is compulsory
+        if (!data.hsCode || !data.hsCode.trim()) {
+            throw new Error("HS Code is compulsory for all products.");
         }
+
+        // Note: Multiple items can share the same name (e.g. Local vs Import vs EFS)
+        // with the same HS Code. Uniqueness is governed by product code/SKU.
 
         // Auto-generate SKU if not provided
         if (!data.code || data.code.trim() === "") {
@@ -234,6 +230,10 @@ export class ProductService {
      */
     static async updateProduct(id: string, data: any) {
         const { variants, ...productData } = data;
+
+        if (productData.hsCode !== undefined && (!productData.hsCode || !productData.hsCode.trim())) {
+            throw new Error("HS Code is compulsory.");
+        }
 
         const updated = await prisma.product.update({
             where: { id },

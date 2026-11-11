@@ -143,8 +143,8 @@ export default function NewProductPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (!formData.name || !formData.categoryId || !formData.baseUnitId) {
-            showNotification('error', 'Please fill in all required fields (Name, Category, Unit).');
+        if (!formData.name?.trim() || !formData.categoryId || !formData.baseUnitId || !formData.hsCode?.trim()) {
+            showNotification('error', 'Please fill in all required fields (Name, Category, Unit, HS Code).');
             return;
         }
 
@@ -309,11 +309,12 @@ export default function NewProductPage() {
 
                             <div className="space-y-2">
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <Barcode size={14} /> HS Code
+                                    <Barcode size={14} /> HS Code <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="text"
-                                    placeholder="e.g. 6109.10"
+                                    required
+                                    placeholder="e.g. 5402.3300"
                                     className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-slate-600 font-mono text-sm"
                                     value={formData.hsCode || ''}
                                     onChange={e => setFormData({ ...formData, hsCode: e.target.value })}
@@ -774,10 +775,10 @@ export default function NewProductPage() {
                         </button>
                         <button 
                             onClick={handleSubmit}
-                            disabled={loading || !formData.name || !formData.categoryId || !formData.baseUnitId}
+                            disabled={loading || !formData.name?.trim() || !formData.categoryId || !formData.baseUnitId || !formData.hsCode?.trim()}
                             className={cn(
                                 "flex-1 md:flex-none px-8 py-4 rounded-2xl font-black text-white bg-gradient-to-r from-violet-500 to-fuchsia-600 hover:from-violet-600 hover:to-fuchsia-700 shadow-xl shadow-violet-500/20 transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2",
-                                (loading || !formData.name || !formData.categoryId || !formData.baseUnitId) && "opacity-70 cursor-not-allowed"
+                                (loading || !formData.name?.trim() || !formData.categoryId || !formData.baseUnitId || !formData.hsCode?.trim()) && "opacity-70 cursor-not-allowed"
                             )}
                         >
                             <Save size={18} />
