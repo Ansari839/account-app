@@ -608,12 +608,13 @@ export class ReportService {
         });
 
         const products = await prisma.product.findMany({
-            include: { baseUnit: true, category: true, variants: true }
+            where: { companyId },
+            include: { Unit: true, Category: true, ProductVariant: true }
         });
 
         return summary.map(s => {
             const prod = products.find(p => p.id === s.productId);
-            const variant = prod?.variants.find(v => v.id === s.variantId);
+            const variant = prod?.ProductVariant?.find((v: any) => v.id === s.variantId);
             const stock = (s._sum.qtyIn?.toNumber() || 0) - (s._sum.qtyOut?.toNumber() || 0);
             return {
                 id: s.productId,
@@ -621,8 +622,8 @@ export class ReportService {
                 productName: prod?.name,
                 variantName: variant?.name || '-',
                 productCode: variant?.sku || prod?.code,
-                category: prod?.category?.name || '-',
-                unit: prod?.baseUnit?.name || '-',
+                category: prod?.Category?.name || '-',
+                unit: prod?.Unit?.name || '-',
                 stage: s.stage || 'RAW',
                 stock
             };
@@ -645,7 +646,7 @@ export class ReportService {
         const entries = await prisma.stockLedger.findMany({
             where,
             orderBy: { date: 'asc' }, // Changed from createdAt to date
-            include: { product: true, warehouse: true }
+            include: { Product: true, Warehouse: true }
         });
 
         // Collect Ref IDs for batch fetching
@@ -704,6 +705,8 @@ export class ReportService {
 
             return {
                 ...e,
+                product: e.Product,
+                warehouse: e.Warehouse,
                 refNo,
                 balance
             };
