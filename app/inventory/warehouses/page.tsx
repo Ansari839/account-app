@@ -5,6 +5,7 @@ import MainLayout from '@/components/MainLayout';
 import { authenticatedFetch } from '@/lib/api-client';
 import DataTable, { Column } from '@/components/DataTable';
 import { useRouter } from 'next/navigation';
+import { Pencil, Trash2 } from 'lucide-react';
 
 export default function WarehousesPage() {
     const router = useRouter();
@@ -48,20 +49,20 @@ export default function WarehousesPage() {
         {
             header: 'Actions',
             accessor: (row) => (
-                <div className="flex gap-2">
+                <div className="flex gap-1.5 items-center">
                     <button 
                         onClick={() => router.push(`/inventory/warehouses/${row.id}/edit`)} 
-                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-100"
-                        title="Edit"
+                        className="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 dark:hover:bg-amber-500/15 rounded-xl transition-all border border-transparent hover:border-amber-500/20 shadow-sm"
+                        title="Edit Warehouse"
                     >
-                        📝
+                        <Pencil size={16} />
                     </button>
                     <button 
                         onClick={() => handleDelete(row.id)} 
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                        title="Delete"
+                        className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 dark:hover:bg-rose-500/15 rounded-xl transition-all border border-transparent hover:border-rose-500/20 shadow-sm"
+                        title="Delete Warehouse"
                     >
-                        🗑
+                        <Trash2 size={16} />
                     </button>
                 </div>
             )

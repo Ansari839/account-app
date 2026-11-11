@@ -6,7 +6,7 @@ import { authenticatedFetch } from '@/lib/api-client';
 import DataTable, { Column } from '@/components/DataTable';
 import { useRouter } from 'next/navigation';
 import OpeningStockModal, { OpeningStockProduct } from '@/components/inventory/OpeningStockModal';
-import { Layers } from 'lucide-react';
+import { Layers, PackagePlus, Eye, Pencil, Trash2 } from 'lucide-react';
 
 export default function ProductsPage() {
     const router = useRouter();
@@ -58,9 +58,9 @@ export default function ProductsPage() {
         {
             header: 'Actions',
             accessor: (row) => (
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-1.5 items-center">
                     <button 
-                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
+                        className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 dark:hover:bg-indigo-500/15 rounded-xl transition-all border border-transparent hover:border-indigo-500/20 shadow-sm"
                         title="Add Opening Stock"
                         onClick={() => {
                             setSelectedProduct({
@@ -73,28 +73,28 @@ export default function ProductsPage() {
                             setOpeningModalOpen(true);
                         }}
                     >
-                        📦
+                        <PackagePlus size={16} />
                     </button>
                     <button 
-                        className="p-1.5 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors border border-transparent hover:border-violet-100"
-                        title="View / Edit"
+                        className="p-2 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 dark:hover:bg-sky-500/15 rounded-xl transition-all border border-transparent hover:border-sky-500/20 shadow-sm"
+                        title="View Details"
                         onClick={() => router.push(`/inventory/products/${row.id}`)}
                     >
-                        👁
+                        <Eye size={16} />
                     </button>
                     <button 
-                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-100"
-                        title="Edit"
+                        className="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 dark:hover:bg-amber-500/15 rounded-xl transition-all border border-transparent hover:border-amber-500/20 shadow-sm"
+                        title="Edit Product"
                         onClick={() => router.push(`/inventory/products/${row.id}/edit`)}
                     >
-                        📝
+                        <Pencil size={16} />
                     </button>
                     <button 
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                        title="Delete"
+                        className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 dark:hover:bg-rose-500/15 rounded-xl transition-all border border-transparent hover:border-rose-500/20 shadow-sm"
+                        title="Delete Product"
                         onClick={() => handleDelete(row.id)}
                     >
-                        🗑
+                        <Trash2 size={16} />
                     </button>
                 </div>
             )
