@@ -139,6 +139,9 @@ export async function POST(req: Request) {
             }
         });
 
+        // Automatically sync Opening Stock to General Ledger (Trial Balance & Balance Sheet)
+        await syncOpeningStockGL(companyId);
+
         return NextResponse.json({ success: true, data: entry });
     } catch (err: any) {
         console.error('Create Opening Stock Error:', err);
@@ -165,9 +168,82 @@ export async function DELETE(req: Request) {
             }
         });
 
+        // Automatically sync Opening Stock to General Ledger (Trial Balance & Balance Sheet)
+        await syncOpeningStockGL(companyId);
+
         return NextResponse.json({ success: true, message: 'Opening stock removed' });
     } catch (err: any) {
         console.error('Delete Opening Stock Error:', err);
         return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    }
+}
+
+async function syncOpeningStockGL(companyId: string) {
+    try {
+        let invAccount = await prisma.account.findFirst({
+            where: { companyId, code: '1140' }
+        });
+        if (!invAccount) {
+            invAccount = await prisma.account.findFirst({
+                where: { companyId, type: 'ASSET', name: { contains: 'Inventory' } }
+            });
+        }
+        let capitalAccount = await prisma.account.findFirst({
+            where: { companyId, code: '3100' }
+        });
+        if (!capitalAccount) {
+            capitalAccount = await prisma.account.findFirst({
+                where: { companyId, type: 'EQUITY' }
+            });
+        }
+        if (!invAccount || !capitalAccount) return;
+
+        const stockEntries = await prisma.stockLedger.findMany({
+            where: { companyId, refType: 'OPENING_STOCK' }
+        });
+        const totalValue = stockEntries.reduce((sum, e) => sum + (Number(e.qtyIn) * Number(e.costRate || 0)), 0);
+
+        const existing = await prisma.journalEntry.findFirst({
+            where: { companyId, number: 'JV-OPENING-STOCK' }
+        });
+        if (existing) {
+            await prisma.journalLine.deleteMany({ where: { entryId: existing.id } });
+            await prisma.journalEntry.delete({ where: { id: existing.id } });
+        }
+
+        if (totalValue > 0) {
+            await prisma.journalEntry.create({
+                data: {
+                    id: crypto.randomUUID(),
+                    companyId,
+                    number: 'JV-OPENING-STOCK',
+                    date: new Date('2026-11-01'),
+                    type: 'JOURNAL',
+                    reference: 'OPENING-STOCK',
+                    narration: 'Opening Stock Inventory Valuation',
+                    status: true,
+                    lines: {
+                        create: [
+                            {
+                                id: crypto.randomUUID(),
+                                accountId: invAccount.id,
+                                debit: Number(totalValue.toFixed(2)),
+                                credit: 0,
+                                narration: 'Opening Stock Inventory - Raw Material'
+                            },
+                            {
+                                id: crypto.randomUUID(),
+                                accountId: capitalAccount.id,
+                                debit: 0,
+                                credit: Number(totalValue.toFixed(2)),
+                                narration: 'Opening Balance Equity / Owner Capital'
+                            }
+                        ]
+                    }
+                }
+            });
+        }
+    } catch (e) {
+        console.error('Failed to sync opening stock to GL:', e);
     }
 }
