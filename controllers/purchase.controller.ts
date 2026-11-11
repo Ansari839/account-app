@@ -1563,9 +1563,12 @@ export class PurchaseController {
                     subtotalPKR += pkrTotal;
 
                     // Assessed Value and ITP Calculations:
+                    // Assessed Value = Assessed Rate X Qty X GD Rate + Insurance + Landing
                     // ITP Rate = (Assessed Value PKR + RD + CD + ACD) / QTY
                     const assessedRate = Number(item.assessedRate) || 0;
-                    const assessedValuePKR = (assessedRate * qty) * customsRate;
+                    const assessedValuePKR = Number(item.assessedValuePKR) > 0 
+                        ? Math.round(Number(item.assessedValuePKR))
+                        : Math.round((assessedRate * qty) * customsRate);
                     const cdAmount = Number(item.cdAmount) || 0;
                     const rdAmount = Number(item.rdAmount) || 0;
                     const acdAmount = Number(item.acdAmount) || 0;
@@ -1592,7 +1595,7 @@ export class PurchaseController {
 
                 const discount = hasDiscount ? Number(discountAmount || 0) * docRate : 0;
                 
-                // Customs Assessed Value of all items combined
+                // Customs Assessed Value of all items combined (as per GD)
                 const totalAssessedPKR = Math.round(processedItems.reduce((sum: number, it: any) => sum + (Number(it.assessedValuePKR) || 0), 0));
                 
                 // Find Insurance and Landing Charges amounts if passed
@@ -1601,9 +1604,9 @@ export class PurchaseController {
                 const insAmountPKR = Math.round(Number(insTax?.taxAmount || 0));
                 const landAmountPKR = Math.round(Number(landTax?.taxAmount || 0));
 
-                // Pakistan Customs CIF Base = Assessed Value + Insurance + Landing
-                const cifCustomsBasePKR = totalAssessedPKR > 0
-                    ? (totalAssessedPKR + insAmountPKR + landAmountPKR)
+                // Pakistan Customs Base for CD, RD, ACD is directly the Customs Assessed Value!
+                const customsBasePKR = totalAssessedPKR > 0
+                    ? totalAssessedPKR
                     : (subtotalPKR - discount + insAmountPKR + landAmountPKR);
 
                 let runningTotalPKR = subtotalPKR - discount;
@@ -1613,15 +1616,15 @@ export class PurchaseController {
                 let totalCapitalizedTaxes = 0;
 
                 const processedTaxes = (gdTaxes || []).map((tax: any) => {
-                    let baseAmount = cifCustomsBasePKR;
+                    let baseAmount = customsBasePKR;
 
                     if (tax.calculation === 'ASSESSED_VALUE') {
-                        // Base for CD, RD, ACD is Assessed Value + Insurance + Landing
-                        baseAmount = cifCustomsBasePKR;
+                        // CD, RD, ACD: Base is directly Customs Assessed Value
+                        baseAmount = customsBasePKR;
                     } else if (tax.calculation === 'ASSESSED_PLUS_DUTIES') {
-                        baseAmount = cifCustomsBasePKR + runningDutiesPKR;
+                        baseAmount = customsBasePKR + runningDutiesPKR;
                     } else if (tax.calculation === 'ASSESSED_PLUS_ALL') {
-                        baseAmount = cifCustomsBasePKR + runningDutiesPKR + runningSalesTaxesPKR;
+                        baseAmount = customsBasePKR + runningDutiesPKR + runningSalesTaxesPKR;
                     } else if (tax.calculation === 'PREVIOUS_TOTAL') {
                         baseAmount = runningTotalPKR;
                     } else if (tax.calculation === 'NET_TOTAL') {

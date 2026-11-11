@@ -211,20 +211,20 @@ export default function NewImportInvoicePage() {
                 const qty = Number(item.qty || 0);
                 const foreignRate = Number(item.foreignRate || 0);
                 const subtotalFC = qty * foreignRate;
-                const assessedRate = Number(item.assessedRate || 0);
-                const assessedValuePKR = (assessedRate * qty) * customsXRate;
-                const cd = item.isEFS ? 0 : Number(item.cdAmount || 0);
-                const rd = item.isEFS ? 0 : Number(item.rdAmount || 0);
-                const acd = item.isEFS ? 0 : Number(item.acdAmount || 0);
-                const itpRate = qty > 0 ? ((assessedValuePKR + cd + rd + acd) / qty) : 0;
+                const aRate = Number(item.assessedRate || 0);
+                
+                // Assess Value = Assessed Rate X Qty X GD Rate + Insurance + Landing Charges
+                const rawPKR = aRate * qty * customsXRate;
+                const ins = insuranceType === 'PERCENT' ? (rawPKR * (Number(insuranceValue) || 1) / 100) : 0;
+                const land = landingType === 'PERCENT' ? ((rawPKR + ins) * (Number(landingValue) || 1) / 100) : 0;
+                const assessedValuePKR = Math.round(rawPKR + ins + land);
 
                 return {
                     ...item,
                     foreignAmount: subtotalFC,
                     rate: foreignRate * docXRate,
                     total: subtotalFC * docXRate,
-                    assessedValuePKR,
-                    itpRate
+                    assessedValuePKR
                 };
             });
 
@@ -289,13 +289,19 @@ export default function NewImportInvoicePage() {
                     updatedItem.total = subtotalFC * docXRate;
 
                     // Sync between Assessed Rate ($) and Total Assessed Value (PKR as per GD)
+                    // Formula: Assessed Value = (Assessed Rate X Qty X GD Rate) + Insurance + Landing Charges
                     if (field === "assessedRate" || field === "qty") {
                         const aRate = Number(updatedItem.assessedRate || 0);
-                        updatedItem.assessedValuePKR = Math.round(aRate * qty * customsXRate);
+                        const rawPKR = aRate * qty * customsXRate;
+                        const ins = insuranceType === 'PERCENT' ? (rawPKR * (Number(insuranceValue) || 1) / 100) : 0;
+                        const land = landingType === 'PERCENT' ? ((rawPKR + ins) * (Number(landingValue) || 1) / 100) : 0;
+                        updatedItem.assessedValuePKR = Math.round(rawPKR + ins + land);
                     } else if (field === "assessedValuePKR") {
                         const valPKR = isNaN(value) ? 0 : parseFloat(value);
                         updatedItem.assessedValuePKR = Math.round(valPKR);
-                        updatedItem.assessedRate = (qty > 0 && customsXRate > 0) ? Number((valPKR / (qty * customsXRate)).toFixed(4)) : 0;
+                        const factor = (1 + (Number(insuranceValue) || 1)/100) * (1 + (Number(landingValue) || 1)/100);
+                        const rawPKR = factor > 0 ? (valPKR / factor) : valPKR;
+                        updatedItem.assessedRate = (qty > 0 && customsXRate > 0) ? Number((rawPKR / (qty * customsXRate)).toFixed(4)) : 0;
                     }
 
                     return updatedItem;
@@ -325,11 +331,11 @@ export default function NewImportInvoicePage() {
         return { cdRate, rdRate, acdRate };
     };
 
-    // Calculate Insurance in PKR: (Assessed Value x 1% or FC / PKR)
-    const calculateInsurancePKR = (totalAssessedPKR: number) => {
+    // Calculate Insurance in PKR: (Base x 1% or FC / PKR)
+    const calculateInsurancePKR = (rawPKR: number) => {
         const customsXRate = Number(formData.customsExchangeRate || 1);
         const foreignTotal = formData.items.reduce((sum: number, it: any) => sum + ((Number(it.qty) || 0) * (Number(it.foreignRate) || 0)), 0);
-        const base = totalAssessedPKR > 0 ? totalAssessedPKR : (foreignTotal * customsXRate);
+        const base = rawPKR > 0 ? rawPKR : (foreignTotal * customsXRate);
         const val = Number(insuranceValue) || 0;
         if (insuranceType === 'PERCENT') {
             return Math.round(base * (val / 100));
@@ -340,11 +346,11 @@ export default function NewImportInvoicePage() {
         }
     };
 
-    // Calculate Landing Charges in PKR: (Assessed Value + Insurance) x 1% or FC / PKR
-    const calculateLandingPKR = (totalAssessedPKR: number, insPKR: number) => {
+    // Calculate Landing Charges in PKR: (Base + Insurance) x 1% or FC / PKR
+    const calculateLandingPKR = (rawPKR: number, insPKR: number) => {
         const customsXRate = Number(formData.customsExchangeRate || 1);
         const foreignTotal = formData.items.reduce((sum: number, it: any) => sum + ((Number(it.qty) || 0) * (Number(it.foreignRate) || 0)), 0);
-        const base = totalAssessedPKR > 0 ? (totalAssessedPKR + insPKR) : ((foreignTotal * customsXRate) + insPKR);
+        const base = rawPKR > 0 ? (rawPKR + insPKR) : ((foreignTotal * customsXRate) + insPKR);
         const val = Number(landingValue) || 0;
         if (landingType === 'PERCENT') {
             return Math.round(base * (val / 100));
@@ -362,17 +368,20 @@ export default function NewImportInvoicePage() {
         // Customs Assessed Value (PKR) entered by user on items
         const totalAssessedPKR = Math.round(formData.items.reduce((sum: number, it: any) => sum + (Number(it.assessedValuePKR) || 0), 0));
         
-        // 1. Insurance = Assessed Value x 1%
-        const insPKR = calculateInsurancePKR(totalAssessedPKR);
+        // Total raw C&F PKR for all items (before insurance & landing)
+        const customsXRate = Number(formData.customsExchangeRate || 1);
+        const totalRawPKR = Math.round(formData.items.reduce((sum: number, it: any) => sum + ((Number(it.assessedRate) || 0) * (Number(it.qty) || 0) * customsXRate), 0));
+        const effectiveRawBase = totalRawPKR > 0 ? totalRawPKR : (totalAssessedPKR > 0 ? Math.round(totalAssessedPKR / 1.0201) : subtotal);
+
+        // 1. Insurance = Base x 1%
+        const insPKR = calculateInsurancePKR(effectiveRawBase);
         
-        // 2. Landing = (Assessed Value + Insurance) x 1%
-        const landPKR = calculateLandingPKR(totalAssessedPKR, insPKR);
+        // 2. Landing = (Base + Insurance) x 1%
+        const landPKR = calculateLandingPKR(effectiveRawBase, insPKR);
         const gdChargesTotal = insPKR + landPKR;
 
-        // 3. Pakistan Customs Valuation Base for CD, RD, ACD = Assessed Value + Insurance + Landing
-        const cifCustomsBasePKR = totalAssessedPKR > 0 
-            ? (totalAssessedPKR + insPKR + landPKR) 
-            : (subtotal - discount + insPKR + landPKR);
+        // 3. Pakistan Customs Base for CD, RD, ACD is directly the Customs Assessed Value!
+        const customsBasePKR = totalAssessedPKR > 0 ? totalAssessedPKR : (subtotal - discount);
 
         let runningTotal = subtotal - discount;
         let runningDuties = 0;
@@ -381,17 +390,17 @@ export default function NewImportInvoicePage() {
         
         // Calculate duties and taxes on their exact Customs Assessment Bases
         const calculatedTaxes = (formData.gdTaxes || []).map((tax: any) => {
-            let baseAmount = cifCustomsBasePKR;
+            let baseAmount = customsBasePKR;
 
             if (tax.calculation === 'ASSESSED_VALUE') {
-                // CD, RD, ACD: Base is Assessed + Insurance + Landing
-                baseAmount = cifCustomsBasePKR;
+                // CD, RD, ACD: Base is directly Customs Assessed Value!
+                baseAmount = customsBasePKR;
             } else if (tax.calculation === 'ASSESSED_PLUS_DUTIES') {
-                // GD Rule for Sales Tax & AST: (Assessed + Ins + Land) + CD + RD + ACD
-                baseAmount = cifCustomsBasePKR + runningDuties;
+                // GD Rule for Sales Tax & AST: Assessed Value + CD + RD + ACD
+                baseAmount = customsBasePKR + runningDuties;
             } else if (tax.calculation === 'ASSESSED_PLUS_ALL') {
-                // GD Rule for Income Tax Sec 148: (Assessed + Ins + Land) + Duties + Sales Tax + AST
-                baseAmount = cifCustomsBasePKR + runningDuties + runningSalesTaxes;
+                // GD Rule for Income Tax Sec 148: Assessed Value + Duties + Sales Tax + AST
+                baseAmount = customsBasePKR + runningDuties + runningSalesTaxes;
             } else if (tax.calculation === 'PREVIOUS_TOTAL') {
                 baseAmount = runningTotal;
             } else if (tax.calculation === 'NET_TOTAL') {
@@ -417,7 +426,7 @@ export default function NewImportInvoicePage() {
 
         const grandTotal = subtotal - discount + taxTotal + gdChargesTotal;
         
-        return { subtotal, discount, taxTotal, gdChargesTotal, insPKR, landPKR, grandTotal, calculatedTaxes, totalAssessedPKR, cifCustomsBasePKR };
+        return { subtotal, discount, taxTotal, gdChargesTotal, insPKR, landPKR, grandTotal, calculatedTaxes, totalAssessedPKR, customsBasePKR };
     };
 
     const handleAddTax = () => {
@@ -534,18 +543,16 @@ export default function NewImportInvoicePage() {
             const processedItemsToSubmit = validItems.map((it: any) => {
                 const qty = Number(it.qty || 0);
                 const assessedVal = Math.round(Number(it.assessedValuePKR || 0));
-                const itemIns = summary.totalAssessedPKR > 0 ? Math.round(summary.insPKR * (assessedVal / summary.totalAssessedPKR)) : 0;
-                const itemLand = summary.totalAssessedPKR > 0 ? Math.round(summary.landPKR * (assessedVal / summary.totalAssessedPKR)) : 0;
-                const itemCIFBase = assessedVal + itemIns + itemLand;
 
-                const autoCD = it.isEFS ? 0 : Math.round(itemCIFBase * (dutyRates.cdRate / 100));
-                const autoRD = it.isEFS ? 0 : Math.round(itemCIFBase * (dutyRates.rdRate / 100));
-                const autoACD = it.isEFS ? 0 : Math.round(itemCIFBase * (dutyRates.acdRate / 100));
+                const autoCD = it.isEFS ? 0 : Math.round(assessedVal * (dutyRates.cdRate / 100));
+                const autoRD = it.isEFS ? 0 : Math.round(assessedVal * (dutyRates.rdRate / 100));
+                const autoACD = it.isEFS ? 0 : Math.round(assessedVal * (dutyRates.acdRate / 100));
 
                 const cd = it.isEFS ? 0 : (it.cdAmount !== undefined && it.cdAmount !== null && it.cdAmount !== '' ? Number(it.cdAmount) : autoCD);
                 const rd = it.isEFS ? 0 : (it.rdAmount !== undefined && it.rdAmount !== null && it.rdAmount !== '' ? Number(it.rdAmount) : autoRD);
                 const acd = it.isEFS ? 0 : (it.acdAmount !== undefined && it.acdAmount !== null && it.acdAmount !== '' ? Number(it.acdAmount) : autoACD);
-                const itp = qty > 0 ? Number(((itemCIFBase + cd + rd + acd) / qty).toFixed(4)) : 0;
+                // ITP Rate = (Assessed Value + RD + CD + ACD) / qty
+                const itp = qty > 0 ? Number(((assessedVal + cd + rd + acd) / qty).toFixed(4)) : 0;
 
                 return {
                     ...it,
@@ -815,25 +822,18 @@ export default function NewImportInvoicePage() {
 
                                     // Duty rates from gdTaxes below
                                     const dutyRates = getDutyRates();
-                                    const totalAssessedPKR = summary.totalAssessedPKR;
-                                    const insPKR = summary.insPKR;
-                                    const landPKR = summary.landPKR;
 
-                                    // Item's share of Insurance and Landing
-                                    const itemIns = totalAssessedPKR > 0 ? Math.round(insPKR * (assessedValPKR / totalAssessedPKR)) : 0;
-                                    const itemLand = totalAssessedPKR > 0 ? Math.round(landPKR * (assessedValPKR / totalAssessedPKR)) : 0;
-                                    const itemCIFBase = assessedValPKR + itemIns + itemLand;
-
-                                    // Auto CD, RD, ACD calculated from bottom duty % applied to itemCIFBase
-                                    const autoCD = item.isEFS ? 0 : Math.round(itemCIFBase * (dutyRates.cdRate / 100));
-                                    const autoRD = item.isEFS ? 0 : Math.round(itemCIFBase * (dutyRates.rdRate / 100));
-                                    const autoACD = item.isEFS ? 0 : Math.round(itemCIFBase * (dutyRates.acdRate / 100));
+                                    // CD, RD, ACD: directly calculated on Assessed Value (PKR)
+                                    const autoCD = item.isEFS ? 0 : Math.round(assessedValPKR * (dutyRates.cdRate / 100));
+                                    const autoRD = item.isEFS ? 0 : Math.round(assessedValPKR * (dutyRates.rdRate / 100));
+                                    const autoACD = item.isEFS ? 0 : Math.round(assessedValPKR * (dutyRates.acdRate / 100));
 
                                     const effectiveCD = item.isEFS ? 0 : (item.cdAmount !== undefined && item.cdAmount !== null && item.cdAmount !== '' ? Number(item.cdAmount) : autoCD);
                                     const effectiveRD = item.isEFS ? 0 : (item.rdAmount !== undefined && item.rdAmount !== null && item.rdAmount !== '' ? Number(item.rdAmount) : autoRD);
                                     const effectiveACD = item.isEFS ? 0 : (item.acdAmount !== undefined && item.acdAmount !== null && item.acdAmount !== '' ? Number(item.acdAmount) : autoACD);
 
-                                    const calculatedITPRate = qty > 0 ? ((itemCIFBase + effectiveCD + effectiveRD + effectiveACD) / qty) : 0;
+                                    // ITP Rate = (Assessed Value + RD + CD + ACD) / qty
+                                    const calculatedITPRate = qty > 0 ? ((assessedValPKR + effectiveCD + effectiveRD + effectiveACD) / qty) : 0;
 
                                     return (
                                         <div key={item.id} className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4 transition-all hover:border-indigo-300 dark:hover:border-indigo-500/40">
