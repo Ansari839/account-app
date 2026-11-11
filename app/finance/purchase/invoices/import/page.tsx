@@ -263,15 +263,23 @@ export default function NewImportInvoicePage() {
                     updatedItem.rate = foreignRate * docXRate;
                     updatedItem.total = subtotalFC * docXRate;
 
-                    // ITP Rate Formula: (Assessed Value in PKR + RD + CD + ACD) / QTY
-                    const assessedRate = Number(updatedItem.assessedRate || 0);
-                    const assessedValuePKR = (assessedRate * qty) * customsXRate;
+                    // Sync between Assessed Rate ($) and Total Assessed Value (PKR as per GD)
+                    if (field === "assessedValuePKR") {
+                        const valPKR = isNaN(value) ? 0 : parseFloat(value);
+                        updatedItem.assessedValuePKR = valPKR;
+                        updatedItem.assessedRate = (qty > 0 && customsXRate > 0) ? Number((valPKR / (qty * customsXRate)).toFixed(4)) : 0;
+                    } else if (field === "assessedRate" || field === "qty") {
+                        const aRate = Number(updatedItem.assessedRate || 0);
+                        updatedItem.assessedValuePKR = aRate * qty * customsXRate;
+                    }
+
                     const cd = updatedItem.isEFS ? 0 : Number(updatedItem.cdAmount || 0);
                     const rd = updatedItem.isEFS ? 0 : Number(updatedItem.rdAmount || 0);
                     const acd = updatedItem.isEFS ? 0 : Number(updatedItem.acdAmount || 0);
+                    const finalAssessedPKR = Number(updatedItem.assessedValuePKR || 0);
                     
-                    updatedItem.assessedValuePKR = assessedValuePKR;
-                    updatedItem.itpRate = qty > 0 ? ((assessedValuePKR + cd + rd + acd) / qty) : 0;
+                    // ITP Rate Formula: (Assessed Value in PKR + RD + CD + ACD) / QTY
+                    updatedItem.itpRate = qty > 0 ? ((finalAssessedPKR + cd + rd + acd) / qty) : 0;
                     
                     return updatedItem;
                 }
@@ -790,16 +798,30 @@ export default function NewImportInvoicePage() {
                                             </div>
 
                                             {/* Tier 2: Customs Assessed Value & ITP Formula Breakdown */}
-                                            <div className="bg-white/80 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800/80 flex flex-wrap items-center gap-6 text-sm">
+                                            <div className="bg-white/80 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800/80 flex flex-wrap items-center gap-5 text-sm">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">Customs Assessed Rate ($):</span>
+                                                    <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">Assessed Rate ($):</span>
                                                     <input
                                                         type="number"
-                                                        step="0.001"
+                                                        step="0.0001"
                                                         value={item.assessedRate || ''}
                                                         onChange={e => updateItem(item.id, 'assessedRate', parseFloat(e.target.value))}
                                                         placeholder="Rate ($)"
-                                                        className="w-32 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
+                                                        className="w-28 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
+                                                    />
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider text-xs" title="GD printed Assessed Value in PKR (includes customs insurance & landing)">
+                                                        Assessed Value (PKR):
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={item.assessedValuePKR || ''}
+                                                        onChange={e => updateItem(item.id, 'assessedValuePKR', parseFloat(e.target.value))}
+                                                        placeholder="As per GD in PKR"
+                                                        className="w-44 p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-400/50 text-right font-black text-xs text-indigo-600 dark:text-indigo-300 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
                                                     />
                                                 </div>
 
