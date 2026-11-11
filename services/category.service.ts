@@ -1,26 +1,40 @@
 
-import prisma from "@/lib/prisma";
+import prisma from "../lib/prisma";
 
 export class CategoryService {
     static async list(companyId: string) {
-        return await prisma.category.findMany({
+        const categories = await prisma.category.findMany({
             where: { companyId },
             include: { 
-                parent: true, 
-                children: true,
+                Category: true, 
+                other_Category: true,
                 _count: {
-                    select: { products: true }
+                    select: { Product: true }
                 }
             },
             orderBy: { name: 'asc' }
         });
+
+        return categories.map(c => ({
+            ...c,
+            parent: c.Category,
+            children: c.other_Category,
+            _count: {
+                products: c._count.Product
+            }
+        }));
     }
 
     static async get(id: string) {
-        return await prisma.category.findUnique({
+        const c = await prisma.category.findUnique({
             where: { id },
-            include: { parent: true }
+            include: { Category: true }
         });
+        if (!c) return null;
+        return {
+            ...c,
+            parent: c.Category
+        };
     }
 
     static async create(companyId: string, data: { name: string, parentId?: string, isService?: boolean, wipAccountId?: string }) {

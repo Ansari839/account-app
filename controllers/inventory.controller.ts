@@ -119,6 +119,7 @@ export class InventoryController {
             const data = await CategoryService.list(companyId);
             return NextResponse.json({ success: true, data });
         } catch (e: any) {
+            console.error('[InventoryController.listCategories ERROR]:', e);
             return NextResponse.json({ success: false, error: e.message }, { status: 500 });
         }
     }

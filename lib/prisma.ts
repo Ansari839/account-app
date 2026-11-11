@@ -15,10 +15,12 @@ if (!connectionString) {
 const pool = globalForPrisma.pool ?? new Pool({
   connectionString,
   max: process.env.NODE_ENV === 'development' ? 5 : 10,
-  idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 20000,
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
+  family: 4, // Force IPv4 to avoid IPv6 timeouts / ENETUNREACH
+  ssl: { rejectUnauthorized: false },
 })
 
 pool.on('error', (err) => {

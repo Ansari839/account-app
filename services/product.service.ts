@@ -120,7 +120,7 @@ export class ProductService {
             }
         }
 
-        return prisma.product.create({
+        const created = await prisma.product.create({
             data: {
                 companyId,
                 code: data.code,
@@ -135,10 +135,11 @@ export class ProductService {
                 canBeSold: data.canBeSold ?? true,
                 canBePurchased: data.canBePurchased ?? true,
                 isManufactured: data.isManufactured ?? false,
+                isService: data.isService ?? false,
                 stage: data.stage,
                 openingStock: data.openingStock,
                 hsCode: data.hsCode,
-                variants: {
+                ProductVariant: {
                     create: data.variants?.map(v => ({
                         name: v.name,
                         sku: v.sku,
@@ -146,56 +147,86 @@ export class ProductService {
                     }))
                 }
             },
-            include: { variants: true }
+            include: { ProductVariant: true }
         });
+
+        return {
+            ...created,
+            variants: created.ProductVariant
+        };
     }
 
     /**
      * Get Product by Code (scoped to company)
      */
     static async getProductByCode(companyId: string, code: string) {
-        return prisma.product.findFirst({
+        const p = await prisma.product.findFirst({
             where: { companyId, code },
             include: {
-                category: true,
-                baseUnit: true,
-                taxCode: true,
-                inventoryAccount: true,
-                variants: true
+                Category: true,
+                Unit: true,
+                TaxCode: true,
+                Account_Product_inventoryAccountIdToAccount: true,
+                ProductVariant: true
             }
         });
+        if (!p) return null;
+        return {
+            ...p,
+            category: p.Category,
+            baseUnit: p.Unit,
+            taxCode: p.TaxCode,
+            inventoryAccount: p.Account_Product_inventoryAccountIdToAccount,
+            variants: p.ProductVariant
+        };
     }
 
     /**
      * Get Product by ID
      */
     static async get(id: string) {
-        return prisma.product.findUnique({
+        const p = await prisma.product.findUnique({
             where: { id },
             include: {
-                category: true,
-                baseUnit: true,
-                taxCode: true,
-                inventoryAccount: true,
-                variants: true
+                Category: true,
+                Unit: true,
+                TaxCode: true,
+                Account_Product_inventoryAccountIdToAccount: true,
+                ProductVariant: true
             }
         });
+        if (!p) return null;
+        return {
+            ...p,
+            category: p.Category,
+            baseUnit: p.Unit,
+            taxCode: p.TaxCode,
+            inventoryAccount: p.Account_Product_inventoryAccountIdToAccount,
+            variants: p.ProductVariant
+        };
     }
 
     /**
      * Get All Products (scoped to company)
      */
     static async getAllProducts(companyId: string) {
-        return prisma.product.findMany({
+        const products = await prisma.product.findMany({
             where: { companyId },
             include: {
-                category: true,
-                baseUnit: true,
-                taxCode: true,
-                variants: true
+                Category: true,
+                Unit: true,
+                TaxCode: true,
+                ProductVariant: true
             },
             orderBy: { name: 'asc' }
         });
+        return products.map(p => ({
+            ...p,
+            category: p.Category,
+            baseUnit: p.Unit,
+            taxCode: p.TaxCode,
+            variants: p.ProductVariant
+        }));
     }
 
     /**
@@ -204,19 +235,25 @@ export class ProductService {
     static async updateProduct(id: string, data: any) {
         const { variants, ...productData } = data;
 
-        return prisma.product.update({
+        const updated = await prisma.product.update({
             where: { id },
             data: {
                 ...productData,
-                variants: variants ? {
+                ProductVariant: variants ? {
                     upsert: variants.map((v: any) => ({
                         where: { id: v.id || 'new' },
                         create: { name: v.name, sku: v.sku, price: v.price },
                         update: { name: v.name, sku: v.sku, price: v.price }
                     }))
                 } : undefined
-            }
+            },
+            include: { ProductVariant: true }
         });
+
+        return {
+            ...updated,
+            variants: updated.ProductVariant
+        };
     }
 
     /**
