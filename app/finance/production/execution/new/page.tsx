@@ -345,12 +345,14 @@ export default function ProductionExecutionWizard() {
                                         <select value={input.productId ? `${input.productId}|${input.isEFS}` : ""} onChange={e => handleInputProductChange(idx, e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-emerald-500/50 hover:bg-slate-800 transition-all outline-none appearance-none cursor-pointer">
                                             <option value="">Select Material...</option>
                                             {activeTab === "GREY" ? (
-                                                products.filter(p => p.category?.name?.toLowerCase().includes('yarn')).flatMap(p => {
+                                                products.filter(p => !p.isManufactured && !p.isService).flatMap(p => {
                                                     const options = [];
                                                     const stdQty = stockRates[`${p.id}-RAW-STD`]?.qty || 0;
                                                     const efsQty = stockRates[`${p.id}-RAW-EFS`]?.qty || 0;
-                                                    if (stdQty > 0 || efsQty === 0) options.push(<option key={`${p.id}-std`} value={`${p.id}|false`}>{p.name} (STD)</option>);
-                                                    if (efsQty > 0) options.push(<option key={`${p.id}-efs`} value={`${p.id}|true`}>{p.name} (EFS) - Stock: {efsQty}</option>);
+                                                    const cat = p.category?.name ? `[${p.category.name}]` : '';
+                                                    const hs = p.hsCode ? `(HS: ${p.hsCode})` : '';
+                                                    if (stdQty > 0 || efsQty === 0) options.push(<option key={`${p.id}-std`} value={`${p.id}|false`}>{p.name} {cat} {hs} [LOCAL/STD] - Stock: {stdQty}</option>);
+                                                    if (efsQty > 0) options.push(<option key={`${p.id}-efs`} value={`${p.id}|true`}>{p.name} {cat} {hs} [IMPORT - EFS] - Stock: {efsQty}</option>);
                                                     return options;
                                                 })
                                             ) : (
@@ -360,8 +362,10 @@ export default function ProductionExecutionWizard() {
                                                     const options = [];
                                                     const stdQty = stockRates[`${p.id}-GREY-STD`]?.qty || 0;
                                                     const efsQty = stockRates[`${p.id}-GREY-EFS`]?.qty || 0;
-                                                    if (stdQty > 0) options.push(<option key={`${p.id}-std`} value={`${p.id}|false`}>{p.name} (STD) - Stock: {stdQty}</option>);
-                                                    if (efsQty > 0) options.push(<option key={`${p.id}-efs`} value={`${p.id}|true`}>{p.name} (EFS) - Stock: {efsQty}</option>);
+                                                    const cat = p.category?.name ? `[${p.category.name}]` : '';
+                                                    const hs = p.hsCode ? `(HS: ${p.hsCode})` : '';
+                                                    if (stdQty > 0) options.push(<option key={`${p.id}-std`} value={`${p.id}|false`}>{p.name} {cat} {hs} [LOCAL/STD] - Stock: {stdQty}</option>);
+                                                    if (efsQty > 0) options.push(<option key={`${p.id}-efs`} value={`${p.id}|true`}>{p.name} {cat} {hs} [IMPORT - EFS] - Stock: {efsQty}</option>);
                                                     return options;
                                                 })
                                             )}

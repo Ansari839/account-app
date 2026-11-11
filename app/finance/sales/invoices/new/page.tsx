@@ -556,7 +556,9 @@ export default function NewSalesInvoicePage() {
                                                 >
                                                     <option value="">Select product...</option>
                                                     {products.map(p => (
-                                                        <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
+                                                        <option key={p.id} value={p.id}>
+                                                            {p.name} {p.category?.name ? `[${p.category.name}]` : ''} {p.hsCode ? `(HS: ${p.hsCode})` : ''} - {p.code}
+                                                        </option>
                                                     ))}
                                                 </select>
                                             )}

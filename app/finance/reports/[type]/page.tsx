@@ -407,7 +407,33 @@ export default function ReportViewer() {
                         </button>
                     )
                 },
-                { header: 'Category', accessor: (row: any) => <span className="text-sm font-medium">{row.category}</span> },
+                { header: 'HS Code', accessor: (row: any) => <span className="font-mono text-xs font-bold text-slate-400">{row.hsCode || '-'}</span> },
+                { header: 'Category', accessor: (row: any) => <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{row.category}</span> },
+                {
+                    header: 'Origin & Scheme',
+                    accessor: (row: any) => (
+                        row.origin === 'LOCAL' ? (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                LOCAL
+                            </span>
+                        ) : (
+                            <div className="flex items-center gap-1">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                                    IMPORT
+                                </span>
+                                {row.isEFS ? (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30" title="Export Facilitation Scheme (Duty Exempt)">
+                                        EFS
+                                    </span>
+                                ) : (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                                        NON-EFS
+                                    </span>
+                                )}
+                            </div>
+                        )
+                    )
+                },
                 { header: 'Stage', accessor: (row: any) => <span className="text-xs uppercase font-bold bg-indigo-100 dark:bg-indigo-500/20 px-2 py-1 rounded-md text-indigo-600 dark:text-indigo-400">{row.stage}</span> },
                 { header: 'Unit', accessor: (row: any) => <span className="text-xs uppercase font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full text-slate-500">{row.unit}</span> },
                 { header: 'Current Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-base">{Number(row.stock).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> : <span className="text-rose-500 font-black font-mono text-base">{row.stock}</span> },
@@ -452,6 +478,33 @@ export default function ReportViewer() {
             const columns: Column<any>[] = [
                 { header: 'Product Code', accessor: (row: any) => <span className="font-mono text-slate-500">{row.productCode || '-'}</span> },
                 { header: 'Product Name', accessor: (row: any) => <span className="font-bold">{row.productName || '-'}</span> },
+                { header: 'HS Code', accessor: (row: any) => <span className="font-mono text-xs font-bold text-slate-400">{row.hsCode || '-'}</span> },
+                { header: 'Category', accessor: (row: any) => <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{row.category}</span> },
+                {
+                    header: 'Origin & Scheme',
+                    accessor: (row: any) => (
+                        row.origin === 'LOCAL' ? (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                LOCAL
+                            </span>
+                        ) : (
+                            <div className="flex items-center gap-1">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                                    IMPORT
+                                </span>
+                                {row.isEFS ? (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30" title="Export Facilitation Scheme (Duty Exempt)">
+                                        EFS
+                                    </span>
+                                ) : (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                                        NON-EFS
+                                    </span>
+                                )}
+                            </div>
+                        )
+                    )
+                },
                 { header: 'Warehouse', accessor: (row: any) => <span className="text-slate-600 dark:text-slate-300 font-medium">{row.warehouse || '-'}</span> },
                 { header: 'Stage', accessor: (row: any) => <span className="text-xs uppercase font-bold bg-indigo-100 dark:bg-indigo-500/20 px-2 py-1 rounded-md text-indigo-600 dark:text-indigo-400">{row.stage}</span> },
                 { header: 'Available Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-base">{Number(row.stock).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> : <span className="text-rose-500 font-black font-mono text-base">{row.stock}</span> },

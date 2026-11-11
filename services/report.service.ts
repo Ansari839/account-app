@@ -591,23 +591,41 @@ export class ReportService {
                 stage: true,
                 qtyIn: true,
                 qtyOut: true,
-                costRate: true
+                costRate: true,
+                isEFS: true,
+                batchNo: true
             }
         });
 
-        const products = await prisma.product.findMany({ where: { companyId } });
+        const products = await prisma.product.findMany({
+            where: { companyId },
+            include: { Category: true, Unit: true }
+        });
         const warehouses = await prisma.warehouse.findMany({ where: { companyId } });
 
         const groupMap = new Map<string, {
             productId: string;
             warehouseId: string | null;
             stage: string;
+            origin: 'LOCAL' | 'IMPORT';
+            isEFS: boolean;
             stock: number;
             totalAmount: number;
         }>();
 
         for (const e of entries) {
-            const key = `${e.productId}_${e.warehouseId || 'null'}_${e.stage || 'RAW'}`;
+            let origin: 'LOCAL' | 'IMPORT' = 'LOCAL';
+            let isEFS = Boolean(e.isEFS);
+            const batch = e.batchNo || '';
+            if (isEFS || batch.includes('[EFS]')) {
+                origin = 'IMPORT';
+                isEFS = true;
+            } else if (batch.includes('[IMPORT]')) {
+                origin = 'IMPORT';
+                isEFS = false;
+            }
+
+            const key = `${e.productId}_${e.warehouseId || 'null'}_${e.stage || 'RAW'}_${origin}_${isEFS}`;
             const qty = (Number(e.qtyIn) || 0) - (Number(e.qtyOut) || 0);
             const rate = Number(e.costRate) || 0;
             const amount = qty * rate;
@@ -616,6 +634,8 @@ export class ReportService {
                 productId: e.productId,
                 warehouseId: e.warehouseId,
                 stage: e.stage || 'RAW',
+                origin,
+                isEFS,
                 stock: 0,
                 totalAmount: 0
             };
@@ -631,8 +651,13 @@ export class ReportService {
             return {
                 productName: prod?.name,
                 productCode: prod?.code,
-                warehouse: wh?.name,
+                hsCode: prod?.hsCode || '-',
+                category: prod?.Category?.name || '-',
+                unit: prod?.Unit?.name || 'KG',
+                warehouse: wh?.name || '-',
                 stage: s.stage || 'RAW',
+                origin: s.origin,
+                isEFS: s.isEFS,
                 stock: Number(s.stock.toFixed(2)),
                 avgRate: Number(avgRate.toFixed(2)),
                 totalAmount: Number(s.totalAmount.toFixed(2))
@@ -656,7 +681,9 @@ export class ReportService {
                 stage: true,
                 qtyIn: true,
                 qtyOut: true,
-                costRate: true
+                costRate: true,
+                isEFS: true,
+                batchNo: true
             }
         });
 
@@ -669,12 +696,25 @@ export class ReportService {
             productId: string;
             variantId: string | null;
             stage: string;
+            origin: 'LOCAL' | 'IMPORT';
+            isEFS: boolean;
             stock: number;
             totalAmount: number;
         }>();
 
         for (const e of entries) {
-            const key = `${e.productId}_${e.variantId || 'null'}_${e.stage || 'RAW'}`;
+            let origin: 'LOCAL' | 'IMPORT' = 'LOCAL';
+            let isEFS = Boolean(e.isEFS);
+            const batch = e.batchNo || '';
+            if (isEFS || batch.includes('[EFS]')) {
+                origin = 'IMPORT';
+                isEFS = true;
+            } else if (batch.includes('[IMPORT]')) {
+                origin = 'IMPORT';
+                isEFS = false;
+            }
+
+            const key = `${e.productId}_${e.variantId || 'null'}_${e.stage || 'RAW'}_${origin}_${isEFS}`;
             const qty = (Number(e.qtyIn) || 0) - (Number(e.qtyOut) || 0);
             const rate = Number(e.costRate) || 0;
             const amount = qty * rate;
@@ -683,6 +723,8 @@ export class ReportService {
                 productId: e.productId,
                 variantId: e.variantId,
                 stage: e.stage || 'RAW',
+                origin,
+                isEFS,
                 stock: 0,
                 totalAmount: 0
             };
@@ -701,9 +743,12 @@ export class ReportService {
                 productName: prod?.name,
                 variantName: variant?.name || '-',
                 productCode: variant?.sku || prod?.code,
+                hsCode: prod?.hsCode || '-',
                 category: prod?.Category?.name || '-',
                 unit: prod?.Unit?.name || '-',
                 stage: s.stage || 'RAW',
+                origin: s.origin,
+                isEFS: s.isEFS,
                 stock: Number(s.stock.toFixed(2)),
                 avgRate: Number(avgRate.toFixed(2)),
                 totalAmount: Number(s.totalAmount.toFixed(2))
