@@ -15,10 +15,7 @@ import {
     Calendar,
     Warehouse,
     Calculator,
-    CheckCircle2,
-    Settings2,
-    FileText,
-    Truck
+    FileText
 } from "lucide-react";
 import { useNotifications } from '@/context/NotificationContext';
 import { cn } from '@/lib/utils';
@@ -30,20 +27,16 @@ export default function NewImportInvoicePage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     // Master Data
-    const [sources, setSources] = useState<any[]>([]);
     const [suppliers, setSuppliers] = useState<any[]>([]);
     const [warehouses, setWarehouses] = useState<any[]>([]);
     const [products, setProducts] = useState<any[]>([]);
     const [units, setUnits] = useState<any[]>([]);
     const [taxCodes, setTaxCodes] = useState<any[]>([]);
     const [accounts, setAccounts] = useState<any[]>([]);
-    const [isGrnMandatory, setIsGrnMandatory] = useState(false);
     const [currency, setCurrency] = useState<{ symbol: string }>({ symbol: '$' });
 
-    // Form Data
+    // Form Data - Direct Import Bill (No PO / GRN)
     const [formData, setFormData] = useState<any>({
-        sourceType: "PO", // PO | GRN | DIRECT
-        sourceId: "",
         supplierId: "",
         beneficiaryName: "",
         gdNumber: "",
@@ -54,32 +47,36 @@ export default function NewImportInvoicePage() {
         hasDiscount: false,
         discountAmount: 0,
         discountType: "FIXED",
-        exchangeRate: 1.0, // Fallback
+        exchangeRate: 1.0,
         docExchangeRate: 1.0, // Bank Doc Retirement Rate
         customsExchangeRate: 1.0, // Customs GD Currency Rate
         foreignTotal: 0,
-        items: [],
+        items: [
+            { 
+                id: Date.now().toString(), 
+                productId: "", 
+                productName: "", 
+                unitId: "", 
+                qty: 1, 
+                foreignRate: 0, 
+                rate: 0, 
+                foreignAmount: 0, 
+                total: 0, 
+                isEFS: false,
+                assessedRate: 0,
+                cdAmount: 0,
+                rdAmount: 0,
+                acdAmount: 0,
+                itpRate: 0,
+                assessedValuePKR: 0
+            }
+        ],
         gdTaxes: [],
     });
 
     useEffect(() => {
-        fetchSettings();
         fetchDropdowns();
     }, []);
-
-    const fetchSettings = async () => {
-        try {
-            const res = await authenticatedFetch("/api/settings/inventory");
-            const json = await res.json();
-            if (json.success) {
-                const mandatory = json.data.INVENTORY_GRN_MANDATORY === "true";
-                setIsGrnMandatory(mandatory);
-                if (mandatory) {
-                    setFormData((p: any) => ({ ...p, sourceType: "GRN" }));
-                }
-            }
-        } catch (e) { console.error(e); }
-    };
 
     const fetchDropdowns = async () => {
         try {
@@ -111,7 +108,6 @@ export default function NewImportInvoicePage() {
             if (prodRes.ok) setProducts((await prodRes.json()).data || []);
             if (unitRes.ok) {
                 const uJson = await unitRes.json();
-                console.log("Fetched units:", uJson);
                 setUnits(uJson.data || []);
             }
             if (taxRes.ok) {
@@ -131,91 +127,13 @@ export default function NewImportInvoicePage() {
         }
     };
 
-    const fetchSources = async (type: string) => {
-        try {
-            const endpoint = type === "PO"
-                ? "/api/finance/purchase/orders?status=OPEN"
-                : "/api/finance/purchase/grn";
-            const res = await authenticatedFetch(endpoint);
-            const json = await res.json();
-            if (json.success) {
-                let data = json.data;
-                if (type === "GRN") {
-                    data = data.filter((g: any) => !g.invoices || g.invoices.length === 0);
-                }
-                setSources(data);
-            }
-        } catch (e) { console.error(e); }
-    };
-
-    useEffect(() => {
-        if (formData.sourceType !== "DIRECT") {
-            fetchSources(formData.sourceType);
-        } else {
-            setSources([]);
-            setFormData((prev: any) => ({ ...prev, sourceId: '', items: [] }));
-        }
-    }, [formData.sourceType]);
-
-    const handleSelectSource = (id: string) => {
-        const source = sources.find((s) => s.id === id);
-        if (!source) {
-            setFormData((prev: any) => ({ ...prev, sourceId: '', items: [] }));
-            return;
-        }
-
-        let items: any[] = [];
-        if (formData.sourceType === "PO") {
-            items = source.items.map((item: any) => {
-                const available = item.qty - (item.invoicedQty || 0);
-                return {
-                    id: Date.now().toString() + Math.random(),
-                    productId: item.productId,
-                    productName: item.product?.name,
-                    unitId: item.unitId,
-                    poItemId: item.id,
-                    qtyAvailable: available,
-                    qty: Math.max(0, available),
-                    foreignRate: item.rate,
-                    rate: item.rate,
-                    foreignAmount: available * item.rate,
-                    total: available * item.rate,
-                    isEFS: false,
-                };
-            });
-        } else {
-            items = source.items.map((item: any) => ({
-                id: Date.now().toString() + Math.random(),
-                productId: item.productId,
-                productName: item.product?.name,
-                unitId: item.unitId,
-                grnItemId: item.id,
-                poItemId: item.poItemId,
-                qtyAvailable: item.qtyReceived,
-                qty: item.qtyReceived,
-                foreignRate: item.poItem?.rate || 0,
-                rate: item.poItem?.rate || 0,
-                foreignAmount: item.qtyReceived * (item.poItem?.rate || 0),
-                total: item.qtyReceived * (item.poItem?.rate || 0),
-                isEFS: false,
-            }));
-        }
-
-        setFormData({
-            ...formData,
-            sourceId: id,
-            supplierId: source.supplierId,
-            items,
-        });
-    };
-
     const handleAddItem = () => {
         setFormData((prev: any) => ({
             ...prev,
             items: [
                 ...prev.items,
                 { 
-                    id: Date.now().toString(), 
+                    id: Date.now().toString() + Math.random().toString().slice(-4), 
                     productId: "", 
                     productName: "", 
                     unitId: "", 
@@ -298,16 +216,11 @@ export default function NewImportInvoicePage() {
                         updatedItem.rate = Number(prod?.purchasePrice || 0);
                         if (prod?.baseUnitId) {
                             updatedItem.unitId = prod.baseUnitId;
-                            setUnits((prev: any) => {
-                                if (prev.some((u: any) => u.id === prod.baseUnitId)) return prev;
-                                return [...prev, { id: prod.baseUnitId, name: prod.baseUnit?.name || 'Unit' }];
-                            });
-                        } else if (prod?.baseUnit?.id) {
-                            updatedItem.unitId = prod.baseUnit.id;
-                            setUnits((prev: any) => {
-                                if (prev.some((u: any) => u.id === prod.baseUnit.id)) return prev;
-                                return [...prev, { id: prod.baseUnit.id, name: prod.baseUnit.name || 'Unit' }];
-                            });
+                        } else if (prod?.Unit?.id) {
+                            updatedItem.unitId = prod.Unit.id;
+                        }
+                        if (prod?.itpRate) {
+                            updatedItem.assessedRate = Number(prod.itpRate);
                         }
                     }
 
@@ -346,7 +259,6 @@ export default function NewImportInvoicePage() {
         // Calculate cascading taxes
         const calculatedTaxes = (formData.gdTaxes || []).map((tax: any) => {
             const baseAmount = tax.calculation === 'PREVIOUS_TOTAL' ? currentTotal : (subtotal - discount);
-            // If they typed a rate, calculate it. Otherwise, use the manually entered taxAmount.
             const rate = Number(tax.rate) || 0;
             const taxAmount = rate > 0 ? (baseAmount * (rate / 100)) : (Number(tax.taxAmount) || 0);
             
@@ -396,10 +308,9 @@ export default function NewImportInvoicePage() {
                             }
                         }
                     }
-                    // If they manually type tax amount, zero out the rate
                     if (field === 'taxAmount') {
                         updated.taxAmount = isNaN(value) ? 0 : value;
-                        updated.rate = 0; // It becomes a fixed amount charge
+                        updated.rate = 0;
                     }
                     return updated;
                 }
@@ -410,32 +321,21 @@ export default function NewImportInvoicePage() {
 
     const handleSubmit = async () => {
         if (!formData.supplierId) {
-            showNotification('error', 'Please select a Supplier / Account.');
+            showNotification('error', 'Please select a Supplier / Import Account.');
             return;
         }
 
         const validItems = formData.items.filter((i: any) => i.productId && Number(i.qty) > 0);
         if (validItems.length === 0) {
-            showNotification('error', 'Please add at least one valid item.');
+            showNotification('error', 'Please add at least one valid item with quantity.');
             return;
-        }
-
-        if (formData.sourceType !== "DIRECT") {
-            const overFullfilled = formData.items.some((it: any) => it.qty > it.qtyAvailable);
-            if (overFullfilled) {
-                if (!confirm("One or more items exceed the remaining PO/GRN quantity. An 'Addendum PO' will be automatically created for the excess. Proceed?")) {
-                    return;
-                }
-            }
         }
 
         setIsSubmitting(true);
         try {
             const payload = {
                 ...formData,
-                items: validItems,
-                poId: formData.sourceType === "PO" ? formData.sourceId : undefined,
-                grnId: formData.sourceType === "GRN" ? formData.sourceId : undefined,
+                items: validItems
             };
 
             const res = await authenticatedFetch('/api/finance/purchase/invoices/import', {
@@ -445,14 +345,14 @@ export default function NewImportInvoicePage() {
             });
 
             if (res.ok) {
-                showNotification('success', 'Purchase Invoice created successfully!');
+                showNotification('success', 'Import Invoice created successfully!');
                 router.push('/finance/purchase/invoices');
             } else {
                 const json = await res.json();
-                showNotification('error', json.error || 'Failed to create invoice.');
+                showNotification('error', json.error || 'Failed to create import invoice.');
             }
         } catch (error) {
-            showNotification('error', 'Network error while saving invoice.');
+            showNotification('error', 'Network error while saving import invoice.');
         } finally {
             setIsSubmitting(false);
         }
@@ -460,13 +360,17 @@ export default function NewImportInvoicePage() {
 
     const supplierOptions = suppliers.map(s => ({
         value: s.id,
-        label: `${s.code} - ${s.name}`
+        label: `${s.code ? `${s.code} - ` : ''}${s.name}`
     }));
 
-    const sourceOptions = sources.map(s => ({
-        value: s.id,
-        label: `${formData.sourceType === "PO" ? s.poNo : s.grnNo} - ${s.supplier?.name || "Unknown"}`
-    }));
+    const productOptions = products.map(p => {
+        const catName = p.Category?.name || p.category?.name || '-';
+        const hs = p.hsCode ? ` (HS: ${p.hsCode})` : '';
+        return {
+            value: p.id,
+            label: `${p.name} [${catName}]${hs} - ${p.code}`
+        };
+    });
 
     return (
         <MainLayout>
@@ -479,121 +383,74 @@ export default function NewImportInvoicePage() {
                     >
                         <ArrowLeft size={16} /> Back to Invoices
                     </button>
-                    <div className="flex items-center gap-2 text-sm font-bold text-slate-400">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/30">
-                            Import Purchase
-                        </span>
-                    </div>
+                    <span className="text-xs font-bold px-3 py-1 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20 rounded-full uppercase tracking-wider">
+                        Direct Import Purchase
+                    </span>
                 </div>
 
-                {/* Premium Dark Header Card */}
+                {/* Import Hero Card */}
                 <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-indigo-500/10 relative border border-slate-800 z-10">
                     <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
                         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
                     </div>
                     
                     <div className="relative z-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        {/* Title Header */}
                         <div className="lg:col-span-4 space-y-4">
                             <div>
                                 <div className="flex items-center gap-2 mb-2">
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/30">
-                                        ● Import Purchase
+                                        ● Direct Import Bill
                                     </span>
                                 </div>
                                 <h1 className="text-4xl font-black text-white tracking-tight">New Import Bill</h1>
-                                <p className="text-slate-400 font-medium">Create an Import Invoice (Commercial / EFS)</p>
-                            </div>
-                            
-                            <div className="bg-slate-900/80 rounded-xl p-2 flex gap-1 border border-slate-800">
-                                <button 
-                                    onClick={() => setFormData({ ...formData, sourceType: "PO", sourceId: "", items: [] })}
-                                    disabled={isGrnMandatory}
-                                    className={cn(
-                                        "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all",
-                                        formData.sourceType === "PO" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-slate-200",
-                                        isGrnMandatory && "opacity-50 cursor-not-allowed"
-                                    )}
-                                >
-                                    <FileText size={14} /> PO
-                                </button>
-                                <button 
-                                    onClick={() => setFormData({ ...formData, sourceType: "GRN", sourceId: "", items: [] })}
-                                    className={cn(
-                                        "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all",
-                                        formData.sourceType === "GRN" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-slate-200"
-                                    )}
-                                >
-                                    <Truck size={14} /> GRN
-                                </button>
-                                {!isGrnMandatory && (
-                                    <button 
-                                        onClick={() => setFormData({ ...formData, sourceType: "DIRECT", sourceId: "", items: [] })}
-                                        className={cn(
-                                            "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all",
-                                            formData.sourceType === "DIRECT" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-slate-200"
-                                        )}
-                                    >
-                                        <Settings2 size={14} /> Direct
-                                    </button>
-                                )}
+                                <p className="text-slate-400 font-medium text-sm mt-1">
+                                    Direct Goods Declaration (GD) & Commercial Import Invoice with EFS & ITP calculation.
+                                </p>
                             </div>
                         </div>
                         
+                        {/* Import Details Form */}
                         <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-3 gap-5">
-                            {formData.sourceType !== "DIRECT" ? (
-                                <div className="md:col-span-3 space-y-2">
-                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                        <FileText size={14} /> Link {formData.sourceType}
-                                    </label>
-                                    <Combobox
-                                        options={sourceOptions}
-                                        value={formData.sourceId}
-                                        onChange={(val) => handleSelectSource(val)}
-                                        placeholder={`Select ${formData.sourceType}...`}
-                                        className="w-full bg-slate-900/50 border-slate-700 text-white"
-                                    />
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="space-y-2">
-                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                            <Building2 size={14} /> Import Account / Supplier
-                                        </label>
-                                        <Combobox
-                                            options={supplierOptions}
-                                            value={formData.supplierId}
-                                            onChange={(val) => setFormData({ ...formData, supplierId: val })}
-                                            placeholder="Select import account..."
-                                            className="w-full bg-slate-900/50 border-slate-700 text-white"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                            <Building2 size={14} /> Beneficiary Name (Foreign Exporter)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={formData.beneficiaryName || ''}
-                                            onChange={(e) => setFormData({ ...formData, beneficiaryName: e.target.value })}
-                                            placeholder="e.g. Shaoxing Textiles Co."
-                                            className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                            <Warehouse size={14} /> Target Warehouse
-                                        </label>
-                                        <select
-                                            className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                                            value={formData.warehouseId}
-                                            onChange={(e) => setFormData({ ...formData, warehouseId: e.target.value })}
-                                        >
-                                            <option value="">Choose Warehouse...</option>
-                                            {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                        </select>
-                                    </div>
-                                </>
-                            )}
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                    <Building2 size={14} /> Import Account / Supplier <span className="text-rose-400">*</span>
+                                </label>
+                                <Combobox
+                                    options={supplierOptions}
+                                    value={formData.supplierId}
+                                    onChange={(val) => setFormData({ ...formData, supplierId: val })}
+                                    placeholder="Select import account..."
+                                    className="w-full bg-slate-900/50 border-slate-700 text-white"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                    <Building2 size={14} /> Beneficiary (Foreign Exporter)
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.beneficiaryName || ''}
+                                    onChange={(e) => setFormData({ ...formData, beneficiaryName: e.target.value })}
+                                    placeholder="e.g. Shaoxing Textiles Co."
+                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                    <Warehouse size={14} /> Target Warehouse (Optional)
+                                </label>
+                                <select
+                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                    value={formData.warehouseId}
+                                    onChange={(e) => setFormData({ ...formData, warehouseId: e.target.value })}
+                                >
+                                    <option value="">Choose Warehouse (Optional)...</option>
+                                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                </select>
+                            </div>
 
                             {/* GD & BL Info */}
                             <div className="space-y-2">
@@ -688,33 +545,27 @@ export default function NewImportInvoicePage() {
                         <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
                             <Receipt size={20} className="text-indigo-500" /> Billed Items
                         </h2>
-                        {formData.sourceType === "DIRECT" && (
-                            <button 
-                                onClick={handleAddItem}
-                                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
-                            >
-                                <Plus size={16} /> Add Product
-                            </button>
-                        )}
+                        <button 
+                            onClick={handleAddItem}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
+                        >
+                            <Plus size={16} /> Add Product
+                        </button>
                     </div>
 
                     <div className="p-6 overflow-visible">
                         <div className="min-w-[800px]">
                             <div className="grid grid-cols-12 gap-4 mb-3 px-4 text-xs font-bold uppercase tracking-widest text-slate-400">
-                                <div className="col-span-3">Product</div>
-                                <div className="col-span-1">Unit</div>
-                                {formData.sourceType !== "DIRECT" && <div className="col-span-1 text-center">Avail</div>}
-                                <div className="col-span-2">Bill Qty</div>
-                                <div className="col-span-2">Rate (FC)</div>
+                                <div className="col-span-4">Product</div>
+                                <div className="col-span-2">Unit</div>
+                                <div className="col-span-2 text-right">Bill Qty</div>
+                                <div className="col-span-2 text-right">Supplier Rate ($)</div>
                                 <div className="col-span-1 text-center">EFS</div>
-                                <div className="col-span-2 text-right">Total (FC)</div>
-                                {formData.sourceType === "DIRECT" && <div className="col-span-1 text-center">Act</div>}
+                                <div className="col-span-1 text-center">Action</div>
                             </div>
 
                             <div className="space-y-4">
-                                {formData.items.map((item: any, index: number) => {
-                                    const qty = Number(item.qty || 0);
-                                    const assessedVal = Number(item.assessedValuePKR || 0);
+                                {formData.items.map((item: any) => {
                                     const itpRate = Number(item.itpRate || 0);
 
                                     return (
@@ -723,20 +574,14 @@ export default function NewImportInvoicePage() {
                                             <div className="grid grid-cols-12 gap-3 items-center">
                                                 <div className="col-span-4">
                                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Product</label>
-                                                    {formData.sourceType !== "DIRECT" ? (
-                                                        <div className="px-3 py-2 font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
-                                                            {item.productName}
-                                                        </div>
-                                                    ) : (
-                                                        <Combobox
-                                                            options={products.map(p => ({ value: p.id, label: `${p.name} (${p.code})` }))}
-                                                            value={item.productId}
-                                                            onChange={(val) => updateItem(item.id, 'productId', val)}
-                                                            placeholder="Select product..."
-                                                            searchPlaceholder="Search products..."
-                                                            className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-                                                        />
-                                                    )}
+                                                    <Combobox
+                                                        options={productOptions}
+                                                        value={item.productId}
+                                                        onChange={(val) => updateItem(item.id, 'productId', val)}
+                                                        placeholder="Select product..."
+                                                        searchPlaceholder="Search products..."
+                                                        className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                                    />
                                                 </div>
 
                                                 <div className="col-span-2">
@@ -752,20 +597,19 @@ export default function NewImportInvoicePage() {
                                                 </div>
 
                                                 <div className="col-span-2">
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Bill Qty</label>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1 text-right">Bill Qty</label>
                                                     <input
                                                         type="number"
                                                         value={item.qty || ''}
                                                         onChange={e => updateItem(item.id, 'qty', parseFloat(e.target.value))}
                                                         placeholder="0"
                                                         min="0"
-                                                        max={formData.sourceType !== "DIRECT" ? item.qtyAvailable : undefined}
                                                         className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-400 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-right"
                                                     />
                                                 </div>
                                                 
                                                 <div className="col-span-2">
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Supplier Rate ($)</label>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1 text-right">Supplier Rate ($)</label>
                                                     <input
                                                         type="number"
                                                         step="0.001"
@@ -792,15 +636,13 @@ export default function NewImportInvoicePage() {
                                                 </div>
 
                                                 <div className="col-span-1 flex justify-center items-center pt-4">
-                                                    {formData.sourceType === "DIRECT" && (
-                                                        <button 
-                                                            onClick={() => handleRemoveItem(item.id)}
-                                                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
-                                                            title="Remove Item"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    )}
+                                                    <button 
+                                                        onClick={() => handleRemoveItem(item.id)}
+                                                        className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
+                                                        title="Remove Item"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </div>
                                             </div>
 
@@ -813,16 +655,9 @@ export default function NewImportInvoicePage() {
                                                         step="0.001"
                                                         value={item.assessedRate || ''}
                                                         onChange={e => updateItem(item.id, 'assessedRate', parseFloat(e.target.value))}
-                                                        placeholder="Assessed $"
+                                                        placeholder="Customs Assessed Rate"
                                                         className="w-24 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-medium text-xs text-slate-800 dark:text-slate-200"
                                                     />
-                                                </div>
-
-                                                <div className="flex items-center gap-1.5 text-slate-500">
-                                                    <span className="text-[10px] font-bold uppercase">Assessed PKR:</span>
-                                                    <span className="font-bold text-slate-700 dark:text-slate-300">
-                                                        Rs. {assessedVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                                    </span>
                                                 </div>
 
                                                 <div className="flex items-center gap-2">
@@ -869,9 +704,16 @@ export default function NewImportInvoicePage() {
                                         </div>
                                     );
                                 })}
+
                                 {formData.items.length === 0 && (
-                                    <div className="text-center p-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 font-bold">
-                                        No items. Please select a source or add items.
+                                    <div className="text-center p-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 font-bold flex flex-col items-center justify-center gap-3">
+                                        <p>No items added yet. Click below to add an import product.</p>
+                                        <button
+                                            onClick={handleAddItem}
+                                            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                                        >
+                                            <Plus size={14} /> Add Product
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -984,7 +826,7 @@ export default function NewImportInvoicePage() {
                                         </div>
                                     );
                                 })}
-                                {(formData.taxes || []).length === 0 && (
+                                {(formData.gdTaxes || []).length === 0 && (
                                     <div className="text-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 font-bold text-sm">
                                         No taxes added. Click "Add Tax" to apply document-level taxes.
                                     </div>
@@ -998,71 +840,52 @@ export default function NewImportInvoicePage() {
                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm p-6 mb-8 mt-6">
                     <div className="flex items-center justify-between mb-4">
                         <div>
-                            <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
-                                Invoice Discount
-                            </h2>
-                            <p className="text-xs text-slate-400">Apply a document-level discount to this invoice.</p>
+                            <h3 className="text-base font-black text-slate-800 dark:text-white">Commercial Discount</h3>
+                            <p className="text-xs text-slate-400">Apply foreign currency or overall bill discount</p>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                             <input 
                                 type="checkbox" 
                                 className="sr-only peer" 
                                 checked={formData.hasDiscount}
-                                onChange={e => setFormData({...formData, hasDiscount: e.target.checked})}
+                                onChange={e => setFormData({ ...formData, hasDiscount: e.target.checked })}
                             />
                             <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
                         </label>
                     </div>
 
                     {formData.hasDiscount && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 animate-in fade-in slide-in-from-top-2">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Discount Amount</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Discount Amount (PKR)</label>
                                 <input
                                     type="number"
                                     value={formData.discountAmount || ''}
-                                    onChange={e => setFormData({ ...formData, discountAmount: parseFloat(e.target.value) })}
+                                    onChange={e => setFormData({ ...formData, discountAmount: parseFloat(e.target.value) || 0 })}
                                     placeholder="0.00"
-                                    min="0"
-                                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
                                 />
                             </div>
                         </div>
                     )}
                 </div>
-            </div>
 
-            {/* Sticky Footer */}
-            <div className="fixed bottom-0 left-0 lg:left-64 right-0 p-4 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-                <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-6 md:gap-8 overflow-x-auto pb-2 md:pb-0">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subtotal</span>
-                            <span className="text-lg font-bold text-slate-700 dark:text-slate-300">
-                                {currency.symbol} {calculateSummary().subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </span>
-                        </div>
-                        
-                        <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
-                        
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tax Amount</span>
-                            <span className="text-lg font-bold text-slate-700 dark:text-slate-300">
-                                + {currency.symbol} {calculateSummary().taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </span>
+                {/* Sticky Action Footer */}
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl rounded-[2.5rem] p-4 flex flex-col md:flex-row items-center justify-between gap-6 max-w-5xl w-[92%] transition-all">
+                    <div className="flex items-center gap-8 w-full md:w-auto justify-between md:justify-start px-2">
+                        <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subtotal</p>
+                            <p className="text-sm font-black text-slate-700 dark:text-slate-200">
+                                Rs. {calculateSummary().subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </p>
                         </div>
 
-                        {formData.hasDiscount && (
-                            <>
-                                <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Discount</span>
-                                    <span className="text-lg font-bold text-rose-500">
-                                        - {currency.symbol} {calculateSummary().discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                    </span>
-                                </div>
-                            </>
-                        )}
+                        <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tax Amount</p>
+                            <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                                + Rs. {calculateSummary().taxTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </p>
+                        </div>
 
                         <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
 
@@ -1073,7 +896,7 @@ export default function NewImportInvoicePage() {
                             <div>
                                 <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Grand Total</p>
                                 <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mt-0.5">
-                                    {currency.symbol} {calculateSummary().grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    Rs. {calculateSummary().grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                 </p>
                             </div>
                         </div>
