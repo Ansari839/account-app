@@ -1669,10 +1669,10 @@ export class PurchaseController {
                         id: crypto.randomUUID(),
                         companyId,
                         invoiceNo: invoiceNo,
-                        supplierId,
-                        warehouseId: warehouseId || null,
+                        supplierId: supplier.id,
+                        warehouseId: (warehouseId && warehouseId.trim() !== '') ? warehouseId : null,
                         date: new Date(date),
-                        dueDate: dueDate ? new Date(dueDate) : null,
+                        dueDate: (dueDate && dueDate.trim() !== '') ? new Date(dueDate) : null,
                         totalAmount: grandTotalPKR,
                         taxAmount: totalTaxAmount,
                         hasDiscount: hasDiscount || false,
@@ -1696,8 +1696,8 @@ export class PurchaseController {
                                 return {
                                     id: crypto.randomUUID(),
                                     productId: item.productId,
-                                    variantId: item.variantId || null,
-                                    unitId: item.unitId || null,
+                                    variantId: (item.variantId && typeof item.variantId === 'string' && item.variantId.trim() !== '') ? item.variantId : null,
+                                    unitId: (item.unitId && typeof item.unitId === 'string' && item.unitId.trim() !== '') ? item.unitId : null,
                                     qty: item.qty,
                                     foreignRate: item.foreignRate,
                                     foreignAmount: item.foreignAmount,
@@ -1717,7 +1717,7 @@ export class PurchaseController {
                         taxes: {
                             create: processedTaxes.map((tax: any) => ({
                                 id: crypto.randomUUID(),
-                                taxCodeId: tax.taxCodeId,
+                                taxCodeId: (tax.taxCodeId && tax.taxCodeId !== 'MANUAL' && typeof tax.taxCodeId === 'string' && tax.taxCodeId.trim() !== '') ? tax.taxCodeId : null,
                                 taxName: tax.taxName,
                                 calculation: tax.calculation,
                                 rate: tax.rate,
@@ -1731,9 +1731,10 @@ export class PurchaseController {
                 });
 
                 // Update Stock Ledger
-                let finalWarehouseId = warehouseId;
+                let finalWarehouseId = (warehouseId && typeof warehouseId === 'string' && warehouseId.trim() !== '') ? warehouseId : null;
                 if (!finalWarehouseId) {
-                    const defaultWH = await tx.warehouse.findFirst({ where: { companyId, isDefault: true } });
+                    const defaultWH = await tx.warehouse.findFirst({ where: { companyId, isDefault: true } })
+                        || await tx.warehouse.findFirst({ where: { companyId } });
                     if (defaultWH) finalWarehouseId = defaultWH.id;
                 }
 
