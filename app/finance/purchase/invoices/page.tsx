@@ -52,6 +52,39 @@ export default function PurchaseInvoicesPage() {
             header: "Date",
             accessor: (row) => format(new Date(row.date), "dd/MM/yyyy"),
         },
+        {
+            header: "Type",
+            accessor: (row) => {
+                if (!row.isImport) {
+                    return (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            LOCAL
+                        </span>
+                    );
+                }
+
+                const hasEFS = row.items?.some((i: any) => i.isEFS);
+                const hasNonEFS = row.items?.some((i: any) => !i.isEFS);
+
+                return (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                            IMPORT
+                        </span>
+                        {hasEFS && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                EFS
+                            </span>
+                        )}
+                        {hasNonEFS && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                                NON-EFS
+                            </span>
+                        )}
+                    </div>
+                );
+            }
+        },
         { header: "Supplier", accessor: (row) => row.supplier?.name },
         {
             header: "Amount",
@@ -110,7 +143,7 @@ export default function PurchaseInvoicesPage() {
                 </div>
                 <div className="flex gap-3">
                     <button
-                        onClick={() => router.push('/finance/purchase/invoices/import/new')}
+                        onClick={() => router.push('/finance/purchase/invoices/import')}
                         className="bg-fuchsia-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-fuchsia-500/20 hover:bg-fuchsia-700 transition-all flex items-center gap-2"
                     >
                         <span className="text-xl">+</span> Add Import Invoice

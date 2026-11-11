@@ -409,8 +409,13 @@ export default function NewPurchaseInvoicePage() {
                     <div className="relative z-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
                         <div className="lg:col-span-4 space-y-4">
                             <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                        ● Local Purchase
+                                    </span>
+                                </div>
                                 <h1 className="text-4xl font-black text-white tracking-tight">New Bill</h1>
-                                <p className="text-slate-400 font-medium">Create a Purchase Invoice</p>
+                                <p className="text-slate-400 font-medium">Create a Local Purchase Invoice</p>
                             </div>
                             
                             <div className="bg-slate-900/80 rounded-xl p-2 flex gap-1 border border-slate-800">

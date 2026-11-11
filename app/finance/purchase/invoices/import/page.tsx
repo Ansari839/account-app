@@ -480,7 +480,9 @@ export default function NewImportInvoicePage() {
                         <ArrowLeft size={16} /> Back to Invoices
                     </button>
                     <div className="flex items-center gap-2 text-sm font-bold text-slate-400">
-                        <CheckCircle2 size={16} className="text-emerald-500" /> New Bill
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                            Import Purchase
+                        </span>
                     </div>
                 </div>
 
@@ -493,8 +495,13 @@ export default function NewImportInvoicePage() {
                     <div className="relative z-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
                         <div className="lg:col-span-4 space-y-4">
                             <div>
-                                <h1 className="text-4xl font-black text-white tracking-tight">New Bill</h1>
-                                <p className="text-slate-400 font-medium">Create a Purchase Invoice</p>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                                        ● Import Purchase
+                                    </span>
+                                </div>
+                                <h1 className="text-4xl font-black text-white tracking-tight">New Import Bill</h1>
+                                <p className="text-slate-400 font-medium">Create an Import Invoice (Commercial / EFS)</p>
                             </div>
                             
                             <div className="bg-slate-900/80 rounded-xl p-2 flex gap-1 border border-slate-800">

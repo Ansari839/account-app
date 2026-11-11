@@ -72,6 +72,34 @@ export default function PurchaseInvoiceDetailPage() {
                             {/* Document Header */}
                             <div className="flex justify-between items-start mb-12 border-b border-slate-100 dark:border-slate-800 pb-8">
                                 <div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        {invoice.isImport ? (
+                                            <>
+                                                <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-sky-500/10 text-sky-500 border border-sky-500/20">
+                                                    ● Import
+                                                </span>
+                                                {invoice.items?.some((it: any) => it.isEFS) && (
+                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                                                        EFS
+                                                    </span>
+                                                )}
+                                                {invoice.items?.some((it: any) => !it.isEFS) && (
+                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                                                        Non-EFS
+                                                    </span>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <span className="px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                                ● Local Purchase
+                                            </span>
+                                        )}
+                                        {invoice.gdNumber && (
+                                            <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                                GD: {invoice.gdNumber}
+                                            </span>
+                                        )}
+                                    </div>
                                     <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-1">INVOICE</h2>
                                     <p className="text-slate-500 font-mono font-bold">{invoice.invoiceNo}</p>
                                 </div>
@@ -113,7 +141,14 @@ export default function PurchaseInvoiceDetailPage() {
                                     {invoice.items.map((it: any) => (
                                         <tr key={it.id}>
                                             <td className="px-6 py-5">
-                                                <p className="font-bold text-slate-800 dark:text-slate-200">{it.product?.name}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-bold text-slate-800 dark:text-slate-200">{it.product?.name}</p>
+                                                    {it.isEFS && (
+                                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                                                            EFS
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p className="text-[10px] font-mono text-slate-500 uppercase">{it.product?.code}</p>
                                             </td>
                                             <td className="px-6 py-5 text-center font-mono font-bold">
