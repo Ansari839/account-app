@@ -1526,8 +1526,18 @@ export class PurchaseController {
                 const discount = hasDiscount ? Number(discountAmount || 0) * docRate : 0;
                 
                 // Customs Assessed Value of all items combined
-                const totalAssessedPKR = processedItems.reduce((sum: number, it: any) => sum + (Number(it.assessedValuePKR) || 0), 0);
-                const effectiveAssessedPKR = totalAssessedPKR > 0 ? totalAssessedPKR : (subtotalPKR - discount);
+                const totalAssessedPKR = Math.round(processedItems.reduce((sum: number, it: any) => sum + (Number(it.assessedValuePKR) || 0), 0));
+                
+                // Find Insurance and Landing Charges amounts if passed
+                const insTax = (gdTaxes || []).find((t: any) => (t.taxName || '').toLowerCase().includes('insurance'));
+                const landTax = (gdTaxes || []).find((t: any) => (t.taxName || '').toLowerCase().includes('landing'));
+                const insAmountPKR = Math.round(Number(insTax?.taxAmount || 0));
+                const landAmountPKR = Math.round(Number(landTax?.taxAmount || 0));
+
+                // Pakistan Customs CIF Base = Assessed Value + Insurance + Landing
+                const cifCustomsBasePKR = totalAssessedPKR > 0
+                    ? (totalAssessedPKR + insAmountPKR + landAmountPKR)
+                    : (subtotalPKR - discount + insAmountPKR + landAmountPKR);
 
                 let runningTotalPKR = subtotalPKR - discount;
                 let runningDutiesPKR = 0;
@@ -1536,22 +1546,24 @@ export class PurchaseController {
                 let totalCapitalizedTaxes = 0;
 
                 const processedTaxes = (gdTaxes || []).map((tax: any) => {
-                    let baseAmount = effectiveAssessedPKR;
+                    let baseAmount = cifCustomsBasePKR;
 
                     if (tax.calculation === 'ASSESSED_VALUE') {
-                        baseAmount = effectiveAssessedPKR;
+                        // Base for CD, RD, ACD is Assessed Value + Insurance + Landing
+                        baseAmount = cifCustomsBasePKR;
                     } else if (tax.calculation === 'ASSESSED_PLUS_DUTIES') {
-                        baseAmount = effectiveAssessedPKR + runningDutiesPKR;
+                        baseAmount = cifCustomsBasePKR + runningDutiesPKR;
                     } else if (tax.calculation === 'ASSESSED_PLUS_ALL') {
-                        baseAmount = effectiveAssessedPKR + runningDutiesPKR + runningSalesTaxesPKR;
+                        baseAmount = cifCustomsBasePKR + runningDutiesPKR + runningSalesTaxesPKR;
                     } else if (tax.calculation === 'PREVIOUS_TOTAL') {
                         baseAmount = runningTotalPKR;
                     } else if (tax.calculation === 'NET_TOTAL') {
                         baseAmount = subtotalPKR - discount;
                     }
 
+                    baseAmount = Math.round(baseAmount);
                     const rate = Number(tax.rate) || 0;
-                    const taxAmt = rate > 0 ? (baseAmount * (rate / 100)) : (Number(tax.taxAmount) || 0);
+                    const taxAmt = rate > 0 ? Math.round(baseAmount * (rate / 100)) : Math.round(Number(tax.taxAmount) || 0);
                     
                     totalTaxAmount += taxAmt;
                     runningTotalPKR += taxAmt;
