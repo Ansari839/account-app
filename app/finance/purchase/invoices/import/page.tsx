@@ -21,7 +21,8 @@ import {
     Percent,
     DollarSign,
     Coins,
-    Sparkles
+    Sparkles,
+    SlidersHorizontal
 } from "lucide-react";
 import { useNotifications } from '@/context/NotificationContext';
 import { cn } from '@/lib/utils';
@@ -78,10 +79,11 @@ export default function NewImportInvoicePage() {
                 foreignAmount: 0, 
                 total: 0, 
                 isEFS: false,
+                isAutoDuties: true,
                 assessedRate: 0,
-                cdAmount: 0,
-                rdAmount: 0,
-                acdAmount: 0,
+                cdAmount: '',
+                rdAmount: '',
+                acdAmount: '',
                 itpRate: 0,
                 assessedValuePKR: 0
             }
@@ -145,6 +147,25 @@ export default function NewImportInvoicePage() {
                 setFormData((prev: any) => prev.supplierId ? prev : { ...prev, supplierId: defaultSup.id });
             }
 
+            // Auto-populate standard Pakistan Customs GD Duties if empty
+            const customsAcc = accs.find((a: any) => a.code === '2170' || a.name.toLowerCase().includes('customs'));
+            const inputStAcc = accs.find((a: any) => a.code === '1160' || a.name.toLowerCase().includes('input tax'));
+            const advItAcc = accs.find((a: any) => a.code === '1170' || a.name.toLowerCase().includes('advance income'));
+
+            setFormData((prev: any) => {
+                if ((prev.gdTaxes || []).length > 0) return prev;
+                return {
+                    ...prev,
+                    gdTaxes: [
+                        { id: '1', taxCodeId: '', taxName: 'Customs Duty (CD)', calculation: 'ASSESSED_VALUE', rate: 10, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
+                        { id: '2', taxCodeId: '', taxName: 'Regulatory Duty (RD)', calculation: 'ASSESSED_VALUE', rate: 2, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
+                        { id: '3', taxCodeId: '', taxName: 'Additional Customs Duty (ACD)', calculation: 'ASSESSED_VALUE', rate: 0, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
+                        { id: '4', taxCodeId: '', taxName: 'Sales Tax (ST 18%)', calculation: 'ASSESSED_PLUS_DUTIES', rate: 18, taxAmount: 0, isCapitalized: false, accountId: inputStAcc?.id || null },
+                        { id: '5', taxCodeId: '', taxName: 'Advance Income Tax (Sec 148)', calculation: 'ASSESSED_PLUS_ALL', rate: 1, taxAmount: 0, isCapitalized: false, accountId: advItAcc?.id || null }
+                    ]
+                };
+            });
+
             if (whRes.status === 'fulfilled' && whRes.value.ok) {
                 const json = await whRes.value.json();
                 setWarehouses(json.data || []);
@@ -190,10 +211,11 @@ export default function NewImportInvoicePage() {
                     foreignAmount: 0, 
                     total: 0, 
                     isEFS: false,
+                    isAutoDuties: true,
                     assessedRate: 0,
-                    cdAmount: 0,
-                    rdAmount: 0,
-                    acdAmount: 0,
+                    cdAmount: '',
+                    rdAmount: '',
+                    acdAmount: '',
                     itpRate: 0,
                     assessedValuePKR: 0
                 }
@@ -264,6 +286,16 @@ export default function NewImportInvoicePage() {
                             updatedItem.cdAmount = 0;
                             updatedItem.rdAmount = 0;
                             updatedItem.acdAmount = 0;
+                        }
+                    }
+
+                    // Auto % Duties vs Manual PKR Toggle
+                    if (field === "isAutoDuties") {
+                        updatedItem.isAutoDuties = Boolean(value);
+                        if (value === true) {
+                            updatedItem.cdAmount = '';
+                            updatedItem.rdAmount = '';
+                            updatedItem.acdAmount = '';
                         }
                     }
 
@@ -543,14 +575,15 @@ export default function NewImportInvoicePage() {
             const processedItemsToSubmit = validItems.map((it: any) => {
                 const qty = Number(it.qty || 0);
                 const assessedVal = Math.round(Number(it.assessedValuePKR || 0));
+                const isAuto = it.isAutoDuties !== false;
 
                 const autoCD = it.isEFS ? 0 : Math.round(assessedVal * (dutyRates.cdRate / 100));
                 const autoRD = it.isEFS ? 0 : Math.round(assessedVal * (dutyRates.rdRate / 100));
                 const autoACD = it.isEFS ? 0 : Math.round(assessedVal * (dutyRates.acdRate / 100));
 
-                const cd = it.isEFS ? 0 : (it.cdAmount !== undefined && it.cdAmount !== null && it.cdAmount !== '' ? Number(it.cdAmount) : autoCD);
-                const rd = it.isEFS ? 0 : (it.rdAmount !== undefined && it.rdAmount !== null && it.rdAmount !== '' ? Number(it.rdAmount) : autoRD);
-                const acd = it.isEFS ? 0 : (it.acdAmount !== undefined && it.acdAmount !== null && it.acdAmount !== '' ? Number(it.acdAmount) : autoACD);
+                const cd = it.isEFS ? 0 : (isAuto ? autoCD : (it.cdAmount !== undefined && it.cdAmount !== null && it.cdAmount !== '' ? Number(it.cdAmount) : autoCD));
+                const rd = it.isEFS ? 0 : (isAuto ? autoRD : (it.rdAmount !== undefined && it.rdAmount !== null && it.rdAmount !== '' ? Number(it.rdAmount) : autoRD));
+                const acd = it.isEFS ? 0 : (isAuto ? autoACD : (it.acdAmount !== undefined && it.acdAmount !== null && it.acdAmount !== '' ? Number(it.acdAmount) : autoACD));
                 // ITP Rate = (Assessed Value + RD + CD + ACD) / qty
                 const itp = qty > 0 ? Number(((assessedVal + cd + rd + acd) / qty).toFixed(4)) : 0;
 
@@ -820,6 +853,8 @@ export default function NewImportInvoicePage() {
                                     const totalFC = qty * foreignRate;
                                     const assessedValPKR = Number(item.assessedValuePKR || 0);
 
+                                    const isAutoDuties = item.isAutoDuties !== false;
+
                                     // Duty rates from gdTaxes below
                                     const dutyRates = getDutyRates();
 
@@ -828,9 +863,9 @@ export default function NewImportInvoicePage() {
                                     const autoRD = item.isEFS ? 0 : Math.round(assessedValPKR * (dutyRates.rdRate / 100));
                                     const autoACD = item.isEFS ? 0 : Math.round(assessedValPKR * (dutyRates.acdRate / 100));
 
-                                    const effectiveCD = item.isEFS ? 0 : (item.cdAmount !== undefined && item.cdAmount !== null && item.cdAmount !== '' ? Number(item.cdAmount) : autoCD);
-                                    const effectiveRD = item.isEFS ? 0 : (item.rdAmount !== undefined && item.rdAmount !== null && item.rdAmount !== '' ? Number(item.rdAmount) : autoRD);
-                                    const effectiveACD = item.isEFS ? 0 : (item.acdAmount !== undefined && item.acdAmount !== null && item.acdAmount !== '' ? Number(item.acdAmount) : autoACD);
+                                    const effectiveCD = item.isEFS ? 0 : (isAutoDuties ? autoCD : (item.cdAmount !== undefined && item.cdAmount !== null && item.cdAmount !== '' ? Number(item.cdAmount) : autoCD));
+                                    const effectiveRD = item.isEFS ? 0 : (isAutoDuties ? autoRD : (item.rdAmount !== undefined && item.rdAmount !== null && item.rdAmount !== '' ? Number(item.rdAmount) : autoRD));
+                                    const effectiveACD = item.isEFS ? 0 : (isAutoDuties ? autoACD : (item.acdAmount !== undefined && item.acdAmount !== null && item.acdAmount !== '' ? Number(item.acdAmount) : autoACD));
 
                                     // ITP Rate = (Assessed Value + RD + CD + ACD) / qty
                                     const calculatedITPRate = qty > 0 ? ((assessedValPKR + effectiveCD + effectiveRD + effectiveACD) / qty) : 0;
@@ -955,36 +990,93 @@ export default function NewImportInvoicePage() {
                                                     </div>
                                                 ) : (
                                                     <>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">CD (PKR):</span>
+                                                        {/* Toggle: % Auto from GD vs Manual PKR */}
+                                                        <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => updateItem(item.id, 'isAutoDuties', true)}
+                                                                className={cn(
+                                                                    "px-2.5 py-1 rounded-lg text-[10px] font-black tracking-tight transition-all flex items-center gap-1",
+                                                                    isAutoDuties
+                                                                        ? "bg-indigo-600 text-white shadow-sm"
+                                                                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                                                                )}
+                                                                title="Auto-calculate duties from GD % table below"
+                                                            >
+                                                                <Percent size={11} /> Auto %
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => updateItem(item.id, 'isAutoDuties', false)}
+                                                                className={cn(
+                                                                    "px-2.5 py-1 rounded-lg text-[10px] font-black tracking-tight transition-all flex items-center gap-1",
+                                                                    !isAutoDuties
+                                                                        ? "bg-amber-600 text-white shadow-sm"
+                                                                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                                                                )}
+                                                                title="Enter custom PKR amounts manually"
+                                                            >
+                                                                <SlidersHorizontal size={11} /> Manual
+                                                            </button>
+                                                        </div>
+
+                                                        {/* CD */}
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">
+                                                                CD {isAutoDuties && dutyRates.cdRate > 0 ? `(${dutyRates.cdRate}%)` : '(PKR)'}:
+                                                            </span>
                                                             <input
                                                                 type="number"
-                                                                value={item.cdAmount !== undefined && item.cdAmount !== null ? item.cdAmount : ''}
+                                                                value={isAutoDuties ? (autoCD || '') : (item.cdAmount !== undefined && item.cdAmount !== null ? item.cdAmount : '')}
                                                                 onChange={e => updateItem(item.id, 'cdAmount', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                                                placeholder={dutyRates.cdRate > 0 ? `${autoCD.toLocaleString()} (${dutyRates.cdRate}%)` : "CD"}
-                                                                className="w-32 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
+                                                                disabled={isAutoDuties}
+                                                                placeholder={isAutoDuties ? `${autoCD.toLocaleString()}` : "0"}
+                                                                className={cn(
+                                                                    "w-28 p-1.5 rounded-xl border text-right font-bold text-xs transition-all",
+                                                                    isAutoDuties 
+                                                                        ? "bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300 cursor-not-allowed select-none"
+                                                                        : "bg-white dark:bg-slate-900 border-amber-400 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500"
+                                                                )}
                                                             />
                                                         </div>
 
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">RD (PKR):</span>
+                                                        {/* RD */}
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">
+                                                                RD {isAutoDuties && dutyRates.rdRate > 0 ? `(${dutyRates.rdRate}%)` : '(PKR)'}:
+                                                            </span>
                                                             <input
                                                                 type="number"
-                                                                value={item.rdAmount !== undefined && item.rdAmount !== null ? item.rdAmount : ''}
+                                                                value={isAutoDuties ? (autoRD || '') : (item.rdAmount !== undefined && item.rdAmount !== null ? item.rdAmount : '')}
                                                                 onChange={e => updateItem(item.id, 'rdAmount', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                                                placeholder={dutyRates.rdRate > 0 ? `${autoRD.toLocaleString()} (${dutyRates.rdRate}%)` : "RD"}
-                                                                className="w-32 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
+                                                                disabled={isAutoDuties}
+                                                                placeholder={isAutoDuties ? `${autoRD.toLocaleString()}` : "0"}
+                                                                className={cn(
+                                                                    "w-28 p-1.5 rounded-xl border text-right font-bold text-xs transition-all",
+                                                                    isAutoDuties 
+                                                                        ? "bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300 cursor-not-allowed select-none"
+                                                                        : "bg-white dark:bg-slate-900 border-amber-400 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500"
+                                                                )}
                                                             />
                                                         </div>
 
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">ACD (PKR):</span>
+                                                        {/* ACD */}
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px]">
+                                                                ACD {isAutoDuties && dutyRates.acdRate > 0 ? `(${dutyRates.acdRate}%)` : '(PKR)'}:
+                                                            </span>
                                                             <input
                                                                 type="number"
-                                                                value={item.acdAmount !== undefined && item.acdAmount !== null ? item.acdAmount : ''}
+                                                                value={isAutoDuties ? (autoACD || 0) : (item.acdAmount !== undefined && item.acdAmount !== null ? item.acdAmount : '')}
                                                                 onChange={e => updateItem(item.id, 'acdAmount', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                                                placeholder={dutyRates.acdRate > 0 ? `${autoACD.toLocaleString()} (${dutyRates.acdRate}%)` : "ACD"}
-                                                                className="w-32 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
+                                                                disabled={isAutoDuties}
+                                                                placeholder="0"
+                                                                className={cn(
+                                                                    "w-24 p-1.5 rounded-xl border text-right font-bold text-xs transition-all",
+                                                                    isAutoDuties 
+                                                                        ? "bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300 cursor-not-allowed select-none"
+                                                                        : "bg-white dark:bg-slate-900 border-amber-400 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500"
+                                                                )}
                                                             />
                                                         </div>
                                                     </>
@@ -992,8 +1084,8 @@ export default function NewImportInvoicePage() {
 
                                                 {/* Calculated ITP Rate Badge */}
                                                 <div className="ml-auto flex items-center gap-3">
-                                                    <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">(Customs Base + Duties)/Qty:</span>
-                                                    <span className="px-4 py-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-500 dark:text-amber-400 rounded-xl font-black text-sm">
+                                                    <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">(Assessed + Duties)/Qty:</span>
+                                                    <span className="px-4 py-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-500 dark:text-amber-400 rounded-xl font-black text-sm whitespace-nowrap">
                                                         ITP Rate: Rs. {calculatedITPRate.toFixed(2)} / unit
                                                     </span>
                                                 </div>
