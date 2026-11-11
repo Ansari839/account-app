@@ -122,10 +122,6 @@ export default function OpeningStockModal({
             showNotification("error", "Please select a product");
             return;
         }
-        if (!formData.warehouseId) {
-            showNotification("error", "Please select a target warehouse");
-            return;
-        }
         if (Number(formData.qty) <= 0) {
             showNotification("error", "Quantity must be greater than 0");
             return;
@@ -239,15 +235,14 @@ export default function OpeningStockModal({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                                <Warehouse size={14} className="text-indigo-500" /> Target Warehouse <span className="text-rose-500">*</span>
+                                <Warehouse size={14} className="text-indigo-500" /> Target Warehouse <span className="text-slate-400 font-normal lowercase">(optional)</span>
                             </label>
                             <select
-                                required
                                 className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
                                 value={formData.warehouseId}
                                 onChange={e => setFormData({ ...formData, warehouseId: e.target.value })}
                             >
-                                <option value="">Select Warehouse...</option>
+                                <option value="">Default Warehouse (Auto)</option>
                                 {warehouses.map(w => (
                                     <option key={w.id} value={w.id}>{w.name}</option>
                                 ))}

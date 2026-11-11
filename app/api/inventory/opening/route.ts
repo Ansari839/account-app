@@ -90,11 +90,27 @@ export async function POST(req: Request) {
         if (!productId) {
             return NextResponse.json({ success: false, error: 'Product is required' }, { status: 400 });
         }
-        if (!warehouseId) {
-            return NextResponse.json({ success: false, error: 'Warehouse is required' }, { status: 400 });
-        }
         if (Number(qty) <= 0) {
             return NextResponse.json({ success: false, error: 'Quantity must be greater than 0' }, { status: 400 });
+        }
+
+        // Warehouse is NOT compulsory: resolve default warehouse or create one if none exists
+        let targetWarehouseId = warehouseId;
+        if (!targetWarehouseId) {
+            let defaultWh = await prisma.warehouse.findFirst({
+                where: { companyId }
+            });
+            if (!defaultWh) {
+                defaultWh = await prisma.warehouse.create({
+                    data: {
+                        companyId,
+                        name: 'Main Warehouse',
+                        code: 'WH-MAIN',
+                        isDefault: true
+                    }
+                });
+            }
+            targetWarehouseId = defaultWh.id;
         }
 
         const tagPrefix = origin === 'IMPORT' ? (isEFS ? '[EFS]' : '[IMPORT]') : '[LOCAL]';
@@ -105,7 +121,7 @@ export async function POST(req: Request) {
                 id: crypto.randomUUID(),
                 companyId,
                 productId,
-                warehouseId,
+                warehouseId: targetWarehouseId,
                 date: new Date(date || new Date()),
                 qtyIn: Number(qty),
                 qtyOut: 0,
