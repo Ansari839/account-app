@@ -5,18 +5,25 @@ import { VoucherService } from "./voucher.service";
 export class ProductionService {
     
     static async getAll(companyId: string) {
-        return await prisma.productionRecord.findMany({
+        const records = await prisma.productionRecord.findMany({
             where: { companyId },
             include: {
-                outputProduct: true,
-                warehouse: true,
-                inputs: {
-                    include: { product: true }
+                Product: true,
+                Warehouse: true,
+                ProductionInput: {
+                    include: { Product: true }
                 },
-                overheads: true
+                ProductionOverhead: true
             },
             orderBy: { date: 'desc' }
         });
+        return records.map(r => ({
+            ...r,
+            outputProduct: r.Product,
+            warehouse: r.Warehouse,
+            inputs: r.ProductionInput.map(i => ({ ...i, product: i.Product })),
+            overheads: r.ProductionOverhead
+        }));
     }
     static async create(companyId: string, userId: string, data: any, txClient?: Prisma.TransactionClient) {
         const execute = async (tx: Prisma.TransactionClient) => {
@@ -61,7 +68,7 @@ export class ProductionService {
                     warehouseId: data.warehouseId,
                     totalCost: totalCost,
                     status: "COMPLETED",
-                    inputs: {
+                    ProductionInput: {
                         create: processedInputs.map(input => ({
                             productId: input.productId,
                             quantity: input.quantity,
@@ -69,7 +76,7 @@ export class ProductionService {
                             lotNumber: input.lotNumber
                         }))
                     },
-                    overheads: {
+                    ProductionOverhead: {
                         create: data.overheads.map((overhead: any) => ({
                             description: overhead.description,
                             amount: overhead.amount,
@@ -80,8 +87,8 @@ export class ProductionService {
                     }
                 },
                 include: {
-                    inputs: true,
-                    overheads: true
+                    ProductionInput: true,
+                    ProductionOverhead: true
                 }
             });
 
@@ -184,10 +191,10 @@ export class ProductionService {
                     if (overhead.purchaseInvoiceItemId) {
                         const piItem = await tx.purchaseInvoiceItem.findUnique({
                             where: { id: overhead.purchaseInvoiceItemId },
-                            include: { product: true }
+                            include: { Product: true }
                         });
-                        if (piItem?.product) {
-                            specificAccountId = piItem.product.purchaseAccountId || piItem.product.inventoryAccountId;
+                        if (piItem?.Product) {
+                            specificAccountId = piItem.Product.purchaseAccountId || piItem.Product.inventoryAccountId;
                         }
                     }
 

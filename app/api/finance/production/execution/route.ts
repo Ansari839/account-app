@@ -63,13 +63,13 @@ export async function POST(req: NextRequest) {
                     if (ov.purchaseInvoiceItemId) {
                         const piItem = await tx.purchaseInvoiceItem.findUnique({
                             where: { id: ov.purchaseInvoiceItemId },
-                            include: { invoice: true, product: { include: { category: true } } }
+                            include: { PurchaseInvoice: true, Product: { include: { Category: true } } }
                         });
                         if (!piItem) throw new Error("Service Invoice Item not found");
                         
                         const consumeQty = Number(ov.quantity);
                         const remaining = Number(piItem.qty) - Number(piItem.consumedQty);
-                        if (consumeQty > remaining) throw new Error(`Cannot consume ${consumeQty} of service ${piItem.product.name}. Only ${remaining} left.`);
+                        if (consumeQty > remaining) throw new Error(`Cannot consume ${consumeQty} of service ${piItem.Product?.name}. Only ${remaining} left.`);
                         
                         // Only use the base rate (exclusive of tax) because the tax was already booked to the Tax Account
                         // during the purchase invoice. Adding tax here would over-credit the WIP account.
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
                         serviceCost += ovAmount;
 
                         overheadRecords.push({
-                            description: `Service Consumed: ${piItem.invoice.invoiceNo} - ${piItem.product.name}`,
+                            description: `Service Consumed: ${piItem.PurchaseInvoice?.invoiceNo} - ${piItem.Product?.name}`,
                             amount: ovAmount,
                             purchaseInvoiceItemId: piItem.id,
                             quantity: consumeQty,
@@ -87,9 +87,9 @@ export async function POST(req: NextRequest) {
                         });
 
                         // Keep track for JV credit
-                        const cat = piItem.product.category;
+                        const cat = piItem.Product?.Category;
                         let creditAccount = cat?.wipAccountId;
-                        if (!creditAccount) throw new Error(`Category of service ${piItem.product.name} does not have a WIP Account linked.`);
+                        if (!creditAccount) throw new Error(`Category of service ${piItem.Product?.name} does not have a WIP Account linked.`);
 
                         outHouseServiceInvoiceIds.push({ piItemId: piItem.id, consumeQty, amount: ovAmount, creditAccount });
                         
@@ -138,8 +138,8 @@ export async function POST(req: NextRequest) {
                     warehouseId: finalWarehouseId,
                     outputStage: processStage,
                     totalCost: totalOutputCost,
-                    inputs: { create: inputRecords },
-                    overheads: { create: overheadRecords }
+                    ProductionInput: { create: inputRecords },
+                    ProductionOverhead: { create: overheadRecords }
                 }
             });
 
@@ -189,11 +189,11 @@ export async function POST(req: NextRequest) {
             }
 
             // 4. Accounting (Journal Entry)
-            const outputProduct = await tx.product.findUnique({ where: { id: outputProductId }, include: { category: true } });
+            const outputProduct = await tx.product.findUnique({ where: { id: outputProductId }, include: { Category: true } });
             
             // Debit WIP or Inventory for Output
             // If output is WIP (like Grey Fabric), it should go to WIP account of its category or default Inventory
-            let debitAccount = outputProduct?.inventoryAccountId || outputProduct?.category?.wipAccountId;
+            let debitAccount = outputProduct?.inventoryAccountId || outputProduct?.Category?.wipAccountId;
             if (!debitAccount) {
                 const defInv = await tx.account.findFirst({
                     where: { companyId, name: { contains: 'Inventory', mode: 'insensitive' }, type: 'ASSET' }
@@ -213,8 +213,8 @@ export async function POST(req: NextRequest) {
 
             // CREDIT Input Products (Raw Materials)
             for (const input of inputs) {
-                const inProduct = await tx.product.findUnique({ where: { id: input.productId }, include: { category: true } });
-                let creditAcc = inProduct?.inventoryAccountId || inProduct?.category?.wipAccountId;
+                const inProduct = await tx.product.findUnique({ where: { id: input.productId }, include: { Category: true } });
+                let creditAcc = inProduct?.inventoryAccountId || inProduct?.Category?.wipAccountId;
                 if (!creditAcc) {
                     const defInv = await tx.account.findFirst({
                         where: { companyId, name: { contains: 'Inventory', mode: 'insensitive' }, type: 'ASSET' }

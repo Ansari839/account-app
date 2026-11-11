@@ -8,17 +8,42 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         if (error) return error;
 
         const { id } = await params;
-        const record = await prisma.productionRecord.findFirst({
+        const rawRecord = await prisma.productionRecord.findFirst({
             where: { id, companyId },
             include: {
-                outputProduct: { include: { category: true, baseUnit: true } },
-                warehouse: true,
-                inputs: { include: { product: { include: { baseUnit: true } } } },
-                overheads: { include: { unit: true, purchaseInvoiceItem: { include: { product: true } } } }
+                Product: { include: { Category: true, Unit: true } },
+                Warehouse: true,
+                ProductionInput: { include: { Product: { include: { Unit: true } } } },
+                ProductionOverhead: { include: { Unit: true, PurchaseInvoiceItem: { include: { Product: true } } } }
             }
         });
 
-        if (!record) return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
+        if (!rawRecord) return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
+
+        const record: any = {
+            ...rawRecord,
+            outputProduct: {
+                ...rawRecord.Product,
+                category: rawRecord.Product.Category,
+                baseUnit: rawRecord.Product.Unit
+            },
+            warehouse: rawRecord.Warehouse,
+            inputs: rawRecord.ProductionInput.map(inp => ({
+                ...inp,
+                product: {
+                    ...inp.Product,
+                    baseUnit: inp.Product.Unit
+                }
+            })),
+            overheads: rawRecord.ProductionOverhead.map(ov => ({
+                ...ov,
+                unit: ov.Unit,
+                purchaseInvoiceItem: ov.PurchaseInvoiceItem ? {
+                    ...ov.PurchaseInvoiceItem,
+                    product: ov.PurchaseInvoiceItem.Product
+                } : null
+            }))
+        };
 
         // Calculate cost breakdown for inputs based on their latest production
         for (let i = 0; i < record.inputs.length; i++) {
@@ -33,8 +58,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 },
                 orderBy: { date: 'desc' },
                 include: {
-                    inputs: { include: { product: { include: { baseUnit: true } } } },
-                    overheads: { include: { unit: true, purchaseInvoiceItem: { include: { product: { include: { baseUnit: true } } } } } }
+                    ProductionInput: { include: { Product: { include: { Unit: true } } } },
+                    ProductionOverhead: { include: { Unit: true, PurchaseInvoiceItem: { include: { Product: { include: { Unit: true } } } } } }
                 }
             });
 
@@ -51,26 +76,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                     services: [] as any[]
                 };
 
-                latestProd.inputs.forEach((inp: any) => {
+                (latestProd.ProductionInput || []).forEach((inp: any) => {
                     hierarchy.materials.push({
-                        name: inp.product.name,
+                        name: inp.Product.name,
                         stage: inp.inputStage || 'RAW',
                         quantity: Number(inp.quantity) * qtyRatio,
-                        unit: inp.product.baseUnit?.code || '-',
+                        unit: inp.Product.Unit?.code || '-',
                         cost: Number(inp.costValue) * costRatio
                     });
                 });
 
-                latestProd.overheads.forEach((ov: any) => {
+                (latestProd.ProductionOverhead || []).forEach((ov: any) => {
                     hierarchy.services.push({
                         name: ov.description,
                         quantity: Number(ov.quantity) * qtyRatio,
-                        unit: ov.unit?.code || ov.purchaseInvoiceItem?.product?.baseUnit?.code || '-',
+                        unit: ov.Unit?.code || ov.PurchaseInvoiceItem?.Product?.Unit?.code || '-',
                         cost: Number(ov.amount) * costRatio
                     });
                 });
 
-                (input as any).hierarchy = hierarchy;
+                input.hierarchy = hierarchy;
             }
         }
 
@@ -89,7 +114,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
         const record = await prisma.productionRecord.findFirst({
             where: { id, companyId },
-            include: { overheads: true }
+            include: { ProductionOverhead: true }
         });
 
         if (!record) {
@@ -98,7 +123,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
         await prisma.$transaction(async (tx) => {
             // 1. Revert consumed quantities for purchase invoices (Out-house services)
-            for (const overhead of record.overheads) {
+            for (const overhead of record.ProductionOverhead) {
                 if (overhead.purchaseInvoiceItemId && overhead.quantity) {
                     await tx.purchaseInvoiceItem.update({
                         where: { id: overhead.purchaseInvoiceItemId },

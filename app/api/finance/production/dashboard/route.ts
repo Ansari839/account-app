@@ -13,27 +13,33 @@ export async function GET(request: NextRequest) {
         });
 
         // Fetch all physical products (where their category is not a service)
-        const products = await prisma.product.findMany({
+        const rawProducts = await prisma.product.findMany({
             where: { 
                 companyId, 
                 OR: [
                     { categoryId: null },
-                    { category: { isService: false } }
+                    { Category: { isService: false } }
                 ]
             },
-            include: { category: true, baseUnit: true }
+            include: { Category: true, Unit: true }
         });
+
+        const products = rawProducts.map(p => ({
+            ...p,
+            category: p.Category,
+            baseUnit: p.Unit
+        }));
 
         // Fetch unconsumed service invoice items (where category is a service)
         const serviceItems = await prisma.purchaseInvoiceItem.findMany({
             where: {
-                invoice: { companyId },
-                product: { category: { isService: true } }
+                PurchaseInvoice: { companyId },
+                Product: { Category: { isService: true } }
             },
             include: {
-                invoice: { include: { supplier: true } },
-                product: { include: { category: true, baseUnit: true } },
-                unit: true
+                PurchaseInvoice: { include: { Supplier: true } },
+                Product: { include: { Category: true, Unit: true } },
+                Unit: true
             }
         });
         
@@ -44,8 +50,8 @@ export async function GET(request: NextRequest) {
             where: { companyId },
             orderBy: { date: 'desc' },
             include: {
-                inputs: {
-                    include: { product: { include: { baseUnit: true, category: true } } }
+                ProductionInput: {
+                    include: { Product: { include: { Unit: true, Category: true } } }
                 }
             }
         });
@@ -67,7 +73,7 @@ export async function GET(request: NextRequest) {
             // Try to find the product in productMap first
             let product = productMap.get(productId);
             let catName = product?.category?.name?.toUpperCase() || "";
-
+            
             // If it's a YARN, return itself
             if (catName.includes("YARN") || catName.includes("RAW")) {
                 return [{
@@ -95,11 +101,15 @@ export async function GET(request: NextRequest) {
             const ratio = targetQty / outQty;
             
             const result: any[] = [];
-            latestProd.inputs.forEach((input: any) => {
+            (latestProd.ProductionInput || []).forEach((input: any) => {
                 const inputReq = Number(input.quantity) * ratio;
-                // Add input.product to productMap if not there (since we included it in query)
-                if (!productMap.has(input.productId)) {
-                    productMap.set(input.productId, input.product);
+                // Add input.Product to productMap if not there (since we included it in query)
+                if (input.Product && !productMap.has(input.productId)) {
+                    productMap.set(input.productId, {
+                        ...input.Product,
+                        category: input.Product.Category,
+                        baseUnit: input.Product.Unit
+                    });
                 }
                 const subYarns = getYarnComposition(input.productId, input.inputStage || "RAW", inputReq, depth + 1);
                 result.push(...subYarns);
@@ -220,14 +230,14 @@ export async function GET(request: NextRequest) {
 
         // Map service items
         unconsumedServices.forEach(item => {
-            const catName = item.product?.category?.name || "Uncategorized";
-            const catId = item.product?.category?.id || "uncategorized";
+            const catName = item.Product?.Category?.name || "Uncategorized";
+            const catId = item.Product?.Category?.id || "uncategorized";
             
             if (!groupedData[catId]) {
                 groupedData[catId] = {
                     id: catId,
                     name: catName,
-                    isService: item.product?.category?.isService || true,
+                    isService: item.Product?.Category?.isService || true,
                     products: [],
                     services: []
                 };
@@ -238,18 +248,17 @@ export async function GET(request: NextRequest) {
             const exAmount = unconsumedQty * rate;
             const taxAmount = Number(item.taxAmount);
             // Rough prorated tax for unconsumed portion (if partial consumption exists)
-            // If it's a fixed tax, we prorate it: (taxAmount / qty) * unconsumedQty
             const proratedTax = Number(item.qty) > 0 ? (taxAmount / Number(item.qty)) * unconsumedQty : 0;
             const inclAmount = exAmount + proratedTax;
             
             groupedData[catId].services.push({
                 id: item.id, // PurchaseInvoiceItemId
-                date: item.invoice.date,
-                invoiceNo: item.invoice.invoiceNo,
-                supplierName: item.invoice.supplier.name,
-                productName: item.product.name,
+                date: item.PurchaseInvoice.date,
+                invoiceNo: item.PurchaseInvoice.invoiceNo,
+                supplierName: item.PurchaseInvoice.Supplier?.name || '-',
+                productName: item.Product.name,
                 unconsumedQty: unconsumedQty,
-                unit: item.unit?.code || item.product.baseUnit?.code || '-',
+                unit: item.Unit?.code || item.Product.Unit?.code || '-',
                 exAmount: exAmount,
                 taxAmount: proratedTax,
                 inclAmount: inclAmount

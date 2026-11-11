@@ -10,18 +10,24 @@ export async function GET(req: NextRequest) {
         if (error) return error;
 
         // Fetch products (non-service for inputs/outputs)
-        const products = await prisma.product.findMany({
+        const rawProducts = await prisma.product.findMany({
             where: { companyId, isService: false },
-            select: {
-                id: true,
-                name: true,
-                code: true,
-                isManufactured: true,
-                stage: true,
-                baseUnit: { select: { code: true } },
-                category: { select: { name: true } }
+            include: {
+                Unit: true,
+                Category: true
             }
         });
+
+        const products = rawProducts.map(p => ({
+            id: p.id,
+            name: p.name,
+            code: p.code,
+            hsCode: p.hsCode,
+            isManufactured: p.isManufactured,
+            stage: p.stage,
+            baseUnit: p.Unit ? { code: p.Unit.code } : null,
+            category: p.Category ? { name: p.Category.name } : null
+        }));
 
         // Fetch warehouses
         const warehouses = await prisma.warehouse.findMany({
@@ -36,13 +42,13 @@ export async function GET(req: NextRequest) {
         // Fetch unconsumed services (where consumedQty < qty and product is a service)
         const rawServices = await prisma.purchaseInvoiceItem.findMany({
             where: {
-                invoice: { companyId },
-                product: { isService: true }
+                PurchaseInvoice: { companyId },
+                Product: { isService: true }
             },
             include: {
-                invoice: { select: { invoiceNo: true, date: true, supplier: { select: { name: true } } } },
-                product: { select: { name: true, category: { select: { name: true } }, baseUnit: { select: { code: true } } } },
-                unit: { select: { code: true } }
+                PurchaseInvoice: { select: { invoiceNo: true, date: true, Supplier: { select: { name: true } } } },
+                Product: { include: { Category: { select: { name: true } }, Unit: { select: { code: true } } } },
+                Unit: { select: { code: true } }
             }
         });
 
@@ -56,16 +62,16 @@ export async function GET(req: NextRequest) {
             
             return {
                 id: item.id,
-                date: item.invoice.date,
-                invoiceNo: item.invoice.invoiceNo,
-                supplierName: item.invoice.supplier.name,
-                productName: item.product.name,
-                categoryName: item.product.category?.name || '',
+                date: item.PurchaseInvoice.date,
+                invoiceNo: item.PurchaseInvoice.invoiceNo,
+                supplierName: item.PurchaseInvoice.Supplier?.name || '-',
+                productName: item.Product.name,
+                categoryName: item.Product.Category?.name || '',
                 unconsumedQty,
                 totalQty: Number(item.qty),
                 consumedQty: Number(item.consumedQty),
                 rate: rate,
-                unit: item.unit?.code || item.product.baseUnit?.code || '-',
+                unit: item.Unit?.code || item.Product.Unit?.code || '-',
                 inclAmount
             };
         });
@@ -73,14 +79,15 @@ export async function GET(req: NextRequest) {
         // Current Stock Balances and Rates to auto-fill input rates
         const rawLedgers = await prisma.stockLedger.findMany({
             where: { companyId },
-            select: { productId: true, qtyIn: true, qtyOut: true, costRate: true, stage: true, isEFS: true }
+            select: { productId: true, qtyIn: true, qtyOut: true, costRate: true, stage: true, isEFS: true, batchNo: true }
         });
 
         const stockRates: Record<string, { qty: number, rate: number, isEFS: boolean }> = {};
         for (const l of rawLedgers) {
-            const key = `${l.productId}-${l.stage || 'RAW'}-${l.isEFS ? 'EFS' : 'STD'}`;
+            const isEFS = Boolean(l.isEFS || (l.batchNo && l.batchNo.includes('[EFS]')));
+            const key = `${l.productId}-${l.stage || 'RAW'}-${isEFS ? 'EFS' : 'STD'}`;
             if (!stockRates[key]) {
-                stockRates[key] = { qty: 0, rate: 0, isEFS: !!l.isEFS };
+                stockRates[key] = { qty: 0, rate: 0, isEFS };
             }
             const s = stockRates[key];
             
@@ -92,7 +99,7 @@ export async function GET(req: NextRequest) {
                 const prevTotal = s.qty * s.rate;
                 const newTotal = qIn * Number(l.costRate);
                 s.qty += qIn;
-                s.rate = (prevTotal + newTotal) / s.qty;
+                s.rate = s.qty > 0 ? (prevTotal + newTotal) / s.qty : 0;
             }
             if (qOut > 0) {
                 s.qty -= qOut;
@@ -102,13 +109,13 @@ export async function GET(req: NextRequest) {
         // Fetch unconsumed PurchaseInvoiceItems as available lots
         const invoiceItems = await prisma.purchaseInvoiceItem.findMany({
             where: {
-                invoice: { companyId },
-                product: { isManufactured: false }
+                PurchaseInvoice: { companyId },
+                Product: { isManufactured: false }
             },
             include: {
-                invoice: { select: { invoiceNo: true, date: true } }
+                PurchaseInvoice: { select: { invoiceNo: true, date: true } }
             },
-            orderBy: { invoice: { date: 'desc' } }
+            orderBy: { PurchaseInvoice: { date: 'desc' } }
         });
 
         // Apply FIFO capping based on actual stock limits
@@ -137,8 +144,8 @@ export async function GET(req: NextRequest) {
                     availableLots.push({
                         id: item.id,
                         productId: item.productId,
-                        invoiceNo: item.invoice.invoiceNo,
-                        date: item.invoice.date,
+                        invoiceNo: item.PurchaseInvoice.invoiceNo,
+                        date: item.PurchaseInvoice.date,
                         qty: cappedQty,
                         rate: Number(item.rate)
                     });
