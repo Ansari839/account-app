@@ -578,7 +578,7 @@ export class ReportService {
      * Stock Summary
      */
     static async getStockSummary(companyId: string, warehouseId?: string, productId?: string, variantId?: string) {
-        const where: any = {};
+        const where: any = { companyId };
         if (warehouseId) where.warehouseId = warehouseId;
         if (productId) where.productId = productId;
         if (variantId) where.variantId = variantId;
@@ -589,8 +589,8 @@ export class ReportService {
             _sum: { qtyIn: true, qtyOut: true }
         });
 
-        const products = await prisma.product.findMany();
-        const warehouses = await prisma.warehouse.findMany();
+        const products = await prisma.product.findMany({ where: { companyId } });
+        const warehouses = await prisma.warehouse.findMany({ where: { companyId } });
 
         return summary.map(s => {
             const prod = products.find(p => p.id === s.productId);
@@ -610,7 +610,7 @@ export class ReportService {
      * Item-wise Stock Report (Aggregated across warehouses)
      */
     static async getStockItemWise(companyId: string, warehouseId?: string, variantId?: string) {
-        const where: any = {};
+        const where: any = { companyId };
         if (warehouseId) where.warehouseId = warehouseId;
         if (variantId) where.variantId = variantId;
 
@@ -647,7 +647,7 @@ export class ReportService {
      * Stock Ledger
      */
     static async getStockLedger(companyId: string, productId: string, warehouseId?: string | undefined, startDate?: Date, endDate?: Date, variantId?: string) {
-        const where: any = { productId };
+        const where: any = { companyId, productId };
         if (warehouseId) where.warehouseId = warehouseId;
         if (variantId) where.variantId = variantId;
         if (startDate || endDate) {
@@ -985,6 +985,7 @@ export class ReportService {
         const calculateStockValue = async (date: Date) => {
             const entries = await prisma.stockLedger.findMany({
                 where: {
+                    companyId,
                     date: { lt: date }
                 }
             });
