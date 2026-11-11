@@ -7,6 +7,7 @@ import DataTable, { Column } from "@/components/DataTable";
 import Combobox from "@/components/Combobox";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import { Eye, Edit2, Trash2 } from "lucide-react";
 
 export default function PurchaseInvoicesPage() {
     const router = useRouter();
@@ -109,27 +110,27 @@ export default function PurchaseInvoicesPage() {
         {
             header: "Actions",
             accessor: (row) => (
-                <div className="flex gap-2">
+                <div className="flex items-center gap-1.5">
                     <button
                         onClick={() => router.push(`/finance/purchase/invoices/${row.id}`)}
-                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
-                        title="View/Print"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors border border-transparent hover:border-indigo-100 dark:hover:border-indigo-500/20"
+                        title="View / Print Invoice"
                     >
-                        👁
+                        <Eye size={16} />
                     </button>
                     <button
-                        onClick={() => router.push(`/finance/purchase/invoices/${row.id}/edit`)}
-                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-100"
-                        title="Edit"
+                        onClick={() => router.push(row.isImport ? `/finance/purchase/invoices/${row.id}` : `/finance/purchase/invoices/${row.id}/edit`)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors border border-transparent hover:border-amber-100 dark:hover:border-amber-500/20"
+                        title="Edit Invoice"
                     >
-                        📝
+                        <Edit2 size={16} />
                     </button>
                     <button
                         onClick={() => handleDelete(row.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
-                        title="Delete"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors border border-transparent hover:border-rose-100 dark:hover:border-rose-500/20"
+                        title="Delete Invoice"
                     >
-                        🗑
+                        <Trash2 size={16} />
                     </button>
                 </div>
             )

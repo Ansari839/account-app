@@ -593,7 +593,8 @@ export class ReportService {
                 qtyOut: true,
                 costRate: true,
                 isEFS: true,
-                batchNo: true
+                batchNo: true,
+                refType: true
             }
         });
 
@@ -609,23 +610,25 @@ export class ReportService {
             stage: string;
             origin: 'LOCAL' | 'IMPORT';
             isEFS: boolean;
+            isService: boolean;
             stock: number;
             totalAmount: number;
         }>();
 
         for (const e of entries) {
-            let origin: 'LOCAL' | 'IMPORT' = 'LOCAL';
+            const prod = products.find(p => p.id === e.productId);
+            const isService = Boolean(prod?.isService);
             let isEFS = Boolean(e.isEFS);
             const batch = e.batchNo || '';
-            if (isEFS || batch.includes('[EFS]')) {
+            let origin: 'LOCAL' | 'IMPORT' = 'LOCAL';
+
+            if (e.refType === 'IMPORT_INVOICE' || isEFS || batch.includes('[EFS]') || batch.includes('[IMPORT]')) {
                 origin = 'IMPORT';
-                isEFS = true;
-            } else if (batch.includes('[IMPORT]')) {
-                origin = 'IMPORT';
-                isEFS = false;
+                if (batch.includes('[EFS]')) isEFS = true;
             }
 
-            const key = `${e.productId}_${e.warehouseId || 'null'}_${e.stage || 'RAW'}_${origin}_${isEFS}`;
+            const stage = isService ? 'SERVICE' : (e.stage || 'RAW');
+            const key = `${e.productId}_${e.warehouseId || 'null'}_${stage}_${origin}_${isEFS}`;
             const qty = (Number(e.qtyIn) || 0) - (Number(e.qtyOut) || 0);
             const rate = Number(e.costRate) || 0;
             const amount = qty * rate;
@@ -633,9 +636,10 @@ export class ReportService {
             const existing = groupMap.get(key) || {
                 productId: e.productId,
                 warehouseId: e.warehouseId,
-                stage: e.stage || 'RAW',
+                stage,
                 origin,
                 isEFS,
+                isService,
                 stock: 0,
                 totalAmount: 0
             };
@@ -655,9 +659,10 @@ export class ReportService {
                 category: prod?.Category?.name || '-',
                 unit: prod?.Unit?.name || 'KG',
                 warehouse: wh?.name || '-',
-                stage: s.stage || 'RAW',
+                stage: s.isService ? 'SERVICE' : (s.stage || 'RAW'),
                 origin: s.origin,
                 isEFS: s.isEFS,
+                isService: s.isService,
                 stock: Number(s.stock.toFixed(2)),
                 avgRate: Number(avgRate.toFixed(2)),
                 totalAmount: Number(s.totalAmount.toFixed(2))
@@ -683,7 +688,8 @@ export class ReportService {
                 qtyOut: true,
                 costRate: true,
                 isEFS: true,
-                batchNo: true
+                batchNo: true,
+                refType: true
             }
         });
 
@@ -698,23 +704,25 @@ export class ReportService {
             stage: string;
             origin: 'LOCAL' | 'IMPORT';
             isEFS: boolean;
+            isService: boolean;
             stock: number;
             totalAmount: number;
         }>();
 
         for (const e of entries) {
-            let origin: 'LOCAL' | 'IMPORT' = 'LOCAL';
+            const prod = products.find(p => p.id === e.productId);
+            const isService = Boolean(prod?.isService);
             let isEFS = Boolean(e.isEFS);
             const batch = e.batchNo || '';
-            if (isEFS || batch.includes('[EFS]')) {
+            let origin: 'LOCAL' | 'IMPORT' = 'LOCAL';
+
+            if (e.refType === 'IMPORT_INVOICE' || isEFS || batch.includes('[EFS]') || batch.includes('[IMPORT]')) {
                 origin = 'IMPORT';
-                isEFS = true;
-            } else if (batch.includes('[IMPORT]')) {
-                origin = 'IMPORT';
-                isEFS = false;
+                if (batch.includes('[EFS]')) isEFS = true;
             }
 
-            const key = `${e.productId}_${e.variantId || 'null'}_${e.stage || 'RAW'}_${origin}_${isEFS}`;
+            const stage = isService ? 'SERVICE' : (e.stage || 'RAW');
+            const key = `${e.productId}_${e.variantId || 'null'}_${stage}_${origin}_${isEFS}`;
             const qty = (Number(e.qtyIn) || 0) - (Number(e.qtyOut) || 0);
             const rate = Number(e.costRate) || 0;
             const amount = qty * rate;
@@ -722,9 +730,10 @@ export class ReportService {
             const existing = groupMap.get(key) || {
                 productId: e.productId,
                 variantId: e.variantId,
-                stage: e.stage || 'RAW',
+                stage,
                 origin,
                 isEFS,
+                isService,
                 stock: 0,
                 totalAmount: 0
             };
@@ -746,9 +755,10 @@ export class ReportService {
                 hsCode: prod?.hsCode || '-',
                 category: prod?.Category?.name || '-',
                 unit: prod?.Unit?.name || '-',
-                stage: s.stage || 'RAW',
+                stage: s.isService ? 'SERVICE' : (s.stage || 'RAW'),
                 origin: s.origin,
                 isEFS: s.isEFS,
+                isService: s.isService,
                 stock: Number(s.stock.toFixed(2)),
                 avgRate: Number(avgRate.toFixed(2)),
                 totalAmount: Number(s.totalAmount.toFixed(2))

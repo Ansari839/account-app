@@ -434,7 +434,26 @@ export default function ReportViewer() {
                         )
                     )
                 },
-                { header: 'Stage', accessor: (row: any) => <span className="text-xs uppercase font-bold bg-indigo-100 dark:bg-indigo-500/20 px-2 py-1 rounded-md text-indigo-600 dark:text-indigo-400">{row.stage}</span> },
+                { 
+                    header: 'Stage', 
+                    accessor: (row: any) => {
+                        const isSvc = row.isService || row.stage === 'SERVICE';
+                        return (
+                            <span className={cn(
+                                "text-[10px] uppercase font-black px-2 py-0.5 rounded-md tracking-wider border",
+                                isSvc
+                                    ? "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                                    : row.stage === 'RAW'
+                                        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
+                                        : row.stage === 'WIP'
+                                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                            )}>
+                                {isSvc ? 'SERVICE' : (row.stage || 'RAW')}
+                            </span>
+                        );
+                    } 
+                },
                 { header: 'Unit', accessor: (row: any) => <span className="text-xs uppercase font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full text-slate-500">{row.unit}</span> },
                 { header: 'Current Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-base">{Number(row.stock).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> : <span className="text-rose-500 font-black font-mono text-base">{row.stock}</span> },
                 { header: 'Avg Rate', accessor: (row: any) => <span className="font-mono text-slate-600 dark:text-slate-300 font-medium">Rs. {Number(row.avgRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
@@ -506,7 +525,26 @@ export default function ReportViewer() {
                     )
                 },
                 { header: 'Warehouse', accessor: (row: any) => <span className="text-slate-600 dark:text-slate-300 font-medium">{row.warehouse || '-'}</span> },
-                { header: 'Stage', accessor: (row: any) => <span className="text-xs uppercase font-bold bg-indigo-100 dark:bg-indigo-500/20 px-2 py-1 rounded-md text-indigo-600 dark:text-indigo-400">{row.stage}</span> },
+                { 
+                    header: 'Stage', 
+                    accessor: (row: any) => {
+                        const isSvc = row.isService || row.stage === 'SERVICE';
+                        return (
+                            <span className={cn(
+                                "text-[10px] uppercase font-black px-2 py-0.5 rounded-md tracking-wider border",
+                                isSvc
+                                    ? "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                                    : row.stage === 'RAW'
+                                        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
+                                        : row.stage === 'WIP'
+                                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                            )}>
+                                {isSvc ? 'SERVICE' : (row.stage || 'RAW')}
+                            </span>
+                        );
+                    } 
+                },
                 { header: 'Available Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-base">{Number(row.stock).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> : <span className="text-rose-500 font-black font-mono text-base">{row.stock}</span> },
                 { header: 'Avg Rate', accessor: (row: any) => <span className="font-mono text-slate-600 dark:text-slate-300 font-medium">Rs. {Number(row.avgRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
                 { header: 'Stock Amount', accessor: (row: any) => <span className="font-black text-indigo-600 dark:text-indigo-400 font-mono text-base">Rs. {Number(row.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
