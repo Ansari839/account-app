@@ -157,6 +157,8 @@ export default function ProductionDashboard() {
                                                     <tr>
                                                         <th scope="col" className="px-6 py-4">Item Code</th>
                                                         <th scope="col" className="px-6 py-4">Product Name</th>
+                                                        <th scope="col" className="px-6 py-4">HS Code</th>
+                                                        <th scope="col" className="px-6 py-4">Origin &amp; Scheme</th>
                                                         <th scope="col" className="px-6 py-4">Composition</th>
                                                         <th scope="col" className="px-6 py-4 text-right">Available Stock</th>
                                                     </tr>
@@ -169,6 +171,33 @@ export default function ProductionDashboard() {
                                                             </td>
                                                             <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">
                                                                 {product.name}
+                                                            </td>
+                                                            <td className="px-6 py-4 font-mono text-xs font-bold text-slate-400">
+                                                                {product.hsCode || '-'}
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    {product.origin === 'IMPORT' ? (
+                                                                        <>
+                                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                                                                                IMPORT
+                                                                            </span>
+                                                                            {product.isEFS ? (
+                                                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                                                                    EFS
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                                                                    NON-EFS
+                                                                                </span>
+                                                                            )}
+                                                                        </>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                                                            LOCAL
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </td>
                                                             <td className="px-6 py-4 text-sm font-medium text-amber-600 dark:text-amber-400">
                                                                 {product.composition || '-'}
@@ -186,7 +215,7 @@ export default function ProductionDashboard() {
                                                         </tr>
                                                     )) : (
                                                         <tr>
-                                                            <td colSpan={3} className="px-6 py-8 text-center text-slate-500">
+                                                            <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
                                                                 No physical stock available in this category.
                                                             </td>
                                                         </tr>

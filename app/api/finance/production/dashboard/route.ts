@@ -118,39 +118,77 @@ export async function GET(request: NextRequest) {
             return result;
         };
 
-        // Fetch stock ledger sums grouped by productId
-        const ledger = await prisma.stockLedger.groupBy({
-            by: ['productId', 'stage'],
-            _sum: {
+        // Fetch stock ledger entries
+        const ledgerEntries = await prisma.stockLedger.findMany({
+            where: { companyId },
+            select: {
+                productId: true,
+                stage: true,
                 qtyIn: true,
-                qtyOut: true
-            },
-            where: { companyId }
+                qtyOut: true,
+                isEFS: true,
+                batchNo: true,
+                refType: true
+            }
         });
 
-        // Map balances to products per stage
+        // Group by productId, stage, origin, isEFS
+        const stockMap = new Map<string, {
+            productId: string;
+            stage: string;
+            origin: 'LOCAL' | 'IMPORT';
+            isEFS: boolean;
+            stockBalance: number;
+        }>();
+
+        for (const e of ledgerEntries) {
+            let isEFS = Boolean(e.isEFS);
+            const batch = e.batchNo || '';
+            let origin: 'LOCAL' | 'IMPORT' = 'LOCAL';
+
+            if (e.refType === 'IMPORT_INVOICE' || isEFS || batch.includes('[EFS]') || batch.includes('[IMPORT]')) {
+                origin = 'IMPORT';
+                if (batch.includes('[EFS]')) isEFS = true;
+            }
+
+            const stage = e.stage || 'RAW';
+            const key = `${e.productId}_${stage}_${origin}_${isEFS}`;
+            const qty = (Number(e.qtyIn) || 0) - (Number(e.qtyOut) || 0);
+
+            const existing = stockMap.get(key) || {
+                productId: e.productId,
+                stage,
+                origin,
+                isEFS,
+                stockBalance: 0
+            };
+            existing.stockBalance += qty;
+            stockMap.set(key, existing);
+        }
+
+        // Map balances to products per stage & origin
         const productBalances: any[] = [];
         
         products.forEach(product => {
-            const productStocks = ledger.filter(l => l.productId === product.id);
+            const productStocks = Array.from(stockMap.values()).filter(s => s.productId === product.id);
             
             // If no stock exists, maybe show it as RAW by default or just show it once
             if (productStocks.length === 0) {
                 productBalances.push({
                     ...product,
                     stockBalance: 0,
-                    stage: "RAW"
+                    stage: "RAW",
+                    origin: "LOCAL",
+                    isEFS: false
                 });
             } else {
                 productStocks.forEach(stock => {
-                    const inQty = Number(stock._sum?.qtyIn || 0);
-                    const outQty = Number(stock._sum?.qtyOut || 0);
-                    const balance = inQty - outQty;
-                    
                     productBalances.push({
                         ...product,
-                        stockBalance: balance,
-                        stage: stock.stage || "RAW"
+                        stockBalance: stock.stockBalance,
+                        stage: stock.stage || "RAW",
+                        origin: stock.origin,
+                        isEFS: stock.isEFS
                     });
                 });
             }
@@ -218,9 +256,12 @@ export async function GET(request: NextRequest) {
             }
 
             groupedData[catId].products.push({
-                id: `${p.id}-${p.stage}`,
+                id: `${p.id}-${p.stage}-${p.origin}-${p.isEFS ? 'efs' : 'nonefs'}`,
                 name: `${p.name} ${p.stage ? `(${p.stage})` : ''}`,
                 code: p.code,
+                hsCode: p.hsCode || '-',
+                origin: p.origin || 'LOCAL',
+                isEFS: Boolean(p.isEFS),
                 unit: p.baseUnit?.code || p.baseUnitId || '-',
                 stockBalance: p.stockBalance,
                 stage: p.stage,
