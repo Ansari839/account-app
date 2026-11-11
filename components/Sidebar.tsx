@@ -42,7 +42,6 @@ const menuItems: MenuItem[] = [
       sub: [
           { name: 'Overview', path: '/inventory' },
           'Products',
-          { name: 'Opening Stock', path: '/inventory/opening' },
           'Categories',
           'Warehouses'
       ] },

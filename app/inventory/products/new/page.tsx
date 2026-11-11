@@ -14,7 +14,11 @@ import {
     Trash2,
     Barcode,
     Layers,
-    Info
+    Info,
+    Warehouse,
+    Globe,
+    Calendar,
+    ShieldAlert
 } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
 import { cn } from '@/lib/utils';
@@ -50,6 +54,21 @@ export default function NewProductPage() {
     // Dropdown Data
     const [categories, setCategories] = useState<any[]>([]);
     const [units, setUnits] = useState<any[]>([]);
+    const [warehouses, setWarehouses] = useState<any[]>([]);
+
+    // Opening Stock State
+    const [enableOpeningStock, setEnableOpeningStock] = useState(false);
+    const [openingStock, setOpeningStock] = useState({
+        warehouseId: '',
+        stage: 'RAW',
+        origin: 'LOCAL',
+        isEFS: false,
+        qty: '',
+        costRate: '',
+        itpRate: '',
+        batchNo: '',
+        date: new Date().toISOString().split('T')[0]
+    });
 
     useEffect(() => {
         fetchDropdowns();
@@ -57,9 +76,10 @@ export default function NewProductPage() {
 
     const fetchDropdowns = async () => {
         try {
-            const [catRes, unitRes] = await Promise.all([
+            const [catRes, unitRes, whRes] = await Promise.all([
                 authenticatedFetch('/api/inventory/categories'),
-                authenticatedFetch('/api/admin/units')
+                authenticatedFetch('/api/admin/units'),
+                authenticatedFetch('/api/inventory/warehouses')
             ]);
 
             if (catRes.ok) {
@@ -69,6 +89,19 @@ export default function NewProductPage() {
             if (unitRes.ok) {
                 const unitJson = await unitRes.json();
                 if (unitJson.success) setUnits(unitJson.data);
+            }
+            if (whRes.ok) {
+                const whJson = await whRes.json();
+                if (whJson.success) {
+                    const whs = whJson.data || [];
+                    setWarehouses(whs);
+                    if (whs.length > 0) {
+                        setOpeningStock(prev => ({
+                            ...prev,
+                            warehouseId: prev.warehouseId || whs[0].id
+                        }));
+                    }
+                }
             }
         } catch (error) {
             console.error("Error fetching dropdowns:", error);
@@ -146,7 +179,36 @@ export default function NewProductPage() {
             const json = await res.json();
 
             if (res.ok && json.success) {
-                showNotification('success', 'Product created successfully!');
+                const createdProduct = json.data;
+
+                // If user entered opening stock, record it directly
+                if (enableOpeningStock && Number(openingStock.qty) > 0) {
+                    try {
+                        await authenticatedFetch('/api/inventory/opening', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                productId: createdProduct.id,
+                                warehouseId: openingStock.warehouseId,
+                                stage: openingStock.stage || formData.stage || 'RAW',
+                                origin: openingStock.origin,
+                                isEFS: openingStock.origin === 'IMPORT' ? openingStock.isEFS : false,
+                                qty: Number(openingStock.qty),
+                                costRate: Number(openingStock.costRate) || 0,
+                                itpRate: openingStock.origin === 'IMPORT' ? (Number(openingStock.itpRate) || null) : null,
+                                batchNo: openingStock.batchNo || null,
+                                date: openingStock.date
+                            })
+                        });
+                        showNotification('success', 'Product and opening stock created successfully!');
+                    } catch (openErr) {
+                        console.error('Failed to save opening stock:', openErr);
+                        showNotification('warning', 'Product created, but opening stock could not be recorded.');
+                    }
+                } else {
+                    showNotification('success', 'Product created successfully!');
+                }
+
                 router.push('/inventory/products');
             } else {
                 showNotification('error', json.error || "Failed to save product");
@@ -428,6 +490,275 @@ export default function NewProductPage() {
                             </div>
                         )}
                     </div>
+                </div>
+
+                {/* Opening Stock (Optional) Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all">
+                    <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                                <Layers size={20} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-slate-800 dark:text-white">Opening Stock</h3>
+                                <p className="text-xs text-slate-400 font-medium">Record initial stock balance, origin, and valuation immediately</p>
+                            </div>
+                        </div>
+
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                                {enableOpeningStock ? 'Enabled' : 'Add Opening Stock'}
+                            </span>
+                            <div 
+                                onClick={() => setEnableOpeningStock(!enableOpeningStock)}
+                                className={cn(
+                                    "w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer",
+                                    enableOpeningStock ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-700"
+                                )}
+                            >
+                                <div className={cn(
+                                    "w-5 h-5 rounded-full bg-white shadow-sm transition-transform",
+                                    enableOpeningStock ? "translate-x-6" : "translate-x-0"
+                                )} />
+                            </div>
+                        </label>
+                    </div>
+
+                    {enableOpeningStock && (
+                        <div className="p-6 space-y-5 animate-in fade-in duration-200">
+                            {/* Warehouse & Date */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                        <Warehouse size={14} className="text-indigo-500" /> Target Warehouse <span className="text-rose-500">*</span>
+                                    </label>
+                                    <select
+                                        className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
+                                        value={openingStock.warehouseId}
+                                        onChange={e => setOpeningStock({ ...openingStock, warehouseId: e.target.value })}
+                                    >
+                                        <option value="">Select Warehouse...</option>
+                                        {warehouses.map(w => (
+                                            <option key={w.id} value={w.id}>{w.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                        <Calendar size={14} className="text-indigo-500" /> Opening Date <span className="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        type="date"
+                                        className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
+                                        value={openingStock.date}
+                                        onChange={e => setOpeningStock({ ...openingStock, date: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Production Stage */}
+                            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Layers size={14} className="text-indigo-500" /> Stock Stage <span className="text-rose-500">*</span>
+                                </label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[
+                                        { id: "RAW", label: "RAW", desc: "Yarn / Raw Material" },
+                                        { id: "GREY", label: "GREY", desc: "Loom / Kora Fabric" },
+                                        { id: "FINISH", label: "FINISH", desc: "Processed / Dyed Fabric" }
+                                    ].map(s => (
+                                        <button
+                                            key={s.id}
+                                            type="button"
+                                            onClick={() => setOpeningStock({ ...openingStock, stage: s.id })}
+                                            className={cn(
+                                                "p-2.5 rounded-xl border text-left transition-all",
+                                                openingStock.stage === s.id
+                                                    ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm"
+                                                    : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                            )}
+                                        >
+                                            <div className="text-xs font-black uppercase">{s.label}</div>
+                                            <div className="text-[10px] text-slate-400 mt-0.5">{s.desc}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Origin: Local vs Import */}
+                            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Globe size={14} className="text-indigo-500" /> Stock Origin <span className="text-rose-500">*</span>
+                                </label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setOpeningStock({ ...openingStock, origin: "LOCAL", isEFS: false })}
+                                        className={cn(
+                                            "p-3 rounded-xl border text-left transition-all",
+                                            openingStock.origin === "LOCAL"
+                                                ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm"
+                                                : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                        )}
+                                    >
+                                        <div className="text-xs font-black uppercase flex items-center gap-1.5">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Local Stock
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 mt-0.5">Purchased locally or service</div>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setOpeningStock({ ...openingStock, origin: "IMPORT" })}
+                                        className={cn(
+                                            "p-3 rounded-xl border text-left transition-all",
+                                            openingStock.origin === "IMPORT"
+                                                ? "bg-sky-500/10 border-sky-500 text-sky-600 dark:text-sky-400 font-bold shadow-sm"
+                                                : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                        )}
+                                    >
+                                        <div className="text-xs font-black uppercase flex items-center gap-1.5">
+                                            <span className="w-2 h-2 rounded-full bg-sky-500"></span> Import Stock
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 mt-0.5">Imported under GD</div>
+                                    </button>
+                                </div>
+
+                                {openingStock.origin === "IMPORT" && (
+                                    <div className="mt-3 p-3.5 rounded-2xl bg-sky-500/5 border border-sky-500/20 space-y-2 animate-in fade-in duration-200">
+                                        <label className="text-xs font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                                            <ShieldAlert size={14} /> Customs Scheme
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <label className={cn(
+                                                "flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer text-xs font-bold transition-all",
+                                                openingStock.isEFS
+                                                    ? "bg-amber-500/10 border-amber-500 text-amber-700 dark:text-amber-400"
+                                                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                                            )}>
+                                                <input
+                                                    type="radio"
+                                                    name="newProdIsEFS"
+                                                    checked={openingStock.isEFS === true}
+                                                    onChange={() => setOpeningStock({ ...openingStock, isEFS: true })}
+                                                    className="text-amber-600 focus:ring-amber-500"
+                                                />
+                                                <div>
+                                                    <div>EFS (Duty Exempted)</div>
+                                                    <div className="text-[10px] text-amber-500 font-normal">Production consumption only</div>
+                                                </div>
+                                            </label>
+
+                                            <label className={cn(
+                                                "flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer text-xs font-bold transition-all",
+                                                !openingStock.isEFS
+                                                    ? "bg-indigo-500/10 border-indigo-500 text-indigo-700 dark:text-indigo-400"
+                                                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                                            )}>
+                                                <input
+                                                    type="radio"
+                                                    name="newProdIsEFS"
+                                                    checked={openingStock.isEFS === false}
+                                                    onChange={() => setOpeningStock({ ...openingStock, isEFS: false })}
+                                                    className="text-indigo-600 focus:ring-indigo-500"
+                                                />
+                                                <div>
+                                                    <div>Non-EFS (Commercial)</div>
+                                                    <div className="text-[10px] text-slate-400 font-normal">Saleable locally</div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Quantity, Book Rate, Total */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                        Quantity <span className="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        placeholder="0.00"
+                                        className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-right"
+                                        value={openingStock.qty}
+                                        onChange={e => setOpeningStock({ ...openingStock, qty: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                        Book Rate (PKR) <span className="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        placeholder="Cost / unit"
+                                        className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-right"
+                                        value={openingStock.costRate}
+                                        onChange={e => setOpeningStock({ ...openingStock, costRate: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                        Total Value (PKR)
+                                    </label>
+                                    <div className="w-full p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-bold text-right">
+                                        Rs. {((Number(openingStock.qty) || 0) * (Number(openingStock.costRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ITP Rate (Import only) */}
+                            {openingStock.origin === "IMPORT" && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 animate-in fade-in duration-200">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider">
+                                            Customs ITP Rate (PKR)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="any"
+                                            min="0"
+                                            placeholder="Assessed + Duties / Qty"
+                                            className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-sky-500 text-sm font-semibold text-right"
+                                            value={openingStock.itpRate}
+                                            onChange={e => setOpeningStock({ ...openingStock, itpRate: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                            Total ITP Value (PKR)
+                                        </label>
+                                        <div className="w-full p-2.5 rounded-xl bg-white/50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sky-700 dark:text-sky-300 text-sm font-bold text-right">
+                                            Rs. {((Number(openingStock.qty) || 0) * (Number(openingStock.itpRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Lot / Batch / GD Number */}
+                            <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                    Lot # / Batch # / GD Number
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder={openingStock.origin === "IMPORT" ? "e.g. GD-KAPE-HC-12345" : "e.g. LOT-2026-001"}
+                                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-mono"
+                                    value={openingStock.batchNo}
+                                    onChange={e => setOpeningStock({ ...openingStock, batchNo: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

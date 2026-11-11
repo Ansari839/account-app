@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useNotifications } from '@/context/NotificationContext';
 import { cn } from '@/lib/utils';
+import OpeningStockModal from '@/components/inventory/OpeningStockModal';
 
 interface Variant {
     name: string;
@@ -30,6 +31,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     const { showNotification } = useNotifications();
     const [loading, setLoading] = useState(false);
     const [isPageLoading, setIsPageLoading] = useState(true);
+    const [openingModalOpen, setOpeningModalOpen] = useState(false);
     const { id } = React.use(params as unknown as Promise<any>);
 
     // Form State
@@ -191,8 +193,17 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                     >
                         <ArrowLeft size={16} /> Back to Products
                     </button>
-                    <div className="flex items-center gap-2 text-sm font-bold text-slate-400">
-                        <PackageSearch size={16} className="text-violet-500" /> Edit Item
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setOpeningModalOpen(true)}
+                            className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-colors"
+                        >
+                            <Layers size={14} /> Add Opening Stock
+                        </button>
+                        <div className="flex items-center gap-2 text-sm font-bold text-slate-400">
+                            <PackageSearch size={16} className="text-violet-500" /> Edit Item
+                        </div>
                     </div>
                 </div>
 
@@ -459,6 +470,17 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                     </div>
                 </div>
             </div>
+            <OpeningStockModal
+                isOpen={openingModalOpen}
+                onClose={() => setOpeningModalOpen(false)}
+                product={{
+                    id,
+                    name: formData.name,
+                    code: formData.code,
+                    stage: formData.stage,
+                    isService: formData.isService
+                }}
+            />
         </MainLayout>
     );
 }
