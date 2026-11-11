@@ -323,17 +323,45 @@ export default function NewImportInvoicePage() {
         const subtotal = formData.items.reduce((sum: number, item: any) => sum + ((Number(item.qty) || 0) * (Number(item.rate) || 0)), 0);
         const discount = formData.hasDiscount ? Number(formData.discountAmount || 0) : 0;
         
-        let currentTotal = subtotal - discount;
+        // Customs Assessed Value (PKR) entered by user on items
+        const totalAssessedPKR = formData.items.reduce((sum: number, it: any) => sum + (Number(it.assessedValuePKR) || 0), 0);
+        const effectiveAssessedPKR = totalAssessedPKR > 0 ? totalAssessedPKR : (subtotal - discount);
+
+        let runningTotal = subtotal - discount;
+        let runningDuties = 0;
+        let runningSalesTaxes = 0;
         let taxTotal = 0;
         
-        // Calculate cascading taxes
+        // Calculate duties and taxes on their exact Customs Assessment Bases
         const calculatedTaxes = (formData.gdTaxes || []).map((tax: any) => {
-            const baseAmount = tax.calculation === 'PREVIOUS_TOTAL' ? currentTotal : (subtotal - discount);
+            let baseAmount = effectiveAssessedPKR;
+
+            if (tax.calculation === 'ASSESSED_VALUE') {
+                baseAmount = effectiveAssessedPKR;
+            } else if (tax.calculation === 'ASSESSED_PLUS_DUTIES') {
+                // GD Rule for Sales Tax: Assessed Value + CD + RD + ACD
+                baseAmount = effectiveAssessedPKR + runningDuties;
+            } else if (tax.calculation === 'ASSESSED_PLUS_ALL') {
+                // GD Rule for Income Tax Sec 148: Assessed Value + CD + RD + ACD + Sales Tax + AST
+                baseAmount = effectiveAssessedPKR + runningDuties + runningSalesTaxes;
+            } else if (tax.calculation === 'PREVIOUS_TOTAL') {
+                baseAmount = runningTotal;
+            } else if (tax.calculation === 'NET_TOTAL') {
+                baseAmount = subtotal - discount;
+            }
+
             const rate = Number(tax.rate) || 0;
             const taxAmount = rate > 0 ? (baseAmount * (rate / 100)) : (Number(tax.taxAmount) || 0);
             
             taxTotal += taxAmount;
-            currentTotal += taxAmount;
+            runningTotal += taxAmount;
+
+            const tName = (tax.taxName || '').toLowerCase();
+            if (tax.isCapitalized || tName.includes('duty') || tName.includes('cd') || tName.includes('rd') || tName.includes('acd')) {
+                runningDuties += taxAmount;
+            } else if (tName.includes('sales') || tName.includes('st') || tName.includes('ast')) {
+                runningSalesTaxes += taxAmount;
+            }
             
             return { ...tax, baseAmount, taxAmount };
         });
@@ -344,7 +372,7 @@ export default function NewImportInvoicePage() {
 
         const grandTotal = subtotal - discount + taxTotal + gdChargesTotal;
         
-        return { subtotal, discount, taxTotal, gdChargesTotal, insPKR, landPKR, grandTotal, calculatedTaxes };
+        return { subtotal, discount, taxTotal, gdChargesTotal, insPKR, landPKR, grandTotal, calculatedTaxes, totalAssessedPKR };
     };
 
     const handleAddTax = () => {
@@ -352,7 +380,7 @@ export default function NewImportInvoicePage() {
             ...prev,
             gdTaxes: [
                 ...(prev.gdTaxes || []),
-                { id: Date.now().toString(), taxCodeId: "", taxName: "", calculation: "NET_TOTAL", rate: 0, taxAmount: 0, isCapitalized: false, accountId: null }
+                { id: Date.now().toString(), taxCodeId: "", taxName: "", calculation: "ASSESSED_VALUE", rate: 0, taxAmount: 0, isCapitalized: true, accountId: null }
             ]
         }));
     };
@@ -364,19 +392,19 @@ export default function NewImportInvoicePage() {
         const advItAcc = accounts.find((a: any) => a.code === '1170' || a.name.toLowerCase().includes('advance income'));
 
         const standardDuties = [
-            { id: Date.now().toString() + '1', taxCodeId: '', taxName: 'Customs Duty (CD)', calculation: 'NET_TOTAL', rate: 11, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
-            { id: Date.now().toString() + '2', taxCodeId: '', taxName: 'Additional Customs Duty (ACD)', calculation: 'NET_TOTAL', rate: 4, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
-            { id: Date.now().toString() + '3', taxCodeId: '', taxName: 'Regulatory Duty (RD)', calculation: 'NET_TOTAL', rate: 5, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
-            { id: Date.now().toString() + '4', taxCodeId: '', taxName: 'Sales Tax (ST 18%)', calculation: 'PREVIOUS_TOTAL', rate: 18, taxAmount: 0, isCapitalized: false, accountId: inputStAcc?.id || null },
-            { id: Date.now().toString() + '5', taxCodeId: '', taxName: 'Additional Sales Tax (AST 3%)', calculation: 'PREVIOUS_TOTAL', rate: 3, taxAmount: 0, isCapitalized: false, accountId: inputStAcc?.id || null },
-            { id: Date.now().toString() + '6', taxCodeId: '', taxName: 'Advance Income Tax (Sec 148)', calculation: 'PREVIOUS_TOTAL', rate: 2, taxAmount: 0, isCapitalized: false, accountId: advItAcc?.id || null }
+            { id: Date.now().toString() + '1', taxCodeId: '', taxName: 'Customs Duty (CD)', calculation: 'ASSESSED_VALUE', rate: 11, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
+            { id: Date.now().toString() + '2', taxCodeId: '', taxName: 'Additional Customs Duty (ACD)', calculation: 'ASSESSED_VALUE', rate: 4, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
+            { id: Date.now().toString() + '3', taxCodeId: '', taxName: 'Regulatory Duty (RD)', calculation: 'ASSESSED_VALUE', rate: 5, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
+            { id: Date.now().toString() + '4', taxCodeId: '', taxName: 'Sales Tax (ST 18%)', calculation: 'ASSESSED_PLUS_DUTIES', rate: 18, taxAmount: 0, isCapitalized: false, accountId: inputStAcc?.id || null },
+            { id: Date.now().toString() + '5', taxCodeId: '', taxName: 'Additional Sales Tax (AST 3%)', calculation: 'ASSESSED_PLUS_DUTIES', rate: 3, taxAmount: 0, isCapitalized: false, accountId: inputStAcc?.id || null },
+            { id: Date.now().toString() + '6', taxCodeId: '', taxName: 'Advance Income Tax (Sec 148)', calculation: 'ASSESSED_PLUS_ALL', rate: 2, taxAmount: 0, isCapitalized: false, accountId: advItAcc?.id || null }
         ];
 
         setFormData((prev: any) => ({
             ...prev,
             gdTaxes: [...(prev.gdTaxes || []), ...standardDuties]
         }));
-        showNotification('success', 'Standard Pakistan Customs GD Duties (CD, ACD, RD, ST 18%, AST 3%, IT Sec 148) loaded!');
+        showNotification('success', 'Standard Pakistan Customs GD Duties (CD, ACD, RD on Assessed Value; ST on Assessed+Duties; IT on Total) loaded!');
     };
 
     const handleRemoveTax = (id: string) => {
@@ -1097,8 +1125,11 @@ export default function NewImportInvoicePage() {
                                             <div className="col-span-2">
                                                 <Combobox
                                                     options={[
-                                                        { value: 'NET_TOTAL', label: 'Net Total (Goods Value)' },
-                                                        { value: 'PREVIOUS_TOTAL', label: 'Previous Row Total (Cascading)' }
+                                                        { value: 'ASSESSED_VALUE', label: 'Customs Assessed Value (PKR)' },
+                                                        { value: 'ASSESSED_PLUS_DUTIES', label: 'Assessed + Duties (ST 18% / AST 3%)' },
+                                                        { value: 'ASSESSED_PLUS_ALL', label: 'Assessed + Duties + ST (IT Sec 148)' },
+                                                        { value: 'PREVIOUS_TOTAL', label: 'Previous Row Total (Cascading)' },
+                                                        { value: 'NET_TOTAL', label: 'Commercial Invoice Value (PKR)' }
                                                     ]}
                                                     value={tax.calculation}
                                                     onChange={(val) => updateTax(tax.id, 'calculation', val)}

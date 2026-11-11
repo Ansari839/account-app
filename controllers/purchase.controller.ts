@@ -1523,19 +1523,45 @@ export class PurchaseController {
                     };
                 });
 
-                const discount = hasDiscount ? Number(discountAmount || 0) * xRate : 0;
-                let currentTotalPKR = subtotalPKR - discount;
+                const discount = hasDiscount ? Number(discountAmount || 0) * docRate : 0;
                 
+                // Customs Assessed Value of all items combined
+                const totalAssessedPKR = processedItems.reduce((sum: number, it: any) => sum + (Number(it.assessedValuePKR) || 0), 0);
+                const effectiveAssessedPKR = totalAssessedPKR > 0 ? totalAssessedPKR : (subtotalPKR - discount);
+
+                let runningTotalPKR = subtotalPKR - discount;
+                let runningDutiesPKR = 0;
+                let runningSalesTaxesPKR = 0;
                 let totalTaxAmount = 0;
                 let totalCapitalizedTaxes = 0;
 
                 const processedTaxes = (gdTaxes || []).map((tax: any) => {
-                    const baseAmount = tax.calculation === 'PREVIOUS_TOTAL' ? currentTotalPKR : (subtotalPKR - discount);
+                    let baseAmount = effectiveAssessedPKR;
+
+                    if (tax.calculation === 'ASSESSED_VALUE') {
+                        baseAmount = effectiveAssessedPKR;
+                    } else if (tax.calculation === 'ASSESSED_PLUS_DUTIES') {
+                        baseAmount = effectiveAssessedPKR + runningDutiesPKR;
+                    } else if (tax.calculation === 'ASSESSED_PLUS_ALL') {
+                        baseAmount = effectiveAssessedPKR + runningDutiesPKR + runningSalesTaxesPKR;
+                    } else if (tax.calculation === 'PREVIOUS_TOTAL') {
+                        baseAmount = runningTotalPKR;
+                    } else if (tax.calculation === 'NET_TOTAL') {
+                        baseAmount = subtotalPKR - discount;
+                    }
+
                     const rate = Number(tax.rate) || 0;
-                    const taxAmt = rate > 0 ? (baseAmount * (rate / 100)) : (Number(tax.taxAmount) || 0); // User inputs PKR directly for taxes usually
+                    const taxAmt = rate > 0 ? (baseAmount * (rate / 100)) : (Number(tax.taxAmount) || 0);
                     
                     totalTaxAmount += taxAmt;
-                    currentTotalPKR += taxAmt;
+                    runningTotalPKR += taxAmt;
+
+                    const tName = (tax.taxName || '').toLowerCase();
+                    if (tax.isCapitalized || tName.includes('duty') || tName.includes('cd') || tName.includes('rd') || tName.includes('acd')) {
+                        runningDutiesPKR += taxAmt;
+                    } else if (tName.includes('sales') || tName.includes('st') || tName.includes('ast')) {
+                        runningSalesTaxesPKR += taxAmt;
+                    }
 
                     if (tax.isCapitalized) {
                         totalCapitalizedTaxes += taxAmt;
@@ -1544,7 +1570,7 @@ export class PurchaseController {
                     return {
                         taxCodeId: tax.taxCodeId === 'MANUAL' ? null : (tax.taxCodeId || null),
                         taxName: tax.taxName || 'GD Tax/Duty',
-                        calculation: tax.calculation || 'NET_TOTAL',
+                        calculation: tax.calculation || 'ASSESSED_VALUE',
                         rate: rate,
                         baseAmount,
                         taxAmount: taxAmt,
