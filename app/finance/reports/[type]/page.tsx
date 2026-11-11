@@ -387,6 +387,9 @@ export default function ReportViewer() {
         // --- STOCK ITEM WISE ---
         if (reportPath === 'stock-item-wise') {
             const rowWithIds = data.map((r: any, i: number) => ({ ...r, id: `si-${i}` }));
+            const totalQty = data.reduce((sum: number, r: any) => sum + (Number(r.stock) || 0), 0);
+            const totalVal = data.reduce((sum: number, r: any) => sum + (Number(r.totalAmount) || 0), 0);
+
             const columns: Column<any>[] = [
                 { header: 'Product Code', accessor: (row: any) => <span className="font-mono text-slate-500">{row.productCode}</span> },
                 {
@@ -407,11 +410,35 @@ export default function ReportViewer() {
                 { header: 'Category', accessor: (row: any) => <span className="text-sm font-medium">{row.category}</span> },
                 { header: 'Stage', accessor: (row: any) => <span className="text-xs uppercase font-bold bg-indigo-100 dark:bg-indigo-500/20 px-2 py-1 rounded-md text-indigo-600 dark:text-indigo-400">{row.stage}</span> },
                 { header: 'Unit', accessor: (row: any) => <span className="text-xs uppercase font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full text-slate-500">{row.unit}</span> },
-                { header: 'Current Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-lg">{row.stock}</span> : <span className="text-rose-500 font-black font-mono text-lg">{row.stock}</span> },
+                { header: 'Current Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-base">{Number(row.stock).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> : <span className="text-rose-500 font-black font-mono text-base">{row.stock}</span> },
+                { header: 'Avg Rate', accessor: (row: any) => <span className="font-mono text-slate-600 dark:text-slate-300 font-medium">Rs. {Number(row.avgRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
+                { header: 'Stock Amount', accessor: (row: any) => <span className="font-black text-indigo-600 dark:text-indigo-400 font-mono text-base">Rs. {Number(row.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
             ];
             return (
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                    <DataTable data={rowWithIds} columns={columns} />
+                <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Stock Valuation</span>
+                            <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono mt-1">
+                                Rs. {totalVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Stock Quantity</span>
+                            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1">
+                                {totalQty.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            </div>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Active Products</span>
+                            <div className="text-2xl font-black text-slate-800 dark:text-white font-mono mt-1">
+                                {data.length}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                        <DataTable data={rowWithIds} columns={columns} />
+                    </div>
                 </div>
             );
         }
@@ -419,16 +446,43 @@ export default function ReportViewer() {
         // --- STOCK SUMMARY ---
         if (reportPath === 'stock-summary') {
             const rowWithIds = data.map((r: any, i: number) => ({ ...r, id: `ss-${i}` }));
+            const totalQty = data.reduce((sum: number, r: any) => sum + (Number(r.stock) || 0), 0);
+            const totalVal = data.reduce((sum: number, r: any) => sum + (Number(r.totalAmount) || 0), 0);
+
             const columns: Column<any>[] = [
                 { header: 'Product Code', accessor: (row: any) => <span className="font-mono text-slate-500">{row.productCode || '-'}</span> },
                 { header: 'Product Name', accessor: (row: any) => <span className="font-bold">{row.productName || '-'}</span> },
                 { header: 'Warehouse', accessor: (row: any) => <span className="text-slate-600 dark:text-slate-300 font-medium">{row.warehouse || '-'}</span> },
                 { header: 'Stage', accessor: (row: any) => <span className="text-xs uppercase font-bold bg-indigo-100 dark:bg-indigo-500/20 px-2 py-1 rounded-md text-indigo-600 dark:text-indigo-400">{row.stage}</span> },
-                { header: 'Available Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono">{row.stock.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> : <span className="text-rose-500 font-black font-mono">{row.stock}</span> },
+                { header: 'Available Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-base">{Number(row.stock).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> : <span className="text-rose-500 font-black font-mono text-base">{row.stock}</span> },
+                { header: 'Avg Rate', accessor: (row: any) => <span className="font-mono text-slate-600 dark:text-slate-300 font-medium">Rs. {Number(row.avgRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
+                { header: 'Stock Amount', accessor: (row: any) => <span className="font-black text-indigo-600 dark:text-indigo-400 font-mono text-base">Rs. {Number(row.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
             ];
             return (
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                    <DataTable data={rowWithIds} columns={columns} />
+                <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Stock Valuation</span>
+                            <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono mt-1">
+                                Rs. {totalVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Stock Quantity</span>
+                            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1">
+                                {totalQty.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            </div>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Warehouses / Items</span>
+                            <div className="text-2xl font-black text-slate-800 dark:text-white font-mono mt-1">
+                                {data.length}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                        <DataTable data={rowWithIds} columns={columns} />
+                    </div>
                 </div>
             );
         }

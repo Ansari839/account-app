@@ -583,25 +583,59 @@ export class ReportService {
         if (productId) where.productId = productId;
         if (variantId) where.variantId = variantId;
 
-        const summary = await prisma.stockLedger.groupBy({
-            by: ['productId', 'warehouseId', 'stage'],
+        const entries = await prisma.stockLedger.findMany({
             where,
-            _sum: { qtyIn: true, qtyOut: true }
+            select: {
+                productId: true,
+                warehouseId: true,
+                stage: true,
+                qtyIn: true,
+                qtyOut: true,
+                costRate: true
+            }
         });
 
         const products = await prisma.product.findMany({ where: { companyId } });
         const warehouses = await prisma.warehouse.findMany({ where: { companyId } });
 
-        return summary.map(s => {
+        const groupMap = new Map<string, {
+            productId: string;
+            warehouseId: string | null;
+            stage: string;
+            stock: number;
+            totalAmount: number;
+        }>();
+
+        for (const e of entries) {
+            const key = `${e.productId}_${e.warehouseId || 'null'}_${e.stage || 'RAW'}`;
+            const qty = (Number(e.qtyIn) || 0) - (Number(e.qtyOut) || 0);
+            const rate = Number(e.costRate) || 0;
+            const amount = qty * rate;
+
+            const existing = groupMap.get(key) || {
+                productId: e.productId,
+                warehouseId: e.warehouseId,
+                stage: e.stage || 'RAW',
+                stock: 0,
+                totalAmount: 0
+            };
+            existing.stock += qty;
+            existing.totalAmount += amount;
+            groupMap.set(key, existing);
+        }
+
+        return Array.from(groupMap.values()).map(s => {
             const prod = products.find(p => p.id === s.productId);
             const wh = warehouses.find(w => w.id === s.warehouseId);
-            const stock = (s._sum.qtyIn?.toNumber() || 0) - (s._sum.qtyOut?.toNumber() || 0);
+            const avgRate = s.stock > 0 ? (s.totalAmount / s.stock) : 0;
             return {
                 productName: prod?.name,
                 productCode: prod?.code,
                 warehouse: wh?.name,
                 stage: s.stage || 'RAW',
-                stock
+                stock: Number(s.stock.toFixed(2)),
+                avgRate: Number(avgRate.toFixed(2)),
+                totalAmount: Number(s.totalAmount.toFixed(2))
             };
         });
     }
@@ -614,10 +648,16 @@ export class ReportService {
         if (warehouseId) where.warehouseId = warehouseId;
         if (variantId) where.variantId = variantId;
 
-        const summary = await prisma.stockLedger.groupBy({
-            by: ['productId', 'variantId', 'stage'],
+        const entries = await prisma.stockLedger.findMany({
             where,
-            _sum: { qtyIn: true, qtyOut: true }
+            select: {
+                productId: true,
+                variantId: true,
+                stage: true,
+                qtyIn: true,
+                qtyOut: true,
+                costRate: true
+            }
         });
 
         const products = await prisma.product.findMany({
@@ -625,10 +665,36 @@ export class ReportService {
             include: { Unit: true, Category: true, ProductVariant: true }
         });
 
-        return summary.map(s => {
+        const groupMap = new Map<string, {
+            productId: string;
+            variantId: string | null;
+            stage: string;
+            stock: number;
+            totalAmount: number;
+        }>();
+
+        for (const e of entries) {
+            const key = `${e.productId}_${e.variantId || 'null'}_${e.stage || 'RAW'}`;
+            const qty = (Number(e.qtyIn) || 0) - (Number(e.qtyOut) || 0);
+            const rate = Number(e.costRate) || 0;
+            const amount = qty * rate;
+
+            const existing = groupMap.get(key) || {
+                productId: e.productId,
+                variantId: e.variantId,
+                stage: e.stage || 'RAW',
+                stock: 0,
+                totalAmount: 0
+            };
+            existing.stock += qty;
+            existing.totalAmount += amount;
+            groupMap.set(key, existing);
+        }
+
+        return Array.from(groupMap.values()).map(s => {
             const prod = products.find(p => p.id === s.productId);
             const variant = prod?.ProductVariant?.find((v: any) => v.id === s.variantId);
-            const stock = (s._sum.qtyIn?.toNumber() || 0) - (s._sum.qtyOut?.toNumber() || 0);
+            const avgRate = s.stock > 0 ? (s.totalAmount / s.stock) : 0;
             return {
                 id: s.productId,
                 variantId: s.variantId,
@@ -638,7 +704,9 @@ export class ReportService {
                 category: prod?.Category?.name || '-',
                 unit: prod?.Unit?.name || '-',
                 stage: s.stage || 'RAW',
-                stock
+                stock: Number(s.stock.toFixed(2)),
+                avgRate: Number(avgRate.toFixed(2)),
+                totalAmount: Number(s.totalAmount.toFixed(2))
             };
         });
     }
