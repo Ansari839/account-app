@@ -374,7 +374,7 @@ export default function NewImportInvoicePage() {
 
     return (
         <MainLayout>
-            <div className="max-w-6xl mx-auto space-y-6 pb-32 animate-in fade-in duration-500">
+            <div className="w-full max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6 pb-36 animate-in fade-in duration-500">
                 {/* Header Action Bar */}
                 <div className="flex items-center justify-between">
                     <button 
@@ -396,22 +396,22 @@ export default function NewImportInvoicePage() {
                     
                     <div className="relative z-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
                         {/* Title Header */}
-                        <div className="lg:col-span-4 space-y-4">
+                        <div className="lg:col-span-3 space-y-4">
                             <div>
                                 <div className="flex items-center gap-2 mb-2">
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/30">
                                         ● Direct Import Bill
                                     </span>
                                 </div>
-                                <h1 className="text-4xl font-black text-white tracking-tight">New Import Bill</h1>
-                                <p className="text-slate-400 font-medium text-sm mt-1">
+                                <h1 className="text-3xl font-black text-white tracking-tight">New Import Bill</h1>
+                                <p className="text-slate-400 font-medium text-xs mt-1 leading-relaxed">
                                     Direct Goods Declaration (GD) & Commercial Import Invoice with EFS & ITP calculation.
                                 </p>
                             </div>
                         </div>
                         
                         {/* Import Details Form */}
-                        <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div className="lg:col-span-9 grid grid-cols-1 md:grid-cols-3 gap-5">
                             <div className="space-y-2">
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
                                     <Building2 size={14} /> Import Account / Supplier <span className="text-rose-400">*</span>
@@ -547,14 +547,14 @@ export default function NewImportInvoicePage() {
                         </h2>
                         <button 
                             onClick={handleAddItem}
-                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
+                            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-sm hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
                         >
                             <Plus size={16} /> Add Product
                         </button>
                     </div>
 
                     <div className="p-6 overflow-visible">
-                        <div className="min-w-[800px]">
+                        <div className="w-full">
                             <div className="grid grid-cols-12 gap-4 mb-3 px-4 text-xs font-bold uppercase tracking-widest text-slate-400">
                                 <div className="col-span-4">Product</div>
                                 <div className="col-span-2">Unit</div>
@@ -567,25 +567,28 @@ export default function NewImportInvoicePage() {
                             <div className="space-y-4">
                                 {formData.items.map((item: any) => {
                                     const itpRate = Number(item.itpRate || 0);
+                                    const qty = Number(item.qty || 0);
+                                    const foreignRate = Number(item.foreignRate || 0);
+                                    const totalFC = qty * foreignRate;
 
                                     return (
-                                        <div key={item.id} className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3 transition-all hover:border-indigo-300 dark:hover:border-indigo-500/40">
+                                        <div key={item.id} className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4 transition-all hover:border-indigo-300 dark:hover:border-indigo-500/40">
                                             {/* Tier 1: Product, Qty, Commercial Supplier Rate */}
-                                            <div className="grid grid-cols-12 gap-3 items-center">
+                                            <div className="grid grid-cols-12 gap-4 items-center">
                                                 <div className="col-span-4">
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Product</label>
+                                                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Product</label>
                                                     <Combobox
                                                         options={productOptions}
                                                         value={item.productId}
                                                         onChange={(val) => updateItem(item.id, 'productId', val)}
                                                         placeholder="Select product..."
-                                                        searchPlaceholder="Search products..."
+                                                        searchPlaceholder="Search products by name, category, HS code..."
                                                         className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
                                                     />
                                                 </div>
 
                                                 <div className="col-span-2">
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Unit</label>
+                                                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Unit</label>
                                                     <Combobox
                                                         options={units.map(u => ({ value: u.id, label: u.name }))}
                                                         value={item.unitId || ''}
@@ -597,7 +600,7 @@ export default function NewImportInvoicePage() {
                                                 </div>
 
                                                 <div className="col-span-2">
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1 text-right">Bill Qty</label>
+                                                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-1 text-right">Bill Qty</label>
                                                     <input
                                                         type="number"
                                                         value={item.qty || ''}
@@ -609,7 +612,14 @@ export default function NewImportInvoicePage() {
                                                 </div>
                                                 
                                                 <div className="col-span-2">
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1 text-right">Supplier Rate ($)</label>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Supplier Rate ($)</label>
+                                                        {totalFC > 0 && (
+                                                            <span className="text-[10px] font-extrabold text-emerald-500 dark:text-emerald-400">
+                                                                Total: ${totalFC.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <input
                                                         type="number"
                                                         step="0.001"
@@ -622,7 +632,7 @@ export default function NewImportInvoicePage() {
                                                 </div>
 
                                                 <div className="col-span-1 text-center">
-                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">EFS</label>
+                                                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-1">EFS</label>
                                                     <label className="relative inline-flex items-center cursor-pointer">
                                                         <input 
                                                             type="checkbox" 
@@ -638,65 +648,65 @@ export default function NewImportInvoicePage() {
                                                 <div className="col-span-1 flex justify-center items-center pt-4">
                                                     <button 
                                                         onClick={() => handleRemoveItem(item.id)}
-                                                        className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
+                                                        className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
                                                         title="Remove Item"
                                                     >
-                                                        <Trash2 size={16} />
+                                                        <Trash2 size={18} />
                                                     </button>
                                                 </div>
                                             </div>
 
                                             {/* Tier 2: Customs Assessed Value & ITP Formula Breakdown */}
-                                            <div className="bg-white/80 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800/80 flex flex-wrap items-center gap-4 text-xs">
+                                            <div className="bg-white/80 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800/80 flex flex-wrap items-center gap-6 text-sm">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Assessed Rate ($):</span>
+                                                    <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">Customs Assessed Rate ($):</span>
                                                     <input
                                                         type="number"
                                                         step="0.001"
                                                         value={item.assessedRate || ''}
                                                         onChange={e => updateItem(item.id, 'assessedRate', parseFloat(e.target.value))}
-                                                        placeholder="Customs Assessed Rate"
-                                                        className="w-24 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-medium text-xs text-slate-800 dark:text-slate-200"
+                                                        placeholder="Rate ($)"
+                                                        className="w-32 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
                                                     />
                                                 </div>
 
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">CD:</span>
+                                                    <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">CD (PKR):</span>
                                                     <input
                                                         type="number"
                                                         value={item.cdAmount || ''}
                                                         onChange={e => updateItem(item.id, 'cdAmount', parseFloat(e.target.value))}
                                                         placeholder="CD"
-                                                        className="w-20 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-medium text-xs text-slate-800 dark:text-slate-200"
+                                                        className="w-28 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
                                                     />
                                                 </div>
 
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">RD:</span>
+                                                    <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">RD (PKR):</span>
                                                     <input
                                                         type="number"
                                                         value={item.rdAmount || ''}
                                                         onChange={e => updateItem(item.id, 'rdAmount', parseFloat(e.target.value))}
                                                         placeholder="RD"
-                                                        className="w-20 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-medium text-xs text-slate-800 dark:text-slate-200"
+                                                        className="w-28 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
                                                     />
                                                 </div>
 
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">ACD:</span>
+                                                    <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-xs">ACD (PKR):</span>
                                                     <input
                                                         type="number"
                                                         value={item.acdAmount || ''}
                                                         onChange={e => updateItem(item.id, 'acdAmount', parseFloat(e.target.value))}
                                                         placeholder="ACD"
-                                                        className="w-20 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-medium text-xs text-slate-800 dark:text-slate-200"
+                                                        className="w-28 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-right font-semibold text-xs text-slate-800 dark:text-slate-200"
                                                     />
                                                 </div>
 
                                                 {/* Calculated ITP Rate Badge */}
-                                                <div className="ml-auto flex items-center gap-2">
-                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">(Assessed+RD+CD+ACD)/Qty:</span>
-                                                    <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-500 dark:text-amber-400 rounded-lg font-black text-xs">
+                                                <div className="ml-auto flex items-center gap-3">
+                                                    <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">(Assessed+RD+CD+ACD)/Qty:</span>
+                                                    <span className="px-4 py-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-500 dark:text-amber-400 rounded-xl font-black text-sm">
                                                         ITP Rate: Rs. {itpRate.toFixed(2)} / unit
                                                     </span>
                                                 </div>
@@ -710,7 +720,7 @@ export default function NewImportInvoicePage() {
                                         <p>No items added yet. Click below to add an import product.</p>
                                         <button
                                             onClick={handleAddItem}
-                                            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                                            className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-2"
                                         >
                                             <Plus size={14} /> Add Product
                                         </button>
@@ -871,7 +881,7 @@ export default function NewImportInvoicePage() {
                 </div>
 
                 {/* Sticky Action Footer */}
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl rounded-[2.5rem] p-4 flex flex-col md:flex-row items-center justify-between gap-6 max-w-5xl w-[92%] transition-all">
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl rounded-[2.5rem] p-4 flex flex-col md:flex-row items-center justify-between gap-6 max-w-[1700px] w-[95%] transition-all">
                     <div className="flex items-center gap-8 w-full md:w-auto justify-between md:justify-start px-2">
                         <div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subtotal</p>
