@@ -1478,8 +1478,75 @@ export class PurchaseController {
                 }
                 const invoiceNo = `IMP-${new Date().getFullYear()}-${nextInvoiceSeq.toString().padStart(4, '0')}`;
 
-                const supplier = await tx.supplier.findUnique({ where: { id: supplierId } });
-                if (!supplier) throw new Error("Supplier not found");
+                let supplier = await tx.supplier.findUnique({ where: { id: supplierId } });
+                let payableAccountId = supplier?.payableAccountId;
+
+                let baseCurr = await tx.currency.findFirst({ where: { companyId, isBase: true } });
+                if (!baseCurr) baseCurr = await tx.currency.findFirst({ where: { companyId } });
+                if (!baseCurr) baseCurr = await tx.currency.findFirst();
+                const currId = baseCurr?.id || 'PKR';
+
+                if (!supplier) {
+                    // Check if supplierId is an Account ID (e.g. 2111 - Import Account)
+                    const directAccount = await tx.account.findUnique({ where: { id: supplierId } });
+                    if (directAccount) {
+                        payableAccountId = directAccount.id;
+                        supplier = await tx.supplier.findFirst({
+                            where: { companyId, payableAccountId: directAccount.id }
+                        });
+                        if (!supplier) {
+                            supplier = await tx.supplier.create({
+                                data: {
+                                    id: crypto.randomUUID(),
+                                    companyId,
+                                    currencyCode: currId,
+                                    name: beneficiaryName || directAccount.name,
+                                    code: `IMP-${directAccount.code}`,
+                                    payableAccountId: directAccount.id
+                                }
+                            });
+                        }
+                    }
+                }
+
+                if (!supplier) {
+                    // Fallback: create default Import Supplier linked to 2111 Import Account
+                    let importAcc = await tx.account.findFirst({
+                        where: { companyId, code: '2111', isPosting: true }
+                    });
+                    if (!importAcc) {
+                        importAcc = await tx.account.findFirst({
+                            where: { companyId, name: { contains: 'Import', mode: 'insensitive' }, isPosting: true }
+                        });
+                    }
+                    if (!importAcc) {
+                        importAcc = await tx.account.findFirst({
+                            where: { companyId, name: { contains: 'Accounts Payable', mode: 'insensitive' }, type: 'LIABILITY', isPosting: true }
+                        });
+                    }
+
+                    supplier = await tx.supplier.create({
+                        data: {
+                            id: crypto.randomUUID(),
+                            companyId,
+                            currencyCode: currId,
+                            name: beneficiaryName || 'Commercial Import Supplier',
+                            code: 'SUP-IMP-001',
+                            payableAccountId: importAcc?.id || null
+                        }
+                    });
+                    payableAccountId = importAcc?.id;
+                }
+
+                if (!payableAccountId) {
+                    payableAccountId = supplier.payableAccountId;
+                }
+                if (!payableAccountId) {
+                    const fallbackAcc = await tx.account.findFirst({
+                        where: { companyId, OR: [{ code: '2111' }, { code: '2110' }, { name: { contains: 'Accounts Payable', mode: 'insensitive' } }], isPosting: true }
+                    });
+                    payableAccountId = fallbackAcc?.id;
+                }
 
                 const docRate = Number(docExchangeRate || exchangeRate || 1.0);
                 const customsRate = Number(customsExchangeRate || exchangeRate || 1.0);
@@ -1694,8 +1761,8 @@ export class PurchaseController {
                 }
 
                 // Journal Entry
-                if (!supplier.payableAccountId) {
-                    throw new Error(`Supplier '${supplier.name}' is not linked to a Payable Account.`);
+                if (!payableAccountId) {
+                    throw new Error(`Import Supplier '${supplier.name}' is not linked to a Payable Account. Please map an account.`);
                 }
 
                 const lines = [];
@@ -1703,7 +1770,7 @@ export class PurchaseController {
                 const descGD = gdNumber ? ` [GD: ${gdNumber}]` : '';
                 // Credit Supplier for Goods Value (Subtotal - Discount)
                 lines.push({
-                    accountId: supplier.payableAccountId,
+                    accountId: payableAccountId,
                     credit: subtotalPKR - discount,
                     debit: 0,
                     narration: `Import Invoice ${invoiceNo}${descGD}${descBeneficiary} - Goods Value payable to ${supplier.name}`

@@ -95,7 +95,7 @@ export default function NewImportInvoicePage() {
 
     const fetchDropdowns = async () => {
         try {
-            const [supRes, accRes, whRes, prodRes, unitRes, taxRes, currRes] = await Promise.all([
+            const [supRes, accRes, whRes, prodRes, unitRes, taxRes, currRes] = await Promise.allSettled([
                 authenticatedFetch("/api/finance/parties/suppliers"),
                 authenticatedFetch('/api/accounts?isPosting=true'),
                 authenticatedFetch("/api/inventory/warehouses"),
@@ -105,9 +105,18 @@ export default function NewImportInvoicePage() {
                 authenticatedFetch("/api/finance/currency"),
             ]);
 
-            const sups = supRes.ok ? (await supRes.json()).data || [] : [];
-            const accs = accRes.ok ? (await accRes.json()).accounts || [] : [];
-            setAccounts(accs);
+            let sups: any[] = [];
+            if (supRes.status === 'fulfilled' && supRes.value.ok) {
+                const json = await supRes.value.json();
+                sups = json.data || [];
+            }
+
+            let accs: any[] = [];
+            if (accRes.status === 'fulfilled' && accRes.value.ok) {
+                const json = await accRes.value.json();
+                accs = json.accounts || [];
+                setAccounts(accs);
+            }
             
             // Auto select default accounts for Insurance and Landing
             const defaultInsAcc = accs.find((a: any) => a.code === '2180' || a.name.toLowerCase().includes('insurance'));
@@ -116,6 +125,7 @@ export default function NewImportInvoicePage() {
             const defaultPortAcc = accs.find((a: any) => a.code === '2190' || a.name.toLowerCase().includes('port') || a.name.toLowerCase().includes('clearing'));
             if (defaultPortAcc) setLandingAccountId(defaultPortAcc.id);
 
+            // Combined options: Suppliers + Posting Accounts (2111 Import Account, 2110, etc.)
             const combined = [...sups];
             const existingIds = new Set(sups.map((s: any) => s.id));
             accs.forEach((a: any) => {
@@ -126,19 +136,34 @@ export default function NewImportInvoicePage() {
             });
 
             setSuppliers(combined);
-            if (whRes.ok) setWarehouses((await whRes.json()).data || []);
-            if (prodRes.ok) setProducts((await prodRes.json()).data || []);
-            if (unitRes.ok) {
-                const uJson = await unitRes.json();
+
+            // Auto-select Import Account / Supplier if not yet selected
+            const defaultSup = sups.find((s: any) => s.code?.includes('IMP') || s.name?.toLowerCase().includes('import'))
+                || accs.find((a: any) => a.code === '2111')
+                || sups[0];
+            if (defaultSup) {
+                setFormData((prev: any) => prev.supplierId ? prev : { ...prev, supplierId: defaultSup.id });
+            }
+
+            if (whRes.status === 'fulfilled' && whRes.value.ok) {
+                const json = await whRes.value.json();
+                setWarehouses(json.data || []);
+            }
+            if (prodRes.status === 'fulfilled' && prodRes.value.ok) {
+                const json = await prodRes.value.json();
+                setProducts(json.data || []);
+            }
+            if (unitRes.status === 'fulfilled' && unitRes.value.ok) {
+                const uJson = await unitRes.value.json();
                 setUnits(uJson.data || []);
             }
-            if (taxRes.ok) {
-                const tJson = await taxRes.json();
+            if (taxRes.status === 'fulfilled' && taxRes.value.ok) {
+                const tJson = await taxRes.value.json();
                 setTaxCodes(tJson.data || []);
             }
             
-            if (currRes.ok) {
-                const currJson = await currRes.json();
+            if (currRes.status === 'fulfilled' && currRes.value.ok) {
+                const currJson = await currRes.value.json();
                 if (currJson.success) {
                     const base = currJson.data.find((c: any) => c.isBase);
                     if (base) setCurrency({ symbol: base.symbol });

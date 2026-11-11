@@ -14,9 +14,9 @@ if (!connectionString) {
 
 const pool = globalForPrisma.pool ?? new Pool({
   connectionString,
-  max: process.env.NODE_ENV === 'development' ? 5 : 10,
+  max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 20000,
+  connectionTimeoutMillis: 30000,
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
   family: 4, // Force IPv4 to avoid IPv6 timeouts / ENETUNREACH
