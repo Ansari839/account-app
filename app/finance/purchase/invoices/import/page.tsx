@@ -1410,62 +1410,64 @@ export default function NewImportInvoicePage() {
                 </div>
 
                 {/* Sticky Action Footer */}
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl rounded-[2.5rem] p-4 flex flex-col md:flex-row items-center justify-between gap-6 max-w-[1700px] w-[95%] transition-all">
-                    <div className="flex items-center gap-8 w-full md:w-auto justify-between md:justify-start px-2">
-                        <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Goods Value (FC)</p>
-                            <p className="text-sm font-black text-slate-700 dark:text-slate-200">
-                                Rs. {Math.round(summary.subtotal).toLocaleString()}
-                            </p>
-                        </div>
-
-                        <div>
-                            <p className="text-[10px] font-bold text-sky-500 uppercase tracking-widest">Insurance & Landing</p>
-                            <p className="text-sm font-black text-sky-600 dark:text-sky-400">
-                                + Rs. {Math.round(summary.gdChargesTotal).toLocaleString()}
-                            </p>
-                        </div>
-
-                        <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Duties & Taxes</p>
-                            <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                                + Rs. {Math.round(summary.taxTotal).toLocaleString()}
-                            </p>
-                        </div>
-
-                        <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
-
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 hidden md:flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                                <Calculator size={24} />
-                            </div>
+                <div className="fixed bottom-0 left-0 lg:left-64 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800/80 shadow-[0_-10px_40px_rgba(0,0,0,0.08)] p-4 transition-all">
+                    <div className="max-w-[1700px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
+                        <div className="flex items-center gap-6 md:gap-8 w-full md:w-auto justify-between md:justify-start overflow-x-auto pb-2 md:pb-0">
                             <div>
-                                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Total Landed Value</p>
-                                <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mt-0.5">
-                                    Rs. {Math.round(summary.grandTotal).toLocaleString()}
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Goods Value (FC)</p>
+                                <p className="text-sm font-black text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                    Rs. {Math.round(summary.subtotal).toLocaleString()}
                                 </p>
                             </div>
-                        </div>
-                    </div>
 
-                    <div className="flex gap-3 w-full md:w-auto">
-                        <button 
-                            onClick={() => router.back()}
-                            className="flex-1 md:flex-none px-6 py-4 rounded-2xl font-black text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors uppercase tracking-widest text-sm"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            onClick={handleSubmit}
-                            disabled={isSubmitting || formData.items.length === 0}
-                            className={cn(
-                                "flex-1 md:flex-none px-8 py-4 rounded-2xl font-black text-white bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 shadow-xl shadow-indigo-500/20 transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2",
-                                (isSubmitting || formData.items.length === 0) && "opacity-70 cursor-not-allowed"
-                            )}
-                        >
-                            <Save size={18} />
-                            {isSubmitting ? 'Saving...' : 'Create Bill'}
-                        </button>
+                            <div>
+                                <p className="text-[10px] font-bold text-sky-500 uppercase tracking-widest whitespace-nowrap">Insurance & Landing</p>
+                                <p className="text-sm font-black text-sky-600 dark:text-sky-400 whitespace-nowrap">
+                                    + Rs. {Math.round(summary.gdChargesTotal).toLocaleString()}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Duties & Taxes</p>
+                                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                                    + Rs. {Math.round(summary.taxTotal).toLocaleString()}
+                                </p>
+                            </div>
+
+                            <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
+
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 hidden md:flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                    <Calculator size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest whitespace-nowrap">Total Landed Value</p>
+                                    <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none mt-0.5 whitespace-nowrap">
+                                        Rs. {Math.round(summary.grandTotal).toLocaleString()}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 w-full md:w-auto shrink-0">
+                            <button 
+                                onClick={() => router.back()}
+                                className="flex-1 md:flex-none px-6 py-3.5 rounded-2xl font-black text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors uppercase tracking-widest text-xs"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleSubmit}
+                                disabled={isSubmitting || formData.items.length === 0}
+                                className={cn(
+                                    "flex-1 md:flex-none px-8 py-3.5 rounded-2xl font-black text-white bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 shadow-xl shadow-indigo-500/20 transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2",
+                                    (isSubmitting || formData.items.length === 0) && "opacity-70 cursor-not-allowed"
+                                )}
+                            >
+                                <Save size={16} />
+                                {isSubmitting ? 'Saving...' : 'Create Bill'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

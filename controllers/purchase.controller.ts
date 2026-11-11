@@ -29,13 +29,31 @@ export class PurchaseController {
             const invoices = await prisma.purchaseInvoice.findMany({
                 where: { companyId },
                 include: {
-                    supplier: true,
-                    items: { include: { product: true, unit: true } }
+                    Supplier: true,
+                    Warehouse: true,
+                    PurchaseOrder: { select: { poNo: true } },
+                    GRN: { select: { grnNo: true } },
+                    items: {
+                        include: { Product: true, Unit: true }
+                    }
                 },
                 orderBy: { date: 'desc' }
             });
 
-            return NextResponse.json({ success: true, data: invoices });
+            const mappedInvoices = invoices.map(inv => ({
+                ...inv,
+                supplier: inv.Supplier,
+                warehouse: inv.Warehouse,
+                po: inv.PurchaseOrder,
+                grn: inv.GRN,
+                items: (inv.items || []).map(it => ({
+                    ...it,
+                    product: it.Product,
+                    unit: it.Unit
+                }))
+            }));
+
+            return NextResponse.json({ success: true, data: mappedInvoices });
         } catch (error: any) {
             console.error("List Invoices Error:", error);
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -530,12 +548,13 @@ export class PurchaseController {
             const invoice = await prisma.purchaseInvoice.findUnique({
                 where: { id },
                 include: {
-                    supplier: true,
-                    po: true,
-                    grn: true,
-                    journalEntry: { include: { lines: { include: { account: true } } } },
+                    Supplier: true,
+                    PurchaseOrder: true,
+                    GRN: true,
+                    Warehouse: true,
+                    JournalEntry: { include: { lines: { include: { account: true } } } },
                     items: {
-                        include: { product: true, poItem: true, unit: true }
+                        include: { Product: true, PurchaseOrderItem: true, Unit: true }
                     },
                     taxes: true
                 }
@@ -543,7 +562,22 @@ export class PurchaseController {
 
             if (!invoice) return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 });
 
-            return NextResponse.json({ success: true, data: invoice });
+            const mapped = {
+                ...invoice,
+                supplier: invoice.Supplier,
+                po: invoice.PurchaseOrder,
+                grn: invoice.GRN,
+                warehouse: invoice.Warehouse,
+                journalEntry: invoice.JournalEntry,
+                items: (invoice.items || []).map(it => ({
+                    ...it,
+                    product: it.Product,
+                    unit: it.Unit,
+                    poItem: it.PurchaseOrderItem
+                }))
+            };
+
+            return NextResponse.json({ success: true, data: mapped });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         }

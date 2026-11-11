@@ -85,19 +85,26 @@ export default function PurchaseInvoicesPage() {
                 );
             }
         },
-        { header: "Supplier", accessor: (row) => row.supplier?.name },
+        { 
+            header: "Supplier", 
+            accessor: (row) => row.supplier?.name || row.Supplier?.name || row.beneficiaryName || "-" 
+        },
         {
             header: "Amount",
-            accessor: (row) => Number(row.totalAmount || 0).toFixed(2),
+            accessor: (row) => Number(row.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         },
         {
             header: "Ref",
             accessor: (row) =>
-                row.po
-                    ? `PO: ${row.po.poNo}`
-                    : row.grn
-                        ? `GRN: ${row.grn.grnNo}`
-                        : "-",
+                row.gdNumber
+                    ? `GD: ${row.gdNumber}`
+                    : row.blNumber
+                        ? `BL: ${row.blNumber}`
+                        : row.po
+                            ? `PO: ${row.po.poNo}`
+                            : row.grn
+                                ? `GRN: ${row.grn.grnNo}`
+                                : "-",
         },
         {
             header: "Actions",
