@@ -196,9 +196,10 @@ export default function NewImportInvoicePage() {
     };
 
     const handleAddItem = () => {
-        setFormData((prev: any) => ({
-            ...prev,
-            items: [
+        setFormData((prev: any) => {
+            const customsXRate = Number(prev.customsExchangeRate || prev.exchangeRate || 1);
+            const docXRate = Number(prev.docExchangeRate || prev.exchangeRate || 1);
+            const newItems = [
                 ...prev.items,
                 { 
                     id: Date.now().toString() + Math.random().toString().slice(-4), 
@@ -219,8 +220,90 @@ export default function NewImportInvoicePage() {
                     itpRate: 0,
                     assessedValuePKR: 0
                 }
-            ]
-        }));
+            ];
+            return {
+                ...prev,
+                items: recalculateItemsWithCharges(
+                    newItems,
+                    customsXRate,
+                    docXRate,
+                    insuranceType,
+                    insuranceValue,
+                    landingType,
+                    landingValue
+                )
+            };
+        });
+    };
+
+    // Recalculate all items with pro-rata Insurance and Landing Charges
+    // When Insurance/Landing is %, USD ($), or PKR, distribute across items by Raw Value weightage
+    const recalculateItemsWithCharges = (
+        items: any[],
+        customsXRate: number,
+        docXRate: number,
+        insType: 'PERCENT' | 'FC' | 'PKR',
+        insVal: number,
+        landType: 'PERCENT' | 'FC' | 'PKR',
+        landVal: number
+    ) => {
+        // 1. Calculate rawPKR for each item
+        const itemsWithRaw = items.map((item: any) => {
+            const qty = Number(item.qty || 0);
+            const foreignRate = Number(item.foreignRate || 0);
+            const subtotalFC = qty * foreignRate;
+            const aRate = Number(item.assessedRate || 0);
+            // Assessed Raw PKR = Assessed Rate X Qty X Customs GD Rate
+            const rawPKR = aRate > 0 ? (aRate * qty * customsXRate) : (subtotalFC * customsXRate);
+            return {
+                ...item,
+                foreignAmount: subtotalFC,
+                rate: foreignRate * docXRate,
+                total: subtotalFC * docXRate,
+                rawPKR
+            };
+        });
+
+        const totalRawPKR = itemsWithRaw.reduce((sum: number, it: any) => sum + (it.rawPKR || 0), 0);
+
+        // 2. Total Insurance in PKR
+        let totalInsPKR = 0;
+        if (insType === 'PERCENT') {
+            totalInsPKR = totalRawPKR * ((Number(insVal) || 0) / 100);
+        } else if (insType === 'FC') {
+            totalInsPKR = (Number(insVal) || 0) * customsXRate;
+        } else {
+            totalInsPKR = Number(insVal) || 0;
+        }
+
+        // 3. Total Landing in PKR (Base = Raw + Insurance)
+        const totalBaseForLanding = totalRawPKR + totalInsPKR;
+        let totalLandPKR = 0;
+        if (landType === 'PERCENT') {
+            totalLandPKR = totalBaseForLanding * ((Number(landVal) || 0) / 100);
+        } else if (landType === 'FC') {
+            totalLandPKR = (Number(landVal) || 0) * customsXRate;
+        } else {
+            totalLandPKR = Number(landVal) || 0;
+        }
+
+        // 4. Distribute pro-rata to each item
+        return itemsWithRaw.map((item: any) => {
+            const ratio = totalRawPKR > 0 ? (item.rawPKR / totalRawPKR) : (1 / (items.length || 1));
+            const itemInsPKR = Math.round(totalInsPKR * ratio);
+
+            const landBaseRatio = totalBaseForLanding > 0 ? ((item.rawPKR + itemInsPKR) / totalBaseForLanding) : ratio;
+            const itemLandPKR = Math.round(totalLandPKR * landBaseRatio);
+
+            const assessedValuePKR = Math.round(item.rawPKR + itemInsPKR + itemLandPKR);
+
+            return {
+                ...item,
+                itemInsPKR,
+                itemLandPKR,
+                assessedValuePKR
+            };
+        });
     };
 
     const handleExchangeRateChange = (field: 'docExchangeRate' | 'customsExchangeRate', value: number) => {
@@ -229,26 +312,15 @@ export default function NewImportInvoicePage() {
             const docXRate = field === 'docExchangeRate' ? numVal : Number(prev.docExchangeRate || 1);
             const customsXRate = field === 'customsExchangeRate' ? numVal : Number(prev.customsExchangeRate || 1);
 
-            const updatedItems = prev.items.map((item: any) => {
-                const qty = Number(item.qty || 0);
-                const foreignRate = Number(item.foreignRate || 0);
-                const subtotalFC = qty * foreignRate;
-                const aRate = Number(item.assessedRate || 0);
-                
-                // Assess Value = Assessed Rate X Qty X GD Rate + Insurance + Landing Charges
-                const rawPKR = aRate * qty * customsXRate;
-                const ins = insuranceType === 'PERCENT' ? (rawPKR * (Number(insuranceValue) || 1) / 100) : 0;
-                const land = landingType === 'PERCENT' ? ((rawPKR + ins) * (Number(landingValue) || 1) / 100) : 0;
-                const assessedValuePKR = Math.round(rawPKR + ins + land);
-
-                return {
-                    ...item,
-                    foreignAmount: subtotalFC,
-                    rate: foreignRate * docXRate,
-                    total: subtotalFC * docXRate,
-                    assessedValuePKR
-                };
-            });
+            const updatedItems = recalculateItemsWithCharges(
+                prev.items,
+                customsXRate,
+                docXRate,
+                insuranceType,
+                insuranceValue,
+                landingType,
+                landingValue
+            );
 
             return {
                 ...prev,
@@ -260,10 +332,61 @@ export default function NewImportInvoicePage() {
     };
 
     const handleRemoveItem = (id: string) => {
-        setFormData((prev: any) => ({
-            ...prev,
-            items: prev.items.filter((item: any) => item.id !== id)
-        }));
+        setFormData((prev: any) => {
+            const filtered = prev.items.filter((item: any) => item.id !== id);
+            const customsXRate = Number(prev.customsExchangeRate || prev.exchangeRate || 1);
+            const docXRate = Number(prev.docExchangeRate || prev.exchangeRate || 1);
+            return {
+                ...prev,
+                items: recalculateItemsWithCharges(
+                    filtered,
+                    customsXRate,
+                    docXRate,
+                    insuranceType,
+                    insuranceValue,
+                    landingType,
+                    landingValue
+                )
+            };
+        });
+    };
+
+    const handleInsuranceChange = (newType: 'PERCENT' | 'FC' | 'PKR', newVal: number) => {
+        setInsuranceType(newType);
+        setInsuranceValue(newVal);
+        setFormData((prev: any) => {
+            const customsXRate = Number(prev.customsExchangeRate || prev.exchangeRate || 1);
+            const docXRate = Number(prev.docExchangeRate || prev.exchangeRate || 1);
+            const updatedItems = recalculateItemsWithCharges(
+                prev.items,
+                customsXRate,
+                docXRate,
+                newType,
+                newVal,
+                landingType,
+                landingValue
+            );
+            return { ...prev, items: updatedItems };
+        });
+    };
+
+    const handleLandingChange = (newType: 'PERCENT' | 'FC' | 'PKR', newVal: number) => {
+        setLandingType(newType);
+        setLandingValue(newVal);
+        setFormData((prev: any) => {
+            const customsXRate = Number(prev.customsExchangeRate || prev.exchangeRate || 1);
+            const docXRate = Number(prev.docExchangeRate || prev.exchangeRate || 1);
+            const updatedItems = recalculateItemsWithCharges(
+                prev.items,
+                customsXRate,
+                docXRate,
+                insuranceType,
+                insuranceValue,
+                newType,
+                newVal
+            );
+            return { ...prev, items: updatedItems };
+        });
     };
 
     const updateItem = (id: string, field: string, value: any) => {
@@ -271,7 +394,7 @@ export default function NewImportInvoicePage() {
             const customsXRate = Number(prev.customsExchangeRate || prev.exchangeRate || 1);
             const docXRate = Number(prev.docExchangeRate || prev.exchangeRate || 1);
 
-            const newItems = prev.items.map((item: any) => {
+            let newItems = prev.items.map((item: any) => {
                 if (item.id === id) {
                     let refinedValue = value;
                     if (["qty", "foreignRate", "rate", "assessedRate", "cdAmount", "rdAmount", "acdAmount"].includes(field)) {
@@ -320,15 +443,7 @@ export default function NewImportInvoicePage() {
                     updatedItem.rate = foreignRate * docXRate;
                     updatedItem.total = subtotalFC * docXRate;
 
-                    // Sync between Assessed Rate ($) and Total Assessed Value (PKR as per GD)
-                    // Formula: Assessed Value = (Assessed Rate X Qty X GD Rate) + Insurance + Landing Charges
-                    if (field === "assessedRate" || field === "qty") {
-                        const aRate = Number(updatedItem.assessedRate || 0);
-                        const rawPKR = aRate * qty * customsXRate;
-                        const ins = insuranceType === 'PERCENT' ? (rawPKR * (Number(insuranceValue) || 1) / 100) : 0;
-                        const land = landingType === 'PERCENT' ? ((rawPKR + ins) * (Number(landingValue) || 1) / 100) : 0;
-                        updatedItem.assessedValuePKR = Math.round(rawPKR + ins + land);
-                    } else if (field === "assessedValuePKR") {
+                    if (field === "assessedValuePKR") {
                         const valPKR = isNaN(value) ? 0 : parseFloat(value);
                         updatedItem.assessedValuePKR = Math.round(valPKR);
                         const factor = (1 + (Number(insuranceValue) || 1)/100) * (1 + (Number(landingValue) || 1)/100);
@@ -340,6 +455,20 @@ export default function NewImportInvoicePage() {
                 }
                 return item;
             });
+
+            // If changes affect valuation, recalculate pro-rata distribution across all items
+            if (["qty", "foreignRate", "assessedRate", "productId"].includes(field)) {
+                newItems = recalculateItemsWithCharges(
+                    newItems,
+                    customsXRate,
+                    docXRate,
+                    insuranceType,
+                    insuranceValue,
+                    landingType,
+                    landingValue
+                );
+            }
+
             return { ...prev, items: newItems };
         });
     };
@@ -1149,7 +1278,7 @@ export default function NewImportInvoicePage() {
                                     <div className="relative">
                                         <select
                                             value={insuranceType}
-                                            onChange={(e) => setInsuranceType(e.target.value as any)}
+                                            onChange={(e) => handleInsuranceChange(e.target.value as any, insuranceValue)}
                                             className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs outline-none focus:ring-2 focus:ring-sky-500"
                                         >
                                             <option value="PERCENT">% (Assessed Value x 1%)</option>
@@ -1167,7 +1296,7 @@ export default function NewImportInvoicePage() {
                                         type="number"
                                         step="0.01"
                                         value={insuranceValue}
-                                        onChange={(e) => setInsuranceValue(parseFloat(e.target.value) || 0)}
+                                        onChange={(e) => handleInsuranceChange(insuranceType, parseFloat(e.target.value) || 0)}
                                         placeholder="0.00"
                                         className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm text-right outline-none focus:ring-2 focus:ring-sky-500"
                                     />
@@ -1203,7 +1332,7 @@ export default function NewImportInvoicePage() {
                                     <div className="relative">
                                         <select
                                             value={landingType}
-                                            onChange={(e) => setLandingType(e.target.value as any)}
+                                            onChange={(e) => handleLandingChange(e.target.value as any, landingValue)}
                                             className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs outline-none focus:ring-2 focus:ring-amber-500"
                                         >
                                             <option value="PERCENT">% ((Assessed + Insurance) x 1%)</option>
@@ -1221,7 +1350,7 @@ export default function NewImportInvoicePage() {
                                         type="number"
                                         step="0.01"
                                         value={landingValue}
-                                        onChange={(e) => setLandingValue(parseFloat(e.target.value) || 0)}
+                                        onChange={(e) => handleLandingChange(landingType, parseFloat(e.target.value) || 0)}
                                         placeholder="0.00"
                                         className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm text-right outline-none focus:ring-2 focus:ring-amber-500"
                                     />
