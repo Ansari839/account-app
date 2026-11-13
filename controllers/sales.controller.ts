@@ -395,12 +395,22 @@ export class SalesController {
                     order: true,
                     do: true,
                     items: { include: { product: true } },
-                    journalEntry: { include: { lines: { include: { account: true } } } }
+                    journalEntry: { include: { lines: { include: { Account: true } } } }
                 }
             });
 
             if (!invoice) return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 });
-            return NextResponse.json({ success: true, data: invoice });
+            const mappedInvoice = {
+                ...invoice,
+                journalEntry: invoice.journalEntry ? {
+                    ...invoice.journalEntry,
+                    lines: (invoice.journalEntry.lines || []).map((l: any) => ({
+                        ...l,
+                        account: l.Account || l.account
+                    }))
+                } : null
+            };
+            return NextResponse.json({ success: true, data: mappedInvoice });
         } catch (error: any) {
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         }

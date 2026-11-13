@@ -265,12 +265,13 @@ export class PurchaseService {
                 // Handle Product Account Mapping (DR Inventory/Expense)
                 const product = await tx.product.findUnique({ 
                     where: { id: item.productId },
-                    include: { category: true }
+                    include: { Category: true }
                 });
                 
+                const productCategory = (product as any)?.Category || (product as any)?.category;
                 let debitAccount = product?.purchaseAccountId || product?.inventoryAccountId;
-                if (product?.category?.isService && product.category.wipAccountId) {
-                    debitAccount = product.category.wipAccountId;
+                if (productCategory?.isService && productCategory.wipAccountId) {
+                    debitAccount = productCategory.wipAccountId;
                 }
                 
                 if (!debitAccount) throw new Error(`Product ${item.productId} is missing Purchase/Inventory/WIP Account mapping.`);
@@ -463,14 +464,14 @@ export class PurchaseService {
                 invoice = await tx.purchaseInvoice.findUnique({
                     where: { id: data.purchaseInvoiceId },
                     include: {
-                        supplier: { include: { payableAccount: true } },
+                        Supplier: { include: { payableAccount: true } },
                         items: true
                     }
                 });
                 if (!invoice) throw new Error("Purchase Invoice not found.");
             }
 
-            let supplier = invoice?.supplier || await this.resolveSupplier(tx, data.supplierId);
+            let supplier = (invoice as any)?.Supplier || (invoice as any)?.supplier || await this.resolveSupplier(tx, data.supplierId);
             if (!supplier) throw new Error("Supplier not found.");
             if (!supplier.payableAccount) throw new Error("Supplier Payable Account not configured.");
 

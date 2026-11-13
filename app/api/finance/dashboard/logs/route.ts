@@ -22,12 +22,20 @@ export async function GET(req: NextRequest) {
                     select: { fullName: true, email: true }
                 },
                 lines: {
-                    include: { account: true }
+                    include: { Account: true }
                 }
             }
         });
 
-        return NextResponse.json({ success: true, data: logs });
+        const mappedLogs = logs.map((log: any) => ({
+            ...log,
+            lines: (log.lines || []).map((l: any) => ({
+                ...l,
+                account: l.Account || l.account
+            }))
+        }));
+
+        return NextResponse.json({ success: true, data: mappedLogs });
     } catch (err: any) {
         console.error("GET /api/finance/dashboard/logs ERROR:", err);
         return NextResponse.json({ success: false, error: err.message }, { status: 500 });

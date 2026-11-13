@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             where: { id, companyId },
             include: {
                 lines: {
-                    include: { account: true }
+                    include: { Account: true }
                 }
             }
         });
@@ -23,7 +23,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             return NextResponse.json({ error: 'Voucher not found' }, { status: 404 });
         }
 
-        return NextResponse.json({ success: true, data: voucher });
+        const mappedVoucher = {
+            ...voucher,
+            lines: (voucher.lines || []).map((l: any) => ({
+                ...l,
+                account: l.Account || l.account
+            }))
+        };
+
+        return NextResponse.json({ success: true, data: mappedVoucher });
 
     } catch (error) {
         console.error('Fetch voucher error:', error);

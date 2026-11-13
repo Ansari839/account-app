@@ -552,7 +552,7 @@ export class PurchaseController {
                     PurchaseOrder: true,
                     GRN: true,
                     Warehouse: true,
-                    JournalEntry: { include: { lines: { include: { account: true } } } },
+                    JournalEntry: { include: { lines: { include: { Account: true } } } },
                     items: {
                         include: { Product: true, PurchaseOrderItem: true, Unit: true }
                     },
@@ -568,7 +568,13 @@ export class PurchaseController {
                 po: invoice.PurchaseOrder,
                 grn: invoice.GRN,
                 warehouse: invoice.Warehouse,
-                journalEntry: invoice.JournalEntry,
+                journalEntry: invoice.JournalEntry ? {
+                    ...invoice.JournalEntry,
+                    lines: (invoice.JournalEntry.lines || []).map((l: any) => ({
+                        ...l,
+                        account: l.Account || l.account
+                    }))
+                } : null,
                 items: (invoice.items || []).map(it => ({
                     ...it,
                     product: it.Product,

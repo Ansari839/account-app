@@ -30,11 +30,15 @@ export class TaxService {
      * Get all Tax Codes (scoped to company)
      */
     static async getAllTaxCodes(companyId: string) {
-        return prisma.taxCode.findMany({
+        const codes = await prisma.taxCode.findMany({
             where: { companyId },
-            include: { account: true }, // Include account to show in UI or populate form
+            include: { Account: true }, // Include Account (PascalCase relation)
             orderBy: { name: 'asc' }
         });
+        return codes.map(c => ({
+            ...c,
+            account: (c as any).Account || (c as any).account
+        }));
     }
 
     /**

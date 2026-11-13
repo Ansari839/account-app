@@ -118,10 +118,18 @@ export class JournalService {
     }
 
     static async getEntryByNumber(companyId: string, number: string) {
-        return prisma.journalEntry.findFirst({
+        const entry = await prisma.journalEntry.findFirst({
             where: { companyId, number },
-            include: { lines: { include: { account: true } } }
+            include: { lines: { include: { Account: true } } }
         });
+        if (!entry) return null;
+        return {
+            ...entry,
+            lines: (entry.lines || []).map((l: any) => ({
+                ...l,
+                account: l.Account || l.account
+            }))
+        };
     }
 
     static async getEntries(companyId: string, filters?: { type?: VoucherType }) {
