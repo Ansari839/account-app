@@ -1137,6 +1137,10 @@ export class PurchaseController {
 
             if (!existing) return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 });
 
+            if (existing.isImport) {
+                return this.updateImportInvoice(req, { params }, body);
+            }
+
             const result = await prisma.$transaction(async (tx) => {
                 // 1. Revert PO Invoiced Quantities
                 for (const item of existing.items) {
@@ -1975,6 +1979,514 @@ export class PurchaseController {
             return NextResponse.json({ success: true, data: result });
         } catch (error: any) {
             console.error("Create Import Invoice Error:", error);
+            return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        }
+    }
+
+    /**
+     * Update Import Purchase Invoice (with EFS, GD Taxes, Stock Ledger & Journal Reversal)
+     */
+    static async updateImportInvoice(req: Request, options?: { params?: Promise<{ id: string }> }, existingBody?: any) {
+        try {
+            const crypto = require('crypto');
+            const { companyId, error } = AuthUtils.getCompanyId(req);
+            if (error) return error;
+
+            let invoiceId: string | null = null;
+            if (options?.params) {
+                const p = await options.params;
+                invoiceId = p?.id || null;
+            }
+            if (!invoiceId) {
+                try {
+                    const url = new URL(req.url);
+                    invoiceId = url.searchParams.get('id');
+                } catch (e) {}
+            }
+
+            const body = existingBody || await req.json();
+            if (!invoiceId) invoiceId = body.id;
+
+            if (!invoiceId) {
+                return NextResponse.json({ success: false, error: "Invoice ID is required for update" }, { status: 400 });
+            }
+
+            const existing = await prisma.purchaseInvoice.findUnique({
+                where: { id: invoiceId },
+                include: { items: true, taxes: true, JournalEntry: true }
+            });
+
+            if (!existing || existing.companyId !== companyId) {
+                return NextResponse.json({ success: false, error: "Import Invoice not found" }, { status: 404 });
+            }
+
+            const { 
+                supplierId, 
+                warehouseId, 
+                date, 
+                dueDate, 
+                items, 
+                gdTaxes, 
+                exchangeRate, 
+                docExchangeRate,
+                customsExchangeRate,
+                beneficiaryName,
+                gdNumber,
+                blNumber,
+                hasDiscount, 
+                discountAmount, 
+                discountType,
+                foreignTotal
+            } = body;
+
+            const result = await prisma.$transaction(async (tx) => {
+                // 1. Delete previous stock ledger entries for this invoice
+                await tx.stockLedger.deleteMany({
+                    where: {
+                        refType: { in: ['IMPORT_INVOICE', 'INVOICE', 'PURCHASE'] },
+                        refId: invoiceId
+                    }
+                });
+
+                // 2. Delete previous items and taxes
+                await tx.purchaseInvoiceItem.deleteMany({ where: { invoiceId: invoiceId } });
+                await tx.purchaseInvoiceTax.deleteMany({ where: { invoiceId: invoiceId } });
+
+                // 3. Clear previous journal lines if journalEntry exists
+                if (existing.journalEntryId) {
+                    await tx.journalLine.deleteMany({ where: { entryId: existing.journalEntryId } });
+                }
+
+                // 4. Resolve supplier & payable account
+                let supplier = await tx.supplier.findUnique({ where: { id: supplierId } });
+                let payableAccountId = supplier?.payableAccountId;
+
+                let baseCurr = await tx.currency.findFirst({ where: { companyId, isBase: true } });
+                if (!baseCurr) baseCurr = await tx.currency.findFirst({ where: { companyId } });
+                if (!baseCurr) baseCurr = await tx.currency.findFirst();
+                const currId = baseCurr?.id || 'PKR';
+
+                if (!supplier) {
+                    const directAccount = await tx.account.findUnique({ where: { id: supplierId } });
+                    if (directAccount) {
+                        payableAccountId = directAccount.id;
+                        supplier = await tx.supplier.findFirst({
+                            where: { companyId, payableAccountId: directAccount.id }
+                        });
+                        if (!supplier) {
+                            supplier = await tx.supplier.create({
+                                data: {
+                                    id: crypto.randomUUID(),
+                                    companyId,
+                                    currencyCode: currId,
+                                    name: beneficiaryName || directAccount.name,
+                                    code: `IMP-${directAccount.code}`,
+                                    payableAccountId: directAccount.id
+                                }
+                            });
+                        }
+                    }
+                }
+
+                if (!supplier) {
+                    supplier = await tx.supplier.findUnique({ where: { id: existing.supplierId } });
+                    payableAccountId = supplier?.payableAccountId;
+                }
+
+                if (!payableAccountId && supplier) {
+                    payableAccountId = supplier.payableAccountId;
+                }
+                if (!payableAccountId) {
+                    const fallbackAcc = await tx.account.findFirst({
+                        where: { companyId, OR: [{ code: '2111' }, { code: '2110' }, { name: { contains: 'Accounts Payable', mode: 'insensitive' } }], isPosting: true }
+                    });
+                    payableAccountId = fallbackAcc?.id;
+                }
+
+                const docRate = Number(docExchangeRate || exchangeRate || 1.0);
+                const customsRate = Number(customsExchangeRate || exchangeRate || 1.0);
+                let subtotalPKR = 0;
+
+                // Process Items
+                const processedItems = (items || []).map((item: any) => {
+                    const fRate = Number(item.foreignRate) || 0;
+                    const qty = Number(item.qty) || 0;
+                    const fTotal = fRate * qty;
+                    const pkrRate = fRate * docRate;
+                    const pkrTotal = fTotal * docRate;
+
+                    subtotalPKR += pkrTotal;
+
+                    const assessedRate = Number(item.assessedRate) || 0;
+                    const assessedValuePKR = Number(item.assessedValuePKR) > 0 
+                        ? Math.round(Number(item.assessedValuePKR))
+                        : Math.round((assessedRate * qty) * customsRate);
+                    const cdAmount = Number(item.cdAmount) || 0;
+                    const rdAmount = Number(item.rdAmount) || 0;
+                    const acdAmount = Number(item.acdAmount) || 0;
+                    const itpRate = qty > 0 ? ((assessedValuePKR + rdAmount + cdAmount + acdAmount) / qty) : 0;
+
+                    return {
+                        productId: item.productId,
+                        variantId: item.variantId || null,
+                        unitId: item.unitId || null,
+                        qty: qty,
+                        foreignRate: fRate,
+                        foreignAmount: fTotal,
+                        rate: pkrRate,
+                        total: pkrTotal,
+                        isEFS: Boolean(item.isEFS),
+                        assessedRate,
+                        assessedValuePKR,
+                        cdAmount,
+                        rdAmount,
+                        acdAmount,
+                        itpRate
+                    };
+                });
+
+                const discount = hasDiscount ? Number(discountAmount || 0) * docRate : 0;
+                const totalAssessedPKR = Math.round(processedItems.reduce((sum: number, it: any) => sum + (Number(it.assessedValuePKR) || 0), 0));
+
+                const insTax = (gdTaxes || []).find((t: any) => (t.taxName || '').toLowerCase().includes('insurance'));
+                const landTax = (gdTaxes || []).find((t: any) => (t.taxName || '').toLowerCase().includes('landing'));
+                const insAmountPKR = Math.round(Number(insTax?.taxAmount || 0));
+                const landAmountPKR = Math.round(Number(landTax?.taxAmount || 0));
+
+                const customsBasePKR = totalAssessedPKR > 0
+                    ? totalAssessedPKR
+                    : (subtotalPKR - discount + insAmountPKR + landAmountPKR);
+
+                let runningTotalPKR = subtotalPKR - discount;
+                let runningDutiesPKR = 0;
+                let runningSalesTaxesPKR = 0;
+                let totalTaxAmount = 0;
+                let totalCapitalizedTaxes = 0;
+
+                const processedTaxes = (gdTaxes || []).map((tax: any) => {
+                    let baseAmount = customsBasePKR;
+
+                    if (tax.calculation === 'ASSESSED_VALUE') {
+                        baseAmount = customsBasePKR;
+                    } else if (tax.calculation === 'ASSESSED_PLUS_DUTIES') {
+                        baseAmount = customsBasePKR + runningDutiesPKR;
+                    } else if (tax.calculation === 'ASSESSED_PLUS_ALL') {
+                        baseAmount = customsBasePKR + runningDutiesPKR + runningSalesTaxesPKR;
+                    } else if (tax.calculation === 'PREVIOUS_TOTAL') {
+                        baseAmount = runningTotalPKR;
+                    } else if (tax.calculation === 'NET_TOTAL') {
+                        baseAmount = subtotalPKR - discount;
+                    }
+
+                    baseAmount = Math.round(baseAmount);
+                    const rate = Number(tax.rate) || 0;
+                    const taxAmt = rate > 0 ? Math.round(baseAmount * (rate / 100)) : Math.round(Number(tax.taxAmount) || 0);
+
+                    totalTaxAmount += taxAmt;
+                    runningTotalPKR += taxAmt;
+
+                    const tName = (tax.taxName || '').toLowerCase();
+                    if (tax.isCapitalized || tName.includes('duty') || tName.includes('cd') || tName.includes('rd') || tName.includes('acd')) {
+                        runningDutiesPKR += taxAmt;
+                    } else if (tName.includes('sales') || tName.includes('st') || tName.includes('ast')) {
+                        runningSalesTaxesPKR += taxAmt;
+                    }
+
+                    if (tax.isCapitalized) {
+                        totalCapitalizedTaxes += taxAmt;
+                    }
+
+                    return {
+                        taxCodeId: tax.taxCodeId === 'MANUAL' ? null : (tax.taxCodeId || null),
+                        taxName: tax.taxName || 'GD Tax/Duty',
+                        calculation: tax.calculation || 'ASSESSED_VALUE',
+                        rate: rate,
+                        baseAmount,
+                        taxAmount: taxAmt,
+                        isCapitalized: Boolean(tax.isCapitalized),
+                        accountId: tax.accountId
+                    };
+                });
+
+                const grandTotalPKR = subtotalPKR - discount + totalTaxAmount;
+
+                // Update PurchaseInvoice record
+                const updatedInvoice = await tx.purchaseInvoice.update({
+                    where: { id: invoiceId },
+                    data: {
+                        supplierId: supplier ? supplier.id : existing.supplierId,
+                        warehouseId: (warehouseId && warehouseId.trim() !== '') ? warehouseId : null,
+                        date: new Date(date),
+                        dueDate: (dueDate && dueDate.trim() !== '') ? new Date(dueDate) : null,
+                        totalAmount: grandTotalPKR,
+                        taxAmount: totalTaxAmount,
+                        hasDiscount: hasDiscount || false,
+                        discountAmount: discount,
+                        discountType: discountType || null,
+                        exchangeRate: docRate,
+                        docExchangeRate: docRate,
+                        customsExchangeRate: customsRate,
+                        beneficiaryName: beneficiaryName || null,
+                        gdNumber: gdNumber || null,
+                        blNumber: blNumber || null,
+                        foreignTotal: Number(foreignTotal) || processedItems.reduce((acc: number, item: any) => acc + item.foreignAmount, 0),
+                        items: {
+                            create: processedItems.map((item: any) => {
+                                const itemRatio = subtotalPKR > 0 ? (item.total / subtotalPKR) : 0;
+                                const itemCapitalizedTax = totalCapitalizedTaxes * itemRatio;
+                                const itemTotalTax = totalTaxAmount * itemRatio;
+
+                                return {
+                                    id: crypto.randomUUID(),
+                                    productId: item.productId,
+                                    variantId: (item.variantId && typeof item.variantId === 'string' && item.variantId.trim() !== '') ? item.variantId : null,
+                                    unitId: (item.unitId && typeof item.unitId === 'string' && item.unitId.trim() !== '') ? item.unitId : null,
+                                    qty: item.qty,
+                                    foreignRate: item.foreignRate,
+                                    foreignAmount: item.foreignAmount,
+                                    rate: item.rate,
+                                    total: item.total + itemCapitalizedTax,
+                                    taxAmount: itemTotalTax,
+                                    isEFS: item.isEFS,
+                                    assessedRate: item.assessedRate,
+                                    assessedValuePKR: item.assessedValuePKR,
+                                    cdAmount: item.cdAmount,
+                                    rdAmount: item.rdAmount,
+                                    acdAmount: item.acdAmount,
+                                    itpRate: item.itpRate
+                                };
+                            })
+                        },
+                        taxes: {
+                            create: processedTaxes.map((tax: any) => ({
+                                id: crypto.randomUUID(),
+                                taxCodeId: (tax.taxCodeId && tax.taxCodeId !== 'MANUAL' && typeof tax.taxCodeId === 'string' && tax.taxCodeId.trim() !== '') ? tax.taxCodeId : null,
+                                taxName: tax.taxName,
+                                calculation: tax.calculation,
+                                rate: tax.rate,
+                                baseAmount: tax.baseAmount,
+                                taxAmount: tax.taxAmount,
+                                isCapitalized: tax.isCapitalized
+                            }))
+                        }
+                    },
+                    include: { items: true, taxes: true }
+                });
+
+                // Re-create Stock Ledger
+                let finalWarehouseId = (warehouseId && typeof warehouseId === 'string' && warehouseId.trim() !== '') ? warehouseId : null;
+                if (!finalWarehouseId) {
+                    const defaultWH = await tx.warehouse.findFirst({ where: { companyId, isDefault: true } })
+                        || await tx.warehouse.findFirst({ where: { companyId } });
+                    if (defaultWH) finalWarehouseId = defaultWH.id;
+                }
+
+                if (finalWarehouseId) {
+                    for (const item of updatedInvoice.items) {
+                        const product = await tx.product.findUnique({ where: { id: item.productId } });
+                        if (product && !product.isService) {
+                            await tx.stockLedger.create({
+                                data: {
+                                    id: crypto.randomUUID(),
+                                    companyId,
+                                    productId: item.productId,
+                                    variantId: item.variantId || null,
+                                    warehouseId: finalWarehouseId,
+                                    date: new Date(date),
+                                    qtyIn: item.qty,
+                                    qtyOut: 0,
+                                    costRate: Number(item.total) / Number(item.qty || 1),
+                                    itpRate: Number(item.itpRate || 0),
+                                    batchNo: updatedInvoice.gdNumber || null,
+                                    refType: 'IMPORT_INVOICE',
+                                    refId: updatedInvoice.id,
+                                    isEFS: item.isEFS
+                                }
+                            });
+                        }
+                    }
+                }
+
+                // Re-create Journal Entry
+                if (!payableAccountId) {
+                    throw new Error(`Import Supplier '${supplier?.name}' is not linked to a Payable Account. Please map an account.`);
+                }
+
+                const lines = [];
+                const descBeneficiary = beneficiaryName ? ` (Beneficiary: ${beneficiaryName})` : '';
+                const descGD = gdNumber ? ` [GD: ${gdNumber}]` : '';
+
+                lines.push({
+                    accountId: payableAccountId,
+                    credit: subtotalPKR - discount,
+                    debit: 0,
+                    narration: `Import Invoice ${updatedInvoice.invoiceNo}${descGD}${descBeneficiary} - Goods Value payable to ${supplier?.name}`
+                });
+
+                for (const item of updatedInvoice.items) {
+                    const product = await tx.product.findUnique({ where: { id: item.productId } });
+                    let purchaseAccount = product?.inventoryAccountId || product?.purchaseAccountId;
+                    if (!purchaseAccount) {
+                        const defInv = await tx.account.findFirst({ where: { companyId, name: { contains: 'Inventory', mode: 'insensitive' }, type: 'ASSET' } });
+                        purchaseAccount = defInv?.id;
+                    }
+                    if (!purchaseAccount) throw new Error(`Product '${product?.name}' missing inventory account.`);
+
+                    lines.push({
+                        accountId: purchaseAccount,
+                        credit: 0,
+                        debit: Number(item.total),
+                        narration: `Import of ${product?.name} (Qty: ${item.qty})`
+                    });
+                }
+
+                const customsAcc = await tx.account.findFirst({
+                    where: { 
+                        companyId, 
+                        OR: [
+                            { code: '2170' },
+                            { name: { contains: 'Customs Duties', mode: 'insensitive' } },
+                            { name: { contains: 'Customs Payable', mode: 'insensitive' } }
+                        ],
+                        type: 'LIABILITY',
+                        isPosting: true
+                    }
+                });
+
+                const insuranceAcc = await tx.account.findFirst({
+                    where: {
+                        companyId,
+                        OR: [
+                            { code: '2180' },
+                            { name: { contains: 'Marine Insurance', mode: 'insensitive' } },
+                            { name: { contains: 'Insurance Payable', mode: 'insensitive' } }
+                        ],
+                        type: 'LIABILITY',
+                        isPosting: true
+                    }
+                });
+
+                const portAcc = await tx.account.findFirst({
+                    where: {
+                        companyId,
+                        OR: [
+                            { code: '2190' },
+                            { name: { contains: 'Port Charges', mode: 'insensitive' } },
+                            { name: { contains: 'Clearing Agent', mode: 'insensitive' } }
+                        ],
+                        type: 'LIABILITY',
+                        isPosting: true
+                    }
+                });
+
+                const fallbackAp = await tx.account.findFirst({
+                    where: { companyId, name: { contains: 'Accounts Payable', mode: 'insensitive' }, type: 'LIABILITY', isPosting: true }
+                });
+
+                const defaultCustomsPayableId = customsAcc?.id || fallbackAp?.id;
+
+                for (const tax of processedTaxes) {
+                    if (tax.taxAmount > 0) {
+                        const taxNameLower = (tax.taxName || '').toLowerCase();
+
+                        if (!tax.isCapitalized) {
+                            let taxDebitAccId = tax.accountId;
+                            if (!taxDebitAccId && tax.taxCodeId) {
+                                const tc = await tx.taxCode.findUnique({ where: { id: tax.taxCodeId } });
+                                taxDebitAccId = tc?.accountId;
+                            }
+                            if (!taxDebitAccId) {
+                                if (taxNameLower.includes('income') || taxNameLower.includes('148') || taxNameLower.includes('wht')) {
+                                    const incTaxAcc = await tx.account.findFirst({ 
+                                        where: { companyId, name: { contains: 'Advance Income Tax', mode: 'insensitive' }, type: 'ASSET', isPosting: true } 
+                                    });
+                                    taxDebitAccId = incTaxAcc?.id;
+                                } else {
+                                    const stAcc = await tx.account.findFirst({ 
+                                        where: { companyId, name: { contains: 'Input Tax', mode: 'insensitive' }, type: 'ASSET', isPosting: true } 
+                                    });
+                                    taxDebitAccId = stAcc?.id;
+                                }
+                            }
+                            if (!taxDebitAccId) {
+                                const defTax = await tx.account.findFirst({ where: { companyId, name: { contains: 'Tax', mode: 'insensitive' }, type: 'ASSET', isPosting: true } });
+                                taxDebitAccId = defTax?.id;
+                            }
+                            if (!taxDebitAccId) throw new Error(`No account linked to tax '${tax.taxName}'.`);
+
+                            lines.push({
+                                accountId: taxDebitAccId,
+                                credit: 0,
+                                debit: tax.taxAmount,
+                                narration: `GD Adjustable Tax: ${tax.taxName} on ${updatedInvoice.invoiceNo}`
+                            });
+
+                            lines.push({
+                                accountId: defaultCustomsPayableId!,
+                                credit: tax.taxAmount,
+                                debit: 0,
+                                narration: `GD Payable for ${tax.taxName} on ${updatedInvoice.invoiceNo}`
+                            });
+                        } else {
+                            let creditAccId = null;
+                            if (taxNameLower.includes('insurance')) {
+                                creditAccId = tax.accountId || insuranceAcc?.id || defaultCustomsPayableId;
+                            } else if (taxNameLower.includes('landing') || taxNameLower.includes('port') || taxNameLower.includes('clearing')) {
+                                creditAccId = tax.accountId || portAcc?.id || defaultCustomsPayableId;
+                            } else {
+                                creditAccId = tax.accountId || defaultCustomsPayableId;
+                            }
+
+                            lines.push({
+                                accountId: creditAccId!,
+                                credit: tax.taxAmount,
+                                debit: 0,
+                                narration: `Payable for ${tax.taxName} on ${updatedInvoice.invoiceNo}`
+                            });
+                        }
+                    }
+                }
+
+                let jeId = existing.journalEntryId;
+                if (jeId) {
+                    await tx.journalEntry.update({
+                        where: { id: jeId },
+                        data: {
+                            date: new Date(date),
+                            reference: updatedInvoice.invoiceNo,
+                            narration: `Import Purchase Invoice ${updatedInvoice.invoiceNo}`,
+                            lines: { create: lines.map((line: any) => ({ ...line, id: crypto.randomUUID() })) }
+                        }
+                    });
+                } else {
+                    const je = await tx.journalEntry.create({
+                        data: {
+                            id: crypto.randomUUID(),
+                            companyId,
+                            number: `JV-${updatedInvoice.invoiceNo}`,
+                            date: new Date(date),
+                            type: 'PURCHASE',
+                            reference: updatedInvoice.invoiceNo,
+                            narration: `Import Purchase Invoice ${updatedInvoice.invoiceNo}`,
+                            lines: { create: lines.map((line: any) => ({ ...line, id: crypto.randomUUID() })) }
+                        }
+                    });
+                    jeId = je.id;
+                    await tx.purchaseInvoice.update({
+                        where: { id: updatedInvoice.id },
+                        data: { journalEntryId: jeId }
+                    });
+                }
+
+                return updatedInvoice;
+            }, {
+                maxWait: 10000,
+                timeout: 30000
+            });
+
+            return NextResponse.json({ success: true, data: result });
+        } catch (error: any) {
+            console.error("Update Import Invoice Error:", error);
             return NextResponse.json({ success: false, error: error.message }, { status: 500 });
         }
     }

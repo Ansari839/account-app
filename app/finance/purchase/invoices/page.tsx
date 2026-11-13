@@ -119,7 +119,7 @@ export default function PurchaseInvoicesPage() {
                         <Eye size={16} />
                     </button>
                     <button
-                        onClick={() => router.push(row.isImport ? `/finance/purchase/invoices/${row.id}` : `/finance/purchase/invoices/${row.id}/edit`)}
+                        onClick={() => router.push(row.isImport ? `/finance/purchase/invoices/import?id=${row.id}` : `/finance/purchase/invoices/${row.id}/edit`)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors border border-transparent hover:border-amber-100 dark:hover:border-amber-500/20"
                         title="Edit Invoice"
                     >

@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import MainLayout from "@/components/MainLayout";
 import { authenticatedFetch } from "@/lib/api-client";
 import Combobox from "@/components/Combobox";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { 
     Save, 
     ArrowLeft, 
@@ -27,11 +27,14 @@ import {
 import { useNotifications } from '@/context/NotificationContext';
 import { cn } from '@/lib/utils';
 
-export default function NewImportInvoicePage() {
+function ImportInvoiceForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const editId = searchParams.get('id');
     const { showNotification } = useNotifications();
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
     
     // Master Data
     const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -139,32 +142,34 @@ export default function NewImportInvoicePage() {
 
             setSuppliers(combined);
 
-            // Auto-select Import Account / Supplier if not yet selected
-            const defaultSup = sups.find((s: any) => s.code?.includes('IMP') || s.name?.toLowerCase().includes('import'))
-                || accs.find((a: any) => a.code === '2111')
-                || sups[0];
-            if (defaultSup) {
-                setFormData((prev: any) => prev.supplierId ? prev : { ...prev, supplierId: defaultSup.id });
+            // Auto-select Import Account / Supplier if not yet selected and not editing
+            if (!editId) {
+                const defaultSup = sups.find((s: any) => s.code?.includes('IMP') || s.name?.toLowerCase().includes('import'))
+                    || accs.find((a: any) => a.code === '2111')
+                    || sups[0];
+                if (defaultSup) {
+                    setFormData((prev: any) => prev.supplierId ? prev : { ...prev, supplierId: defaultSup.id });
+                }
+
+                // Auto-populate standard Pakistan Customs GD Duties if empty
+                const customsAcc = accs.find((a: any) => a.code === '2170' || a.name.toLowerCase().includes('customs'));
+                const inputStAcc = accs.find((a: any) => a.code === '1160' || a.name.toLowerCase().includes('input tax'));
+                const advItAcc = accs.find((a: any) => a.code === '1170' || a.name.toLowerCase().includes('advance income'));
+
+                setFormData((prev: any) => {
+                    if ((prev.gdTaxes || []).length > 0) return prev;
+                    return {
+                        ...prev,
+                        gdTaxes: [
+                            { id: '1', taxCodeId: '', taxName: 'Customs Duty (CD)', calculation: 'ASSESSED_VALUE', rate: 10, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
+                            { id: '2', taxCodeId: '', taxName: 'Regulatory Duty (RD)', calculation: 'ASSESSED_VALUE', rate: 2, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
+                            { id: '3', taxCodeId: '', taxName: 'Additional Customs Duty (ACD)', calculation: 'ASSESSED_VALUE', rate: 0, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
+                            { id: '4', taxCodeId: '', taxName: 'Sales Tax (ST 18%)', calculation: 'ASSESSED_PLUS_DUTIES', rate: 18, taxAmount: 0, isCapitalized: false, accountId: inputStAcc?.id || null },
+                            { id: '5', taxCodeId: '', taxName: 'Advance Income Tax (Sec 148)', calculation: 'ASSESSED_PLUS_ALL', rate: 1, taxAmount: 0, isCapitalized: false, accountId: advItAcc?.id || null }
+                        ]
+                    };
+                });
             }
-
-            // Auto-populate standard Pakistan Customs GD Duties if empty
-            const customsAcc = accs.find((a: any) => a.code === '2170' || a.name.toLowerCase().includes('customs'));
-            const inputStAcc = accs.find((a: any) => a.code === '1160' || a.name.toLowerCase().includes('input tax'));
-            const advItAcc = accs.find((a: any) => a.code === '1170' || a.name.toLowerCase().includes('advance income'));
-
-            setFormData((prev: any) => {
-                if ((prev.gdTaxes || []).length > 0) return prev;
-                return {
-                    ...prev,
-                    gdTaxes: [
-                        { id: '1', taxCodeId: '', taxName: 'Customs Duty (CD)', calculation: 'ASSESSED_VALUE', rate: 10, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
-                        { id: '2', taxCodeId: '', taxName: 'Regulatory Duty (RD)', calculation: 'ASSESSED_VALUE', rate: 2, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
-                        { id: '3', taxCodeId: '', taxName: 'Additional Customs Duty (ACD)', calculation: 'ASSESSED_VALUE', rate: 0, taxAmount: 0, isCapitalized: true, accountId: customsAcc?.id || null },
-                        { id: '4', taxCodeId: '', taxName: 'Sales Tax (ST 18%)', calculation: 'ASSESSED_PLUS_DUTIES', rate: 18, taxAmount: 0, isCapitalized: false, accountId: inputStAcc?.id || null },
-                        { id: '5', taxCodeId: '', taxName: 'Advance Income Tax (Sec 148)', calculation: 'ASSESSED_PLUS_ALL', rate: 1, taxAmount: 0, isCapitalized: false, accountId: advItAcc?.id || null }
-                    ]
-                };
-            });
 
             if (whRes.status === 'fulfilled' && whRes.value.ok) {
                 const json = await whRes.value.json();
@@ -190,8 +195,162 @@ export default function NewImportInvoicePage() {
                     if (base) setCurrency({ symbol: base.symbol });
                 }
             }
+
+            // If editId is present, fetch and populate the invoice details
+            if (editId) {
+                await loadInvoiceForEdit(editId, accs);
+            }
         } catch (error) {
             console.error("Error fetching dropdowns:", error);
+        }
+    };
+
+    const loadInvoiceForEdit = async (invId: string, accsList: any[]) => {
+        setIsLoadingInvoice(true);
+        try {
+            const res = await authenticatedFetch(`/api/finance/purchase/invoices/${invId}`);
+            const json = await res.json();
+            if (!json.success || !json.data) {
+                showNotification('error', json.error || 'Failed to load invoice for editing');
+                return;
+            }
+            const inv = json.data;
+
+            const mappedItems = (inv.items || []).map((it: any) => ({
+                id: it.id,
+                productId: it.productId,
+                productName: it.Product?.name || '',
+                unitId: it.unitId || it.Product?.baseUnitId || '',
+                qty: Number(it.qty || 0),
+                foreignRate: Number(it.foreignRate || 0),
+                rate: Number(it.rate || 0),
+                foreignAmount: Number(it.foreignAmount || 0),
+                total: Number(it.total || 0),
+                isEFS: Boolean(it.isEFS),
+                isAutoDuties: true,
+                assessedRate: Number(it.assessedRate || 0),
+                cdAmount: (it.cdAmount !== null && it.cdAmount !== undefined) ? Number(it.cdAmount) : '',
+                rdAmount: (it.rdAmount !== null && it.rdAmount !== undefined) ? Number(it.rdAmount) : '',
+                acdAmount: (it.acdAmount !== null && it.acdAmount !== undefined) ? Number(it.acdAmount) : '',
+                itpRate: Number(it.itpRate || 0),
+                assessedValuePKR: Number(it.assessedValuePKR || 0)
+            }));
+
+            const allTaxes = inv.taxes || [];
+            const insTax = allTaxes.find((t: any) => (t.taxName || '').toLowerCase().includes('insurance'));
+            const landTax = allTaxes.find((t: any) => (t.taxName || '').toLowerCase().includes('landing'));
+
+            if (insTax) {
+                const r = Number(insTax.rate || 0);
+                if (r > 0) {
+                    setInsuranceType('PERCENT');
+                    setInsuranceValue(r);
+                } else {
+                    setInsuranceType('PKR');
+                    setInsuranceValue(Number(insTax.taxAmount || 0));
+                }
+                const jLines = inv.JournalEntry?.lines || [];
+                const insLine = jLines.find((l: any) => 
+                    (l.narration || '').toLowerCase().includes('insurance') || l.account?.code === '2180'
+                );
+                if (insLine?.accountId) setInsuranceAccountId(insLine.accountId);
+            }
+
+            if (landTax) {
+                const r = Number(landTax.rate || 0);
+                if (r > 0) {
+                    setLandingType('PERCENT');
+                    setLandingValue(r);
+                } else {
+                    setLandingType('PKR');
+                    setLandingValue(Number(landTax.taxAmount || 0));
+                }
+                const jLines = inv.JournalEntry?.lines || [];
+                const landLine = jLines.find((l: any) => 
+                    (l.narration || '').toLowerCase().includes('landing') || (l.narration || '').toLowerCase().includes('port') || l.account?.code === '2190'
+                );
+                if (landLine?.accountId) setLandingAccountId(landLine.accountId);
+            }
+
+            const customGdTaxes = allTaxes
+                .filter((t: any) => {
+                    const n = (t.taxName || '').toLowerCase();
+                    return !n.includes('insurance') && !n.includes('landing');
+                })
+                .map((t: any) => {
+                    const tName = (t.taxName || '').toLowerCase();
+                    let matchedAccId = null;
+                    (inv.JournalEntry?.lines || []).forEach((line: any) => {
+                        const lNarr = (line.narration || '').toLowerCase();
+                        if (lNarr.includes(tName) || (tName.includes('customs') && line.account?.code === '2170')) {
+                            matchedAccId = line.accountId;
+                        }
+                    });
+                    if (!matchedAccId) {
+                        if (tName.includes('customs') || tName.includes('cd') || tName.includes('rd') || tName.includes('acd')) {
+                            matchedAccId = accsList.find(a => a.code === '2170')?.id || null;
+                        } else if (tName.includes('sales') || tName.includes('st') || tName.includes('ast')) {
+                            matchedAccId = accsList.find(a => a.code === '1160')?.id || null;
+                        } else if (tName.includes('income') || tName.includes('148')) {
+                            matchedAccId = accsList.find(a => a.code === '1170')?.id || null;
+                        }
+                    }
+                    return {
+                        id: t.id,
+                        taxCodeId: t.taxCodeId || '',
+                        taxName: t.taxName,
+                        calculation: t.calculation || 'ASSESSED_VALUE',
+                        rate: Number(t.rate || 0),
+                        taxAmount: Number(t.taxAmount || 0),
+                        isCapitalized: Boolean(t.isCapitalized),
+                        accountId: matchedAccId
+                    };
+                });
+
+            setFormData({
+                supplierId: inv.supplierId,
+                beneficiaryName: inv.beneficiaryName || '',
+                gdNumber: inv.gdNumber || '',
+                blNumber: inv.blNumber || '',
+                warehouseId: inv.warehouseId || '',
+                date: inv.date ? inv.date.slice(0, 10) : new Date().toISOString().split("T")[0],
+                dueDate: inv.dueDate ? inv.dueDate.slice(0, 10) : '',
+                hasDiscount: Boolean(inv.hasDiscount),
+                discountAmount: Number(inv.discountAmount || 0),
+                discountType: inv.discountType || "FIXED",
+                exchangeRate: Number(inv.docExchangeRate || inv.exchangeRate || 1),
+                docExchangeRate: Number(inv.docExchangeRate || inv.exchangeRate || 1),
+                customsExchangeRate: Number(inv.customsExchangeRate || 1),
+                foreignTotal: Number(inv.foreignTotal || 0),
+                invoiceNo: inv.invoiceNo,
+                items: mappedItems.length > 0 ? mappedItems : [
+                    {
+                        id: Date.now().toString(),
+                        productId: "",
+                        productName: "",
+                        unitId: "",
+                        qty: 1,
+                        foreignRate: 0,
+                        rate: 0,
+                        foreignAmount: 0,
+                        total: 0,
+                        isEFS: false,
+                        isAutoDuties: true,
+                        assessedRate: 0,
+                        cdAmount: '',
+                        rdAmount: '',
+                        acdAmount: '',
+                        itpRate: 0,
+                        assessedValuePKR: 0
+                    }
+                ],
+                gdTaxes: customGdTaxes
+            });
+        } catch (err: any) {
+            console.error("Error loading invoice for edit:", err);
+            showNotification('error', 'Failed to load invoice for editing');
+        } finally {
+            setIsLoadingInvoice(false);
         }
     };
 
@@ -732,18 +891,23 @@ export default function NewImportInvoicePage() {
                 gdTaxes: finalTaxes
             };
 
-            const res = await authenticatedFetch('/api/finance/purchase/invoices/import', {
-                method: 'POST',
+            const url = editId 
+                ? `/api/finance/purchase/invoices/import?id=${editId}`
+                : '/api/finance/purchase/invoices/import';
+            const method = editId ? 'PUT' : 'POST';
+
+            const res = await authenticatedFetch(url, {
+                method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
 
             if (res.ok) {
-                showNotification('success', 'Import Invoice created and Journal Entry posted successfully!');
+                showNotification('success', editId ? 'Import Invoice updated and Journal Entry re-posted successfully!' : 'Import Invoice created and Journal Entry posted successfully!');
                 router.push('/finance/purchase/invoices');
             } else {
                 const json = await res.json();
-                showNotification('error', json.error || 'Failed to create import invoice.');
+                showNotification('error', json.error || (editId ? 'Failed to update import invoice.' : 'Failed to create import invoice.'));
             }
         } catch (error) {
             showNotification('error', 'Network error while saving import invoice.');
@@ -768,6 +932,17 @@ export default function NewImportInvoicePage() {
 
     const isAnyEfs = formData.items.some((it: any) => it.isEFS);
     const summary = calculateSummary();
+
+    if (isLoadingInvoice) {
+        return (
+            <MainLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+                    <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-sm font-bold text-slate-500">Loading Import Invoice for Editing...</p>
+                </div>
+            </MainLayout>
+        );
+    }
 
     return (
         <MainLayout>
@@ -804,12 +979,16 @@ export default function NewImportInvoicePage() {
                             <div>
                                 <div className="flex items-center gap-2 mb-2">
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/30">
-                                        ● Direct Import Bill
+                                        ● {editId ? 'Edit Import Bill' : 'Direct Import Bill'}
                                     </span>
                                 </div>
-                                <h1 className="text-3xl font-black text-white tracking-tight">New Import Bill</h1>
+                                <h1 className="text-3xl font-black text-white tracking-tight">
+                                    {editId ? `Edit Import Bill (${formData.invoiceNo || 'IMP'})` : 'New Import Bill'}
+                                </h1>
                                 <p className="text-slate-400 font-medium text-xs mt-1 leading-relaxed">
-                                    Direct Goods Declaration (GD) & Commercial Import Invoice with EFS & ITP calculation.
+                                    {editId 
+                                        ? 'Modify Goods Declaration (GD), EFS, duties, and landed valuation.' 
+                                        : 'Direct Goods Declaration (GD) & Commercial Import Invoice with EFS & ITP calculation.'}
                                 </p>
                             </div>
                         </div>
@@ -1594,12 +1773,26 @@ export default function NewImportInvoicePage() {
                                 )}
                             >
                                 <Save size={16} />
-                                {isSubmitting ? 'Saving...' : 'Create Bill'}
+                                {isSubmitting ? 'Saving...' : (editId ? 'Update Bill' : 'Create Bill')}
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
         </MainLayout>
+    );
+}
+
+export default function NewImportInvoicePage() {
+    return (
+        <Suspense fallback={
+            <MainLayout>
+                <div className="flex items-center justify-center min-h-[60vh]">
+                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            </MainLayout>
+        }>
+            <ImportInvoiceForm />
+        </Suspense>
     );
 }

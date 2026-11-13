@@ -56,6 +56,14 @@ export default function PurchaseInvoiceDetailPage() {
                         </div>
                     </div>
                     <div className="flex gap-3">
+                        {invoice.isImport && (
+                            <button
+                                onClick={() => router.push(`/finance/purchase/invoices/import?id=${invoice.id}`)}
+                                className="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-xl font-bold shadow-lg hover:shadow-amber-500/30 transition-all flex items-center gap-2"
+                            >
+                                <span>✎</span> Edit Import Bill
+                            </button>
+                        )}
                         <button
                             onClick={() => window.print()}
                             className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg hover:shadow-indigo-500/30 transition-all flex items-center gap-2"
