@@ -10,6 +10,7 @@ import {
     Calendar, Warehouse, FileText, Check, ShieldCheck, ShoppingCart, RefreshCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Combobox from "@/components/Combobox";
 
 type ExecutionMode = "DIRECT_FINISH" | "YARN_TO_GREY" | "GREY_TO_FINISH";
 
@@ -92,24 +93,77 @@ export default function ProductionExecutionWizard() {
         }
     };
 
-    // Filter products by stage & mode
+    // Filter products strictly to Manufactured products for Output
     const outputProductList = useMemo(() => {
+        // Strictly only show items marked as isManufactured: true
+        const mfgProducts = products.filter(p => p.isManufactured === true);
         if (executionMode === "YARN_TO_GREY") {
-            // Looking for Grey fabrics or Manufactured goods
-            return products.filter(p => p.stage === "GREY" || p.name.toUpperCase().includes("GREY") || p.name.toUpperCase().includes("NET"));
+            const grey = mfgProducts.filter(p => p.stage === "GREY" || p.name.toUpperCase().includes("GREY"));
+            return grey.length > 0 ? grey : mfgProducts;
         } else {
-            // Finished goods
-            return products.filter(p => p.stage === "FINISH" || p.stage === null || !p.name.toUpperCase().includes("GREY"));
+            const finish = mfgProducts.filter(p => p.stage === "FINISH" || p.stage === null || !p.name.toUpperCase().includes("GREY"));
+            return finish.length > 0 ? finish : mfgProducts;
         }
     }, [products, executionMode]);
+
+    const outputOptions = useMemo(() => {
+        return outputProductList.map(p => ({
+            value: p.id,
+            label: `${p.code} - ${p.name} ${p.hsCode ? `[HS ${p.hsCode}]` : ''} ${p.stage ? `(${p.stage})` : ''}`
+        }));
+    }, [outputProductList]);
 
     const yarnProductList = useMemo(() => {
         return products.filter(p => p.stage === "RAW" || p.hsCode?.startsWith("54") || p.hsCode?.startsWith("55") || p.name.toUpperCase().includes("DEN") || p.name.toUpperCase().includes("YARN"));
     }, [products]);
 
+    const yarnOptions = useMemo(() => {
+        const opts: { value: string; label: string }[] = [];
+        for (const p of yarnProductList) {
+            const stdKey = `${p.id}-RAW-STD`;
+            const efsKey = `${p.id}-RAW-EFS`;
+            const stdStock = stockRates[stdKey]?.qty || 0;
+            const efsStock = stockRates[efsKey]?.qty || 0;
+
+            if (stdStock > 0) {
+                opts.push({
+                    value: `${p.id}|false`,
+                    label: `${p.code} - ${p.name} [Non-EFS] (Stock: ${stdStock.toLocaleString()} KG)`
+                });
+            }
+            if (efsStock > 0) {
+                opts.push({
+                    value: `${p.id}|true`,
+                    label: `${p.code} - ${p.name} [EFS Duty-Free] (Stock: ${efsStock.toLocaleString()} KG)`
+                });
+            }
+            if (stdStock <= 0 && efsStock <= 0) {
+                opts.push({
+                    value: `${p.id}|false`,
+                    label: `${p.code} - ${p.name} (0 KG in Stock)`
+                });
+            }
+        }
+        return opts;
+    }, [yarnProductList, stockRates]);
+
     const greyProductList = useMemo(() => {
         return products.filter(p => p.stage === "GREY" || p.name.toUpperCase().includes("GREY") || p.hsCode?.startsWith("60"));
     }, [products]);
+
+    const greyOptions = useMemo(() => {
+        return greyProductList.map(p => ({
+            value: p.id,
+            label: `${p.code} - ${p.name} ${p.hsCode ? `[HS ${p.hsCode}]` : ''}`
+        }));
+    }, [greyProductList]);
+
+    const dyeingServiceOptions = useMemo(() => {
+        return unconsumedServices.map(s => ({
+            value: s.id,
+            label: `${s.supplierName} | Inv: ${s.invoiceNo} | ${s.productName} | Avail: ${s.unconsumedQty.toLocaleString()} ${s.unit} @ Rs. ${s.rate}/KG`
+        }));
+    }, [unconsumedServices]);
 
     // Calculate Quantities Backwards (Like Excel)
     const outQty = parseFloat(outputQuantity) || 0;
@@ -442,21 +496,22 @@ export default function ProductionExecutionWizard() {
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                                {/* Output Product */}
+                                {/* Output Product (Only Manufactured Goods) */}
                                 <div className="sm:col-span-2 space-y-1.5">
-                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Output Product *</label>
-                                    <select
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Manufactured Output Product *</label>
+                                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.2 rounded-full">
+                                            {outputOptions.length} manufactured items
+                                        </span>
+                                    </div>
+                                    <Combobox
+                                        options={outputOptions}
                                         value={outputProductId}
-                                        onChange={(e) => setOutputProductId(e.target.value)}
-                                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                                    >
-                                        <option value="">Select Output Product...</option>
-                                        {outputProductList.map(p => (
-                                            <option key={p.id} value={p.id}>
-                                                {p.code} - {p.name} {p.hsCode ? `[HS ${p.hsCode}]` : ''}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        onChange={(val) => setOutputProductId(val)}
+                                        placeholder="Search or select manufactured product..."
+                                        searchPlaceholder="Type name, code, or HS code..."
+                                        className="w-full text-xs font-bold"
+                                    />
                                 </div>
 
                                 {/* Ready Output Qty */}
@@ -581,22 +636,18 @@ export default function ProductionExecutionWizard() {
                                             </span>
                                         </div>
 
-                                        <select
+                                        <Combobox
+                                            options={dyeingServiceOptions}
                                             value={selectedDyeingServiceId}
-                                            onChange={(e) => {
-                                                setSelectedDyeingServiceId(e.target.value);
-                                                const s = unconsumedServices.find(it => it.id === e.target.value);
+                                            onChange={(val) => {
+                                                setSelectedDyeingServiceId(val);
+                                                const s = unconsumedServices.find(it => it.id === val);
                                                 if (s) setDyeingServiceQty(Math.min(s.unconsumedQty, reqDyeingQty).toString());
                                             }}
-                                            className="w-full px-3 py-2.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white"
-                                        >
-                                            <option value="">-- Choose Dyeing / Finishing Invoice --</option>
-                                            {unconsumedServices.map(s => (
-                                                <option key={s.id} value={s.id}>
-                                                    {s.supplierName} | Inv: {s.invoiceNo} | {s.productName} | Avail: {s.unconsumedQty.toLocaleString()} {s.unit} @ Rs. {s.rate}/KG
-                                                </option>
-                                            ))}
-                                        </select>
+                                            placeholder="-- Choose Dyeing / Finishing Invoice --"
+                                            searchPlaceholder="Search supplier or invoice no..."
+                                            className="w-full text-xs font-bold"
+                                        />
                                     </div>
                                 )}
                             </div>
@@ -754,39 +805,14 @@ export default function ProductionExecutionWizard() {
                                             <div key={idx} className="p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-3 sm:items-center">
                                                 {/* Product & EFS Selection */}
                                                 <div className="flex-1 space-y-1">
-                                                    <select
+                                                    <Combobox
+                                                        options={yarnOptions}
                                                         value={row.productId ? `${row.productId}|${row.isEFS}` : ""}
-                                                        onChange={(e) => handleYarnProductChange(idx, e.target.value)}
-                                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white"
-                                                    >
-                                                        <option value="">-- Select Yarn from Stock --</option>
-                                                        {yarnProductList.map(p => {
-                                                            const stdKey = `${p.id}-RAW-STD`;
-                                                            const efsKey = `${p.id}-RAW-EFS`;
-                                                            const stdStock = stockRates[stdKey]?.qty || 0;
-                                                            const efsStock = stockRates[efsKey]?.qty || 0;
-
-                                                            return (
-                                                                <React.Fragment key={p.id}>
-                                                                    {stdStock > 0 && (
-                                                                        <option value={`${p.id}|false`}>
-                                                                            {p.code} - {p.name} [Non-EFS] (Avail: {stdStock.toLocaleString()} KG)
-                                                                        </option>
-                                                                    )}
-                                                                    {efsStock > 0 && (
-                                                                        <option value={`${p.id}|true`}>
-                                                                            {p.code} - {p.name} [EFS Duty-Free] (Avail: {efsStock.toLocaleString()} KG)
-                                                                        </option>
-                                                                    )}
-                                                                    {stdStock <= 0 && efsStock <= 0 && (
-                                                                        <option value={`${p.id}|false`}>
-                                                                            {p.code} - {p.name} (0 KG in Stock)
-                                                                        </option>
-                                                                    )}
-                                                                </React.Fragment>
-                                                            );
-                                                        })}
-                                                    </select>
+                                                        onChange={(val) => handleYarnProductChange(idx, val)}
+                                                        placeholder="-- Select Yarn from Stock --"
+                                                        searchPlaceholder="Search yarn by name or count..."
+                                                        className="w-full text-xs font-bold"
+                                                    />
                                                 </div>
 
                                                 {/* Allocated Qty */}
@@ -866,22 +892,18 @@ export default function ProductionExecutionWizard() {
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div className="sm:col-span-2 space-y-1.5">
                                         <label className="text-xs font-bold text-slate-500">Grey Fabric *</label>
-                                        <select
+                                        <Combobox
+                                            options={greyOptions}
                                             value={greyInputProductId}
-                                            onChange={(e) => {
-                                                setGreyInputProductId(e.target.value);
-                                                const rateKey = `${e.target.value}-GREY-STD`;
+                                            onChange={(val) => {
+                                                setGreyInputProductId(val);
+                                                const rateKey = `${val}-GREY-STD`;
                                                 setGreyInputCostRate(stockRates[rateKey]?.rate ? stockRates[rateKey].rate.toFixed(2) : "0");
                                             }}
-                                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-xs font-bold text-slate-900 dark:text-white"
-                                        >
-                                            <option value="">Select Grey Fabric from stock...</option>
-                                            {greyProductList.map(p => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.code} - {p.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            placeholder="Select Grey Fabric from stock..."
+                                            searchPlaceholder="Search grey fabric..."
+                                            className="w-full text-xs font-bold"
+                                        />
                                     </div>
 
                                     <div className="space-y-1.5">
