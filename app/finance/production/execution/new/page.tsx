@@ -423,7 +423,7 @@ export default function ProductionExecutionWizard() {
                         </div>
                         <h1 className="text-3xl font-black tracking-tight">Flexible Production Flow</h1>
                         <p className="text-sm text-slate-400 mt-1">
-                            Output ready qty batayein, backward stages (Dyeing $\rightarrow$ Weaving $\rightarrow$ Yarn) auto-calc honge.
+                            Enter output finished quantity; backward stages (Dyeing → Weaving → Raw Yarn) auto-calculate automatically.
                         </p>
                     </div>
 
@@ -487,7 +487,7 @@ export default function ProductionExecutionWizard() {
                                         <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider">
                                             {executionMode === "YARN_TO_GREY" ? "Target Output: Grey Fabric (WIP)" : "Target Output: Finished Goods (Export Item)"}
                                         </h3>
-                                        <p className="text-xs sm:text-sm text-slate-400">Kitna maal ready hua aur kis warehouse me jayega.</p>
+                                        <p className="text-xs sm:text-sm text-slate-400">Specify batch quantity produced and destination warehouse.</p>
                                     </div>
                                 </div>
                                 <span className="font-mono text-xs font-bold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
@@ -588,7 +588,7 @@ export default function ProductionExecutionWizard() {
                                             <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider">
                                                 Stage 1: Printing / Dyeing Service
                                             </h3>
-                                            <p className="text-xs sm:text-sm text-slate-400">Bahar ka dye-house vendor bill (Chemicals humare nahi hain).</p>
+                                            <p className="text-xs sm:text-sm text-slate-400">External dye-house vendor processing bill (Vendor-supplied chemicals).</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -675,7 +675,7 @@ export default function ProductionExecutionWizard() {
                                             <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider">
                                                 Stage 2: Weaving / Knitting Stage
                                             </h3>
-                                            <p className="text-xs sm:text-sm text-slate-400">Kapra banane ki cost (In-House machine ya bahar ka weaver bill).</p>
+                                            <p className="text-xs sm:text-sm text-slate-400">Fabric manufacturing cost (In-house machines or external weaver billing).</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -759,7 +759,7 @@ export default function ProductionExecutionWizard() {
                                             <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider">
                                                 Stage 3: Raw Yarn Consumption (Physical Stock)
                                             </h3>
-                                            <p className="text-xs sm:text-sm text-slate-400">Warehouse se Yarn lots allocate karein (4% wastage included).</p>
+                                            <p className="text-xs sm:text-sm text-slate-400">Allocate raw yarn lots from warehouse inventory (Includes configured wastage).</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -786,12 +786,12 @@ export default function ProductionExecutionWizard() {
                                         </div>
                                         <div>
                                             <div className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
-                                                <span>{isYarnCovered ? "Status: OK (Full Yarn Allocated)" : `Status: Kam hai (${yarnShortfall.toLocaleString()} KG Short)`}</span>
+                                                <span>{isYarnCovered ? "Status: Fulfilled (Full Yarn Allocated)" : `Status: Shortfall (${yarnShortfall.toLocaleString()} KG Short)`}</span>
                                             </div>
                                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                                                 {isYarnCovered 
-                                                    ? "Required quantity poori allocate ho chuki hai." 
-                                                    : "Mazeed yarn lots allocate karein taake required weight poora ho."}
+                                                    ? "Required quantity has been fully allocated from inventory." 
+                                                    : "Allocate additional yarn lots from stock to fulfill required weight."}
                                             </p>
                                         </div>
                                     </div>
@@ -894,7 +894,7 @@ export default function ProductionExecutionWizard() {
                                             <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider">
                                                 Stage 2: Consumed Grey Fabric (In-Stock)
                                             </h3>
-                                            <p className="text-xs sm:text-sm text-slate-400">Warehouse me pehle se mojud Grey stock select karein jo dye hua hai.</p>
+                                            <p className="text-xs sm:text-sm text-slate-400">Select available on-hand Grey fabric inventory from warehouse to be dyed.</p>
                                         </div>
                                     </div>
                                 </div>

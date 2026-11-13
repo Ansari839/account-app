@@ -105,7 +105,7 @@ export default function HsAnalyzerModal({ isOpen, onClose }: HsAnalyzerModalProp
                                 </span>
                             </div>
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                                1) Actual Standard Production Recipe dekhein, phir 2) Check karein ke aapka stock kahan tak fit hota hai aur kitna kam hai.
+                                1) Review technical standard production recipe, and 2) Audit warehouse inventory fitment and material shortfall.
                             </p>
                         </div>
                     </div>
@@ -393,7 +393,7 @@ export default function HsAnalyzerModal({ isOpen, onClose }: HsAnalyzerModalProp
                                                         </span>
                                                     </div>
                                                     <div>
-                                                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Shortfall (Kam hai)</span>
+                                                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Material Shortfall</span>
                                                         <span className={`font-mono font-bold ${
                                                             row.shortfallQty > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"
                                                         }`}>
@@ -454,7 +454,7 @@ export default function HsAnalyzerModal({ isOpen, onClose }: HsAnalyzerModalProp
                                                         </div>
                                                     ) : (
                                                         <div className="text-xs text-slate-400 italic py-1">
-                                                            Is HS Code ka koi product warehouse me mojud nahi hai. Output banane ke liye iska stock purchase ya import karna hoga.
+                                                            No inventory found for this HS Code in warehouse. Raw material must be purchased or imported to produce this output.
                                                         </div>
                                                     )}
                                                 </div>
@@ -474,7 +474,7 @@ export default function HsAnalyzerModal({ isOpen, onClose }: HsAnalyzerModalProp
                 <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/70 dark:bg-slate-900/70">
                     <div className="flex items-center gap-2 text-[11px] text-slate-500">
                         <Info size={14} className="text-indigo-500" />
-                        <span>Asal standard technical recipe dikhane ke baad aapka stock fit karke shortfall (kam hai) calculate hota hai.</span>
+                        <span>Compares standard technical bill of materials against on-hand physical inventory to compute exact material shortfall.</span>
                     </div>
                     <button
                         type="button"
