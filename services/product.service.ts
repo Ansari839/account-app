@@ -260,8 +260,22 @@ export class ProductService {
      * Delete Product
      */
     static async deleteProduct(id: string) {
-        const transactions = await prisma.stockLedger.count({ where: { productId: id } });
-        if (transactions > 0) throw new Error("Cannot delete product with existing stock transactions.");
+        // Prevent deletion if referenced in actual financial / transactional documents
+        const [purchaseItems, salesItems, productionRecords, productionInputs, bomItems] = await Promise.all([
+            prisma.purchaseInvoiceItem.count({ where: { productId: id } }),
+            prisma.salesInvoiceItem.count({ where: { productId: id } }),
+            prisma.productionRecord.count({ where: { outputProductId: id } }),
+            prisma.productionInput.count({ where: { productId: id } }),
+            prisma.bOMInputItem.count({ where: { productId: id } })
+        ]);
+
+        if (purchaseItems > 0 || salesItems > 0 || productionRecords > 0 || productionInputs > 0 || bomItems > 0) {
+            throw new Error("Cannot delete product: It is linked to existing purchase invoices, sales invoices, BOMs, or production records.");
+        }
+
+        // Clean up stock ledger entries (e.g. opening stock) and product variants
+        await prisma.stockLedger.deleteMany({ where: { productId: id } });
+        await prisma.productVariant.deleteMany({ where: { productId: id } });
 
         return prisma.product.delete({ where: { id } });
     }
