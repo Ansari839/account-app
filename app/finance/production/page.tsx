@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from "react";
 import MainLayout from "@/components/MainLayout";
 import { authenticatedFetch } from "@/lib/api-client";
-import { PackageSearch, Loader2, ArrowRight, Layers, Factory } from "lucide-react";
+import { PackageSearch, Loader2, ArrowRight, Layers, Factory, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useCompany } from "@/context/CompanyContext";
+import HsAnalyzerModal from "./HsAnalyzerModal";
 
 export default function ProductionDashboard() {
     const router = useRouter();
@@ -14,6 +15,7 @@ export default function ProductionDashboard() {
     const [categories, setCategories] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isHsModalOpen, setIsHsModalOpen] = useState(false);
 
     useEffect(() => {
         fetchDashboardData();
@@ -79,16 +81,24 @@ export default function ProductionDashboard() {
                         <p className="text-slate-400 font-medium mt-1">Track unconsumed inventory categorized by production stage.</p>
                     </div>
                     
-                    <div className="relative z-10 flex gap-4">
+                    <div className="relative z-10 flex flex-wrap gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setIsHsModalOpen(true)}
+                            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-5 py-3 rounded-xl font-bold transition-all shadow-lg shadow-purple-500/25 active:scale-95 border border-purple-400/30"
+                        >
+                            <Sparkles size={16} className="text-amber-300" />
+                            <span>HS Code Analyzer</span>
+                        </button>
                         <button 
                             onClick={() => router.push('/finance/production/bom')}
-                            className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-bold transition-all border border-slate-700 hover:border-slate-600"
+                            className="bg-slate-800 hover:bg-slate-700 text-white px-5 py-3 rounded-xl font-bold transition-all border border-slate-700 hover:border-slate-600"
                         >
                             Manage BOMs
                         </button>
                         <button 
                             onClick={() => router.push('/finance/production/execution/new')}
-                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5"
+                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5"
                         >
                             Process Material <ArrowRight size={18} />
                         </button>
@@ -302,6 +312,12 @@ export default function ProductionDashboard() {
                     </div>
                 )}
             </div>
+
+            {/* HS Code Analyzer Modal for Testing */}
+            <HsAnalyzerModal
+                isOpen={isHsModalOpen}
+                onClose={() => setIsHsModalOpen(false)}
+            />
         </MainLayout>
     );
 }
