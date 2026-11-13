@@ -787,7 +787,7 @@ export class ReportService {
 
         // Collect Ref IDs for batch fetching
         const grnIds = entries.filter(e => e.refType === 'GRN').map(e => e.refId);
-        const piIds = entries.filter(e => ['PURCHASE', 'INVOICE'].includes(e.refType)).map(e => e.refId);
+        const piIds = entries.filter(e => ['PURCHASE', 'INVOICE', 'IMPORT_INVOICE'].includes(e.refType)).map(e => e.refId);
         const siIds = entries.filter(e => ['SALE', 'SALES_INVOICE'].includes(e.refType)).map(e => e.refId);
         const returnIds = entries.filter(e => e.refType === 'RETURN').map(e => e.refId);
         const salesReturnIds = entries.filter(e => e.refType === 'SALES_RETURN').map(e => e.refId);
@@ -823,7 +823,7 @@ export class ReportService {
             let refNo = e.refId;
             if (e.refType === 'GRN') refNo = grns.find(g => g.id === e.refId)?.grnNo || e.refId;
 
-            if (['PURCHASE', 'INVOICE'].includes(e.refType)) {
+            if (['PURCHASE', 'INVOICE', 'IMPORT_INVOICE'].includes(e.refType)) {
                 refNo = purchaseInvoices.find(p => p.id === e.refId)?.invoiceNo || e.refId;
             }
 

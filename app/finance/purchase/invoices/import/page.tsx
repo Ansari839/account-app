@@ -22,7 +22,8 @@ import {
     DollarSign,
     Coins,
     Sparkles,
-    SlidersHorizontal
+    SlidersHorizontal,
+    Truck
 } from "lucide-react";
 import { useNotifications } from '@/context/NotificationContext';
 import { cn } from '@/lib/utils';
@@ -49,10 +50,22 @@ function ImportInvoiceForm() {
     const [insuranceType, setInsuranceType] = useState<'PERCENT' | 'FC' | 'PKR'>('PERCENT');
     const [insuranceValue, setInsuranceValue] = useState<number>(1.0); // Standard Customs: 1%
     const [insuranceAccountId, setInsuranceAccountId] = useState<string>('');
+    const [isInsuranceCapitalized, setIsInsuranceCapitalized] = useState<boolean>(true);
 
     const [landingType, setLandingType] = useState<'PERCENT' | 'FC' | 'PKR'>('PERCENT');
     const [landingValue, setLandingValue] = useState<number>(1.0); // Standard Customs: 1%
     const [landingAccountId, setLandingAccountId] = useState<string>('');
+    const [isLandingCapitalized, setIsLandingCapitalized] = useState<boolean>(true);
+
+    // Other Landed Expenses (Clearing Agent, DO, Demurrage, Cartage)
+    const [otherExpenses, setOtherExpenses] = useState<Array<{
+        id: string;
+        title: string;
+        amount: number | '';
+        accountId: string;
+        isCapitalized: boolean;
+        narration: string;
+    }>>([]);
 
     // Form Data - Direct Import Bill (No PO / GRN)
     const [formData, setFormData] = useState<any>({
@@ -249,6 +262,7 @@ function ImportInvoiceForm() {
                     setInsuranceType('PKR');
                     setInsuranceValue(Number(insTax.taxAmount || 0));
                 }
+                setIsInsuranceCapitalized(insTax.isCapitalized !== false);
                 const jLines = inv.JournalEntry?.lines || [];
                 const insLine = jLines.find((l: any) => 
                     (l.narration || '').toLowerCase().includes('insurance') || l.account?.code === '2180'
@@ -265,6 +279,7 @@ function ImportInvoiceForm() {
                     setLandingType('PKR');
                     setLandingValue(Number(landTax.taxAmount || 0));
                 }
+                setIsLandingCapitalized(landTax.isCapitalized !== false);
                 const jLines = inv.JournalEntry?.lines || [];
                 const landLine = jLines.find((l: any) => 
                     (l.narration || '').toLowerCase().includes('landing') || (l.narration || '').toLowerCase().includes('port') || l.account?.code === '2190'
@@ -272,10 +287,39 @@ function ImportInvoiceForm() {
                 if (landLine?.accountId) setLandingAccountId(landLine.accountId);
             }
 
+            // Restore Other Landed Expenses
+            const loadedOtherExpenses = allTaxes
+                .filter((t: any) => t.calculation === 'OTHER_EXPENSE')
+                .map((t: any) => {
+                    let title = t.taxName;
+                    let narration = '';
+                    const match = t.taxName.match(/^(.*?)\s*\((.*?)\)$/);
+                    if (match) {
+                        title = match[1];
+                        narration = match[2];
+                    }
+                    let matchedAccId = null;
+                    (inv.JournalEntry?.lines || []).forEach((line: any) => {
+                        const lNarr = (line.narration || '').toLowerCase();
+                        if (lNarr.includes(title.toLowerCase())) {
+                            matchedAccId = line.accountId;
+                        }
+                    });
+                    return {
+                        id: t.id,
+                        title,
+                        amount: Number(t.taxAmount || 0),
+                        accountId: matchedAccId || accsList.find(a => a.code === '2190')?.id || '',
+                        isCapitalized: t.isCapitalized !== false,
+                        narration
+                    };
+                });
+            setOtherExpenses(loadedOtherExpenses);
+
             const customGdTaxes = allTaxes
                 .filter((t: any) => {
                     const n = (t.taxName || '').toLowerCase();
-                    return !n.includes('insurance') && !n.includes('landing');
+                    return !n.includes('insurance') && !n.includes('landing') && t.calculation !== 'OTHER_EXPENSE';
                 })
                 .map((t: any) => {
                     const tName = (t.taxName || '').toLowerCase();
@@ -744,9 +788,61 @@ function ImportInvoiceForm() {
             return { ...tax, baseAmount, taxAmount };
         });
 
-        const grandTotal = subtotal - discount + taxTotal + gdChargesTotal;
+        // Other Expenses Total
+        const otherExpensesTotal = otherExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        const otherExpensesCapitalized = otherExpenses.filter(e => e.isCapitalized).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+        const grandTotal = subtotal - discount + taxTotal + gdChargesTotal + otherExpensesTotal;
+
+        // Capitalized Landed Value (Inventory Stock Valuation IAS 2)
+        const dutiesCapitalized = calculatedTaxes.filter((t: any) => t.isCapitalized).reduce((sum: number, t: any) => sum + (Number(t.taxAmount) || 0), 0);
+        const insCapitalized = isInsuranceCapitalized ? insPKR : 0;
+        const landCapitalized = isLandingCapitalized ? landPKR : 0;
+        const totalCapitalizedLandedCost = (subtotal - discount) + insCapitalized + landCapitalized + dutiesCapitalized + otherExpensesCapitalized;
         
-        return { subtotal, discount, taxTotal, gdChargesTotal, insPKR, landPKR, grandTotal, calculatedTaxes, totalAssessedPKR, customsBasePKR };
+        return { 
+            subtotal, 
+            discount, 
+            taxTotal, 
+            gdChargesTotal, 
+            insPKR, 
+            landPKR, 
+            otherExpensesTotal,
+            otherExpensesCapitalized,
+            totalCapitalizedLandedCost,
+            grandTotal, 
+            calculatedTaxes, 
+            totalAssessedPKR, 
+            customsBasePKR 
+        };
+    };
+
+    const handleAddOtherExpense = () => {
+        const defaultPayable = accounts.find(a => a.code === '2190' || a.name.toLowerCase().includes('clearing') || a.code === '2111');
+        setOtherExpenses(prev => [
+            ...prev,
+            {
+                id: Date.now().toString() + Math.random().toString().slice(-4),
+                title: "Clearing Agent Charges",
+                amount: '',
+                accountId: defaultPayable?.id || '',
+                isCapitalized: true,
+                narration: ""
+            }
+        ]);
+    };
+
+    const handleUpdateOtherExpense = (id: string, field: string, value: any) => {
+        setOtherExpenses(prev => prev.map(exp => {
+            if (exp.id === id) {
+                return { ...exp, [field]: value };
+            }
+            return exp;
+        }));
+    };
+
+    const handleRemoveOtherExpense = (id: string) => {
+        setOtherExpenses(prev => prev.filter(exp => exp.id !== id));
     };
 
     const handleAddTax = () => {
@@ -842,7 +938,7 @@ function ImportInvoiceForm() {
                     rate: insuranceType === 'PERCENT' ? Number(insuranceValue) : 0,
                     baseAmount: summary.totalAssessedPKR > 0 ? summary.totalAssessedPKR : summary.subtotal,
                     taxAmount: summary.insPKR,
-                    isCapitalized: true,
+                    isCapitalized: isInsuranceCapitalized,
                     accountId: insuranceAccountId || null
                 });
             }
@@ -854,10 +950,26 @@ function ImportInvoiceForm() {
                     rate: landingType === 'PERCENT' ? Number(landingValue) : 0,
                     baseAmount: summary.totalAssessedPKR > 0 ? (summary.totalAssessedPKR + summary.insPKR) : (summary.subtotal + summary.insPKR),
                     taxAmount: summary.landPKR,
-                    isCapitalized: true,
+                    isCapitalized: isLandingCapitalized,
                     accountId: landingAccountId || null
                 });
             }
+
+            // Append Other Landed Expenses to gdTaxes
+            otherExpenses.forEach((exp: any) => {
+                const amt = Number(exp.amount) || 0;
+                if (amt > 0) {
+                    finalTaxes.push({
+                        taxName: exp.narration ? `${exp.title || 'Other Landed Expense'} (${exp.narration})` : (exp.title || 'Other Landed Expense'),
+                        calculation: 'OTHER_EXPENSE',
+                        rate: 0,
+                        baseAmount: amt,
+                        taxAmount: amt,
+                        isCapitalized: Boolean(exp.isCapitalized),
+                        accountId: exp.accountId || null
+                    });
+                }
+            });
 
             // Map valid items with calculated duties and ITP rate
             const processedItemsToSubmit = validItems.map((it: any) => {
@@ -1434,9 +1546,20 @@ function ImportInvoiceForm() {
                                 </p>
                             </div>
                         </div>
-                        <span className="text-xs font-bold px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded-full">
-                            ● Capitalized to Stock Value
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className={cn(
+                                "text-[11px] font-extrabold px-3 py-1 rounded-full border transition-all",
+                                (isInsuranceCapitalized || isLandingCapitalized)
+                                    ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700"
+                            )}>
+                                {(isInsuranceCapitalized && isLandingCapitalized) 
+                                    ? "● Both Capitalized to Stock Cost"
+                                    : (isInsuranceCapitalized || isLandingCapitalized)
+                                        ? "● Partial Capitalization"
+                                        : "○ Expensed Only (Not in Stock)"}
+                            </span>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1446,9 +1569,22 @@ function ImportInvoiceForm() {
                                 <label className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
                                     <ShieldCheck size={16} className="text-sky-500" /> Marine Insurance
                                 </label>
-                                <span className="text-xs font-extrabold text-sky-600 dark:text-sky-400">
-                                    Calculated: Rs. {summary.insPKR.toLocaleString()}
-                                </span>
+                                <div className="flex items-center gap-3">
+                                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 cursor-pointer bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isInsuranceCapitalized} 
+                                            onChange={e => setIsInsuranceCapitalized(e.target.checked)} 
+                                            className="rounded border-slate-300 text-sky-600 focus:ring-sky-500 h-3.5 w-3.5" 
+                                        />
+                                        <span className={cn(isInsuranceCapitalized ? "text-emerald-600 dark:text-emerald-400 font-extrabold" : "text-slate-400")}>
+                                            {isInsuranceCapitalized ? 'Add to Cost' : 'Expense'}
+                                        </span>
+                                    </label>
+                                    <span className="text-xs font-extrabold text-sky-600 dark:text-sky-400">
+                                        Calculated: Rs. {summary.insPKR.toLocaleString()}
+                                    </span>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-12 gap-3 items-center">
@@ -1500,9 +1636,22 @@ function ImportInvoiceForm() {
                                 <label className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
                                     <Anchor size={16} className="text-amber-500" /> Landing Charges
                                 </label>
-                                <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400">
-                                    Calculated: Rs. {summary.landPKR.toLocaleString()}
-                                </span>
+                                <div className="flex items-center gap-3">
+                                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 cursor-pointer bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isLandingCapitalized} 
+                                            onChange={e => setIsLandingCapitalized(e.target.checked)} 
+                                            className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 h-3.5 w-3.5" 
+                                        />
+                                        <span className={cn(isLandingCapitalized ? "text-emerald-600 dark:text-emerald-400 font-extrabold" : "text-slate-400")}>
+                                            {isLandingCapitalized ? 'Add to Cost' : 'Expense'}
+                                        </span>
+                                    </label>
+                                    <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400">
+                                        Calculated: Rs. {summary.landPKR.toLocaleString()}
+                                    </span>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-12 gap-3 items-center">
@@ -1683,6 +1832,144 @@ function ImportInvoiceForm() {
                     </div>
                 </div>
 
+                {/* Other Landed Expenses Section */}
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-visible">
+                    <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-900/50">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center text-violet-600 dark:text-violet-400">
+                                <Truck size={20} />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                                    Other Import Landed Expenses
+                                </h2>
+                                <p className="text-xs text-slate-400">
+                                    Clearing agent fees, Shipping line (DO), Container detention/demurrage, Port wharfage, Cartage & Inland freight.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button 
+                                type="button"
+                                onClick={handleAddOtherExpense}
+                                className="flex items-center gap-2 px-4 py-2 bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-xl font-bold text-xs hover:bg-violet-100 dark:hover:bg-violet-500/20 transition-colors"
+                            >
+                                <Plus size={14} /> Add Landed Expense
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="p-6 overflow-visible">
+                        <div className="w-full">
+                            <div className="grid grid-cols-12 gap-3 mb-3 px-4 text-xs font-bold uppercase tracking-widest text-slate-400">
+                                <div className="col-span-3">Expense Name</div>
+                                <div className="col-span-2 text-right">Amount (PKR)</div>
+                                <div className="col-span-3">Credit Account (Payable / Cash)</div>
+                                <div className="col-span-1 text-center">Add to Cost</div>
+                                <div className="col-span-2">Narration / Remarks</div>
+                                <div className="col-span-1 text-center">Action</div>
+                            </div>
+
+                            <div className="space-y-3">
+                                {otherExpenses.map((exp: any) => (
+                                    <div key={exp.id} className="grid grid-cols-12 gap-3 items-center bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-200/70 dark:border-slate-800 transition-all hover:border-violet-300 dark:hover:border-violet-500/30">
+                                        <div className="col-span-3">
+                                            <input
+                                                type="text"
+                                                list="expense-suggestions"
+                                                value={exp.title || ''}
+                                                onChange={e => handleUpdateOtherExpense(exp.id, 'title', e.target.value)}
+                                                placeholder="Expense Name (e.g. Clearing Agent)..."
+                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-violet-500"
+                                            />
+                                            <datalist id="expense-suggestions">
+                                                <option value="Clearing Agent Charges / Commission" />
+                                                <option value="Delivery Order (DO) / Shipping Line Charges" />
+                                                <option value="Container Detention & Demurrage Charges" />
+                                                <option value="Port Wharfage & Handling Dues" />
+                                                <option value="Inland Cartage / Transportation to Warehouse" />
+                                                <option value="Customs Examination & Survey Fees" />
+                                            </datalist>
+                                        </div>
+
+                                        <div className="col-span-2">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                                value={exp.amount}
+                                                onChange={e => handleUpdateOtherExpense(exp.id, 'amount', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                                placeholder="0"
+                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-black text-right text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-violet-500"
+                                            />
+                                        </div>
+
+                                        <div className="col-span-3">
+                                            <Combobox
+                                                options={accounts.map(a => ({ value: a.id, label: `${a.code} - ${a.name}` }))}
+                                                value={exp.accountId || ''}
+                                                onChange={val => handleUpdateOtherExpense(exp.id, 'accountId', val)}
+                                                placeholder="Select Payable / Cash Account..."
+                                                searchPlaceholder="Search accounts..."
+                                                className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200"
+                                            />
+                                        </div>
+
+                                        <div className="col-span-1 flex flex-col items-center justify-center">
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="sr-only peer" 
+                                                    checked={exp.isCapitalized}
+                                                    onChange={e => handleUpdateOtherExpense(exp.id, 'isCapitalized', e.target.checked)}
+                                                />
+                                                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-emerald-600"></div>
+                                            </label>
+                                            <span className={cn("text-[9px] font-black mt-0.5 tracking-tight", exp.isCapitalized ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400")}>
+                                                {exp.isCapitalized ? 'Stock Cost' : 'Expense'}
+                                            </span>
+                                        </div>
+
+                                        <div className="col-span-2">
+                                            <input
+                                                type="text"
+                                                value={exp.narration || ''}
+                                                onChange={e => handleUpdateOtherExpense(exp.id, 'narration', e.target.value)}
+                                                placeholder="Narration (e.g. BL #, Cheque #)..."
+                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-violet-500"
+                                            />
+                                        </div>
+
+                                        <div className="col-span-1 flex justify-center">
+                                            <button 
+                                                type="button"
+                                                onClick={() => handleRemoveOtherExpense(exp.id)}
+                                                className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
+                                                title="Remove expense"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {otherExpenses.length === 0 && (
+                                    <div className="text-center p-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 font-bold text-xs flex flex-col items-center justify-center gap-2">
+                                        <p>No additional import landed expenses added.</p>
+                                        <button
+                                            type="button"
+                                            onClick={handleAddOtherExpense}
+                                            className="px-4 py-2 bg-violet-600 text-white rounded-xl text-xs font-bold hover:bg-violet-700 transition-colors flex items-center gap-1.5"
+                                        >
+                                            <Plus size={13} /> Add Landed Expense (Clearing / DO / Demurrage / Cartage)
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Discount Section */}
                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm p-6 mb-8 mt-6">
                     <div className="flex items-center justify-between mb-4">
@@ -1736,11 +2023,20 @@ function ImportInvoiceForm() {
                             </div>
 
                             <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Duties & Taxes</p>
+                                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest whitespace-nowrap">Duties & Taxes</p>
                                 <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                                     + Rs. {Math.round(summary.taxTotal).toLocaleString()}
                                 </p>
                             </div>
+
+                            {summary.otherExpensesTotal > 0 && (
+                                <div>
+                                    <p className="text-[10px] font-bold text-violet-500 uppercase tracking-widest whitespace-nowrap">Other Landed Exp.</p>
+                                    <p className="text-sm font-black text-violet-600 dark:text-violet-400 whitespace-nowrap">
+                                        + Rs. {Math.round(summary.otherExpensesTotal).toLocaleString()}
+                                    </p>
+                                </div>
+                            )}
 
                             <div className="w-px h-8 bg-slate-200 dark:bg-slate-700 hidden md:block"></div>
 

@@ -614,7 +614,18 @@ export class PurchaseController {
                     await tx.journalEntry.delete({ where: { id: invoice.journalEntryId } });
                 }
 
-                // 3. Delete Items and Invoice
+                // 3. Delete Stock Ledger entries
+                await tx.stockLedger.deleteMany({
+                    where: {
+                        refType: { in: ['IMPORT_INVOICE', 'INVOICE', 'PURCHASE'] },
+                        refId: id
+                    }
+                });
+
+                // 4. Delete Invoice Taxes
+                await tx.purchaseInvoiceTax.deleteMany({ where: { invoiceId: id } });
+
+                // 5. Delete Items and Invoice
                 await tx.purchaseInvoiceItem.deleteMany({ where: { invoiceId: id } });
                 await tx.purchaseInvoice.delete({ where: { id } });
             });
@@ -1667,6 +1678,8 @@ export class PurchaseController {
                         baseAmount = runningTotalPKR;
                     } else if (tax.calculation === 'NET_TOTAL') {
                         baseAmount = subtotalPKR - discount;
+                    } else if (tax.calculation === 'OTHER_EXPENSE') {
+                        baseAmount = Number(tax.taxAmount || tax.baseAmount || 0);
                     }
 
                     baseAmount = Math.round(baseAmount);
@@ -1677,10 +1690,12 @@ export class PurchaseController {
                     runningTotalPKR += taxAmt;
 
                     const tName = (tax.taxName || '').toLowerCase();
-                    if (tax.isCapitalized || tName.includes('duty') || tName.includes('cd') || tName.includes('rd') || tName.includes('acd')) {
-                        runningDutiesPKR += taxAmt;
-                    } else if (tName.includes('sales') || tName.includes('st') || tName.includes('ast')) {
-                        runningSalesTaxesPKR += taxAmt;
+                    if (tax.calculation !== 'OTHER_EXPENSE') {
+                        if (tax.isCapitalized || tName.includes('duty') || tName.includes('cd') || tName.includes('rd') || tName.includes('acd')) {
+                            runningDutiesPKR += taxAmt;
+                        } else if (tName.includes('sales') || tName.includes('st') || tName.includes('ast')) {
+                            runningSalesTaxesPKR += taxAmt;
+                        }
                     }
 
                     if (tax.isCapitalized) {
@@ -1695,7 +1710,8 @@ export class PurchaseController {
                         baseAmount,
                         taxAmount: taxAmt,
                         isCapitalized: Boolean(tax.isCapitalized),
-                        accountId: tax.accountId // Used later for Journal
+                        accountId: tax.accountId, // Used later for Journal
+                        expenseAccountId: tax.expenseAccountId || null
                     };
                 });
 
@@ -1880,6 +1896,22 @@ export class PurchaseController {
                     where: { companyId, name: { contains: 'Accounts Payable', mode: 'insensitive' }, type: 'LIABILITY', isPosting: true }
                 });
 
+                const defaultExpenseAcc = await tx.account.findFirst({
+                    where: {
+                        companyId,
+                        OR: [
+                            { code: '5140' },
+                            { code: '5100' },
+                            { name: { contains: 'Freight', mode: 'insensitive' } },
+                            { name: { contains: 'Direct', mode: 'insensitive' } }
+                        ],
+                        type: 'EXPENSE',
+                        isPosting: true
+                    }
+                }) || await tx.account.findFirst({
+                    where: { companyId, type: 'EXPENSE', isPosting: true }
+                });
+
                 const defaultCustomsPayableId = customsAcc?.id || fallbackAp?.id;
 
                 for (const tax of processedTaxes) {
@@ -1887,9 +1919,8 @@ export class PurchaseController {
                         const taxNameLower = (tax.taxName || '').toLowerCase();
 
                         if (!tax.isCapitalized) {
-                            // Non-capitalized taxes (Sales Tax, Additional Sales Tax, Advance Income Tax Sec 148)
-                            // DEBIT: Tax Receivable / Input Tax Asset Account
-                            let taxDebitAccId = tax.accountId;
+                            // Non-capitalized taxes or period expenses (Sales Tax, Advance Income Tax Sec 148, or uncapitalized insurance/landing/other expenses)
+                            let taxDebitAccId = tax.expenseAccountId || tax.accountId;
                             if (!taxDebitAccId && tax.taxCodeId) {
                                 const tc = await tx.taxCode.findUnique({ where: { id: tax.taxCodeId } });
                                 taxDebitAccId = tc?.accountId;
@@ -1900,6 +1931,8 @@ export class PurchaseController {
                                         where: { companyId, name: { contains: 'Advance Income Tax', mode: 'insensitive' }, type: 'ASSET', isPosting: true } 
                                     });
                                     taxDebitAccId = incTaxAcc?.id;
+                                } else if (taxNameLower.includes('insurance') || taxNameLower.includes('landing') || taxNameLower.includes('port') || tax.calculation === 'OTHER_EXPENSE') {
+                                    taxDebitAccId = defaultExpenseAcc?.id;
                                 } else {
                                     const stAcc = await tx.account.findFirst({ 
                                         where: { companyId, name: { contains: 'Input Tax', mode: 'insensitive' }, type: 'ASSET', isPosting: true } 
@@ -1911,31 +1944,41 @@ export class PurchaseController {
                                 const defTax = await tx.account.findFirst({ where: { companyId, name: { contains: 'Tax', mode: 'insensitive' }, type: 'ASSET', isPosting: true } });
                                 taxDebitAccId = defTax?.id;
                             }
-                            if (!taxDebitAccId) throw new Error(`No account linked to tax '${tax.taxName}'.`);
+                            if (!taxDebitAccId) taxDebitAccId = defaultExpenseAcc?.id;
+                            if (!taxDebitAccId) throw new Error(`No account linked to tax/expense '${tax.taxName}'.`);
 
                             lines.push({
                                 accountId: taxDebitAccId,
                                 credit: 0,
                                 debit: tax.taxAmount,
-                                narration: `GD Adjustable Tax: ${tax.taxName} on ${invoiceNo}`
+                                narration: `GD Non-Capitalized / Expense: ${tax.taxName} on ${invoiceNo}`
                             });
 
-                            // CREDIT: Customs / GD Payable
+                            // CREDIT: Dedicated Payable / Cash / Customs Account
+                            let creditAccId = null;
+                            if (taxNameLower.includes('insurance')) {
+                                creditAccId = tax.accountId || insuranceAcc?.id || defaultCustomsPayableId;
+                            } else if (taxNameLower.includes('landing') || taxNameLower.includes('port') || taxNameLower.includes('clearing') || tax.calculation === 'OTHER_EXPENSE') {
+                                creditAccId = tax.accountId || portAcc?.id || defaultCustomsPayableId;
+                            } else {
+                                creditAccId = defaultCustomsPayableId;
+                            }
+
                             lines.push({
-                                accountId: defaultCustomsPayableId!,
+                                accountId: creditAccId!,
                                 credit: tax.taxAmount,
                                 debit: 0,
-                                narration: `GD Payable for ${tax.taxName} on ${invoiceNo}`
+                                narration: `Payable for ${tax.taxName} on ${invoiceNo}`
                             });
                         } else {
-                            // Capitalized Charges (CD, RD, ACD, Marine Insurance, Landing Charges)
-                            // (DEBIT is already booked into Inventory Asset Account above)
-                            // CREDIT: Dedicated Liability Account
+                            // Capitalized Charges (CD, RD, ACD, Marine Insurance, Landing Charges, Other Landed Expenses)
+                            // (DEBIT is already booked into Inventory Asset Account above pro-rata across items)
+                            // CREDIT: Dedicated Liability / Payable / Bank Account
                             let creditAccId = null;
 
                             if (taxNameLower.includes('insurance')) {
                                 creditAccId = tax.accountId || insuranceAcc?.id || defaultCustomsPayableId;
-                            } else if (taxNameLower.includes('landing') || taxNameLower.includes('port') || taxNameLower.includes('clearing')) {
+                            } else if (taxNameLower.includes('landing') || taxNameLower.includes('port') || taxNameLower.includes('clearing') || tax.calculation === 'OTHER_EXPENSE') {
                                 creditAccId = tax.accountId || portAcc?.id || defaultCustomsPayableId;
                             } else {
                                 // CD, RD, ACD, etc.
@@ -2176,6 +2219,8 @@ export class PurchaseController {
                         baseAmount = runningTotalPKR;
                     } else if (tax.calculation === 'NET_TOTAL') {
                         baseAmount = subtotalPKR - discount;
+                    } else if (tax.calculation === 'OTHER_EXPENSE') {
+                        baseAmount = Number(tax.taxAmount || tax.baseAmount || 0);
                     }
 
                     baseAmount = Math.round(baseAmount);
@@ -2186,10 +2231,12 @@ export class PurchaseController {
                     runningTotalPKR += taxAmt;
 
                     const tName = (tax.taxName || '').toLowerCase();
-                    if (tax.isCapitalized || tName.includes('duty') || tName.includes('cd') || tName.includes('rd') || tName.includes('acd')) {
-                        runningDutiesPKR += taxAmt;
-                    } else if (tName.includes('sales') || tName.includes('st') || tName.includes('ast')) {
-                        runningSalesTaxesPKR += taxAmt;
+                    if (tax.calculation !== 'OTHER_EXPENSE') {
+                        if (tax.isCapitalized || tName.includes('duty') || tName.includes('cd') || tName.includes('rd') || tName.includes('acd')) {
+                            runningDutiesPKR += taxAmt;
+                        } else if (tName.includes('sales') || tName.includes('st') || tName.includes('ast')) {
+                            runningSalesTaxesPKR += taxAmt;
+                        }
                     }
 
                     if (tax.isCapitalized) {
@@ -2204,7 +2251,8 @@ export class PurchaseController {
                         baseAmount,
                         taxAmount: taxAmt,
                         isCapitalized: Boolean(tax.isCapitalized),
-                        accountId: tax.accountId
+                        accountId: tax.accountId,
+                        expenseAccountId: tax.expenseAccountId || null
                     };
                 });
 
@@ -2383,6 +2431,22 @@ export class PurchaseController {
                     where: { companyId, name: { contains: 'Accounts Payable', mode: 'insensitive' }, type: 'LIABILITY', isPosting: true }
                 });
 
+                const defaultExpenseAcc = await tx.account.findFirst({
+                    where: {
+                        companyId,
+                        OR: [
+                            { code: '5140' },
+                            { code: '5100' },
+                            { name: { contains: 'Freight', mode: 'insensitive' } },
+                            { name: { contains: 'Direct', mode: 'insensitive' } }
+                        ],
+                        type: 'EXPENSE',
+                        isPosting: true
+                    }
+                }) || await tx.account.findFirst({
+                    where: { companyId, type: 'EXPENSE', isPosting: true }
+                });
+
                 const defaultCustomsPayableId = customsAcc?.id || fallbackAp?.id;
 
                 for (const tax of processedTaxes) {
@@ -2390,7 +2454,7 @@ export class PurchaseController {
                         const taxNameLower = (tax.taxName || '').toLowerCase();
 
                         if (!tax.isCapitalized) {
-                            let taxDebitAccId = tax.accountId;
+                            let taxDebitAccId = tax.expenseAccountId || tax.accountId;
                             if (!taxDebitAccId && tax.taxCodeId) {
                                 const tc = await tx.taxCode.findUnique({ where: { id: tax.taxCodeId } });
                                 taxDebitAccId = tc?.accountId;
@@ -2401,6 +2465,8 @@ export class PurchaseController {
                                         where: { companyId, name: { contains: 'Advance Income Tax', mode: 'insensitive' }, type: 'ASSET', isPosting: true } 
                                     });
                                     taxDebitAccId = incTaxAcc?.id;
+                                } else if (taxNameLower.includes('insurance') || taxNameLower.includes('landing') || taxNameLower.includes('port') || tax.calculation === 'OTHER_EXPENSE') {
+                                    taxDebitAccId = defaultExpenseAcc?.id;
                                 } else {
                                     const stAcc = await tx.account.findFirst({ 
                                         where: { companyId, name: { contains: 'Input Tax', mode: 'insensitive' }, type: 'ASSET', isPosting: true } 
@@ -2412,26 +2478,36 @@ export class PurchaseController {
                                 const defTax = await tx.account.findFirst({ where: { companyId, name: { contains: 'Tax', mode: 'insensitive' }, type: 'ASSET', isPosting: true } });
                                 taxDebitAccId = defTax?.id;
                             }
-                            if (!taxDebitAccId) throw new Error(`No account linked to tax '${tax.taxName}'.`);
+                            if (!taxDebitAccId) taxDebitAccId = defaultExpenseAcc?.id;
+                            if (!taxDebitAccId) throw new Error(`No account linked to tax/expense '${tax.taxName}'.`);
 
                             lines.push({
                                 accountId: taxDebitAccId,
                                 credit: 0,
                                 debit: tax.taxAmount,
-                                narration: `GD Adjustable Tax: ${tax.taxName} on ${updatedInvoice.invoiceNo}`
+                                narration: `GD Non-Capitalized / Expense: ${tax.taxName} on ${updatedInvoice.invoiceNo}`
                             });
 
+                            let creditAccId = null;
+                            if (taxNameLower.includes('insurance')) {
+                                creditAccId = tax.accountId || insuranceAcc?.id || defaultCustomsPayableId;
+                            } else if (taxNameLower.includes('landing') || taxNameLower.includes('port') || taxNameLower.includes('clearing') || tax.calculation === 'OTHER_EXPENSE') {
+                                creditAccId = tax.accountId || portAcc?.id || defaultCustomsPayableId;
+                            } else {
+                                creditAccId = defaultCustomsPayableId;
+                            }
+
                             lines.push({
-                                accountId: defaultCustomsPayableId!,
+                                accountId: creditAccId!,
                                 credit: tax.taxAmount,
                                 debit: 0,
-                                narration: `GD Payable for ${tax.taxName} on ${updatedInvoice.invoiceNo}`
+                                narration: `Payable for ${tax.taxName} on ${updatedInvoice.invoiceNo}`
                             });
                         } else {
                             let creditAccId = null;
                             if (taxNameLower.includes('insurance')) {
                                 creditAccId = tax.accountId || insuranceAcc?.id || defaultCustomsPayableId;
-                            } else if (taxNameLower.includes('landing') || taxNameLower.includes('port') || taxNameLower.includes('clearing')) {
+                            } else if (taxNameLower.includes('landing') || taxNameLower.includes('port') || taxNameLower.includes('clearing') || tax.calculation === 'OTHER_EXPENSE') {
                                 creditAccId = tax.accountId || portAcc?.id || defaultCustomsPayableId;
                             } else {
                                 creditAccId = tax.accountId || defaultCustomsPayableId;
