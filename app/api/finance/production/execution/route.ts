@@ -50,15 +50,11 @@ export async function POST(req: NextRequest) {
             }
 
             let serviceCost = 0;
+            let inHouseServiceCost = 0;
             const overheadRecords = [];
             const outHouseServiceInvoiceIds = [];
 
-            if (mode === "OUT-HOUSE") {
-                if (!overheads || overheads.length === 0) {
-                    throw new Error("Out-House production requires at least one service invoice to be consumed.");
-                }
-
-                // Out-house overheads come from unconsumed purchase invoice items (services)
+            if (overheads && overheads.length > 0) {
                 for (const ov of overheads) {
                     if (ov.purchaseInvoiceItemId) {
                         const piItem = await tx.purchaseInvoiceItem.findUnique({
@@ -71,8 +67,7 @@ export async function POST(req: NextRequest) {
                         const remaining = Number(piItem.qty) - Number(piItem.consumedQty);
                         if (consumeQty > remaining) throw new Error(`Cannot consume ${consumeQty} of service ${piItem.Product?.name}. Only ${remaining} left.`);
                         
-                        // Only use the base rate (exclusive of tax) because the tax was already booked to the Tax Account
-                        // during the purchase invoice. Adding tax here would over-credit the WIP account.
+                        // Base rate exclusive of tax
                         const itemExCost = consumeQty * Number(piItem.rate);
                         const ovAmount = itemExCost;
                         
@@ -86,31 +81,27 @@ export async function POST(req: NextRequest) {
                             unitId: piItem.unitId
                         });
 
-                        // Keep track for JV credit
                         const cat = piItem.Product?.Category;
                         let creditAccount = cat?.wipAccountId;
                         if (!creditAccount) throw new Error(`Category of service ${piItem.Product?.name} does not have a WIP Account linked.`);
 
                         outHouseServiceInvoiceIds.push({ piItemId: piItem.id, consumeQty, amount: ovAmount, creditAccount });
                         
-                        // Mark as consumed
                         await tx.purchaseInvoiceItem.update({
                             where: { id: piItem.id },
                             data: { consumedQty: { increment: consumeQty } }
                         });
+                    } else if (Number(ov.amount) > 0) {
+                        const amt = Number(ov.amount);
+                        serviceCost += amt;
+                        inHouseServiceCost += amt;
+                        overheadRecords.push({
+                            description: ov.description || "In-house Overhead",
+                            amount: amt,
+                            quantity: Number(ov.quantity || 1),
+                            unitId: ov.unitId || null
+                        });
                     }
-                }
-            } else {
-                // In-house overheads
-                for (const ov of overheads) {
-                    const amt = Number(ov.amount);
-                    serviceCost += amt;
-                    overheadRecords.push({
-                        description: ov.description || "In-house Overhead",
-                        amount: amt,
-                        quantity: Number(ov.quantity || 1),
-                        unitId: ov.unitId || null
-                    });
                 }
             }
 
@@ -239,47 +230,45 @@ export async function POST(req: NextRequest) {
             }
 
             // CREDIT Services / Overheads
-            if (mode === "OUT-HOUSE") {
-                // Out-house services credit the WIP Clearing Account
-                for (const svc of outHouseServiceInvoiceIds) {
-                    const existing = lines.find(l => l.accountId === svc.creditAccount && l.debit === 0);
-                    if (existing) {
-                        existing.credit += svc.amount;
-                    } else {
-                        lines.push({
-                            accountId: svc.creditAccount,
-                            debit: 0,
-                            credit: svc.amount,
-                            narration: `Service consumed for Batch ${batchNo}`
-                        });
-                    }
-                }
-            } else {
-                // In-house overheads credit the Factory Overhead account
-                if (serviceCost > 0) {
-                    let fohAccount = await tx.account.findFirst({
-                        where: { companyId, name: { contains: 'Factory Overhead', mode: 'insensitive' }, isPosting: true }
-                    });
-                    if (!fohAccount) {
-                        // Create one dynamically
-                        fohAccount = await tx.account.create({
-                            data: {
-                                companyId,
-                                code: `FOH-${Date.now().toString().slice(-4)}`,
-                                name: 'Factory Overhead Applied',
-                                type: 'LIABILITY',
-                                isPosting: true
-                            }
-                        });
-                    }
-
+            // 1. Out-house services credit the WIP Clearing Account
+            for (const svc of outHouseServiceInvoiceIds) {
+                const existing = lines.find(l => l.accountId === svc.creditAccount && l.debit === 0);
+                if (existing) {
+                    existing.credit += svc.amount;
+                } else {
                     lines.push({
-                        accountId: fohAccount.id,
+                        accountId: svc.creditAccount,
                         debit: 0,
-                        credit: serviceCost,
-                        narration: `In-house Overheads applied to Batch ${batchNo}`
+                        credit: svc.amount,
+                        narration: `Service consumed for Batch ${batchNo}`
                     });
                 }
+            }
+
+            // 2. In-house overheads credit the Factory Overhead account
+            if (inHouseServiceCost > 0) {
+                let fohAccount = await tx.account.findFirst({
+                    where: { companyId, name: { contains: 'Factory Overhead', mode: 'insensitive' }, isPosting: true }
+                });
+                if (!fohAccount) {
+                    // Create one dynamically
+                    fohAccount = await tx.account.create({
+                        data: {
+                            companyId,
+                            code: `FOH-${Date.now().toString().slice(-4)}`,
+                            name: 'Factory Overhead Applied',
+                            type: 'LIABILITY',
+                            isPosting: true
+                        }
+                    });
+                }
+
+                lines.push({
+                    accountId: fohAccount.id,
+                    debit: 0,
+                    credit: inHouseServiceCost,
+                    narration: `In-house Overheads applied to Batch ${batchNo}`
+                });
             }
 
             await tx.journalEntry.create({
