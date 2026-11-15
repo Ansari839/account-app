@@ -47,6 +47,7 @@ const MODULES = [
     { id: 'inventory.products', label: '↳ Products', type: 'sub' },
     { id: 'inventory.categories', label: '↳ Categories', type: 'sub' },
     { id: 'inventory.warehouses', label: '↳ Warehouses', type: 'sub' },
+    { id: 'inventory.opening', label: '↳ Opening Stock', type: 'sub' },
   
     { id: 'reports', label: 'Reports', type: 'main', isParent: true, readOnly: true },
     { id: 'reports.trial-balance', label: '↳ Trial Balance', type: 'sub', readOnly: true },

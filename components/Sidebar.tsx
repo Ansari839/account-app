@@ -43,7 +43,8 @@ const menuItems: MenuItem[] = [
           { name: 'Overview', path: '/inventory' },
           'Products',
           'Categories',
-          'Warehouses'
+          'Warehouses',
+          { name: 'Opening Stock', path: '/inventory/opening' }
       ] },
     { name: 'Reports',          icon: ScrollText,      path: '/finance/reports',    permissionKey: 'reports',
       sub: [

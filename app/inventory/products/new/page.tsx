@@ -70,6 +70,36 @@ export default function NewProductPage() {
         date: new Date().toISOString().split('T')[0]
     });
 
+    // Multi-Invoice State for Services
+    const [serviceInvoices, setServiceInvoices] = useState<Array<{
+        id: string;
+        date: string;
+        partyInfo: string;
+        qty: string;
+        costRate: string;
+    }>>([
+        { id: '1', date: new Date().toISOString().split('T')[0], partyInfo: '', qty: '', costRate: '' }
+    ]);
+
+    const handleAddServiceInvoice = () => {
+        setServiceInvoices(prev => [
+            ...prev,
+            { id: String(Date.now()), date: new Date().toISOString().split('T')[0], partyInfo: '', qty: '', costRate: '' }
+        ]);
+    };
+
+    const handleRemoveServiceInvoice = (id: string) => {
+        if (serviceInvoices.length <= 1) return;
+        setServiceInvoices(prev => prev.filter(inv => inv.id !== id));
+    };
+
+    const handleServiceInvoiceChange = (id: string, field: string, value: string) => {
+        setServiceInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, [field]: value } : inv));
+    };
+
+    const totalServiceQty = serviceInvoices.reduce((acc, inv) => acc + (Number(inv.qty) || 0), 0);
+    const totalServiceValue = serviceInvoices.reduce((acc, inv) => acc + ((Number(inv.qty) || 0) * (Number(inv.costRate) || 0)), 0);
+
     useEffect(() => {
         fetchDropdowns();
     }, []);
@@ -182,28 +212,61 @@ export default function NewProductPage() {
                 const createdProduct = json.data;
 
                 // If user entered opening stock, record it directly
-                if (enableOpeningStock && Number(openingStock.qty) > 0) {
-                    try {
-                        await authenticatedFetch('/api/inventory/opening', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                productId: createdProduct.id,
-                                warehouseId: openingStock.warehouseId,
-                                stage: openingStock.stage || formData.stage || 'RAW',
-                                origin: openingStock.origin,
-                                isEFS: openingStock.origin === 'IMPORT' ? openingStock.isEFS : false,
-                                qty: Number(openingStock.qty),
-                                costRate: Number(openingStock.costRate) || 0,
-                                itpRate: openingStock.origin === 'IMPORT' ? (Number(openingStock.itpRate) || null) : null,
-                                batchNo: openingStock.batchNo || null,
-                                date: openingStock.date
-                            })
-                        });
-                        showNotification('success', 'Product and opening stock created successfully!');
-                    } catch (openErr) {
-                        console.error('Failed to save opening stock:', openErr);
-                        showNotification('warning', 'Product created, but opening stock could not be recorded.');
+                if (enableOpeningStock) {
+                    if (formData.isService) {
+                        const validInvoices = serviceInvoices.filter(inv => Number(inv.qty) > 0);
+                        if (validInvoices.length > 0) {
+                            try {
+                                for (const inv of validInvoices) {
+                                    await authenticatedFetch('/api/inventory/opening', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            productId: createdProduct.id,
+                                            warehouseId: null,
+                                            stage: 'RAW',
+                                            origin: 'LOCAL',
+                                            isEFS: false,
+                                            qty: Number(inv.qty),
+                                            costRate: Number(inv.costRate) || 0,
+                                            batchNo: inv.partyInfo || null,
+                                            date: inv.date || new Date().toISOString().split('T')[0]
+                                        })
+                                    });
+                                }
+                                showNotification('success', `Product and ${validInvoices.length} opening service invoice(s) recorded successfully!`);
+                            } catch (openErr) {
+                                console.error('Failed to save service opening balance:', openErr);
+                                showNotification('warning', 'Product created, but some opening service records could not be saved.');
+                            }
+                        } else {
+                            showNotification('success', 'Product created successfully!');
+                        }
+                    } else if (Number(openingStock.qty) > 0) {
+                        try {
+                            await authenticatedFetch('/api/inventory/opening', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    productId: createdProduct.id,
+                                    warehouseId: openingStock.warehouseId,
+                                    stage: openingStock.stage || formData.stage || 'RAW',
+                                    origin: openingStock.origin,
+                                    isEFS: openingStock.origin === 'IMPORT' ? openingStock.isEFS : false,
+                                    qty: Number(openingStock.qty),
+                                    costRate: Number(openingStock.costRate) || 0,
+                                    itpRate: openingStock.origin === 'IMPORT' ? (Number(openingStock.itpRate) || null) : null,
+                                    batchNo: openingStock.batchNo || null,
+                                    date: openingStock.date
+                                })
+                            });
+                            showNotification('success', 'Product and opening stock created successfully!');
+                        } catch (openErr) {
+                            console.error('Failed to save opening stock:', openErr);
+                            showNotification('warning', 'Product created, but opening stock could not be recorded.');
+                        }
+                    } else {
+                        showNotification('success', 'Product created successfully!');
                     }
                 } else {
                     showNotification('success', 'Product created successfully!');
@@ -534,77 +597,141 @@ export default function NewProductPage() {
                     {enableOpeningStock && (
                         <div className="p-6 space-y-5 animate-in fade-in duration-200">
                             {formData.isService ? (
-                                /* SERVICE OPENING BALANCE: No Warehouse, No Stages, No GD! */
+                                /* SERVICE OPENING BALANCE: Multi-Invoices / Multi-Vendors Support */
                                 <div className="space-y-4">
-                                    <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 flex items-center gap-3">
-                                        <Info size={18} className="text-amber-600 shrink-0" />
-                                        <p className="text-xs text-amber-800 dark:text-amber-200 font-medium">
-                                            Services (Dyeing, Printing, Weaving, Knitting) are not physical inventory, so no Godown/Warehouse or Stage is required. Enter initial unconsumed quantity, rate, and optional reference.
-                                        </p>
+                                    <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <Info size={18} className="text-amber-600 shrink-0" />
+                                            <p className="text-xs text-amber-800 dark:text-amber-200 font-medium">
+                                                Services (Dyeing, Printing, Weaving, Knitting) are not physical inventory, so no Godown/Warehouse or Stage is required. You can add multiple opening bills/invoices from different vendors or batches below.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleAddServiceInvoice}
+                                            className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-500/20 active:scale-95 transition-all shrink-0"
+                                        >
+                                            <Plus size={14} /> Add Another Bill / Invoice
+                                        </button>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                                Opening Date <span className="text-rose-500">*</span>
-                                            </label>
-                                            <input
-                                                type="date"
-                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
-                                                value={openingStock.date}
-                                                onChange={e => setOpeningStock({ ...openingStock, date: e.target.value })}
-                                            />
-                                        </div>
+                                    {serviceInvoices.map((inv, index) => {
+                                        const rowVal = (Number(inv.qty) || 0) * (Number(inv.costRate) || 0);
+                                        return (
+                                            <div key={inv.id} className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-3 relative">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/50 uppercase tracking-wider">
+                                                        Bill / Invoice #{index + 1}
+                                                    </span>
+                                                    {serviceInvoices.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveServiceInvoice(inv.id)}
+                                                            className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                                                            title="Remove invoice"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
 
-                                        <div className="space-y-1.5 md:col-span-2">
-                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                                Party / Vendor Info or Bill # <span className="text-slate-400 font-normal lowercase">(optional info)</span>
-                                            </label>
-                                            <input
-                                                type="text"
-                                                placeholder="e.g. Master Dyeing / Inv # 1042 / Opening Balance"
-                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
-                                                value={openingStock.batchNo}
-                                                onChange={e => setOpeningStock({ ...openingStock, batchNo: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                                            Opening Date <span className="text-rose-500">*</span>
+                                                        </label>
+                                                        <input
+                                                            type="date"
+                                                            className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
+                                                            value={inv.date}
+                                                            onChange={e => handleServiceInvoiceChange(inv.id, 'date', e.target.value)}
+                                                        />
+                                                    </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                                Unconsumed Quantity <span className="text-rose-500">*</span>
-                                            </label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                placeholder="0.00"
-                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-right"
-                                                value={openingStock.qty}
-                                                onChange={e => setOpeningStock({ ...openingStock, qty: e.target.value })}
-                                            />
-                                        </div>
+                                                    <div className="space-y-1.5 md:col-span-2">
+                                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                                            Party / Vendor Info or Bill # <span className="text-slate-400 font-normal lowercase">(e.g. Master Dyeing / Inv # 1042)</span>
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="e.g. Master Dyeing / Inv # 1042 / Opening Balance"
+                                                            className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
+                                                            value={inv.partyInfo}
+                                                            onChange={e => handleServiceInvoiceChange(inv.id, 'partyInfo', e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
 
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                                Service Rate (PKR) <span className="text-rose-500">*</span>
-                                            </label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                placeholder="Rate / unit"
-                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-right"
-                                                value={openingStock.costRate}
-                                                onChange={e => setOpeningStock({ ...openingStock, costRate: e.target.value })}
-                                            />
-                                        </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                                            Unconsumed Quantity <span className="text-rose-500">*</span>
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            step="any"
+                                                            placeholder="0.00"
+                                                            className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-right"
+                                                            value={inv.qty}
+                                                            onChange={e => handleServiceInvoiceChange(inv.id, 'qty', e.target.value)}
+                                                        />
+                                                    </div>
 
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                                Total Value (PKR)
-                                            </label>
-                                            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-black text-right text-sm">
-                                                Rs. {((Number(openingStock.qty) || 0) * (Number(openingStock.costRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                                            Service Rate (PKR) <span className="text-rose-500">*</span>
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            step="any"
+                                                            placeholder="Rate / unit"
+                                                            className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-right"
+                                                            value={inv.costRate}
+                                                            onChange={e => handleServiceInvoiceChange(inv.id, 'costRate', e.target.value)}
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                                            Total Value (PKR)
+                                                        </label>
+                                                        <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-black text-right text-sm">
+                                                            Rs. {rowVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Action Bar & Combined Totals */}
+                                    <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-900/40 flex flex-wrap items-center justify-between gap-4">
+                                        <button
+                                            type="button"
+                                            onClick={handleAddServiceInvoice}
+                                            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-indigo-500/20 active:scale-95 transition-all"
+                                        >
+                                            <Plus size={15} /> Add Another Bill / Invoice
+                                        </button>
+
+                                        <div className="flex items-center gap-6 text-right">
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Invoices</p>
+                                                <p className="text-sm font-black text-slate-800 dark:text-slate-200 font-mono">
+                                                    {serviceInvoices.length}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Unconsumed Qty</p>
+                                                <p className="text-sm font-black text-slate-800 dark:text-slate-200 font-mono">
+                                                    {totalServiceQty.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Combined Opening Value</p>
+                                                <p className="text-base font-black text-indigo-600 dark:text-indigo-400 font-mono">
+                                                    Rs. {totalServiceValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
