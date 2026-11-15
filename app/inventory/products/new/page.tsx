@@ -758,93 +758,93 @@ export default function NewProductPage() {
                                             </div>
                                         )}
                                     </div>
-                                </div>
-                            )}
 
-                            {/* Quantity, Book Rate, Total */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                        Quantity <span className="text-rose-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        min="0"
-                                        placeholder="0.00"
-                                        className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-right"
-                                        value={openingStock.qty}
-                                        onChange={e => setOpeningStock({ ...openingStock, qty: e.target.value })}
-                                    />
-                                </div>
+                                    {/* Physical Quantity, Book Rate, Total */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                                Quantity <span className="text-rose-500">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                min="0"
+                                                placeholder="0.00"
+                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-right"
+                                                value={openingStock.qty}
+                                                onChange={e => setOpeningStock({ ...openingStock, qty: e.target.value })}
+                                            />
+                                        </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                        Book Rate (PKR) <span className="text-rose-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        min="0"
-                                        placeholder="Cost / unit"
-                                        className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-right"
-                                        value={openingStock.costRate}
-                                        onChange={e => setOpeningStock({ ...openingStock, costRate: e.target.value })}
-                                    />
-                                </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                                Book Rate (PKR) <span className="text-rose-500">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                min="0"
+                                                placeholder="Cost / unit"
+                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-right"
+                                                value={openingStock.costRate}
+                                                onChange={e => setOpeningStock({ ...openingStock, costRate: e.target.value })}
+                                            />
+                                        </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                        Total Value (PKR)
-                                    </label>
-                                    <div className="w-full p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-bold text-right">
-                                        Rs. {((Number(openingStock.qty) || 0) * (Number(openingStock.costRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* ITP Rate (Import only) */}
-                            {openingStock.origin === "IMPORT" && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 animate-in fade-in duration-200">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider">
-                                            Customs ITP Rate (PKR)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            step="any"
-                                            min="0"
-                                            placeholder="Assessed + Duties / Qty"
-                                            className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-sky-500 text-sm font-semibold text-right"
-                                            value={openingStock.itpRate}
-                                            onChange={e => setOpeningStock({ ...openingStock, itpRate: e.target.value })}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                            Total ITP Value (PKR)
-                                        </label>
-                                        <div className="w-full p-2.5 rounded-xl bg-white/50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sky-700 dark:text-sky-300 text-sm font-bold text-right">
-                                            Rs. {((Number(openingStock.qty) || 0) * (Number(openingStock.itpRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                                Total Value (PKR)
+                                            </label>
+                                            <div className="w-full p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-bold text-right">
+                                                Rs. {((Number(openingStock.qty) || 0) * (Number(openingStock.costRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </div>
                                         </div>
                                     </div>
+
+                                    {/* ITP Rate (Import only) */}
+                                    {openingStock.origin === "IMPORT" && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 animate-in fade-in duration-200">
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider">
+                                                    Customs ITP Rate (PKR)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    step="any"
+                                                    min="0"
+                                                    placeholder="Assessed + Duties / Qty"
+                                                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-sky-500 text-sm font-semibold text-right"
+                                                    value={openingStock.itpRate}
+                                                    onChange={e => setOpeningStock({ ...openingStock, itpRate: e.target.value })}
+                                                />
+                                            </div>
+
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                                    Total ITP Value (PKR)
+                                                </label>
+                                                <div className="w-full p-2.5 rounded-xl bg-white/50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sky-700 dark:text-sky-300 text-sm font-bold text-right">
+                                                    Rs. {((Number(openingStock.qty) || 0) * (Number(openingStock.itpRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Lot / Batch / GD Number */}
+                                    <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                            Lot # / Batch # / GD Number
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder={openingStock.origin === "IMPORT" ? "e.g. GD-KAPE-HC-12345" : "e.g. LOT-2026-001"}
+                                            className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-mono"
+                                            value={openingStock.batchNo}
+                                            onChange={e => setOpeningStock({ ...openingStock, batchNo: e.target.value })}
+                                        />
+                                    </div>
                                 </div>
                             )}
-
-                            {/* Lot / Batch / GD Number */}
-                            <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                    Lot # / Batch # / GD Number
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder={openingStock.origin === "IMPORT" ? "e.g. GD-KAPE-HC-12345" : "e.g. LOT-2026-001"}
-                                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-mono"
-                                    value={openingStock.batchNo}
-                                    onChange={e => setOpeningStock({ ...openingStock, batchNo: e.target.value })}
-                                />
-                            </div>
                         </div>
                     )}
                 </div>
