@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
             }
         });
 
-        // Filter out consumed ones
+        // Filter out consumed ones and categorize service type
         const unconsumedServices = rawServices.filter(item => Number(item.qty) > Number(item.consumedQty)).map(item => {
             const unconsumedQty = Number(item.qty) - Number(item.consumedQty);
             const rate = Number(item.rate);
@@ -60,6 +60,20 @@ export async function GET(req: NextRequest) {
             const proratedTax = Number(item.qty) > 0 ? (Number(item.taxAmount) / Number(item.qty)) * unconsumedQty : 0;
             const inclAmount = exAmount; // Use exclusive amount to avoid double counting tax in production cost
             
+            const prodUpper = (item.Product.name || "").toUpperCase();
+            const catUpper = (item.Product.Category?.name || "").toUpperCase();
+
+            let serviceType: "DYEING" | "PRINTING" | "WEAVING" | "KNITTING" | "OTHER" = "OTHER";
+            if (catUpper.includes("DYE") || prodUpper.includes("DYE")) {
+                serviceType = "DYEING";
+            } else if (catUpper.includes("PRINT") || prodUpper.includes("PRINT")) {
+                serviceType = "PRINTING";
+            } else if (catUpper.includes("WEAV") || prodUpper.includes("WEAV")) {
+                serviceType = "WEAVING";
+            } else if (catUpper.includes("KNIT") || prodUpper.includes("KNIT")) {
+                serviceType = "KNITTING";
+            }
+
             return {
                 id: item.id,
                 date: item.PurchaseInvoice.date,
@@ -67,6 +81,7 @@ export async function GET(req: NextRequest) {
                 supplierName: item.PurchaseInvoice.Supplier?.name || '-',
                 productName: item.Product.name,
                 categoryName: item.Product.Category?.name || '',
+                serviceType,
                 unconsumedQty,
                 totalQty: Number(item.qty),
                 consumedQty: Number(item.consumedQty),
@@ -128,7 +143,6 @@ export async function GET(req: NextRequest) {
 
         for (const [productId, items] of Object.entries(itemsByProduct)) {
             // Find current stock for this product (purchased items are usually RAW)
-            // For now, matching standard non-EFS for available lots logic unless EFS is added later
             const stockKey = `${productId}-RAW-STD`;
             let remainingStock = stockRates[stockKey] ? stockRates[stockKey].qty : 0;
             
@@ -147,10 +161,45 @@ export async function GET(req: NextRequest) {
                         invoiceNo: item.PurchaseInvoice.invoiceNo,
                         date: item.PurchaseInvoice.date,
                         qty: cappedQty,
-                        rate: Number(item.rate)
+                        rate: Number(item.rate),
+                        isOpening: false,
+                        isEFS: false
                     });
                     remainingStock -= cappedQty;
                 }
+            }
+        }
+
+        // Fetch Opening Stock lots from StockLedger for raw materials & grey fabrics
+        const openingStockRecords = await prisma.stockLedger.findMany({
+            where: {
+                companyId,
+                refType: 'OPENING_STOCK',
+                Product: { isManufactured: false }
+            },
+            include: {
+                Product: { select: { id: true, name: true, code: true } }
+            },
+            orderBy: { date: 'asc' }
+        });
+
+        for (const op of openingStockRecords) {
+            const isEFS = Boolean(op.isEFS || (op.batchNo && op.batchNo.includes('[EFS]')));
+            const stockKey = `${op.productId}-${op.stage || 'RAW'}-${isEFS ? 'EFS' : 'STD'}`;
+            const remainingStock = stockRates[stockKey] ? stockRates[stockKey].qty : 0;
+            
+            if (remainingStock > 0) {
+                // Check if already in availableLots or add opening stock lot
+                availableLots.push({
+                    id: `OPENING-${op.id}`,
+                    productId: op.productId,
+                    invoiceNo: op.batchNo ? `OPENING (${op.batchNo})` : `OPENING-STOCK`,
+                    date: op.date,
+                    qty: Math.min(Number(op.qtyIn), remainingStock),
+                    rate: Number(op.costRate),
+                    isOpening: true,
+                    isEFS
+                });
             }
         }
 

@@ -83,7 +83,27 @@ export async function POST(req: NextRequest) {
 
                         const cat = piItem.Product?.Category;
                         let creditAccount = cat?.wipAccountId;
-                        if (!creditAccount) throw new Error(`Category of service ${piItem.Product?.name} does not have a WIP Account linked.`);
+                        if (!creditAccount) {
+                            const fallbackAcc = await tx.account.findFirst({
+                                where: {
+                                    companyId,
+                                    OR: [
+                                        { name: { contains: 'WIP', mode: 'insensitive' } },
+                                        { name: { contains: 'Work in Progress', mode: 'insensitive' } },
+                                        { name: { contains: 'Direct Expense', mode: 'insensitive' } },
+                                        { name: { contains: 'Cost', mode: 'insensitive' } },
+                                        { name: { contains: 'Inventory', mode: 'insensitive' } }
+                                    ]
+                                }
+                            });
+                            creditAccount = fallbackAcc?.id;
+                        }
+                        if (!creditAccount) {
+                            const anyAcc = await tx.account.findFirst({ where: { companyId } });
+                            creditAccount = anyAcc?.id;
+                        }
+
+                        if (!creditAccount) throw new Error(`No GL Account found to credit service for ${piItem.Product?.name}.`);
 
                         outHouseServiceInvoiceIds.push({ piItemId: piItem.id, consumeQty, amount: ovAmount, creditAccount });
                         
@@ -177,6 +197,13 @@ export async function POST(req: NextRequest) {
                         isEFS: input.isEFS || false
                     }
                 });
+
+                if (input.purchaseInvoiceItemId && !input.purchaseInvoiceItemId.startsWith('OPENING-')) {
+                    await tx.purchaseInvoiceItem.update({
+                        where: { id: input.purchaseInvoiceItemId },
+                        data: { consumedQty: { increment: Number(input.quantity) } }
+                    }).catch(() => {});
+                }
             }
 
             // 4. Accounting (Journal Entry)
