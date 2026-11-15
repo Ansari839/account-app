@@ -91,6 +91,61 @@ export async function GET(req: NextRequest) {
             };
         });
 
+        // Also fetch Opening Services from StockLedger (refType: 'OPENING_STOCK' on Product where isService: true)
+        const openingServices = await prisma.stockLedger.findMany({
+            where: {
+                companyId,
+                refType: 'OPENING_STOCK',
+                Product: { isService: true }
+            },
+            include: {
+                Product: {
+                    include: {
+                        Category: { select: { name: true } },
+                        Unit: { select: { code: true } }
+                    }
+                }
+            }
+        });
+
+        for (const op of openingServices) {
+            const unconsumedQty = Number(op.qtyIn) - Number(op.qtyOut);
+            if (unconsumedQty <= 0) continue;
+
+            const prodUpper = (op.Product.name || "").toUpperCase();
+            const catUpper = (op.Product.Category?.name || "").toUpperCase();
+
+            let serviceType: "DYEING" | "PRINTING" | "WEAVING" | "KNITTING" | "OTHER" = "OTHER";
+            if (catUpper.includes("DYE") || prodUpper.includes("DYE")) {
+                serviceType = "DYEING";
+            } else if (catUpper.includes("PRINT") || prodUpper.includes("PRINT")) {
+                serviceType = "PRINTING";
+            } else if (catUpper.includes("WEAV") || prodUpper.includes("WEAV")) {
+                serviceType = "WEAVING";
+            } else if (catUpper.includes("KNIT") || prodUpper.includes("KNIT")) {
+                serviceType = "KNITTING";
+            }
+
+            const infoText = op.batchNo ? op.batchNo : 'Opening Balance';
+
+            unconsumedServices.push({
+                id: `OPENING-SVC-${op.id}`,
+                date: op.date,
+                invoiceNo: op.batchNo ? op.batchNo : 'OPENING-BALANCE',
+                supplierName: `[Opening] ${infoText}`,
+                productName: op.Product.name,
+                categoryName: op.Product.Category?.name || '',
+                serviceType,
+                unconsumedQty,
+                totalQty: Number(op.qtyIn),
+                consumedQty: Number(op.qtyOut),
+                rate: Number(op.costRate),
+                unit: op.Product.Unit?.code || 'KG',
+                inclAmount: unconsumedQty * Number(op.costRate),
+                isOpening: true
+            });
+        }
+
         // Current Stock Balances and Rates to auto-fill input rates
         const rawLedgers = await prisma.stockLedger.findMany({
             where: { companyId },

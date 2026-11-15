@@ -57,60 +57,114 @@ export async function POST(req: NextRequest) {
             if (overheads && overheads.length > 0) {
                 for (const ov of overheads) {
                     if (ov.purchaseInvoiceItemId) {
-                        const piItem = await tx.purchaseInvoiceItem.findUnique({
-                            where: { id: ov.purchaseInvoiceItemId },
-                            include: { PurchaseInvoice: true, Product: { include: { Category: true } } }
-                        });
-                        if (!piItem) throw new Error("Service Invoice Item not found");
-                        
-                        const consumeQty = Number(ov.quantity);
-                        const remaining = Number(piItem.qty) - Number(piItem.consumedQty);
-                        if (consumeQty > remaining) throw new Error(`Cannot consume ${consumeQty} of service ${piItem.Product?.name}. Only ${remaining} left.`);
-                        
-                        // Base rate exclusive of tax
-                        const itemExCost = consumeQty * Number(piItem.rate);
-                        const ovAmount = itemExCost;
-                        
-                        serviceCost += ovAmount;
-
-                        overheadRecords.push({
-                            description: `Service Consumed: ${piItem.PurchaseInvoice?.invoiceNo} - ${piItem.Product?.name}`,
-                            amount: ovAmount,
-                            purchaseInvoiceItemId: piItem.id,
-                            quantity: consumeQty,
-                            unitId: piItem.unitId
-                        });
-
-                        const cat = piItem.Product?.Category;
-                        let creditAccount = cat?.wipAccountId;
-                        if (!creditAccount) {
-                            const fallbackAcc = await tx.account.findFirst({
-                                where: {
-                                    companyId,
-                                    OR: [
-                                        { name: { contains: 'WIP', mode: 'insensitive' } },
-                                        { name: { contains: 'Work in Progress', mode: 'insensitive' } },
-                                        { name: { contains: 'Direct Expense', mode: 'insensitive' } },
-                                        { name: { contains: 'Cost', mode: 'insensitive' } },
-                                        { name: { contains: 'Inventory', mode: 'insensitive' } }
-                                    ]
-                                }
+                        if (ov.purchaseInvoiceItemId.startsWith("OPENING-SVC-")) {
+                            const ledgerId = ov.purchaseInvoiceItemId.replace("OPENING-SVC-", "");
+                            const opEntry = await tx.stockLedger.findUnique({
+                                where: { id: ledgerId },
+                                include: { Product: { include: { Category: true } } }
                             });
-                            creditAccount = fallbackAcc?.id;
-                        }
-                        if (!creditAccount) {
-                            const anyAcc = await tx.account.findFirst({ where: { companyId } });
-                            creditAccount = anyAcc?.id;
-                        }
+                            if (!opEntry) throw new Error("Opening Service entry not found");
 
-                        if (!creditAccount) throw new Error(`No GL Account found to credit service for ${piItem.Product?.name}.`);
+                            const consumeQty = Number(ov.quantity);
+                            const remaining = Number(opEntry.qtyIn) - Number(opEntry.qtyOut);
+                            if (consumeQty > remaining) throw new Error(`Cannot consume ${consumeQty} of opening service ${opEntry.Product?.name}. Only ${remaining} left.`);
 
-                        outHouseServiceInvoiceIds.push({ piItemId: piItem.id, consumeQty, amount: ovAmount, creditAccount });
-                        
-                        await tx.purchaseInvoiceItem.update({
-                            where: { id: piItem.id },
-                            data: { consumedQty: { increment: consumeQty } }
-                        });
+                            const ovAmount = consumeQty * Number(opEntry.costRate);
+                            serviceCost += ovAmount;
+
+                            overheadRecords.push({
+                                description: `Opening Service Consumed: ${opEntry.batchNo || 'Opening Balance'} - ${opEntry.Product?.name}`,
+                                amount: ovAmount,
+                                quantity: consumeQty,
+                                unitId: opEntry.Product?.baseUnitId || null
+                            });
+
+                            await tx.stockLedger.update({
+                                where: { id: opEntry.id },
+                                data: { qtyOut: { increment: consumeQty } }
+                            });
+
+                            const cat = opEntry.Product?.Category;
+                            let creditAccount = cat?.wipAccountId;
+                            if (!creditAccount) {
+                                const fallbackAcc = await tx.account.findFirst({
+                                    where: {
+                                        companyId,
+                                        OR: [
+                                            { name: { contains: 'WIP', mode: 'insensitive' } },
+                                            { name: { contains: 'Work in Progress', mode: 'insensitive' } },
+                                            { name: { contains: 'Direct Expense', mode: 'insensitive' } },
+                                            { name: { contains: 'Cost', mode: 'insensitive' } },
+                                            { name: { contains: 'Inventory', mode: 'insensitive' } }
+                                        ]
+                                    }
+                                });
+                                creditAccount = fallbackAcc?.id;
+                            }
+                            if (!creditAccount) {
+                                const anyAcc = await tx.account.findFirst({ where: { companyId } });
+                                creditAccount = anyAcc?.id;
+                            }
+
+                            if (creditAccount) {
+                                outHouseServiceInvoiceIds.push({ piItemId: opEntry.id, consumeQty, amount: ovAmount, creditAccount });
+                            }
+                        } else {
+                            const piItem = await tx.purchaseInvoiceItem.findUnique({
+                                where: { id: ov.purchaseInvoiceItemId },
+                                include: { PurchaseInvoice: true, Product: { include: { Category: true } } }
+                            });
+                            if (!piItem) throw new Error("Service Invoice Item not found");
+                            
+                            const consumeQty = Number(ov.quantity);
+                            const remaining = Number(piItem.qty) - Number(piItem.consumedQty);
+                            if (consumeQty > remaining) throw new Error(`Cannot consume ${consumeQty} of service ${piItem.Product?.name}. Only ${remaining} left.`);
+                            
+                            // Base rate exclusive of tax
+                            const itemExCost = consumeQty * Number(piItem.rate);
+                            const ovAmount = itemExCost;
+                            
+                            serviceCost += ovAmount;
+
+                            overheadRecords.push({
+                                description: `Service Consumed: ${piItem.PurchaseInvoice?.invoiceNo} - ${piItem.Product?.name}`,
+                                amount: ovAmount,
+                                purchaseInvoiceItemId: piItem.id,
+                                quantity: consumeQty,
+                                unitId: piItem.unitId
+                            });
+
+                            const cat = piItem.Product?.Category;
+                            let creditAccount = cat?.wipAccountId;
+                            if (!creditAccount) {
+                                const fallbackAcc = await tx.account.findFirst({
+                                    where: {
+                                        companyId,
+                                        OR: [
+                                            { name: { contains: 'WIP', mode: 'insensitive' } },
+                                            { name: { contains: 'Work in Progress', mode: 'insensitive' } },
+                                            { name: { contains: 'Direct Expense', mode: 'insensitive' } },
+                                            { name: { contains: 'Cost', mode: 'insensitive' } },
+                                            { name: { contains: 'Inventory', mode: 'insensitive' } }
+                                        ]
+                                    }
+                                });
+                                creditAccount = fallbackAcc?.id;
+                            }
+                            if (!creditAccount) {
+                                const anyAcc = await tx.account.findFirst({ where: { companyId } });
+                                creditAccount = anyAcc?.id;
+                            }
+
+                            if (!creditAccount) throw new Error(`No GL Account found to credit service for ${piItem.Product?.name}.`);
+
+                            outHouseServiceInvoiceIds.push({ piItemId: piItem.id, consumeQty, amount: ovAmount, creditAccount });
+                            
+                            await tx.purchaseInvoiceItem.update({
+                                where: { id: piItem.id },
+                                data: { consumedQty: { increment: consumeQty } }
+                            });
+                        }
                     } else if (Number(ov.amount) > 0) {
                         const amt = Number(ov.amount);
                         serviceCost += amt;
