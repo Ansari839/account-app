@@ -87,7 +87,8 @@ export async function GET(req: NextRequest) {
                 consumedQty: Number(item.consumedQty),
                 rate: rate,
                 unit: item.Unit?.code || item.Product.Unit?.code || '-',
-                inclAmount
+                inclAmount,
+                isOpening: false
             };
         });
 
