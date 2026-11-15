@@ -14,8 +14,18 @@ import { cn } from "@/lib/utils";
 import Combobox from "@/components/Combobox";
 
 type ExecutionMode = "DIRECT_FINISH" | "YARN_TO_GREY" | "GREY_TO_FINISH";
-type FinishingType = "DYEING" | "PRINTING" | "BOTH" | "NONE";
 type FabricProcessType = "WEAVING" | "KNITTING";
+
+export interface ProcessingServiceItem {
+    id: string;
+    serviceId: string;
+    mode: "VENDOR_BILL" | "MANUAL";
+    manualName: string;
+    wastage: number;
+    qty: string;
+    rate: string;
+    unit: string;
+}
 
 export default function ProductionExecutionWizard() {
     const router = useRouter();
@@ -44,22 +54,59 @@ export default function ProductionExecutionWizard() {
     const [warehouseId, setWarehouseId] = useState("");
     const [lotNumber, setLotNumber] = useState("EXPORT-LOT-5336");
 
-    // 3. Stage 1: Wet Processing / Finishing (Dyeing & Printing)
-    const [finishingType, setFinishingType] = useState<FinishingType>("DYEING");
-    
-    // Dyeing options
-    const [dyeingWastage, setDyeingWastage] = useState<number>(0);
-    const [dyeingMode, setDyeingMode] = useState<"VENDOR_BILL" | "MANUAL" | "BYPASS">("VENDOR_BILL");
-    const [selectedDyeingServiceId, setSelectedDyeingServiceId] = useState<string>("");
-    const [dyeingServiceQty, setDyeingServiceQty] = useState<string>("");
-    const [dyeingManualRate, setDyeingManualRate] = useState<string>("380");
+    // 3. Stage 1: Wet Processing / Finishing Services (Excludes Weaving & Knitting)
+    const [processingServices, setProcessingServices] = useState<ProcessingServiceItem[]>([
+        {
+            id: "1",
+            serviceId: "",
+            mode: "VENDOR_BILL",
+            manualName: "Processing / Dyeing Service",
+            wastage: 0,
+            qty: "61004",
+            rate: "",
+            unit: "KG"
+        }
+    ]);
 
-    // Printing options
-    const [printingWastage, setPrintingWastage] = useState<number>(0);
-    const [printingMode, setPrintingMode] = useState<"VENDOR_BILL" | "MANUAL" | "BYPASS">("VENDOR_BILL");
-    const [selectedPrintingServiceId, setSelectedPrintingServiceId] = useState<string>("");
-    const [printingServiceMtr, setPrintingServiceMtr] = useState<string>("");
-    const [printingManualRate, setPrintingManualRate] = useState<string>("45");
+    const handleAddProcessingService = () => {
+        setProcessingServices(prev => [
+            ...prev,
+            {
+                id: String(Date.now()),
+                serviceId: "",
+                mode: "VENDOR_BILL",
+                manualName: "Additional Processing Service",
+                wastage: 0,
+                qty: effectiveNetWeightKg ? effectiveNetWeightKg.toString() : "",
+                rate: "",
+                unit: "KG"
+            }
+        ]);
+    };
+
+    const handleRemoveProcessingService = (id: string) => {
+        setProcessingServices(prev => prev.filter(p => p.id !== id));
+    };
+
+    const handleProcessingServiceChange = (id: string, field: keyof ProcessingServiceItem, value: any) => {
+        setProcessingServices(prev => prev.map(p => {
+            if (p.id !== id) return p;
+            const updated = { ...p, [field]: value };
+            if (field === "serviceId") {
+                const svc = unconsumedServices.find(s => s.id === value);
+                if (svc) {
+                    updated.rate = svc.rate.toString();
+                    updated.unit = svc.unit || "KG";
+                    if (svc.unit === "MTR" && outputUnitCode === "MTR") {
+                        updated.qty = outputQuantity;
+                    } else if (!p.qty || p.qty === "0") {
+                        updated.qty = effectiveNetWeightKg.toString();
+                    }
+                }
+            }
+            return updated;
+        }));
+    };
 
     // 4. Stage 2: Fabric Manufacturing (Weaving vs Knitting)
     const [fabricProcessType, setFabricProcessType] = useState<FabricProcessType>("WEAVING");
@@ -183,24 +230,23 @@ export default function ProductionExecutionWizard() {
     }, [outputQuantity, outputNetWeightKg, outputUnitCode]);
 
     // Service Bill Options Categorized
-    const dyeingServiceOptions = useMemo(() => {
+    // Stage 1: All processing services EXCEPT Weaving and Knitting
+    const processingServiceOptions = useMemo(() => {
         return unconsumedServices
-            .filter(s => s.serviceType === "DYEING" || s.categoryName.toUpperCase().includes("DYE") || s.productName.toUpperCase().includes("DYE"))
+            .filter(s => {
+                const cat = (s.categoryName || "").toUpperCase();
+                const prod = (s.productName || "").toUpperCase();
+                const isWeaving = s.serviceType === "WEAVING" || cat.includes("WEAV") || prod.includes("WEAV");
+                const isKnitting = s.serviceType === "KNITTING" || cat.includes("KNIT") || prod.includes("KNIT");
+                return !isWeaving && !isKnitting;
+            })
             .map(s => ({
                 value: s.id,
-                label: `${s.supplierName} | Inv: ${s.invoiceNo} | ${s.productName} | Avail: ${s.unconsumedQty.toLocaleString()} ${s.unit} @ Rs. ${s.rate}/KG`
+                label: `${s.supplierName} | Inv: ${s.invoiceNo} | ${s.productName} [${s.categoryName || 'Service'}] | Avail: ${s.unconsumedQty.toLocaleString()} ${s.unit} @ Rs. ${s.rate}`
             }));
     }, [unconsumedServices]);
 
-    const printingServiceOptions = useMemo(() => {
-        return unconsumedServices
-            .filter(s => s.serviceType === "PRINTING" || s.categoryName.toUpperCase().includes("PRINT") || s.productName.toUpperCase().includes("PRINT"))
-            .map(s => ({
-                value: s.id,
-                label: `${s.supplierName} | Inv: ${s.invoiceNo} | ${s.productName} | Avail: ${s.unconsumedQty.toLocaleString()} ${s.unit} @ Rs. ${s.rate}/MTR`
-            }));
-    }, [unconsumedServices]);
-
+    // Stage 2: Weaving only
     const weavingServiceOptions = useMemo(() => {
         return unconsumedServices
             .filter(s => s.serviceType === "WEAVING" || s.categoryName.toUpperCase().includes("WEAV") || s.productName.toUpperCase().includes("WEAV"))
@@ -210,6 +256,7 @@ export default function ProductionExecutionWizard() {
             }));
     }, [unconsumedServices]);
 
+    // Stage 2: Knitting only
     const knittingServiceOptions = useMemo(() => {
         return unconsumedServices
             .filter(s => s.serviceType === "KNITTING" || s.categoryName.toUpperCase().includes("KNIT") || s.productName.toUpperCase().includes("KNIT"))
@@ -219,34 +266,22 @@ export default function ProductionExecutionWizard() {
             }));
     }, [unconsumedServices]);
 
-    // Stage 1 Dyeing Quantity (KG)
-    const isDyeingActive = executionMode !== "YARN_TO_GREY" && (finishingType === "DYEING" || finishingType === "BOTH");
-    const isPrintingActive = executionMode !== "YARN_TO_GREY" && (finishingType === "PRINTING" || finishingType === "BOTH");
-
-    const reqDyeingQty = useMemo(() => {
-        if (!isDyeingActive) return 0;
-        return dyeingWastage > 0 
-            ? Math.round((effectiveNetWeightKg / ((100 - dyeingWastage) / 100)) * 100) / 100 
-            : effectiveNetWeightKg;
-    }, [effectiveNetWeightKg, dyeingWastage, isDyeingActive]);
-
-    // Stage 1 Printing Quantity (MTR)
-    const reqPrintingMtr = useMemo(() => {
-        if (!isPrintingActive) return 0;
-        const baseMtr = outputUnitCode === "MTR" ? (parseFloat(outputQuantity) || 0) : effectiveNetWeightKg;
-        return printingWastage > 0
-            ? Math.round((baseMtr / ((100 - printingWastage) / 100)) * 100) / 100
-            : baseMtr;
-    }, [effectiveNetWeightKg, outputQuantity, outputUnitCode, printingWastage, isPrintingActive]);
+    // Maximum wastage among all active processing services
+    const maxProcessingWastage = useMemo(() => {
+        if (processingServices.length === 0) return 0;
+        return processingServices.reduce((max, ps) => Math.max(max, ps.wastage || 0), 0);
+    }, [processingServices]);
 
     // Stage 2 Weaving / Knitting Quantity (KG)
     const reqWeavingQty = useMemo(() => {
         if (executionMode === "GREY_TO_FINISH") return 0;
-        const base = isDyeingActive ? reqDyeingQty : effectiveNetWeightKg;
+        const base = maxProcessingWastage > 0 
+            ? Math.round((effectiveNetWeightKg / ((100 - maxProcessingWastage) / 100)) * 100) / 100 
+            : effectiveNetWeightKg;
         return weavingWastage > 0 
             ? Math.round((base / ((100 - weavingWastage) / 100)) * 100) / 100 
             : base;
-    }, [effectiveNetWeightKg, isDyeingActive, reqDyeingQty, weavingWastage, executionMode]);
+    }, [effectiveNetWeightKg, maxProcessingWastage, weavingWastage, executionMode]);
 
     // Stage 3 Raw Yarn Quantity (KG)
     const reqYarnQty = useMemo(() => {
@@ -256,26 +291,24 @@ export default function ProductionExecutionWizard() {
             : reqWeavingQty;
     }, [reqWeavingQty, yarnWastage, executionMode]);
 
-    // Sync dyeing input qty default
-    useEffect(() => {
-        if (reqDyeingQty > 0 && !dyeingServiceQty) {
-            setDyeingServiceQty(reqDyeingQty.toString());
-        }
-    }, [reqDyeingQty]);
-
-    // Sync printing input qty default
-    useEffect(() => {
-        if (reqPrintingMtr > 0 && !printingServiceMtr) {
-            setPrintingServiceMtr(reqPrintingMtr.toString());
-        }
-    }, [reqPrintingMtr]);
-
     // Sync weaving service qty default
     useEffect(() => {
         if (reqWeavingQty > 0 && !weavingServiceQty) {
             setWeavingServiceQty(reqWeavingQty.toString());
         }
     }, [reqWeavingQty]);
+
+    // Sync default processing service qty
+    useEffect(() => {
+        if (effectiveNetWeightKg > 0) {
+            setProcessingServices(prev => prev.map(p => {
+                if (!p.qty || p.qty === "0" || p.qty === "61004") {
+                    return { ...p, qty: effectiveNetWeightKg.toString() };
+                }
+                return p;
+            }));
+        }
+    }, [effectiveNetWeightKg]);
 
     // Sync grey input qty for GREY_TO_FINISH
     useEffect(() => {
@@ -426,27 +459,15 @@ export default function ProductionExecutionWizard() {
         }
     }, [executionMode, weavingMode, outHouseFabricMode, reqWeavingQty, inHouseWeavingRate, selectedWeavingServiceId, weavingServiceQty, outHouseFabricManualRate, unconsumedServices, fabricProcessType, weavingServiceOptions, knittingServiceOptions]);
 
-    const dyeingCostTotal = useMemo(() => {
-        if (!isDyeingActive || dyeingMode === "BYPASS") return 0;
-        if (dyeingMode === "VENDOR_BILL") {
-            const svc = unconsumedServices.find(s => s.id === selectedDyeingServiceId);
-            return svc ? (parseFloat(dyeingServiceQty) || 0) * svc.rate : 0;
-        } else {
-            return reqDyeingQty * (parseFloat(dyeingManualRate) || 0);
-        }
-    }, [isDyeingActive, dyeingMode, reqDyeingQty, dyeingManualRate, selectedDyeingServiceId, dyeingServiceQty, unconsumedServices]);
+    const processingCostTotal = useMemo(() => {
+        return processingServices.reduce((sum, ps) => {
+            const q = parseFloat(ps.qty) || 0;
+            const r = parseFloat(ps.rate) || 0;
+            return sum + (q * r);
+        }, 0);
+    }, [processingServices]);
 
-    const printingCostTotal = useMemo(() => {
-        if (!isPrintingActive || printingMode === "BYPASS") return 0;
-        if (printingMode === "VENDOR_BILL") {
-            const svc = unconsumedServices.find(s => s.id === selectedPrintingServiceId);
-            return svc ? (parseFloat(printingServiceMtr) || 0) * svc.rate : 0;
-        } else {
-            return reqPrintingMtr * (parseFloat(printingManualRate) || 0);
-        }
-    }, [isPrintingActive, printingMode, reqPrintingMtr, printingManualRate, selectedPrintingServiceId, printingServiceMtr, unconsumedServices]);
-
-    const totalBatchCost = yarnCostTotal + fabricMakingCostTotal + dyeingCostTotal + printingCostTotal;
+    const totalBatchCost = yarnCostTotal + fabricMakingCostTotal + processingCostTotal;
     const costPerKg = effectiveNetWeightKg > 0 ? totalBatchCost / effectiveNetWeightKg : 0;
     const outQtyNum = parseFloat(outputQuantity) || 0;
     const costPerUnit = outQtyNum > 0 ? totalBatchCost / outQtyNum : 0;
@@ -506,39 +527,25 @@ export default function ProductionExecutionWizard() {
             }
         }
 
-        // 2. Dyeing Overhead
-        if (isDyeingActive && dyeingMode !== "BYPASS") {
-            if (dyeingMode === "VENDOR_BILL" && selectedDyeingServiceId) {
-                finalOverheads.push({
-                    purchaseInvoiceItemId: selectedDyeingServiceId,
-                    quantity: parseFloat(dyeingServiceQty) || reqDyeingQty
-                });
-            } else if (dyeingMode === "MANUAL") {
-                const amt = reqDyeingQty * (parseFloat(dyeingManualRate) || 0);
-                if (amt > 0) {
+        // 2. Processing Services Overheads (Dyeing, Printing, Bleaching, Washing, etc.)
+        for (const ps of processingServices) {
+            if (ps.mode === "VENDOR_BILL" && ps.serviceId) {
+                const q = parseFloat(ps.qty) || 0;
+                if (q > 0) {
                     finalOverheads.push({
-                        description: `Dyeing Service Overhead (@ Rs. ${dyeingManualRate}/KG)`,
-                        amount: amt,
-                        quantity: reqDyeingQty
+                        purchaseInvoiceItemId: ps.serviceId,
+                        quantity: q
                     });
                 }
-            }
-        }
-
-        // 3. Printing Overhead
-        if (isPrintingActive && printingMode !== "BYPASS") {
-            if (printingMode === "VENDOR_BILL" && selectedPrintingServiceId) {
-                finalOverheads.push({
-                    purchaseInvoiceItemId: selectedPrintingServiceId,
-                    quantity: parseFloat(printingServiceMtr) || reqPrintingMtr
-                });
-            } else if (printingMode === "MANUAL") {
-                const amt = reqPrintingMtr * (parseFloat(printingManualRate) || 0);
+            } else if (ps.mode === "MANUAL") {
+                const q = parseFloat(ps.qty) || 0;
+                const r = parseFloat(ps.rate) || 0;
+                const amt = q * r;
                 if (amt > 0) {
                     finalOverheads.push({
-                        description: `Printing Service Overhead (@ Rs. ${printingManualRate}/MTR)`,
+                        description: `${ps.manualName || 'Processing Service'} Overhead (@ Rs. ${r}/${ps.unit || 'KG'})`,
                         amount: amt,
-                        quantity: reqPrintingMtr
+                        quantity: q
                     });
                 }
             }
@@ -571,7 +578,7 @@ export default function ProductionExecutionWizard() {
             outputNetWeightKg: effectiveNetWeightKg,
             processStage,
             warehouseId,
-            mode: (weavingMode === "OUT_HOUSE" || dyeingMode === "VENDOR_BILL" || printingMode === "VENDOR_BILL") ? "OUT-HOUSE" : "IN-HOUSE",
+            mode: (weavingMode === "OUT_HOUSE" || processingServices.some(p => p.mode === "VENDOR_BILL" && p.serviceId)) ? "OUT-HOUSE" : "IN-HOUSE",
             lotNumber: lotNumber || null,
             balesCount: balesCount || null,
             inputs: finalInputs,
@@ -836,7 +843,7 @@ export default function ProductionExecutionWizard() {
                             </div>
                         </div>
 
-                        {/* STAGE 1: WET PROCESSING / FINISHING (DYEING & PRINTING) */}
+                        {/* STAGE 1: WET PROCESSING & FINISHING SERVICES */}
                         {executionMode !== "YARN_TO_GREY" && (
                             <div className="p-7 sm:p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
@@ -845,229 +852,254 @@ export default function ProductionExecutionWizard() {
                                             <Droplets size={20} />
                                         </div>
                                         <div>
-                                            <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                                                Stage 1: Wet Processing & Finishing
-                                            </h3>
-                                            <p className="text-xs sm:text-sm text-slate-400">Choose Dyeing (in KG), Printing (in MTR), or Both with respective vendor bills.</p>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                                    Stage 1: Wet Processing & Finishing
+                                                </h3>
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 uppercase">
+                                                    {processingServices.length} Service(s)
+                                                </span>
+                                            </div>
+                                            <p className="text-xs sm:text-sm text-slate-400">
+                                                Add Dyeing, Printing, Bleaching, Washing or any other finishing service bills (excluding Weaving & Knitting).
+                                            </p>
                                         </div>
                                     </div>
 
-                                    {/* Finishing Selector Pill */}
-                                    <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 shrink-0 gap-1 text-xs font-bold">
-                                        <button
-                                            type="button"
-                                            onClick={() => setFinishingType("DYEING")}
-                                            className={cn("px-3 py-1.5 rounded-xl transition-all", finishingType === "DYEING" ? "bg-amber-600 text-white shadow" : "text-slate-500 hover:text-slate-900 dark:hover:text-white")}
-                                        >
-                                            Dyeing Only (KG)
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setFinishingType("PRINTING")}
-                                            className={cn("px-3 py-1.5 rounded-xl transition-all", finishingType === "PRINTING" ? "bg-purple-600 text-white shadow" : "text-slate-500 hover:text-slate-900 dark:hover:text-white")}
-                                        >
-                                            Printing Only (MTR)
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setFinishingType("BOTH")}
-                                            className={cn("px-3 py-1.5 rounded-xl transition-all", finishingType === "BOTH" ? "bg-indigo-600 text-white shadow" : "text-slate-500 hover:text-slate-900 dark:hover:text-white")}
-                                        >
-                                            Both (Dye & Print)
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setFinishingType("NONE")}
-                                            className={cn("px-3 py-1.5 rounded-xl transition-all", finishingType === "NONE" ? "bg-slate-700 text-white shadow" : "text-slate-500 hover:text-slate-900 dark:hover:text-white")}
-                                        >
-                                            None (Direct Grey)
-                                        </button>
-                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddProcessingService}
+                                        className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-600/20 active:scale-95 transition-all self-start sm:self-auto"
+                                    >
+                                        <Plus size={15} /> Add Processing Service
+                                    </button>
                                 </div>
 
-                                {/* A. DYEING SERVICE BLOCK */}
-                                {isDyeingActive && (
-                                    <div className="p-6 rounded-2xl bg-amber-50/40 dark:bg-amber-950/15 border border-amber-200/70 dark:border-amber-900/40 space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-black text-sm uppercase tracking-wide">
-                                                <Droplets size={16} className="text-amber-600" />
-                                                <span>Dyeing Service (Measured in KG)</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold text-slate-500 uppercase">Req Dyeing:</span>
-                                                <span className="font-mono text-sm font-black text-amber-600 dark:text-amber-400 bg-amber-100/80 dark:bg-amber-900/50 px-2.5 py-0.5 rounded-lg">
-                                                    {reqDyeingQty.toLocaleString()} KG
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            {/* Dyeing Mode */}
-                                            <div className="space-y-1.5">
-                                                <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Dyeing Mode</label>
-                                                <select
-                                                    value={dyeingMode}
-                                                    onChange={(e: any) => setDyeingMode(e.target.value)}
-                                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm font-bold text-slate-900 dark:text-white shadow-sm"
-                                                >
-                                                    <option value="VENDOR_BILL">Out-House (Vendor Service Bill)</option>
-                                                    <option value="MANUAL">Manual Rate (Rs. / KG)</option>
-                                                    <option value="BYPASS">Bypass / In-house (0 Cost)</option>
-                                                </select>
-                                            </div>
-
-                                            {/* Dyeing Wastage */}
-                                            <div className="space-y-1.5">
-                                                <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Dyeing Wastage %</label>
-                                                <input
-                                                    type="number"
-                                                    value={dyeingWastage}
-                                                    onChange={(e) => setDyeingWastage(parseFloat(e.target.value) || 0)}
-                                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm font-mono font-bold text-slate-900 dark:text-white text-right shadow-sm"
-                                                />
-                                            </div>
-
-                                            {/* Dyeing Total Cost */}
-                                            <div className="p-3 rounded-xl bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 text-right flex flex-col justify-center">
-                                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Dyeing Total Cost</span>
-                                                <span className="text-base font-black font-mono text-amber-600 dark:text-amber-400">
-                                                    Rs. {dyeingCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Dyeing Bill Selector if VENDOR_BILL */}
-                                        {dyeingMode === "VENDOR_BILL" && (
-                                            <div className="space-y-2 pt-1">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                                                        Select Unconsumed Dyeing Bill (Category: DYEING):
-                                                    </span>
-                                                    <span className="text-xs font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-full">
-                                                        {dyeingServiceOptions.length} bill(s) available
-                                                    </span>
-                                                </div>
-                                                <Combobox
-                                                    options={dyeingServiceOptions}
-                                                    value={selectedDyeingServiceId}
-                                                    onChange={(val) => {
-                                                        setSelectedDyeingServiceId(val);
-                                                        const s = unconsumedServices.find(it => it.id === val);
-                                                        if (s) setDyeingServiceQty(Math.min(s.unconsumedQty, reqDyeingQty).toString());
-                                                    }}
-                                                    placeholder="-- Choose Dyeing / Finishing Invoice --"
-                                                    searchPlaceholder="Search supplier or invoice no..."
-                                                    className="w-full text-sm font-bold"
-                                                />
-                                            </div>
-                                        )}
-
-                                        {dyeingMode === "MANUAL" && (
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                                                <div className="space-y-1.5">
-                                                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Manual Dyeing Rate (Rs. / KG)</label>
-                                                    <input
-                                                        type="number"
-                                                        value={dyeingManualRate}
-                                                        onChange={(e) => setDyeingManualRate(e.target.value)}
-                                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm font-mono font-bold text-right"
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
+                                {processingServices.length === 0 ? (
+                                    <div className="p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl space-y-2">
+                                        <p className="text-sm font-bold text-slate-500">No processing services selected for this batch.</p>
+                                        <p className="text-xs text-slate-400">Use this if producing direct grey fabric or un-dyed goods.</p>
+                                        <button
+                                            type="button"
+                                            onClick={handleAddProcessingService}
+                                            className="px-4 py-2 mt-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5"
+                                        >
+                                            <Plus size={14} /> Add Service (Dyeing / Printing / Finishing)
+                                        </button>
                                     </div>
-                                )}
+                                ) : (
+                                    <div className="space-y-4">
+                                        {processingServices.map((ps, index) => {
+                                            const lineCost = (parseFloat(ps.qty) || 0) * (parseFloat(ps.rate) || 0);
+                                            const selectedSvc = unconsumedServices.find(s => s.id === ps.serviceId);
 
-                                {/* B. PRINTING SERVICE BLOCK */}
-                                {isPrintingActive && (
-                                    <div className="p-6 rounded-2xl bg-purple-50/40 dark:bg-purple-950/15 border border-purple-200/70 dark:border-purple-900/40 space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2 text-purple-900 dark:text-purple-200 font-black text-sm uppercase tracking-wide">
-                                                <Printer size={16} className="text-purple-600" />
-                                                <span>Printing Service (Measured in MTR)</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold text-slate-500 uppercase">Req Printing:</span>
-                                                <span className="font-mono text-sm font-black text-purple-600 dark:text-purple-400 bg-purple-100/80 dark:bg-purple-900/50 px-2.5 py-0.5 rounded-lg">
-                                                    {reqPrintingMtr.toLocaleString()} MTR
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            {/* Printing Mode */}
-                                            <div className="space-y-1.5">
-                                                <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Printing Mode</label>
-                                                <select
-                                                    value={printingMode}
-                                                    onChange={(e: any) => setPrintingMode(e.target.value)}
-                                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm font-bold text-slate-900 dark:text-white shadow-sm"
+                                            return (
+                                                <div
+                                                    key={ps.id}
+                                                    className="p-5 sm:p-6 rounded-2xl bg-amber-50/40 dark:bg-amber-950/15 border border-amber-200/70 dark:border-amber-900/40 space-y-4 relative"
                                                 >
-                                                    <option value="VENDOR_BILL">Out-House (Vendor Service Bill)</option>
-                                                    <option value="MANUAL">Manual Rate (Rs. / MTR)</option>
-                                                    <option value="BYPASS">Bypass / Optional (0 Cost)</option>
-                                                </select>
-                                            </div>
+                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-mono font-black text-xs">
+                                                                {index + 1}
+                                                            </span>
+                                                            <span className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-200">
+                                                                Processing Service #{index + 1}
+                                                            </span>
+                                                            {selectedSvc?.categoryName && (
+                                                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 uppercase">
+                                                                    {selectedSvc.categoryName}
+                                                                </span>
+                                                            )}
+                                                        </div>
 
-                                            {/* Printing Wastage */}
-                                            <div className="space-y-1.5">
-                                                <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Printing Wastage %</label>
-                                                <input
-                                                    type="number"
-                                                    value={printingWastage}
-                                                    onChange={(e) => setPrintingWastage(parseFloat(e.target.value) || 0)}
-                                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm font-mono font-bold text-slate-900 dark:text-white text-right shadow-sm"
-                                                />
-                                            </div>
+                                                        <div className="flex items-center gap-3">
+                                                            {/* Mode Toggle */}
+                                                            <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleProcessingServiceChange(ps.id, "mode", "VENDOR_BILL")}
+                                                                    className={cn(
+                                                                        "px-2.5 py-1 rounded-lg transition-all",
+                                                                        ps.mode === "VENDOR_BILL"
+                                                                            ? "bg-amber-600 text-white shadow-sm font-black"
+                                                                            : "text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                                                                    )}
+                                                                >
+                                                                    Vendor Bill
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleProcessingServiceChange(ps.id, "mode", "MANUAL")}
+                                                                    className={cn(
+                                                                        "px-2.5 py-1 rounded-lg transition-all",
+                                                                        ps.mode === "MANUAL"
+                                                                            ? "bg-amber-600 text-white shadow-sm font-black"
+                                                                            : "text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                                                                    )}
+                                                                >
+                                                                    Manual Rate
+                                                                </button>
+                                                            </div>
 
-                                            {/* Printing Total Cost */}
-                                            <div className="p-3 rounded-xl bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 text-right flex flex-col justify-center">
-                                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Printing Total Cost</span>
-                                                <span className="text-base font-black font-mono text-purple-600 dark:text-purple-400">
-                                                    Rs. {printingCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            {/* Remove Button */}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoveProcessingService(ps.id)}
+                                                                className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
+                                                                title="Remove this service"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Mode 1: Vendor Service Bill */}
+                                                    {ps.mode === "VENDOR_BILL" ? (
+                                                        <div className="space-y-3">
+                                                            <div className="space-y-1.5">
+                                                                <div className="flex justify-between items-center text-xs font-bold text-amber-900 dark:text-amber-200">
+                                                                    <span>Select Processing Bill (Dyeing, Printing, Bleaching, Washing, etc.):</span>
+                                                                    <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                                                                        {processingServiceOptions.length} bill(s) available
+                                                                    </span>
+                                                                </div>
+                                                                <Combobox
+                                                                    options={processingServiceOptions}
+                                                                    value={ps.serviceId}
+                                                                    onChange={(val) => handleProcessingServiceChange(ps.id, "serviceId", val)}
+                                                                    placeholder="-- Choose Processing Service Bill (Category: Dyeing, Printing, etc.) --"
+                                                                    searchPlaceholder="Search supplier, item or invoice #..."
+                                                                    className="w-full text-sm font-bold"
+                                                                />
+                                                            </div>
+
+                                                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
+                                                                {/* Qty to Consume */}
+                                                                <div className="space-y-1">
+                                                                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                                                                        Qty to Consume ({ps.unit || "KG"})
+                                                                    </label>
+                                                                    <input
+                                                                        type="number"
+                                                                        step="any"
+                                                                        placeholder="0.00"
+                                                                        value={ps.qty}
+                                                                        onChange={(e) => handleProcessingServiceChange(ps.id, "qty", e.target.value)}
+                                                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm font-mono font-bold text-right"
+                                                                    />
+                                                                </div>
+
+                                                                {/* Service Rate */}
+                                                                <div className="space-y-1">
+                                                                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                                                                        Rate (Rs. / {ps.unit || "Unit"})
+                                                                    </label>
+                                                                    <input
+                                                                        type="number"
+                                                                        step="any"
+                                                                        value={ps.rate}
+                                                                        onChange={(e) => handleProcessingServiceChange(ps.id, "rate", e.target.value)}
+                                                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm font-mono font-bold text-right"
+                                                                    />
+                                                                </div>
+
+                                                                {/* Wastage % */}
+                                                                <div className="space-y-1">
+                                                                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                                                                        Wastage %
+                                                                    </label>
+                                                                    <input
+                                                                        type="number"
+                                                                        step="any"
+                                                                        value={ps.wastage}
+                                                                        onChange={(e) => handleProcessingServiceChange(ps.id, "wastage", parseFloat(e.target.value) || 0)}
+                                                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm font-mono font-bold text-right"
+                                                                    />
+                                                                </div>
+
+                                                                {/* Line Cost */}
+                                                                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-right flex flex-col justify-center">
+                                                                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Line Cost</span>
+                                                                    <span className="text-sm font-black font-mono text-amber-600 dark:text-amber-400">
+                                                                        Rs. {lineCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        /* Mode 2: Manual Rate */
+                                                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                                                            <div className="space-y-1 sm:col-span-2">
+                                                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                                                                    Service Name
+                                                                </label>
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="e.g. In-house Dyeing / Washing / Printing"
+                                                                    value={ps.manualName}
+                                                                    onChange={(e) => handleProcessingServiceChange(ps.id, "manualName", e.target.value)}
+                                                                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm font-semibold"
+                                                                />
+                                                            </div>
+
+                                                            <div className="space-y-1">
+                                                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                                                                    Qty ({ps.unit || "KG"})
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    step="any"
+                                                                    value={ps.qty}
+                                                                    onChange={(e) => handleProcessingServiceChange(ps.id, "qty", e.target.value)}
+                                                                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm font-mono font-bold text-right"
+                                                                />
+                                                            </div>
+
+                                                            <div className="space-y-1">
+                                                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                                                                    Rate (Rs./Unit)
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    step="any"
+                                                                    value={ps.rate}
+                                                                    onChange={(e) => handleProcessingServiceChange(ps.id, "rate", e.target.value)}
+                                                                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm font-mono font-bold text-right"
+                                                                />
+                                                            </div>
+
+                                                            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-right flex flex-col justify-center">
+                                                                <span className="text-[10px] font-bold uppercase text-slate-400 block">Line Cost</span>
+                                                                <span className="text-sm font-black font-mono text-amber-600 dark:text-amber-400">
+                                                                    Rs. {lineCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+
+                                        {/* Action footer & total */}
+                                        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex flex-wrap items-center justify-between gap-4">
+                                            <button
+                                                type="button"
+                                                onClick={handleAddProcessingService}
+                                                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                                            >
+                                                <Plus size={15} /> Add Another Processing Service
+                                            </button>
+
+                                            <div className="flex items-center gap-4 text-right">
+                                                <span className="text-xs font-bold text-slate-500 uppercase">
+                                                    Stage 1 Total Processing Cost:
+                                                </span>
+                                                <span className="text-lg font-black font-mono text-amber-600 dark:text-amber-400">
+                                                    Rs. {processingCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </span>
                                             </div>
                                         </div>
-
-                                        {/* Printing Bill Selector if VENDOR_BILL */}
-                                        {printingMode === "VENDOR_BILL" && (
-                                            <div className="space-y-2 pt-1">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs font-bold text-purple-900 dark:text-purple-200">
-                                                        Select Unconsumed Printing Bill (Category: PRINTING):
-                                                    </span>
-                                                    <span className="text-xs font-bold text-purple-600 bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-full">
-                                                        {printingServiceOptions.length} bill(s) available
-                                                    </span>
-                                                </div>
-                                                <Combobox
-                                                    options={printingServiceOptions}
-                                                    value={selectedPrintingServiceId}
-                                                    onChange={(val) => {
-                                                        setSelectedPrintingServiceId(val);
-                                                        const s = unconsumedServices.find(it => it.id === val);
-                                                        if (s) setPrintingServiceMtr(Math.min(s.unconsumedQty, reqPrintingMtr).toString());
-                                                    }}
-                                                    placeholder="-- Choose Printing Invoice --"
-                                                    searchPlaceholder="Search supplier or invoice no..."
-                                                    className="w-full text-sm font-bold"
-                                                />
-                                            </div>
-                                        )}
-
-                                        {printingMode === "MANUAL" && (
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                                                <div className="space-y-1.5">
-                                                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Manual Printing Rate (Rs. / MTR)</label>
-                                                    <input
-                                                        type="number"
-                                                        value={printingManualRate}
-                                                        onChange={(e) => setPrintingManualRate(e.target.value)}
-                                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm font-mono font-bold text-right"
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
                                 )}
                             </div>
@@ -1445,23 +1477,22 @@ export default function ProductionExecutionWizard() {
                                     </div>
                                 )}
 
-                                {isDyeingActive && (
-                                    <div className="flex justify-between items-center py-1 border-b border-slate-800/60 pb-2">
-                                        <span className="text-slate-400">3. Dyeing Finishing Cost:</span>
-                                        <span className="font-mono font-bold text-amber-400">
-                                            Rs. {dyeingCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {isPrintingActive && (
-                                    <div className="flex justify-between items-center py-1 border-b border-slate-800/60 pb-2">
-                                        <span className="text-slate-400">4. Printing Finishing Cost:</span>
-                                        <span className="font-mono font-bold text-purple-400">
-                                            Rs. {printingCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </span>
-                                    </div>
-                                )}
+                                {processingServices.map((ps, idx) => {
+                                    const svc = unconsumedServices.find(s => s.id === ps.serviceId);
+                                    const name = ps.mode === "VENDOR_BILL" 
+                                        ? (svc ? svc.productName : `Processing Service #${idx + 1}`)
+                                        : (ps.manualName || `Processing Service #${idx + 1}`);
+                                    const cost = (parseFloat(ps.qty) || 0) * (parseFloat(ps.rate) || 0);
+                                    if (cost <= 0 && !ps.serviceId) return null;
+                                    return (
+                                        <div key={ps.id} className="flex justify-between items-center py-1 border-b border-slate-800/60 pb-2">
+                                            <span className="text-slate-400 text-xs truncate max-w-[200px]">3.{idx + 1} {name}:</span>
+                                            <span className="font-mono font-bold text-amber-400">
+                                                Rs. {cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
 
                                 <div className="pt-2 flex justify-between items-center">
                                     <span className="font-bold text-slate-300">Total Batch Cost:</span>
@@ -1494,12 +1525,16 @@ export default function ProductionExecutionWizard() {
                                     <span>Export Ratio & Formula Audit:</span>
                                 </div>
                                 <div className="font-mono">Output: {outQtyNum.toLocaleString()} {outputUnitCode} (Net Weight: {effectiveNetWeightKg.toLocaleString()} KG)</div>
-                                {isPrintingActive && (
-                                    <div className="font-mono text-purple-300">Printing: {reqPrintingMtr.toLocaleString()} MTR ({printingWastage}% wastage)</div>
-                                )}
-                                {isDyeingActive && (
-                                    <div className="font-mono text-amber-300">Dyeing: {reqDyeingQty.toLocaleString()} KG ({dyeingWastage}% wastage)</div>
-                                )}
+                                {processingServices.map((ps, idx) => {
+                                    const svc = unconsumedServices.find(s => s.id === ps.serviceId);
+                                    const name = ps.mode === "VENDOR_BILL" ? (svc ? svc.productName : `Processing #${idx + 1}`) : (ps.manualName || `Processing #${idx + 1}`);
+                                    const q = parseFloat(ps.qty) || 0;
+                                    return (
+                                        <div key={ps.id} className="font-mono text-amber-300">
+                                            {name}: {q.toLocaleString()} {ps.unit || "KG"} ({ps.wastage}% wastage)
+                                        </div>
+                                    );
+                                })}
                                 {executionMode !== "GREY_TO_FINISH" && (
                                     <>
                                         <div className="font-mono">Fabric ({fabricProcessType}): {reqWeavingQty.toLocaleString()} KG ({weavingWastage}% wastage)</div>
