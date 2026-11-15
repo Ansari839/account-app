@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { authenticatedFetch } from '@/lib/api-client';
 import { useRouter } from 'next/navigation';
+import Combobox from '@/components/Combobox';
 import { 
     Save, 
     ArrowLeft, 
@@ -285,7 +286,7 @@ export default function NewProductPage() {
 
     return (
         <MainLayout>
-            <div className="max-w-5xl mx-auto space-y-6 pb-32 animate-in fade-in duration-500">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-8 pb-32 animate-in fade-in duration-500">
                 {/* Header Action Bar */}
                 <div className="flex items-center justify-between">
                     <button 
@@ -300,139 +301,149 @@ export default function NewProductPage() {
                 </div>
 
                 {/* Premium Dark Header Card */}
-                <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-violet-500/10 relative overflow-hidden border border-slate-800">
+                <div className="bg-slate-950 rounded-[2rem] p-6 sm:p-10 shadow-2xl shadow-violet-500/10 relative overflow-hidden border border-slate-800 space-y-8">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
                     
-                    <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-                        <div className="col-span-12 md:col-span-5 space-y-4">
-                            <div>
-                                <h1 className="text-4xl font-black text-white tracking-tight">New Product</h1>
-                                <p className="text-slate-400 font-medium mt-1">Add an item to your inventory catalog</p>
-                            </div>
-                            <div className="inline-flex items-center gap-2 bg-violet-500/10 text-violet-400 border border-violet-500/20 px-3 py-1.5 rounded-lg text-xs font-bold">
-                                <Info size={14} /> Accounting mapping has been simplified
-                            </div>
+                    {/* Header Row */}
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                        <div>
+                            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">New Product</h1>
+                            <p className="text-slate-300 font-medium text-base mt-1">Add an item to your inventory catalog</p>
                         </div>
-                        
-                        <div className="col-span-12 md:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <Barcode size={14} /> Product Code (SKU)
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="Auto-generated if empty"
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-slate-600 font-mono text-sm"
-                                    value={formData.code}
-                                    onChange={e => setFormData({ ...formData, code: e.target.value })}
-                                />
-                            </div>
+                        <div className="inline-flex items-center gap-2 bg-violet-500/15 text-violet-300 border border-violet-500/30 px-3.5 py-2 rounded-xl text-xs font-bold w-fit">
+                            <Info size={16} /> Accounting mapping has been simplified
+                        </div>
+                    </div>
+                    
+                    {/* Inputs Grid */}
+                    <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-6">
+                        {/* SKU */}
+                        <div className="col-span-12 md:col-span-3 space-y-2">
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-wider">
+                                <Barcode size={15} className="text-violet-400" /> Product Code (SKU)
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Auto-generated if empty"
+                                className="w-full p-3.5 rounded-xl bg-slate-900/60 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-slate-500 font-mono text-base font-medium"
+                                value={formData.code}
+                                onChange={e => setFormData({ ...formData, code: e.target.value })}
+                            />
+                        </div>
 
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <PackageSearch size={14} /> Product Name <span className="text-rose-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Premium T-Shirt"
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-violet-500"
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                />
-                            </div>
+                        {/* Product Name */}
+                        <div className="col-span-12 md:col-span-6 space-y-2">
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-wider">
+                                <PackageSearch size={15} className="text-violet-400" /> Product Name <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="e.g. Premium Cotton Yarn / Dyeing Service / Dyed Fabric"
+                                className="w-full p-3.5 rounded-xl bg-slate-900/60 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-slate-500 text-base font-semibold"
+                                value={formData.name}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                            />
+                        </div>
 
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <Tags size={14} /> Category <span className="text-rose-500">*</span>
-                                </label>
-                                <select
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-violet-500"
-                                    value={formData.categoryId}
-                                    onChange={e => setFormData({ ...formData, categoryId: e.target.value })}
-                                >
-                                    <option value="">Select Category...</option>
-                                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
-                            </div>
+                        {/* HS Code */}
+                        <div className="col-span-12 md:col-span-3 space-y-2">
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-wider">
+                                <Barcode size={15} className="text-violet-400" /> HS Code <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                placeholder="e.g. 5402.3300"
+                                className="w-full p-3.5 rounded-xl bg-slate-900/60 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-slate-500 font-mono text-base font-medium"
+                                value={formData.hsCode || ''}
+                                onChange={e => setFormData({ ...formData, hsCode: e.target.value })}
+                            />
+                        </div>
 
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <Scale size={14} /> Base Unit <span className="text-rose-500">*</span>
-                                </label>
-                                <select
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-violet-500"
-                                    value={formData.baseUnitId}
-                                    onChange={e => setFormData({ ...formData, baseUnitId: e.target.value })}
-                                >
-                                    <option value="">Select Unit...</option>
-                                    {units.map(u => <option key={u.id} value={u.id}>{u.name} ({u.code})</option>)}
-                                </select>
-                            </div>
+                        {/* Category (Combobox) */}
+                        <div className="col-span-12 md:col-span-6 space-y-2">
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-wider">
+                                <Tags size={15} className="text-violet-400" /> Category <span className="text-rose-500">*</span>
+                            </label>
+                            <Combobox
+                                options={categories.map(c => ({ value: c.id, label: c.name }))}
+                                value={formData.categoryId}
+                                onChange={val => setFormData({ ...formData, categoryId: val })}
+                                placeholder="Select Category..."
+                                searchPlaceholder="Search category..."
+                                forceDark={true}
+                                className="p-3.5 text-base font-semibold"
+                            />
+                        </div>
 
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <Barcode size={14} /> HS Code <span className="text-rose-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. 5402.3300"
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-slate-600 font-mono text-sm"
-                                    value={formData.hsCode || ''}
-                                    onChange={e => setFormData({ ...formData, hsCode: e.target.value })}
-                                />
-                            </div>
+                        {/* Base Unit (Combobox) */}
+                        <div className="col-span-12 md:col-span-6 space-y-2">
+                            <label className="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-wider">
+                                <Scale size={15} className="text-violet-400" /> Base Unit <span className="text-rose-500">*</span>
+                            </label>
+                            <Combobox
+                                options={units.map(u => ({ value: u.id, label: `${u.name} (${u.code})` }))}
+                                value={formData.baseUnitId}
+                                onChange={val => setFormData({ ...formData, baseUnitId: val })}
+                                placeholder="Select Unit..."
+                                searchPlaceholder="Search unit..."
+                                forceDark={true}
+                                className="p-3.5 text-base font-semibold"
+                            />
                         </div>
                     </div>
 
-                    <div className="border-t border-slate-800 p-8 bg-slate-950/50">
-                        <h3 className="text-lg font-bold text-white mb-6">Product Behavior</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <label className="flex items-center gap-3 p-4 rounded-xl border border-slate-800 bg-slate-900/50 cursor-pointer hover:border-violet-500/50 transition-colors">
+                    {/* Product Behavior */}
+                    <div className="border-t border-slate-800 pt-8 bg-slate-950/50 space-y-4">
+                        <h3 className="text-xl font-black text-white tracking-tight">Product Behavior</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <label className="flex items-center gap-3.5 p-4 sm:p-5 rounded-2xl border border-slate-800 bg-slate-900/50 cursor-pointer hover:border-violet-500/50 hover:bg-slate-900 transition-all">
                                 <input 
                                     type="checkbox" 
-                                    className="w-5 h-5 rounded border-slate-700 text-violet-500 focus:ring-violet-500 bg-slate-800"
+                                    className="w-5 h-5 rounded-md border-slate-700 text-violet-500 focus:ring-violet-500 bg-slate-800"
                                     checked={formData.canBeSold}
                                     onChange={(e) => setFormData({...formData, canBeSold: e.target.checked})}
                                 />
                                 <div>
-                                    <div className="text-sm font-bold text-white">Can be Sold</div>
-                                    <div className="text-xs text-slate-500">Available in Sales Invoices</div>
+                                    <div className="text-base font-bold text-white">Can be Sold</div>
+                                    <div className="text-xs text-slate-400 mt-0.5">Available in Sales Invoices</div>
                                 </div>
                             </label>
                             
-                            <label className="flex items-center gap-3 p-4 rounded-xl border border-slate-800 bg-slate-900/50 cursor-pointer hover:border-violet-500/50 transition-colors">
+                            <label className="flex items-center gap-3.5 p-4 sm:p-5 rounded-2xl border border-slate-800 bg-slate-900/50 cursor-pointer hover:border-violet-500/50 hover:bg-slate-900 transition-all">
                                 <input 
                                     type="checkbox" 
-                                    className="w-5 h-5 rounded border-slate-700 text-violet-500 focus:ring-violet-500 bg-slate-800"
+                                    className="w-5 h-5 rounded-md border-slate-700 text-violet-500 focus:ring-violet-500 bg-slate-800"
                                     checked={formData.canBePurchased}
                                     onChange={(e) => setFormData({...formData, canBePurchased: e.target.checked})}
                                 />
                                 <div>
-                                    <div className="text-sm font-bold text-white">Can be Purchased</div>
-                                    <div className="text-xs text-slate-500">Available in Purchase Invoices</div>
+                                    <div className="text-base font-bold text-white">Can be Purchased</div>
+                                    <div className="text-xs text-slate-400 mt-0.5">Available in Purchase Invoices</div>
                                 </div>
                             </label>
 
-                            <label className="flex flex-col p-4 rounded-xl border border-slate-800 bg-slate-900/50 hover:border-violet-500/50 transition-colors">
-                                <div className="flex items-center gap-3 cursor-pointer">
+                            <label className="flex flex-col p-4 sm:p-5 rounded-2xl border border-slate-800 bg-slate-900/50 hover:border-violet-500/50 hover:bg-slate-900 transition-all">
+                                <div className="flex items-center gap-3.5 cursor-pointer">
                                     <input 
                                         type="checkbox" 
-                                        className="w-5 h-5 rounded border-slate-700 text-violet-500 focus:ring-violet-500 bg-slate-800"
+                                        className="w-5 h-5 rounded-md border-slate-700 text-violet-500 focus:ring-violet-500 bg-slate-800"
                                         checked={formData.isManufactured}
                                         onChange={(e) => setFormData({...formData, isManufactured: e.target.checked})}
                                     />
                                     <div>
-                                        <div className="text-sm font-bold text-white">Is Manufactured</div>
-                                        <div className="text-xs text-slate-500">Produced internally via Job Work</div>
+                                        <div className="text-base font-bold text-white">Is Manufactured</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">Produced internally via Job Work</div>
                                     </div>
                                 </div>
                                 {formData.isManufactured && (
-                                    <div className="mt-4 pt-4 border-t border-slate-800">
-                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Stage <span className="text-rose-500">*</span></label>
+                                    <div className="mt-4 pt-3 border-t border-slate-800 space-y-1.5">
+                                        <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                                            Stage <span className="text-rose-500">*</span>
+                                        </label>
                                         <select
-                                            className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-violet-500 text-sm"
+                                            className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-violet-500 text-sm font-semibold"
                                             value={formData.stage}
                                             onChange={e => setFormData({ ...formData, stage: e.target.value })}
                                             required={formData.isManufactured}
@@ -446,16 +457,16 @@ export default function NewProductPage() {
                                 )}
                             </label>
 
-                            <label className="flex items-center gap-3 p-4 rounded-xl border border-slate-800 bg-slate-900/50 cursor-pointer hover:border-violet-500/50 transition-colors">
+                            <label className="flex items-center gap-3.5 p-4 sm:p-5 rounded-2xl border border-slate-800 bg-slate-900/50 cursor-pointer hover:border-violet-500/50 hover:bg-slate-900 transition-all">
                                 <input 
                                     type="checkbox" 
-                                    className="w-5 h-5 rounded border-slate-700 text-violet-500 focus:ring-violet-500 bg-slate-800"
+                                    className="w-5 h-5 rounded-md border-slate-700 text-violet-500 focus:ring-violet-500 bg-slate-800"
                                     checked={formData.isService}
                                     onChange={(e) => setFormData({...formData, isService: e.target.checked})}
                                 />
                                 <div>
-                                    <div className="text-sm font-bold text-white">Is Service</div>
-                                    <div className="text-xs text-slate-500">Dyeing, Weaving, Freight (No Stock)</div>
+                                    <div className="text-base font-bold text-white">Is Service</div>
+                                    <div className="text-xs text-slate-400 mt-0.5">Dyeing, Weaving, Freight (No Stock)</div>
                                 </div>
                             </label>
                         </div>
@@ -979,7 +990,7 @@ export default function NewProductPage() {
 
             {/* Sticky Footer */}
             <div className="fixed bottom-0 left-0 lg:left-64 right-0 p-4 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-                <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-end gap-4">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-end gap-4">
                     <div className="flex gap-3 w-full md:w-auto">
                         <button 
                             onClick={() => router.back()}
