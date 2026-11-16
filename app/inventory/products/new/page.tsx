@@ -30,6 +30,19 @@ interface Variant {
     price: number;
 }
 
+export interface PhysicalStockEntry {
+    id: string;
+    warehouseId: string;
+    stage: 'RAW' | 'GREY' | 'FINISH';
+    origin: 'LOCAL' | 'IMPORT';
+    isEFS: boolean;
+    qty: string;
+    costRate: string;
+    itpRate: string;
+    batchNo: string;
+    date: string;
+}
+
 export default function NewProductPage() {
     const router = useRouter();
     const { showNotification } = useNotifications();
@@ -59,17 +72,58 @@ export default function NewProductPage() {
 
     // Opening Stock State
     const [enableOpeningStock, setEnableOpeningStock] = useState(false);
-    const [openingStock, setOpeningStock] = useState({
-        warehouseId: '',
-        stage: 'RAW',
-        origin: 'LOCAL',
-        isEFS: false,
-        qty: '',
-        costRate: '',
-        itpRate: '',
-        batchNo: '',
-        date: new Date().toISOString().split('T')[0]
-    });
+
+    const [physicalStockEntries, setPhysicalStockEntries] = useState<PhysicalStockEntry[]>([
+        {
+            id: '1',
+            warehouseId: '',
+            stage: 'RAW',
+            origin: 'LOCAL',
+            isEFS: false,
+            qty: '',
+            costRate: '',
+            itpRate: '',
+            batchNo: '',
+            date: new Date().toISOString().split('T')[0]
+        }
+    ]);
+
+    const handleAddPhysicalStockEntry = () => {
+        setPhysicalStockEntries(prev => [
+            ...prev,
+            {
+                id: String(Date.now()),
+                warehouseId: warehouses.length > 0 ? warehouses[0].id : '',
+                stage: (formData.stage as any) || 'RAW',
+                origin: 'LOCAL',
+                isEFS: false,
+                qty: '',
+                costRate: '',
+                itpRate: '',
+                batchNo: '',
+                date: new Date().toISOString().split('T')[0]
+            }
+        ]);
+    };
+
+    const handleRemovePhysicalStockEntry = (id: string) => {
+        if (physicalStockEntries.length <= 1) return;
+        setPhysicalStockEntries(prev => prev.filter(e => e.id !== id));
+    };
+
+    const handlePhysicalStockEntryChange = (id: string, field: keyof PhysicalStockEntry, value: any) => {
+        setPhysicalStockEntries(prev => prev.map(e => {
+            if (e.id !== id) return e;
+            const updated = { ...e, [field]: value };
+            if (field === 'origin' && value === 'LOCAL') {
+                updated.isEFS = false;
+            }
+            return updated;
+        }));
+    };
+
+    const totalPhysicalQty = physicalStockEntries.reduce((acc, e) => acc + (Number(e.qty) || 0), 0);
+    const totalPhysicalValue = physicalStockEntries.reduce((acc, e) => acc + ((Number(e.qty) || 0) * (Number(e.costRate) || 0)), 0);
 
     // Multi-Invoice State for Services
     const [serviceInvoices, setServiceInvoices] = useState<Array<{
@@ -127,10 +181,10 @@ export default function NewProductPage() {
                     const whs = whJson.data || [];
                     setWarehouses(whs);
                     if (whs.length > 0) {
-                        setOpeningStock(prev => ({
-                            ...prev,
-                            warehouseId: prev.warehouseId || whs[0].id
-                        }));
+                        setPhysicalStockEntries(prev => prev.map(e => ({
+                            ...e,
+                            warehouseId: e.warehouseId || whs[0].id
+                        })));
                     }
                 }
             }
@@ -243,31 +297,36 @@ export default function NewProductPage() {
                         } else {
                             showNotification('success', 'Product created successfully!');
                         }
-                    } else if (Number(openingStock.qty) > 0) {
-                        try {
-                            await authenticatedFetch('/api/inventory/opening', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    productId: createdProduct.id,
-                                    warehouseId: openingStock.warehouseId,
-                                    stage: openingStock.stage || formData.stage || 'RAW',
-                                    origin: openingStock.origin,
-                                    isEFS: openingStock.origin === 'IMPORT' ? openingStock.isEFS : false,
-                                    qty: Number(openingStock.qty),
-                                    costRate: Number(openingStock.costRate) || 0,
-                                    itpRate: openingStock.origin === 'IMPORT' ? (Number(openingStock.itpRate) || null) : null,
-                                    batchNo: openingStock.batchNo || null,
-                                    date: openingStock.date
-                                })
-                            });
-                            showNotification('success', 'Product and opening stock created successfully!');
-                        } catch (openErr) {
-                            console.error('Failed to save opening stock:', openErr);
-                            showNotification('warning', 'Product created, but opening stock could not be recorded.');
-                        }
                     } else {
-                        showNotification('success', 'Product created successfully!');
+                        const validEntries = physicalStockEntries.filter(entry => Number(entry.qty) > 0);
+                        if (validEntries.length > 0) {
+                            try {
+                                for (const entry of validEntries) {
+                                    await authenticatedFetch('/api/inventory/opening', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            productId: createdProduct.id,
+                                            warehouseId: entry.warehouseId || null,
+                                            stage: entry.stage || formData.stage || 'RAW',
+                                            origin: entry.origin,
+                                            isEFS: entry.origin === 'IMPORT' ? Boolean(entry.isEFS) : false,
+                                            qty: Number(entry.qty),
+                                            costRate: Number(entry.costRate) || 0,
+                                            itpRate: entry.origin === 'IMPORT' ? (Number(entry.itpRate) || null) : null,
+                                            batchNo: entry.batchNo || null,
+                                            date: entry.date || new Date().toISOString().split('T')[0]
+                                        })
+                                    });
+                                }
+                                showNotification('success', `Product and ${validEntries.length} opening stock lot(s) created successfully!`);
+                            } catch (openErr) {
+                                console.error('Failed to save opening stock lots:', openErr);
+                                showNotification('warning', 'Product created, but some opening stock lots could not be recorded.');
+                            }
+                        } else {
+                            showNotification('success', 'Product created successfully!');
+                        }
                     }
                 } else {
                     showNotification('success', 'Product created successfully!');
@@ -748,238 +807,320 @@ export default function NewProductPage() {
                                     </div>
                                 </div>
                             ) : (
-                                /* PHYSICAL GOODS OPENING STOCK */
-                                <div className="space-y-5">
-                                    {/* Warehouse & Date */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                                                <Warehouse size={14} className="text-indigo-500" /> Target Warehouse <span className="text-slate-400 font-normal lowercase">(optional)</span>
-                                            </label>
-                                            <select
-                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
-                                                value={openingStock.warehouseId}
-                                                onChange={e => setOpeningStock({ ...openingStock, warehouseId: e.target.value })}
-                                            >
-                                                <option value="">Default Warehouse (Auto)</option>
-                                                {warehouses.map(w => (
-                                                    <option key={w.id} value={w.id}>{w.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                                                <Calendar size={14} className="text-indigo-500" /> Opening Date <span className="text-rose-500">*</span>
-                                            </label>
-                                            <input
-                                                type="date"
-                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
-                                                value={openingStock.date}
-                                                onChange={e => setOpeningStock({ ...openingStock, date: e.target.value })}
-                                            />
+                                /* PHYSICAL GOODS MULTI-LOT OPENING STOCK */
+                                <div className="space-y-6">
+                                    <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-800/40 flex items-start gap-3">
+                                        <Info size={18} className="text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0" />
+                                        <div className="text-xs text-indigo-900/80 dark:text-indigo-300/90 leading-relaxed">
+                                            <span className="font-bold">Multi-Origin Opening Stock:</span> Aap ek hi item (jaise <span className="font-mono font-bold">75/36 DTY</span>) ke neechay Local, Import (EFS), aur Import (Non-EFS / Commercial) ke alag alag lots enter kar sakte hain. Item ek hi banega, lekin Godown aur Production mein yeh apne apne rates aur quantities ke sath alag alag maintain honge.
                                         </div>
                                     </div>
 
-                                    {/* Production Stage */}
-                                    <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                                            <Layers size={14} className="text-indigo-500" /> Stock Stage <span className="text-rose-500">*</span>
-                                        </label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {[
-                                                { id: "RAW", label: "RAW", desc: "Yarn / Raw Material" },
-                                                { id: "GREY", label: "GREY", desc: "Loom / Kora Fabric" },
-                                                { id: "FINISH", label: "FINISH", desc: "Processed / Dyed Fabric" }
-                                            ].map(s => (
-                                                <button
-                                                    key={s.id}
-                                                    type="button"
-                                                    onClick={() => setOpeningStock({ ...openingStock, stage: s.id })}
-                                                    className={cn(
-                                                        "p-2.5 rounded-xl border text-left transition-all",
-                                                        openingStock.stage === s.id
-                                                            ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm"
-                                                            : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
-                                                    )}
+                                    {/* List of Physical Stock Entries */}
+                                    <div className="space-y-5">
+                                        {physicalStockEntries.map((entry, index) => {
+                                            const entryQty = Number(entry.qty) || 0;
+                                            const entryRate = Number(entry.costRate) || 0;
+                                            const entryValue = entryQty * entryRate;
+                                            const entryItp = Number(entry.itpRate) || 0;
+
+                                            return (
+                                                <div 
+                                                    key={entry.id} 
+                                                    className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-sm space-y-4 relative"
                                                 >
-                                                    <div className="text-xs font-black uppercase">{s.label}</div>
-                                                    <div className="text-[10px] text-slate-400 mt-0.5">{s.desc}</div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
+                                                    {/* Entry Header */}
+                                                    <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                                                                Lot #{index + 1}
+                                                            </span>
 
-                                    {/* Origin: Local vs Import */}
-                                    <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                                            <Globe size={14} className="text-indigo-500" /> Stock Origin <span className="text-rose-500">*</span>
-                                        </label>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => setOpeningStock({ ...openingStock, origin: "LOCAL", isEFS: false })}
-                                                className={cn(
-                                                    "p-3 rounded-xl border text-left transition-all",
-                                                    openingStock.origin === "LOCAL"
-                                                        ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm"
-                                                        : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
-                                                )}
-                                            >
-                                                <div className="text-xs font-black uppercase flex items-center gap-1.5">
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Local Stock
-                                                </div>
-                                                <div className="text-[10px] text-slate-400 mt-0.5">Purchased locally or service</div>
-                                            </button>
+                                                            {entry.origin === 'LOCAL' ? (
+                                                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wide bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                                    Local Stock
+                                                                </span>
+                                                            ) : entry.isEFS ? (
+                                                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wide bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                                                    Import (EFS Duty-Free)
+                                                                </span>
+                                                            ) : (
+                                                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wide bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30">
+                                                                    Import (Non-EFS / Commercial)
+                                                                </span>
+                                                            )}
 
-                                            <button
-                                                type="button"
-                                                onClick={() => setOpeningStock({ ...openingStock, origin: "IMPORT" })}
-                                                className={cn(
-                                                    "p-3 rounded-xl border text-left transition-all",
-                                                    openingStock.origin === "IMPORT"
-                                                        ? "bg-sky-500/10 border-sky-500 text-sky-600 dark:text-sky-400 font-bold shadow-sm"
-                                                        : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
-                                                )}
-                                            >
-                                                <div className="text-xs font-black uppercase flex items-center gap-1.5">
-                                                    <span className="w-2 h-2 rounded-full bg-sky-500"></span> Import Stock
-                                                </div>
-                                                <div className="text-[10px] text-slate-400 mt-0.5">Imported under GD</div>
-                                            </button>
-                                        </div>
-
-                                        {openingStock.origin === "IMPORT" && (
-                                            <div className="mt-3 p-3.5 rounded-2xl bg-sky-500/5 border border-sky-500/20 space-y-2 animate-in fade-in duration-200">
-                                                <label className="text-xs font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
-                                                    <ShieldAlert size={14} /> Customs Scheme
-                                                </label>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <label className={cn(
-                                                        "flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer text-xs font-bold transition-all",
-                                                        openingStock.isEFS
-                                                            ? "bg-amber-500/10 border-amber-500 text-amber-700 dark:text-amber-400"
-                                                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                                                    )}>
-                                                        <input
-                                                            type="radio"
-                                                            name="newProdIsEFS"
-                                                            checked={openingStock.isEFS === true}
-                                                            onChange={() => setOpeningStock({ ...openingStock, isEFS: true })}
-                                                            className="text-amber-600 focus:ring-amber-500"
-                                                        />
-                                                        <div>
-                                                            <div>EFS (Duty Exempted)</div>
-                                                            <div className="text-[10px] text-amber-500 font-normal">Production consumption only</div>
+                                                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                                                Stage: {entry.stage}
+                                                            </span>
                                                         </div>
-                                                    </label>
 
-                                                    <label className={cn(
-                                                        "flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer text-xs font-bold transition-all",
-                                                        !openingStock.isEFS
-                                                            ? "bg-indigo-500/10 border-indigo-500 text-indigo-700 dark:text-indigo-400"
-                                                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                                                    )}>
-                                                        <input
-                                                            type="radio"
-                                                            name="newProdIsEFS"
-                                                            checked={openingStock.isEFS === false}
-                                                            onChange={() => setOpeningStock({ ...openingStock, isEFS: false })}
-                                                            className="text-indigo-600 focus:ring-indigo-500"
-                                                        />
-                                                        <div>
-                                                            <div>Non-EFS (Commercial)</div>
-                                                            <div className="text-[10px] text-slate-400 font-normal">Saleable locally</div>
+                                                        {physicalStockEntries.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemovePhysicalStockEntry(entry.id)}
+                                                                className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold"
+                                                                title="Remove this stock lot"
+                                                            >
+                                                                <Trash2 size={15} />
+                                                                <span className="hidden sm:inline">Remove Lot</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Origin Selector: Local vs Import */}
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                                            <Globe size={14} className="text-indigo-500" /> Stock Origin <span className="text-rose-500">*</span>
+                                                        </label>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handlePhysicalStockEntryChange(entry.id, 'origin', 'LOCAL')}
+                                                                className={cn(
+                                                                    "p-3 rounded-xl border text-left transition-all",
+                                                                    entry.origin === "LOCAL"
+                                                                        ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm"
+                                                                        : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                                                )}
+                                                            >
+                                                                <div className="text-xs font-black uppercase flex items-center gap-1.5">
+                                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Local Stock
+                                                                </div>
+                                                                <div className="text-[10px] text-slate-400 mt-0.5">Purchased locally in Pakistan</div>
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handlePhysicalStockEntryChange(entry.id, 'origin', 'IMPORT')}
+                                                                className={cn(
+                                                                    "p-3 rounded-xl border text-left transition-all",
+                                                                    entry.origin === "IMPORT"
+                                                                        ? "bg-sky-500/10 border-sky-500 text-sky-600 dark:text-sky-400 font-bold shadow-sm"
+                                                                        : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                                                )}
+                                                            >
+                                                                <div className="text-xs font-black uppercase flex items-center gap-1.5">
+                                                                    <span className="w-2 h-2 rounded-full bg-sky-500"></span> Import Stock
+                                                                </div>
+                                                                <div className="text-[10px] text-slate-400 mt-0.5">Imported under GD / Customs Scheme</div>
+                                                            </button>
                                                         </div>
-                                                    </label>
+
+                                                        {entry.origin === "IMPORT" && (
+                                                            <div className="mt-3 p-3.5 rounded-2xl bg-sky-500/5 border border-sky-500/20 space-y-2 animate-in fade-in duration-200">
+                                                                <label className="text-xs font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                                                                    <ShieldAlert size={14} /> Customs Scheme
+                                                                </label>
+                                                                <div className="grid grid-cols-2 gap-3">
+                                                                    <label className={cn(
+                                                                        "flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer text-xs font-bold transition-all",
+                                                                        entry.isEFS
+                                                                            ? "bg-amber-500/10 border-amber-500 text-amber-700 dark:text-amber-400 shadow-sm"
+                                                                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                                                                    )}>
+                                                                        <input
+                                                                            type="radio"
+                                                                            name={`isEFS_${entry.id}`}
+                                                                            checked={entry.isEFS === true}
+                                                                            onChange={() => handlePhysicalStockEntryChange(entry.id, 'isEFS', true)}
+                                                                            className="text-amber-600 focus:ring-amber-500"
+                                                                        />
+                                                                        <div>
+                                                                            <div>EFS (Duty Exempted)</div>
+                                                                            <div className="text-[10px] text-amber-500 font-normal">Export production only</div>
+                                                                        </div>
+                                                                    </label>
+
+                                                                    <label className={cn(
+                                                                        "flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer text-xs font-bold transition-all",
+                                                                        !entry.isEFS
+                                                                            ? "bg-indigo-500/10 border-indigo-500 text-indigo-700 dark:text-indigo-400 shadow-sm"
+                                                                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                                                                    )}>
+                                                                        <input
+                                                                            type="radio"
+                                                                            name={`isEFS_${entry.id}`}
+                                                                            checked={entry.isEFS === false}
+                                                                            onChange={() => handlePhysicalStockEntryChange(entry.id, 'isEFS', false)}
+                                                                            className="text-indigo-600 focus:ring-indigo-500"
+                                                                        />
+                                                                        <div>
+                                                                            <div>Non-EFS (Commercial)</div>
+                                                                            <div className="text-[10px] text-slate-400 font-normal">Saleable locally or export</div>
+                                                                        </div>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Warehouse, Date, and Stage */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                                                <Warehouse size={13} className="text-indigo-500" /> Warehouse
+                                                            </label>
+                                                            <select
+                                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
+                                                                value={entry.warehouseId}
+                                                                onChange={e => handlePhysicalStockEntryChange(entry.id, 'warehouseId', e.target.value)}
+                                                            >
+                                                                <option value="">Default Warehouse (Auto)</option>
+                                                                {warehouses.map(w => (
+                                                                    <option key={w.id} value={w.id}>{w.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                                                <Calendar size={13} className="text-indigo-500" /> Opening Date <span className="text-rose-500">*</span>
+                                                            </label>
+                                                            <input
+                                                                type="date"
+                                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
+                                                                value={entry.date}
+                                                                onChange={e => handlePhysicalStockEntryChange(entry.id, 'date', e.target.value)}
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                                                <Layers size={13} className="text-indigo-500" /> Stock Stage
+                                                            </label>
+                                                            <select
+                                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold uppercase"
+                                                                value={entry.stage}
+                                                                onChange={e => handlePhysicalStockEntryChange(entry.id, 'stage', e.target.value)}
+                                                            >
+                                                                <option value="RAW">RAW (Yarn / Raw Material)</option>
+                                                                <option value="GREY">GREY (Loom / Kora Fabric)</option>
+                                                                <option value="FINISH">FINISH (Processed / Dyed Fabric)</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Quantity, Book Rate, Total Value */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                                                Quantity <span className="text-rose-500">*</span>
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                step="any"
+                                                                min="0"
+                                                                placeholder="0.00"
+                                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-right"
+                                                                value={entry.qty}
+                                                                onChange={e => handlePhysicalStockEntryChange(entry.id, 'qty', e.target.value)}
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                                                Book Rate (PKR) <span className="text-rose-500">*</span>
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                step="any"
+                                                                min="0"
+                                                                placeholder="Cost / unit"
+                                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-right"
+                                                                value={entry.costRate}
+                                                                onChange={e => handlePhysicalStockEntryChange(entry.id, 'costRate', e.target.value)}
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                                                Total Value (PKR)
+                                                            </label>
+                                                            <div className="w-full p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-bold text-right">
+                                                                Rs. {entryValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* ITP Rate (Import only) */}
+                                                    {entry.origin === "IMPORT" && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 animate-in fade-in duration-200">
+                                                            <div className="space-y-1.5">
+                                                                <label className="text-xs font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider">
+                                                                    Customs ITP Rate (PKR)
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    step="any"
+                                                                    min="0"
+                                                                    placeholder="Assessed + Duties / Qty"
+                                                                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-sky-500 text-sm font-semibold text-right"
+                                                                    value={entry.itpRate}
+                                                                    onChange={e => handlePhysicalStockEntryChange(entry.id, 'itpRate', e.target.value)}
+                                                                />
+                                                            </div>
+
+                                                            <div className="space-y-1.5">
+                                                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                                                    Total ITP Value (PKR)
+                                                                </label>
+                                                                <div className="w-full p-2.5 rounded-xl bg-white/50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sky-700 dark:text-sky-300 text-sm font-bold text-right">
+                                                                    Rs. {(entryQty * entryItp).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Lot / Batch / GD Number */}
+                                                    <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                                            Lot # / Batch # / GD Number
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder={entry.origin === "IMPORT" ? (entry.isEFS ? "e.g. GD-KAPE-HC-12345 / EFS" : "e.g. GD-KAPE-HC-67890 / Commercial") : "e.g. LOT-2026-001"}
+                                                            className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-mono"
+                                                            value={entry.batchNo}
+                                                            onChange={e => handlePhysicalStockEntryChange(entry.id, 'batchNo', e.target.value)}
+                                                        />
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            );
+                                        })}
                                     </div>
 
-                                    {/* Physical Quantity, Book Rate, Total */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                                Quantity <span className="text-rose-500">*</span>
-                                            </label>
-                                            <input
-                                                type="number"
-                                                step="any"
-                                                min="0"
-                                                placeholder="0.00"
-                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-right"
-                                                value={openingStock.qty}
-                                                onChange={e => setOpeningStock({ ...openingStock, qty: e.target.value })}
-                                            />
-                                        </div>
+                                    {/* Action & Combined Totals */}
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                        <button
+                                            type="button"
+                                            onClick={handleAddPhysicalStockEntry}
+                                            className="w-full sm:w-auto px-5 py-3 rounded-xl border border-dashed border-indigo-400 hover:border-indigo-600 bg-indigo-50/50 hover:bg-indigo-50 dark:bg-indigo-950/20 dark:hover:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95"
+                                        >
+                                            <Plus size={16} />
+                                            <span>+ Add Another Opening Stock Lot / Origin</span>
+                                        </button>
 
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                                Book Rate (PKR) <span className="text-rose-500">*</span>
-                                            </label>
-                                            <input
-                                                type="number"
-                                                step="any"
-                                                min="0"
-                                                placeholder="Cost / unit"
-                                                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-right"
-                                                value={openingStock.costRate}
-                                                onChange={e => setOpeningStock({ ...openingStock, costRate: e.target.value })}
-                                            />
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                                Total Value (PKR)
-                                            </label>
-                                            <div className="w-full p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-bold text-right">
-                                                Rs. {((Number(openingStock.qty) || 0) * (Number(openingStock.costRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        <div className="flex items-center gap-6 text-right">
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Lots</p>
+                                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 font-mono">
+                                                    {physicalStockEntries.length} {physicalStockEntries.length === 1 ? 'Lot' : 'Lots'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Combined Opening Qty</p>
+                                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 font-mono">
+                                                    {totalPhysicalQty.toLocaleString()} {units.find(u => u.id === formData.baseUnitId)?.code || 'Units'}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Combined Opening Value</p>
+                                                <p className="text-base font-black text-indigo-600 dark:text-indigo-400 font-mono">
+                                                    Rs. {totalPhysicalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </p>
                                             </div>
                                         </div>
-                                    </div>
-
-                                    {/* ITP Rate (Import only) */}
-                                    {openingStock.origin === "IMPORT" && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 animate-in fade-in duration-200">
-                                            <div className="space-y-1.5">
-                                                <label className="text-xs font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider">
-                                                    Customs ITP Rate (PKR)
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    step="any"
-                                                    min="0"
-                                                    placeholder="Assessed + Duties / Qty"
-                                                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-sky-500 text-sm font-semibold text-right"
-                                                    value={openingStock.itpRate}
-                                                    onChange={e => setOpeningStock({ ...openingStock, itpRate: e.target.value })}
-                                                />
-                                            </div>
-
-                                            <div className="space-y-1.5">
-                                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                                    Total ITP Value (PKR)
-                                                </label>
-                                                <div className="w-full p-2.5 rounded-xl bg-white/50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sky-700 dark:text-sky-300 text-sm font-bold text-right">
-                                                    Rs. {((Number(openingStock.qty) || 0) * (Number(openingStock.itpRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Lot / Batch / GD Number */}
-                                    <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                            Lot # / Batch # / GD Number
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder={openingStock.origin === "IMPORT" ? "e.g. GD-KAPE-HC-12345" : "e.g. LOT-2026-001"}
-                                            className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-mono"
-                                            value={openingStock.batchNo}
-                                            onChange={e => setOpeningStock({ ...openingStock, batchNo: e.target.value })}
-                                        />
                                     </div>
                                 </div>
                             )}
