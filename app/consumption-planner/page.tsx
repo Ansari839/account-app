@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import MainLayout from "@/components/MainLayout";
 import { 
     calculateReverseConsumption, 
@@ -17,15 +17,13 @@ import {
     FileText, 
     CheckCircle2, 
     AlertTriangle, 
-    ArrowRight, 
     Settings2, 
-    Scissors, 
-    Droplets, 
-    Cpu, 
-    Building2, 
-    RefreshCw,
-    Box,
-    ExternalLink
+    ChevronDown,
+    ChevronUp,
+    Scale,
+    Maximize2,
+    SlidersHorizontal,
+    Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -55,7 +53,7 @@ const PRESETS: Array<{
         }
     },
     {
-        name: "6006.3400 - Printed Polyester Knitted Fabric (Loose)",
+        name: "6006.3400 - Printed Knitted Fabric (Loose)",
         description: "Export printed synthetic knitted fabric in rolls/loose with Filament Yarn, Knitting, and Printing.",
         data: {
             exportHsCode: "6006.3400",
@@ -75,7 +73,7 @@ const PRESETS: Array<{
         }
     },
     {
-        name: "6006.3200 - Dyed Polyester Knitted Fabric (Loose)",
+        name: "6006.3200 - Dyed Knitted Fabric (Loose)",
         description: "Export dyed synthetic knitted circular fabric with Knitting and Wet Dyeing.",
         data: {
             exportHsCode: "6006.3200",
@@ -95,7 +93,7 @@ const PRESETS: Array<{
         }
     },
     {
-        name: "6117.1000 - Knitted Synthetic Shawl / Scarf (CMT)",
+        name: "6117.1000 - Knitted Shawl / Scarf (CMT)",
         description: "Export knitted scarves/shawls of Chapter 61 with Knitting, Dyeing, and CMT stitching.",
         data: {
             exportHsCode: "6117.1000",
@@ -119,6 +117,7 @@ const PRESETS: Array<{
 export default function ReverseConsumptionPlannerPage() {
     const [selectedPresetIndex, setSelectedPresetIndex] = useState<number>(0);
     const [scenario, setScenario] = useState<ScenarioInput>(PRESETS[0].data);
+    const [isConfigCollapsed, setIsConfigCollapsed] = useState<boolean>(false);
 
     const handleApplyPreset = (idx: number) => {
         setSelectedPresetIndex(idx);
@@ -189,12 +188,12 @@ export default function ReverseConsumptionPlannerPage() {
 
     return (
         <MainLayout>
-            <div className="w-full max-w-[1720px] mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+            <div className="w-full space-y-8 pb-24">
                 
-                {/* Header Banner */}
-                <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 lg:p-10 border border-slate-800 shadow-2xl relative overflow-hidden">
+                {/* 1. Header Hero Banner */}
+                <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 lg:p-10 border border-slate-800 shadow-2xl relative overflow-hidden">
                     <div className="absolute right-0 top-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
-                    <div className="relative z-10 space-y-5">
+                    <div className="relative z-10 space-y-6">
                         <div className="flex flex-wrap items-center justify-between gap-5">
                             <div className="flex items-center gap-4">
                                 <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 shadow-inner shrink-0">
@@ -253,168 +252,284 @@ export default function ReverseConsumptionPlannerPage() {
                     </div>
                 )}
 
-                {/* Main 2-Column Grid */}
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-                    
-                    {/* LEFT COLUMN: SCENARIO BUILDER FORM (4.5 Cols) */}
-                    <div className="xl:col-span-4 space-y-6 bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                        
-                        <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100 dark:border-slate-800">
-                            <Settings2 size={20} className="text-indigo-600 dark:text-indigo-400" />
-                            <h2 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">Scenario Input Parameters</h2>
+                {/* 2. Top Metric KPI Summary Cards (Full Width) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Gross Yarn</span>
+                            <span className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">KG</span>
                         </div>
+                        <div className="text-3xl sm:text-4xl font-black font-mono text-indigo-600 dark:text-indigo-400">
+                            {calculation.baseMetrics.totalGrossYarnKg.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-slate-400 font-medium">
+                            Includes <span className="font-bold text-indigo-500">{calculation.baseMetrics.overallWastagePct}%</span> cumulative process wastage
+                        </div>
+                    </div>
 
-                        {/* Export HS Code & Fiber Type */}
-                        <div className="space-y-5">
-                            <div className="space-y-2">
-                                <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                    Export Output HS Code <span className="text-rose-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={scenario.exportHsCode}
-                                    onChange={e => setScenario({ ...scenario, exportHsCode: e.target.value })}
-                                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold text-base text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    placeholder="e.g. 6214.3000 or 6006.3400"
-                                />
-                                <div className="flex items-center justify-between text-xs text-slate-400 px-1 pt-0.5">
-                                    <span>Detected: <strong className="text-indigo-600 dark:text-indigo-400 font-bold">{calculation.constructionType}</strong></span>
-                                    <span className="font-mono">Chapter: {scenario.exportHsCode.slice(0, 2)}</span>
-                                </div>
+                    <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Finished Net Weight</span>
+                            <span className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">KG</span>
+                        </div>
+                        <div className="text-3xl sm:text-4xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                            {calculation.baseMetrics.totalNetWeightKg.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-slate-400 font-medium">
+                            Declared shipment net export weight
+                        </div>
+                    </div>
+
+                    <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Finished Fabric</span>
+                            <span className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs">MTR</span>
+                        </div>
+                        <div className="text-3xl sm:text-4xl font-black font-mono text-purple-600 dark:text-purple-400">
+                            {calculation.baseMetrics.totalFinishedMtr.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-slate-400 font-medium">
+                            {scenario.exportCondition === "CMT" ? `${scenario.totalExportPcs?.toLocaleString()} pcs × ${scenario.fabricPerPieceMtr}m` : 'Roll / fabric equivalent'}
+                        </div>
+                    </div>
+
+                    <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Conversion Factor</span>
+                            <span className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-xs">IOCO</span>
+                        </div>
+                        <div className="text-3xl sm:text-4xl font-black font-mono text-amber-600 dark:text-amber-400">
+                            {calculation.baseMetrics.kgPerMeterFactor.toFixed(4)}
+                        </div>
+                        <div className="text-xs text-slate-400 font-medium">
+                            Weight factor per meter (KG / MTR)
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. Scenario Builder Configuration Panel */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                                <SlidersHorizontal size={20} />
                             </div>
-
-                            {/* Fiber Type (Determines 5402 Filament vs 5509 Staple) */}
-                            <div className="space-y-2">
-                                <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                    Fiber Type <span className="text-slate-400 font-normal lowercase">(yarn tariff range)</span>
-                                </label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setScenario({ ...scenario, fiberType: "FILAMENT" })}
-                                        className={cn(
-                                            "p-3.5 sm:p-4 rounded-2xl border text-left transition-all",
-                                            scenario.fiberType === "FILAMENT"
-                                                ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm"
-                                                : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                                        )}
-                                    >
-                                        <div className="text-xs sm:text-sm font-black uppercase">Filament (5402.*)</div>
-                                        <div className="text-xs text-slate-400 mt-1">Continuous yarn (DTY, FDY)</div>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setScenario({ ...scenario, fiberType: "STAPLE" })}
-                                        className={cn(
-                                            "p-3.5 sm:p-4 rounded-2xl border text-left transition-all",
-                                            scenario.fiberType === "STAPLE"
-                                                ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm"
-                                                : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                                        )}
-                                    >
-                                        <div className="text-xs sm:text-sm font-black uppercase">Staple (5509.*)</div>
-                                        <div className="text-xs text-slate-400 mt-1">Spun synthetic fiber yarn</div>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Export Condition: CMT vs Loose */}
-                            <div className="space-y-2">
-                                <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                    Export Condition
-                                </label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => setScenario({ ...scenario, exportCondition: "CMT" })}
-                                        className={cn(
-                                            "p-3.5 sm:p-4 rounded-2xl border text-left transition-all",
-                                            scenario.exportCondition === "CMT"
-                                                ? "bg-purple-500/10 border-purple-500 text-purple-600 dark:text-purple-400 font-bold shadow-sm"
-                                                : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                                        )}
-                                    >
-                                        <div className="text-xs sm:text-sm font-black uppercase">CMT (Garment / Scarf)</div>
-                                        <div className="text-xs text-slate-400 mt-1">Pieces / Cut & Stitched</div>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setScenario({ ...scenario, exportCondition: "LOOSE" })}
-                                        className={cn(
-                                            "p-3.5 sm:p-4 rounded-2xl border text-left transition-all",
-                                            scenario.exportCondition === "LOOSE"
-                                                ? "bg-sky-500/10 border-sky-500 text-sky-600 dark:text-sky-400 font-bold shadow-sm"
-                                                : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                                        )}
-                                    >
-                                        <div className="text-xs sm:text-sm font-black uppercase">LOOSE (Fabric Rolls)</div>
-                                        <div className="text-xs text-slate-400 mt-1">Sold in Rolls / Thaan / KG</div>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Shipment Quantities */}
-                            <div className="grid grid-cols-2 gap-3.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-                                {scenario.exportCondition === "CMT" && (
-                                    <>
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Total Export Pcs</label>
-                                            <input
-                                                type="number"
-                                                value={scenario.totalExportPcs || ""}
-                                                onChange={e => setScenario({ ...scenario, totalExportPcs: Number(e.target.value) || 0 })}
-                                                className="w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-base font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Meters / Piece</label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                value={scenario.fabricPerPieceMtr || ""}
-                                                onChange={e => setScenario({ ...scenario, fabricPerPieceMtr: Number(e.target.value) || 0 })}
-                                                className="w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-base font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                                            />
-                                        </div>
-                                    </>
-                                )}
-
-                                <div className="space-y-1.5">
-                                    <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Total Net Weight (KG)</label>
-                                    <input
-                                        type="number"
-                                        value={scenario.totalNetWeightKg || ""}
-                                        onChange={e => setScenario({ ...scenario, totalNetWeightKg: Number(e.target.value) || 0 })}
-                                        className="w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-base font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                                    />
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Overall Wastage %</label>
-                                    <input
-                                        type="number"
-                                        step="0.1"
-                                        value={scenario.overallWastagePct || ""}
-                                        onChange={e => setScenario({ ...scenario, overallWastagePct: Number(e.target.value) || 0 })}
-                                        className="w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-base font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                                    />
-                                </div>
+                            <div>
+                                <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                                    Scenario Input Parameters
+                                </h2>
+                                <p className="text-xs text-slate-400 font-medium">
+                                    Configure HS Code, fiber construction, export quantities, and manufacturing stages
+                                </p>
                             </div>
                         </div>
 
-                        {/* Manufacturing Workflow Stages (Toggles & In-House vs Outsourced) */}
-                        <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                            <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                                <Layers size={16} className="text-indigo-600 dark:text-indigo-400" /> Manufacturing Workflow Stages
-                            </label>
+                        <button
+                            type="button"
+                            onClick={() => setIsConfigCollapsed(!isConfigCollapsed)}
+                            className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-2 transition-all"
+                        >
+                            {isConfigCollapsed ? (
+                                <>
+                                    <span>Expand Inputs</span>
+                                    <ChevronDown size={16} />
+                                </>
+                            ) : (
+                                <>
+                                    <span>Collapse Inputs</span>
+                                    <ChevronUp size={16} />
+                                </>
+                            )}
+                        </button>
+                    </div>
 
-                            {/* 1. Weaving / Knitting Stage */}
-                            <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/40 space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
-                                        1. {calculation.constructionType === "WOVEN" ? "Weaving" : "Knitting"} (Grey Fabric)
+                    {!isConfigCollapsed && (
+                        <div className="p-6 sm:p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            
+                            {/* Column 1: HS Code & Fiber Type */}
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                                        <span>Export Output HS Code <span className="text-rose-500">*</span></span>
+                                        <span className="text-xs font-mono font-normal text-slate-400">Chapter {scenario.exportHsCode.slice(0, 2)}</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={scenario.exportHsCode}
+                                        onChange={e => setScenario({ ...scenario, exportHsCode: e.target.value })}
+                                        className="w-full px-4 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold text-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none shadow-inner"
+                                        placeholder="e.g. 6214.3000"
+                                    />
+                                    <div className="flex items-center gap-2 pt-1 text-xs">
+                                        <span className="text-slate-400">Construction:</span>
+                                        <span className={cn(
+                                            "px-2.5 py-0.5 rounded-md font-black text-xs uppercase tracking-wider",
+                                            calculation.constructionType === "WOVEN" 
+                                                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20" 
+                                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                                        )}>
+                                            {calculation.constructionType}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Fiber Type */}
+                                <div className="space-y-2">
+                                    <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                        Fiber Type <span className="text-slate-400 font-normal lowercase">(yarn tariff range)</span>
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setScenario({ ...scenario, fiberType: "FILAMENT" })}
+                                            className={cn(
+                                                "p-4 rounded-2xl border text-left transition-all",
+                                                scenario.fiberType === "FILAMENT"
+                                                    ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm"
+                                                    : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                            )}
+                                        >
+                                            <div className="text-sm font-black uppercase">Filament (5402.*)</div>
+                                            <div className="text-xs text-slate-400 mt-1">Continuous yarn (DTY, FDY)</div>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setScenario({ ...scenario, fiberType: "STAPLE" })}
+                                            className={cn(
+                                                "p-4 rounded-2xl border text-left transition-all",
+                                                scenario.fiberType === "STAPLE"
+                                                    ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm"
+                                                    : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                            )}
+                                        >
+                                            <div className="text-sm font-black uppercase">Staple (5509.*)</div>
+                                            <div className="text-xs text-slate-400 mt-1">Spun synthetic fiber yarn</div>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Export Condition */}
+                                <div className="space-y-2">
+                                    <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                        Export Condition
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setScenario({ ...scenario, exportCondition: "CMT" })}
+                                            className={cn(
+                                                "p-4 rounded-2xl border text-left transition-all",
+                                                scenario.exportCondition === "CMT"
+                                                    ? "bg-purple-500/10 border-purple-500 text-purple-600 dark:text-purple-400 font-bold shadow-sm"
+                                                    : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                            )}
+                                        >
+                                            <div className="text-sm font-black uppercase">CMT (Garment / Scarf)</div>
+                                            <div className="text-xs text-slate-400 mt-1">Pieces / Cut & Stitched</div>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setScenario({ ...scenario, exportCondition: "LOOSE" })}
+                                            className={cn(
+                                                "p-4 rounded-2xl border text-left transition-all",
+                                                scenario.exportCondition === "LOOSE"
+                                                    ? "bg-sky-500/10 border-sky-500 text-sky-600 dark:text-sky-400 font-bold shadow-sm"
+                                                    : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                            )}
+                                        >
+                                            <div className="text-sm font-black uppercase">LOOSE (Fabric Rolls)</div>
+                                            <div className="text-xs text-slate-400 mt-1">Sold in Rolls / Thaan / KG</div>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Column 2: Shipment Quantities & Wastage */}
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    {scenario.exportCondition === "CMT" && (
+                                        <>
+                                            <div className="space-y-2">
+                                                <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Total Export Pcs</label>
+                                                <input
+                                                    type="number"
+                                                    value={scenario.totalExportPcs || ""}
+                                                    onChange={e => setScenario({ ...scenario, totalExportPcs: Number(e.target.value) || 0 })}
+                                                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-base font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Meters / Piece</label>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={scenario.fabricPerPieceMtr || ""}
+                                                    onChange={e => setScenario({ ...scenario, fabricPerPieceMtr: Number(e.target.value) || 0 })}
+                                                    className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-base font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Total Net Weight (KG)</label>
+                                        <input
+                                            type="number"
+                                            value={scenario.totalNetWeightKg || ""}
+                                            onChange={e => setScenario({ ...scenario, totalNetWeightKg: Number(e.target.value) || 0 })}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-base font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Overall Wastage %</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={scenario.overallWastagePct || ""}
+                                            onChange={e => setScenario({ ...scenario, overallWastagePct: Number(e.target.value) || 0 })}
+                                            className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-base font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Yarn Sourcing Origin */}
+                                <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                    <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                        Yarn Sourcing Origin
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-2.5">
+                                        {(["IMPORT", "LOCAL", "SPLIT"] as const).map(orig => (
+                                            <button
+                                                key={orig}
+                                                type="button"
+                                                onClick={() => setScenario({ ...scenario, stages: { ...scenario.stages, yarnSource: orig } })}
+                                                className={cn(
+                                                    "py-3 rounded-xl border text-center font-bold text-xs uppercase tracking-wider transition-all",
+                                                    scenario.stages.yarnSource === orig
+                                                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                                                        : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                                                )}
+                                            >
+                                                {orig}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Column 3: Manufacturing Stages */}
+                            <div className="space-y-4">
+                                <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Layers size={16} className="text-indigo-600 dark:text-indigo-400" /> Active Workflow Stages
+                                </label>
+
+                                {/* 1. Weaving / Knitting Stage */}
+                                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/50 flex items-center justify-between">
+                                    <span className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
+                                        1. {calculation.constructionType === "WOVEN" ? "Weaving" : "Knitting"}
                                     </span>
                                     <div className="flex items-center gap-2">
                                         <button
@@ -450,18 +565,16 @@ export default function ReverseConsumptionPlannerPage() {
                                                     }
                                                 }
                                             })}
-                                            className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                            className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
                                         >
                                             <option value="MTR">MTR</option>
                                             <option value="KG">KG</option>
                                         </select>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* 2. Printing Stage */}
-                            <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/40 space-y-3">
-                                <div className="flex items-center justify-between">
+                                {/* 2. Printing Stage */}
+                                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/50 flex items-center justify-between">
                                     <label className="flex items-center gap-2.5 cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -478,7 +591,7 @@ export default function ReverseConsumptionPlannerPage() {
                                             })}
                                             className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                                         />
-                                        <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
+                                        <span className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
                                             2. Printing Stage
                                         </span>
                                     </label>
@@ -518,7 +631,7 @@ export default function ReverseConsumptionPlannerPage() {
                                                         }
                                                     }
                                                 })}
-                                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                                className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
                                             >
                                                 <option value="MTR">MTR</option>
                                                 <option value="KG">KG</option>
@@ -526,11 +639,9 @@ export default function ReverseConsumptionPlannerPage() {
                                         </div>
                                     )}
                                 </div>
-                            </div>
 
-                            {/* 3. Dyeing & Finishing Stage */}
-                            <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/40 space-y-3">
-                                <div className="flex items-center justify-between">
+                                {/* 3. Dyeing & Finishing Stage */}
+                                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/50 flex items-center justify-between">
                                     <label className="flex items-center gap-2.5 cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -547,7 +658,7 @@ export default function ReverseConsumptionPlannerPage() {
                                             })}
                                             className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                                         />
-                                        <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
+                                        <span className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
                                             3. Dyeing & Finishing
                                         </span>
                                     </label>
@@ -587,7 +698,7 @@ export default function ReverseConsumptionPlannerPage() {
                                                         }
                                                     }
                                                 })}
-                                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                                className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
                                             >
                                                 <option value="KG">KG</option>
                                                 <option value="MTR">MTR</option>
@@ -595,13 +706,11 @@ export default function ReverseConsumptionPlannerPage() {
                                         </div>
                                     )}
                                 </div>
-                            </div>
 
-                            {/* 4. CMT Cutting & Stitching Stage */}
-                            {scenario.exportCondition === "CMT" && (
-                                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/40 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
+                                {/* 4. CMT Cutting & Stitching Stage */}
+                                {scenario.exportCondition === "CMT" && (
+                                    <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/50 flex items-center justify-between">
+                                        <span className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
                                             4. CMT (Cutting & Stitching)
                                         </span>
                                         <button
@@ -626,145 +735,143 @@ export default function ReverseConsumptionPlannerPage() {
                                             {scenario.stages.cmt.mode}
                                         </button>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
+
                         </div>
+                    )}
+                </div>
+
+                {/* 4. Full Width FBR Stage-by-Stage Reverse Consumption Chain Table */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                    <div className="p-6 sm:p-7 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                                <ShieldCheck size={22} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg sm:text-xl font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                                    FBR Stage-by-Stage Reverse Consumption Chain
+                                </h3>
+                                <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">
+                                    Calculated reverse input requirements compliant with FBR Output-Goods principle
+                                </p>
+                            </div>
+                        </div>
+
+                        <span className="text-xs sm:text-sm font-black uppercase px-4 py-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                            {calculation.chain.length} Stages Verified
+                        </span>
                     </div>
 
-                    {/* RIGHT COLUMN: REVERSE CHAIN RESULT TABLE & METRICS (8 Cols) */}
-                    <div className="xl:col-span-8 space-y-6">
-                        
-                        {/* Summary KPI Cards */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Gross Yarn</span>
-                                <span className="text-2xl sm:text-3xl font-black font-mono text-indigo-600 dark:text-indigo-400">
-                                    {calculation.baseMetrics.totalGrossYarnKg.toLocaleString()} <span className="text-sm font-bold">KG</span>
-                                </span>
-                            </div>
-
-                            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Finished Net Weight</span>
-                                <span className="text-2xl sm:text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400">
-                                    {calculation.baseMetrics.totalNetWeightKg.toLocaleString()} <span className="text-sm font-bold">KG</span>
-                                </span>
-                            </div>
-
-                            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Finished Fabric MTR</span>
-                                <span className="text-2xl sm:text-3xl font-black font-mono text-purple-600 dark:text-purple-400">
-                                    {calculation.baseMetrics.totalFinishedMtr.toLocaleString()} <span className="text-sm font-bold">MTR</span>
-                                </span>
-                            </div>
-
-                            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Conversion Factor</span>
-                                <span className="text-2xl sm:text-3xl font-black font-mono text-amber-600 dark:text-amber-400">
-                                    {calculation.baseMetrics.kgPerMeterFactor.toFixed(4)} <span className="text-xs font-semibold text-slate-400">KG/MTR</span>
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Reverse Chain Result Table */}
-                        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <ShieldCheck size={24} className="text-emerald-500" />
-                                    <div>
-                                        <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                                            FBR Stage-by-Stage Reverse Consumption Chain
-                                        </h3>
-                                        <p className="text-xs text-slate-400 font-medium mt-0.5">
-                                            Vendor invoice required for outsourced processes with Output Goods HS Code declaration
-                                        </p>
-                                    </div>
-                                </div>
-                                <span className="text-xs font-black uppercase px-3 py-1.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                                    {calculation.chain.length} Stages Verified
-                                </span>
-                            </div>
-
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse text-sm">
-                                    <thead>
-                                        <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider text-xs">
-                                            <th className="py-4 px-5">Stage</th>
-                                            <th className="py-4 px-4">Mode</th>
-                                            <th className="py-4 px-4">Output Goods HS Code</th>
-                                            <th className="py-4 px-4 text-right">Wastage</th>
-                                            <th className="py-4 px-4 text-right">Req. Qty (KG)</th>
-                                            <th className="py-4 px-4 text-right">Req. Qty (MTR)</th>
-                                            <th className="py-4 px-5 text-center">Invoice Req.</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                                        {calculation.chain.map((st, i) => (
-                                            <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                                <td className="py-4 px-5 font-bold text-slate-900 dark:text-white">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center text-xs font-mono font-bold">
-                                                            {i + 1}
-                                                        </span>
-                                                        <span className="text-sm font-extrabold">{st.stageLabel}</span>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700/80 text-slate-600 dark:text-slate-300 font-black uppercase tracking-wider text-xs sm:text-sm">
+                                    <th className="py-4 px-6 min-w-[260px]">Stage</th>
+                                    <th className="py-4 px-5 min-w-[140px]">Execution Mode</th>
+                                    <th className="py-4 px-5 min-w-[180px]">Output Goods HS Code</th>
+                                    <th className="py-4 px-4 text-right min-w-[110px]">Wastage %</th>
+                                    <th className="py-4 px-6 text-right min-w-[170px]">Req. Qty (KG)</th>
+                                    <th className="py-4 px-6 text-right min-w-[170px]">Req. Qty (MTR)</th>
+                                    <th className="py-4 px-6 text-center min-w-[190px]">FBR Invoice Requirement</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                                {calculation.chain.map((st, i) => (
+                                    <tr key={i} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                                        {/* Stage Name */}
+                                        <td className="py-5 px-6 font-bold text-slate-900 dark:text-white">
+                                            <div className="flex items-center gap-3">
+                                                <span className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center text-xs sm:text-sm font-mono font-bold shrink-0">
+                                                    {i + 1}
+                                                </span>
+                                                <div>
+                                                    <div className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-snug">
+                                                        {st.stageLabel}
                                                     </div>
-                                                </td>
-                                                <td className="py-4 px-4">
-                                                    <span className={cn(
-                                                        "px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wide",
-                                                        st.mode === "OUTSOURCED"
-                                                            ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
-                                                            : st.mode === "PURCHASE"
-                                                            ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20"
-                                                            : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
-                                                    )}>
-                                                        {st.mode}
-                                                    </span>
-                                                </td>
-                                                <td className="py-4 px-4 font-mono font-black text-sm text-indigo-600 dark:text-indigo-400">
-                                                    {st.requiredOutputHsCode}
-                                                </td>
-                                                <td className="py-4 px-4 text-right font-mono font-bold text-sm text-slate-700 dark:text-slate-300">
-                                                    {st.stageWastagePct > 0 ? `${st.stageWastagePct}%` : '0%'}
-                                                </td>
-                                                <td className="py-4 px-4 text-right font-mono font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                                                    {st.qtyKg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </td>
-                                                <td className="py-4 px-4 text-right font-mono font-black text-sm sm:text-base text-purple-600 dark:text-purple-400">
-                                                    {st.qtyMtr > 0 ? st.qtyMtr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
-                                                </td>
-                                                <td className="py-4 px-5 text-center">
-                                                    {st.invoiceRequired ? (
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30">
-                                                            <CheckCircle2 size={13} /> Required
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500">
-                                                            Internal Gate Pass
-                                                        </span>
+                                                    {st.yarnRange && (
+                                                        <div className="text-xs font-mono font-bold text-slate-400 mt-0.5">
+                                                            Tariff: {st.yarnRange.start} – {st.yarnRange.end}
+                                                        </div>
                                                     )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                </div>
+                                            </div>
+                                        </td>
 
-                            {/* Detailed Compliance Notes Card */}
-                            <div className="p-6 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 space-y-3.5">
-                                <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                                    <FileText size={16} className="text-indigo-600" /> FBR Output-Goods Compliance & Audit Notes
-                                </h4>
-                                <div className="space-y-2.5 text-xs sm:text-sm">
-                                    {calculation.chain.map((st, i) => (
-                                        <div key={i} className="flex items-start gap-2.5 text-slate-700 dark:text-slate-300 leading-relaxed">
-                                            <span className="font-mono font-bold text-slate-900 dark:text-white shrink-0">• [{st.stageName}]:</span>
-                                            <span>{st.fbrComplianceNote}</span>
-                                        </div>
-                                    ))}
+                                        {/* Execution Mode */}
+                                        <td className="py-5 px-5 whitespace-nowrap">
+                                            <span className={cn(
+                                                "px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider inline-block",
+                                                st.mode === "OUTSOURCED"
+                                                    ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/25"
+                                                    : st.mode === "PURCHASE"
+                                                    ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/25"
+                                                    : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25"
+                                            )}>
+                                                {st.mode}
+                                            </span>
+                                        </td>
+
+                                        {/* Output Goods HS Code */}
+                                        <td className="py-5 px-5 font-mono font-black text-base sm:text-lg text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                                            {st.requiredOutputHsCode}
+                                        </td>
+
+                                        {/* Stage Wastage % */}
+                                        <td className="py-5 px-4 text-right font-mono font-bold text-sm sm:text-base text-slate-700 dark:text-slate-300">
+                                            {st.stageWastagePct > 0 ? `${st.stageWastagePct.toFixed(1)}%` : '0.0%'}
+                                        </td>
+
+                                        {/* Required Qty (KG) */}
+                                        <td className="py-5 px-6 text-right font-mono font-black text-base sm:text-lg text-slate-900 dark:text-white whitespace-nowrap">
+                                            {st.qtyKg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            <span className="text-xs font-bold text-slate-400 ml-1">KG</span>
+                                        </td>
+
+                                        {/* Required Qty (MTR) */}
+                                        <td className="py-5 px-6 text-right font-mono font-black text-base sm:text-lg text-purple-600 dark:text-purple-400 whitespace-nowrap">
+                                            {st.qtyMtr > 0 ? (
+                                                <>
+                                                    {st.qtyMtr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    <span className="text-xs font-bold text-purple-400 ml-1">MTR</span>
+                                                </>
+                                            ) : (
+                                                <span className="text-slate-400 font-bold">-</span>
+                                            )}
+                                        </td>
+
+                                        {/* FBR Invoice Requirement */}
+                                        <td className="py-5 px-6 text-center whitespace-nowrap">
+                                            {st.invoiceRequired ? (
+                                                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                                                    <CheckCircle2 size={14} className="text-amber-600 dark:text-amber-400" /> Sales Tax Bill Required
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                                    Internal Gate Pass
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Detailed Compliance Notes Card */}
+                    <div className="p-6 sm:p-8 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                        <h4 className="text-sm sm:text-base font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <FileText size={18} className="text-indigo-600 dark:text-indigo-400" /> FBR Output-Goods Compliance & Audit Notes
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs sm:text-sm">
+                            {calculation.chain.map((st, i) => (
+                                <div key={i} className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3">
+                                    <span className="font-mono font-black text-indigo-600 dark:text-indigo-400 shrink-0">[{st.stageName}]:</span>
+                                    <span className="text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{st.fbrComplianceNote}</span>
                                 </div>
-                            </div>
+                            ))}
                         </div>
-
                     </div>
                 </div>
 

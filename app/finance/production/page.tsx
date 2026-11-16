@@ -7,7 +7,7 @@ import { PackageSearch, Loader2, ArrowRight, Layers, Factory, Sparkles } from "l
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useCompany } from "@/context/CompanyContext";
-import HsAnalyzerModal from "./HsAnalyzerModal";
+// import HsAnalyzerModal from "./HsAnalyzerModal";
 
 export default function ProductionDashboard() {
     const router = useRouter();
@@ -15,7 +15,7 @@ export default function ProductionDashboard() {
     const [categories, setCategories] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const [isHsModalOpen, setIsHsModalOpen] = useState(false);
+    // const [isHsModalOpen, setIsHsModalOpen] = useState(false);
 
     useEffect(() => {
         fetchDashboardData();
@@ -82,6 +82,7 @@ export default function ProductionDashboard() {
                     </div>
                     
                     <div className="relative z-10 flex flex-wrap gap-3">
+                        {/* Old HS Code Analyzer (Disabled / Commented out)
                         <button
                             type="button"
                             onClick={() => setIsHsModalOpen(true)}
@@ -90,6 +91,7 @@ export default function ProductionDashboard() {
                             <Sparkles size={16} className="text-amber-300" />
                             <span>HS Code Analyzer</span>
                         </button>
+                        */}
                         <button 
                             onClick={() => router.push('/finance/production/bom')}
                             className="bg-slate-800 hover:bg-slate-700 text-white px-5 py-3 rounded-xl font-bold transition-all border border-slate-700 hover:border-slate-600"
@@ -313,11 +315,12 @@ export default function ProductionDashboard() {
                 )}
             </div>
 
-            {/* HS Code Analyzer Modal for Testing */}
+            {/* Old HS Code Analyzer Modal for Testing (Commented out)
             <HsAnalyzerModal
                 isOpen={isHsModalOpen}
                 onClose={() => setIsHsModalOpen(false)}
             />
+            */}
         </MainLayout>
     );
 }
