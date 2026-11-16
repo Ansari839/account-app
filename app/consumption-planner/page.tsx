@@ -189,20 +189,20 @@ export default function ReverseConsumptionPlannerPage() {
 
     return (
         <MainLayout>
-            <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
+            <div className="w-full max-w-[1720px] mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
                 
                 {/* Header Banner */}
-                <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-8 border border-slate-800 shadow-2xl relative overflow-hidden">
+                <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 lg:p-10 border border-slate-800 shadow-2xl relative overflow-hidden">
                     <div className="absolute right-0 top-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
-                    <div className="relative z-10 space-y-3">
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 shadow-inner">
-                                    <Sparkles size={24} />
+                    <div className="relative z-10 space-y-5">
+                        <div className="flex flex-wrap items-center justify-between gap-5">
+                            <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 shadow-inner shrink-0">
+                                    <Sparkles size={28} />
                                 </div>
                                 <div>
-                                    <h1 className="text-2xl font-black tracking-tight">FBR Reverse Consumption & BOM Engine</h1>
-                                    <p className="text-xs text-indigo-200/80 font-medium">
+                                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">FBR Reverse Consumption & BOM Engine</h1>
+                                    <p className="text-sm sm:text-base text-indigo-200/80 font-medium mt-1">
                                         Rule-Based Reverse BOM & Customs Tariff Chain Compliant with FBR EFS / IOCO Output-Goods Law
                                     </p>
                                 </div>
@@ -211,25 +211,25 @@ export default function ReverseConsumptionPlannerPage() {
                             <button
                                 type="button"
                                 onClick={handleExportCSV}
-                                className="px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all active:scale-95"
+                                className="px-6 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold flex items-center gap-2.5 shadow-xl shadow-indigo-600/30 transition-all active:scale-95"
                             >
-                                <Download size={16} />
+                                <Download size={18} />
                                 <span>Export IRIS / EFS CSV</span>
                             </button>
                         </div>
 
                         {/* Presets Quick Selector */}
-                        <div className="pt-4 border-t border-slate-800/80 flex flex-wrap items-center gap-2">
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mr-2">Standard Presets:</span>
+                        <div className="pt-5 border-t border-slate-800/80 flex flex-wrap items-center gap-2.5">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mr-2">Standard Presets:</span>
                             {PRESETS.map((p, idx) => (
                                 <button
                                     key={idx}
                                     type="button"
                                     onClick={() => handleApplyPreset(idx)}
                                     className={cn(
-                                        "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border",
+                                        "px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border",
                                         selectedPresetIndex === idx
-                                            ? "bg-indigo-500/30 border-indigo-400 text-white shadow-sm"
+                                            ? "bg-indigo-500/30 border-indigo-400 text-white shadow-md shadow-indigo-500/20"
                                             : "bg-slate-800/60 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
                                     )}
                                 >
@@ -242,86 +242,86 @@ export default function ReverseConsumptionPlannerPage() {
 
                 {/* Validation Warnings / Guardrails */}
                 {calculation.warnings.length > 0 && (
-                    <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 space-y-1 text-xs">
-                        <div className="font-bold flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
-                            <AlertTriangle size={18} />
+                    <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 space-y-1.5 text-sm">
+                        <div className="font-bold flex items-center gap-2 text-base text-amber-700 dark:text-amber-400">
+                            <AlertTriangle size={20} />
                             <span>Customs & Tariff Validation Guardrail:</span>
                         </div>
                         {calculation.warnings.map((w, i) => (
-                            <p key={i} className="pl-6 font-medium">• {w}</p>
+                            <p key={i} className="pl-7 font-medium leading-relaxed">• {w}</p>
                         ))}
                     </div>
                 )}
 
                 {/* Main 2-Column Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
                     
-                    {/* LEFT COLUMN: SCENARIO BUILDER FORM (5 Cols) */}
-                    <div className="lg:col-span-5 space-y-6 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                    {/* LEFT COLUMN: SCENARIO BUILDER FORM (4.5 Cols) */}
+                    <div className="xl:col-span-4 space-y-6 bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
                         
-                        <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-                            <Settings2 size={18} className="text-indigo-600 dark:text-indigo-400" />
-                            <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">Scenario Input Parameters</h2>
+                        <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100 dark:border-slate-800">
+                            <Settings2 size={20} className="text-indigo-600 dark:text-indigo-400" />
+                            <h2 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">Scenario Input Parameters</h2>
                         </div>
 
                         {/* Export HS Code & Fiber Type */}
-                        <div className="space-y-4">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                        <div className="space-y-5">
+                            <div className="space-y-2">
+                                <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                                     Export Output HS Code <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     value={scenario.exportHsCode}
                                     onChange={e => setScenario({ ...scenario, exportHsCode: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold text-base text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                                     placeholder="e.g. 6214.3000 or 6006.3400"
                                 />
-                                <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
-                                    <span>Detected: <strong className="text-indigo-600 dark:text-indigo-400">{calculation.constructionType}</strong></span>
-                                    <span>Chapter: {scenario.exportHsCode.slice(0, 2)}</span>
+                                <div className="flex items-center justify-between text-xs text-slate-400 px-1 pt-0.5">
+                                    <span>Detected: <strong className="text-indigo-600 dark:text-indigo-400 font-bold">{calculation.constructionType}</strong></span>
+                                    <span className="font-mono">Chapter: {scenario.exportHsCode.slice(0, 2)}</span>
                                 </div>
                             </div>
 
                             {/* Fiber Type (Determines 5402 Filament vs 5509 Staple) */}
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                    Fiber Type <span className="text-slate-400 font-normal">(Determines Yarn Tariff Range)</span>
+                            <div className="space-y-2">
+                                <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                    Fiber Type <span className="text-slate-400 font-normal lowercase">(yarn tariff range)</span>
                                 </label>
                                 <div className="grid grid-cols-2 gap-3">
                                     <button
                                         type="button"
                                         onClick={() => setScenario({ ...scenario, fiberType: "FILAMENT" })}
                                         className={cn(
-                                            "p-3 rounded-xl border text-left transition-all",
+                                            "p-3.5 sm:p-4 rounded-2xl border text-left transition-all",
                                             scenario.fiberType === "FILAMENT"
                                                 ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm"
                                                 : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
                                         )}
                                     >
-                                        <div className="text-xs font-black uppercase">Filament (5402.*)</div>
-                                        <div className="text-[10px] text-slate-400">Continuous yarn (DTY, FDY)</div>
+                                        <div className="text-xs sm:text-sm font-black uppercase">Filament (5402.*)</div>
+                                        <div className="text-xs text-slate-400 mt-1">Continuous yarn (DTY, FDY)</div>
                                     </button>
 
                                     <button
                                         type="button"
                                         onClick={() => setScenario({ ...scenario, fiberType: "STAPLE" })}
                                         className={cn(
-                                            "p-3 rounded-xl border text-left transition-all",
+                                            "p-3.5 sm:p-4 rounded-2xl border text-left transition-all",
                                             scenario.fiberType === "STAPLE"
                                                 ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm"
                                                 : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
                                         )}
                                     >
-                                        <div className="text-xs font-black uppercase">Staple (5509.*)</div>
-                                        <div className="text-[10px] text-slate-400">Spun synthetic fiber yarn</div>
+                                        <div className="text-xs sm:text-sm font-black uppercase">Staple (5509.*)</div>
+                                        <div className="text-xs text-slate-400 mt-1">Spun synthetic fiber yarn</div>
                                     </button>
                                 </div>
                             </div>
 
                             {/* Export Condition: CMT vs Loose */}
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                            <div className="space-y-2">
+                                <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                                     Export Condition
                                 </label>
                                 <div className="grid grid-cols-2 gap-3">
@@ -329,76 +329,76 @@ export default function ReverseConsumptionPlannerPage() {
                                         type="button"
                                         onClick={() => setScenario({ ...scenario, exportCondition: "CMT" })}
                                         className={cn(
-                                            "p-3 rounded-xl border text-left transition-all",
+                                            "p-3.5 sm:p-4 rounded-2xl border text-left transition-all",
                                             scenario.exportCondition === "CMT"
                                                 ? "bg-purple-500/10 border-purple-500 text-purple-600 dark:text-purple-400 font-bold shadow-sm"
                                                 : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
                                         )}
                                     >
-                                        <div className="text-xs font-black uppercase">CMT (Garment / Scarf)</div>
-                                        <div className="text-[10px] text-slate-400">Pieces / Cut & Stitched</div>
+                                        <div className="text-xs sm:text-sm font-black uppercase">CMT (Garment / Scarf)</div>
+                                        <div className="text-xs text-slate-400 mt-1">Pieces / Cut & Stitched</div>
                                     </button>
 
                                     <button
                                         type="button"
                                         onClick={() => setScenario({ ...scenario, exportCondition: "LOOSE" })}
                                         className={cn(
-                                            "p-3 rounded-xl border text-left transition-all",
+                                            "p-3.5 sm:p-4 rounded-2xl border text-left transition-all",
                                             scenario.exportCondition === "LOOSE"
                                                 ? "bg-sky-500/10 border-sky-500 text-sky-600 dark:text-sky-400 font-bold shadow-sm"
                                                 : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
                                         )}
                                     >
-                                        <div className="text-xs font-black uppercase">LOOSE (Fabric Rolls)</div>
-                                        <div className="text-[10px] text-slate-400">Sold in Rolls / Thaan / KG</div>
+                                        <div className="text-xs sm:text-sm font-black uppercase">LOOSE (Fabric Rolls)</div>
+                                        <div className="text-xs text-slate-400 mt-1">Sold in Rolls / Thaan / KG</div>
                                     </button>
                                 </div>
                             </div>
 
                             {/* Shipment Quantities */}
-                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <div className="grid grid-cols-2 gap-3.5 pt-3 border-t border-slate-100 dark:border-slate-800">
                                 {scenario.exportCondition === "CMT" && (
                                     <>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Total Export Pcs</label>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Total Export Pcs</label>
                                             <input
                                                 type="number"
                                                 value={scenario.totalExportPcs || ""}
                                                 onChange={e => setScenario({ ...scenario, totalExportPcs: Number(e.target.value) || 0 })}
-                                                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                                                className="w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-base font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                                             />
                                         </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Meters / Piece</label>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Meters / Piece</label>
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 value={scenario.fabricPerPieceMtr || ""}
                                                 onChange={e => setScenario({ ...scenario, fabricPerPieceMtr: Number(e.target.value) || 0 })}
-                                                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                                                className="w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-base font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                                             />
                                         </div>
                                     </>
                                 )}
 
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Total Net Weight (KG)</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Total Net Weight (KG)</label>
                                     <input
                                         type="number"
                                         value={scenario.totalNetWeightKg || ""}
                                         onChange={e => setScenario({ ...scenario, totalNetWeightKg: Number(e.target.value) || 0 })}
-                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                                        className="w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-base font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                                     />
                                 </div>
 
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Overall Wastage %</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Overall Wastage %</label>
                                     <input
                                         type="number"
                                         step="0.1"
                                         value={scenario.overallWastagePct || ""}
                                         onChange={e => setScenario({ ...scenario, overallWastagePct: Number(e.target.value) || 0 })}
-                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                                        className="w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-base font-mono font-bold text-right bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                                     />
                                 </div>
                             </div>
@@ -406,14 +406,14 @@ export default function ReverseConsumptionPlannerPage() {
 
                         {/* Manufacturing Workflow Stages (Toggles & In-House vs Outsourced) */}
                         <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                                <Layers size={14} className="text-indigo-600 dark:text-indigo-400" /> Manufacturing Workflow Stages
+                            <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                <Layers size={16} className="text-indigo-600 dark:text-indigo-400" /> Manufacturing Workflow Stages
                             </label>
 
                             {/* 1. Weaving / Knitting Stage */}
-                            <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/40 space-y-2.5">
+                            <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/40 space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase">
+                                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
                                         1. {calculation.constructionType === "WOVEN" ? "Weaving" : "Knitting"} (Grey Fabric)
                                     </span>
                                     <div className="flex items-center gap-2">
@@ -430,7 +430,7 @@ export default function ReverseConsumptionPlannerPage() {
                                                 }
                                             })}
                                             className={cn(
-                                                "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all",
+                                                "px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all shadow-sm",
                                                 scenario.stages.weavingOrKnitting.mode === "OUTSOURCED"
                                                     ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30"
                                                     : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
@@ -450,7 +450,7 @@ export default function ReverseConsumptionPlannerPage() {
                                                     }
                                                 }
                                             })}
-                                            className="px-2 py-0.5 rounded text-[10px] font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
+                                            className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
                                         >
                                             <option value="MTR">MTR</option>
                                             <option value="KG">KG</option>
@@ -460,9 +460,9 @@ export default function ReverseConsumptionPlannerPage() {
                             </div>
 
                             {/* 2. Printing Stage */}
-                            <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/40 space-y-2.5">
+                            <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/40 space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <label className="flex items-center gap-2 cursor-pointer">
+                                    <label className="flex items-center gap-2.5 cursor-pointer">
                                         <input
                                             type="checkbox"
                                             checked={scenario.stages.printing.enabled}
@@ -476,9 +476,9 @@ export default function ReverseConsumptionPlannerPage() {
                                                     }
                                                 }
                                             })}
-                                            className="rounded text-indigo-600"
+                                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                                         />
-                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase">
+                                        <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
                                             2. Printing Stage
                                         </span>
                                     </label>
@@ -498,7 +498,7 @@ export default function ReverseConsumptionPlannerPage() {
                                                     }
                                                 })}
                                                 className={cn(
-                                                    "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all",
+                                                    "px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all shadow-sm",
                                                     scenario.stages.printing.mode === "OUTSOURCED"
                                                         ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30"
                                                         : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
@@ -518,7 +518,7 @@ export default function ReverseConsumptionPlannerPage() {
                                                         }
                                                     }
                                                 })}
-                                                className="px-2 py-0.5 rounded text-[10px] font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
+                                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
                                             >
                                                 <option value="MTR">MTR</option>
                                                 <option value="KG">KG</option>
@@ -529,9 +529,9 @@ export default function ReverseConsumptionPlannerPage() {
                             </div>
 
                             {/* 3. Dyeing & Finishing Stage */}
-                            <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/40 space-y-2.5">
+                            <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/40 space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <label className="flex items-center gap-2 cursor-pointer">
+                                    <label className="flex items-center gap-2.5 cursor-pointer">
                                         <input
                                             type="checkbox"
                                             checked={scenario.stages.dyeingFinishing.enabled}
@@ -545,9 +545,9 @@ export default function ReverseConsumptionPlannerPage() {
                                                     }
                                                 }
                                             })}
-                                            className="rounded text-indigo-600"
+                                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                                         />
-                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase">
+                                        <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
                                             3. Dyeing & Finishing
                                         </span>
                                     </label>
@@ -567,7 +567,7 @@ export default function ReverseConsumptionPlannerPage() {
                                                     }
                                                 })}
                                                 className={cn(
-                                                    "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all",
+                                                    "px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all shadow-sm",
                                                     scenario.stages.dyeingFinishing.mode === "OUTSOURCED"
                                                         ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30"
                                                         : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
@@ -587,7 +587,7 @@ export default function ReverseConsumptionPlannerPage() {
                                                         }
                                                     }
                                                 })}
-                                                className="px-2 py-0.5 rounded text-[10px] font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700"
+                                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
                                             >
                                                 <option value="KG">KG</option>
                                                 <option value="MTR">MTR</option>
@@ -599,9 +599,9 @@ export default function ReverseConsumptionPlannerPage() {
 
                             {/* 4. CMT Cutting & Stitching Stage */}
                             {scenario.exportCondition === "CMT" && (
-                                <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/40 space-y-2.5">
+                                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-800/40 space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase">
+                                        <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 uppercase">
                                             4. CMT (Cutting & Stitching)
                                         </span>
                                         <button
@@ -617,7 +617,7 @@ export default function ReverseConsumptionPlannerPage() {
                                                 }
                                             })}
                                             className={cn(
-                                                "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition-all",
+                                                "px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all shadow-sm",
                                                 scenario.stages.cmt.mode === "OUTSOURCED"
                                                     ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30"
                                                     : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
@@ -631,81 +631,86 @@ export default function ReverseConsumptionPlannerPage() {
                         </div>
                     </div>
 
-                    {/* RIGHT COLUMN: REVERSE CHAIN RESULT TABLE & METRICS (7 Cols) */}
-                    <div className="lg:col-span-7 space-y-6">
+                    {/* RIGHT COLUMN: REVERSE CHAIN RESULT TABLE & METRICS (8 Cols) */}
+                    <div className="xl:col-span-8 space-y-6">
                         
                         {/* Summary KPI Cards */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Gross Yarn</span>
-                                <span className="text-lg font-black font-mono text-indigo-600 dark:text-indigo-400">
-                                    {calculation.baseMetrics.totalGrossYarnKg.toLocaleString()} KG
+                            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Gross Yarn</span>
+                                <span className="text-2xl sm:text-3xl font-black font-mono text-indigo-600 dark:text-indigo-400">
+                                    {calculation.baseMetrics.totalGrossYarnKg.toLocaleString()} <span className="text-sm font-bold">KG</span>
                                 </span>
                             </div>
 
-                            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Finished Net Weight</span>
-                                <span className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
-                                    {calculation.baseMetrics.totalNetWeightKg.toLocaleString()} KG
+                            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Finished Net Weight</span>
+                                <span className="text-2xl sm:text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                                    {calculation.baseMetrics.totalNetWeightKg.toLocaleString()} <span className="text-sm font-bold">KG</span>
                                 </span>
                             </div>
 
-                            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Finished Fabric MTR</span>
-                                <span className="text-lg font-black font-mono text-purple-600 dark:text-purple-400">
-                                    {calculation.baseMetrics.totalFinishedMtr.toLocaleString()} MTR
+                            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Finished Fabric MTR</span>
+                                <span className="text-2xl sm:text-3xl font-black font-mono text-purple-600 dark:text-purple-400">
+                                    {calculation.baseMetrics.totalFinishedMtr.toLocaleString()} <span className="text-sm font-bold">MTR</span>
                                 </span>
                             </div>
 
-                            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Conversion Factor</span>
-                                <span className="text-lg font-black font-mono text-amber-600 dark:text-amber-400">
-                                    {calculation.baseMetrics.kgPerMeterFactor.toFixed(4)} <span className="text-[10px] text-slate-400">KG/MTR</span>
+                            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Conversion Factor</span>
+                                <span className="text-2xl sm:text-3xl font-black font-mono text-amber-600 dark:text-amber-400">
+                                    {calculation.baseMetrics.kgPerMeterFactor.toFixed(4)} <span className="text-xs font-semibold text-slate-400">KG/MTR</span>
                                 </span>
                             </div>
                         </div>
 
                         {/* Reverse Chain Result Table */}
                         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <ShieldCheck size={20} className="text-emerald-500" />
-                                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                                        FBR Stage-by-Stage Reverse Consumption Chain
-                                    </h3>
+                            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <ShieldCheck size={24} className="text-emerald-500" />
+                                    <div>
+                                        <h3 className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                                            FBR Stage-by-Stage Reverse Consumption Chain
+                                        </h3>
+                                        <p className="text-xs text-slate-400 font-medium mt-0.5">
+                                            Vendor invoice required for outsourced processes with Output Goods HS Code declaration
+                                        </p>
+                                    </div>
                                 </div>
-                                <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                                <span className="text-xs font-black uppercase px-3 py-1.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
                                     {calculation.chain.length} Stages Verified
                                 </span>
                             </div>
 
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse text-xs">
+                                <table className="w-full text-left border-collapse text-sm">
                                     <thead>
-                                        <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                                            <th className="py-3 px-4">Stage</th>
-                                            <th className="py-3 px-3">Mode</th>
-                                            <th className="py-3 px-3">Output HS Code</th>
-                                            <th className="py-3 px-3 text-right">Wastage</th>
-                                            <th className="py-3 px-3 text-right">Req. Qty (KG)</th>
-                                            <th className="py-3 px-3 text-right">Req. Qty (MTR)</th>
-                                            <th className="py-3 px-4 text-center">Invoice Req.</th>
+                                        <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider text-xs">
+                                            <th className="py-4 px-5">Stage</th>
+                                            <th className="py-4 px-4">Mode</th>
+                                            <th className="py-4 px-4">Output Goods HS Code</th>
+                                            <th className="py-4 px-4 text-right">Wastage</th>
+                                            <th className="py-4 px-4 text-right">Req. Qty (KG)</th>
+                                            <th className="py-4 px-4 text-right">Req. Qty (MTR)</th>
+                                            <th className="py-4 px-5 text-center">Invoice Req.</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                                         {calculation.chain.map((st, i) => (
                                             <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                                <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center text-[10px] font-mono">
+                                                <td className="py-4 px-5 font-bold text-slate-900 dark:text-white">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center text-xs font-mono font-bold">
                                                             {i + 1}
                                                         </span>
-                                                        <span>{st.stageLabel}</span>
+                                                        <span className="text-sm font-extrabold">{st.stageLabel}</span>
                                                     </div>
                                                 </td>
-                                                <td className="py-3 px-3">
+                                                <td className="py-4 px-4">
                                                     <span className={cn(
-                                                        "px-2 py-0.5 rounded text-[10px] font-black uppercase",
+                                                        "px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wide",
                                                         st.mode === "OUTSOURCED"
                                                             ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
                                                             : st.mode === "PURCHASE"
@@ -715,25 +720,25 @@ export default function ReverseConsumptionPlannerPage() {
                                                         {st.mode}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-3 font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                                <td className="py-4 px-4 font-mono font-black text-sm text-indigo-600 dark:text-indigo-400">
                                                     {st.requiredOutputHsCode}
                                                 </td>
-                                                <td className="py-3 px-3 text-right font-mono font-semibold text-slate-600 dark:text-slate-300">
+                                                <td className="py-4 px-4 text-right font-mono font-bold text-sm text-slate-700 dark:text-slate-300">
                                                     {st.stageWastagePct > 0 ? `${st.stageWastagePct}%` : '0%'}
                                                 </td>
-                                                <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 dark:text-white">
+                                                <td className="py-4 px-4 text-right font-mono font-black text-sm sm:text-base text-slate-900 dark:text-white">
                                                     {st.qtyKg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </td>
-                                                <td className="py-3 px-3 text-right font-mono font-semibold text-purple-600 dark:text-purple-400">
+                                                <td className="py-4 px-4 text-right font-mono font-black text-sm sm:text-base text-purple-600 dark:text-purple-400">
                                                     {st.qtyMtr > 0 ? st.qtyMtr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                                                 </td>
-                                                <td className="py-3 px-4 text-center">
+                                                <td className="py-4 px-5 text-center">
                                                     {st.invoiceRequired ? (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                                                            <CheckCircle2 size={11} /> Required
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                                                            <CheckCircle2 size={13} /> Required
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500">
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500">
                                                             Internal Gate Pass
                                                         </span>
                                                     )}
@@ -745,13 +750,13 @@ export default function ReverseConsumptionPlannerPage() {
                             </div>
 
                             {/* Detailed Compliance Notes Card */}
-                            <div className="p-5 bg-slate-50/60 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                                    <FileText size={14} className="text-indigo-600" /> FBR Output-Goods Compliance & Audit Notes
+                            <div className="p-6 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 space-y-3.5">
+                                <h4 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                    <FileText size={16} className="text-indigo-600" /> FBR Output-Goods Compliance & Audit Notes
                                 </h4>
-                                <div className="space-y-2 text-xs">
+                                <div className="space-y-2.5 text-xs sm:text-sm">
                                     {calculation.chain.map((st, i) => (
-                                        <div key={i} className="flex items-start gap-2 text-slate-600 dark:text-slate-400">
+                                        <div key={i} className="flex items-start gap-2.5 text-slate-700 dark:text-slate-300 leading-relaxed">
                                             <span className="font-mono font-bold text-slate-900 dark:text-white shrink-0">• [{st.stageName}]:</span>
                                             <span>{st.fbrComplianceNote}</span>
                                         </div>
