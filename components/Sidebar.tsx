@@ -61,7 +61,8 @@ const menuItems: MenuItem[] = [
       sub: [
           { name: 'Dashboard', path: '/finance/production' },
           'BOM',
-          'Execution'
+          'Execution',
+          { name: 'Reverse Consumption Planner', path: '/consumption-planner' }
       ] },
     // Settings: visible to CompanyAdmin/SuperAdmin only (handled separately)
     { name: 'Settings',         icon: Settings,        path: '/admin/settings',     adminOnly: true,

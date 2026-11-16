@@ -1169,6 +1169,24 @@ model Warehouse {
   @@unique([companyId, code])
 }
 
+model HsConsumptionRule {
+  id                String   @id @default(uuid())
+  outputHsCode      String   @map("output_hs_code")
+  constructionType  String   @map("construction_type") // 'WOVEN' | 'KNITTED'
+  fiberType         String   @map("fiber_type")        // 'FILAMENT' | 'STAPLE' | 'BLEND'
+  stageOrder        Int      @map("stage_order")
+  stageName         String   @map("stage_name")         // 'YARN', 'WEAVING', 'KNITTING', 'PRINTING', 'DYEING', 'CMT'
+  stageOutputHsCode String?  @map("stage_output_hs_code")
+  yarnRangeStart    String?  @map("yarn_range_start")
+  yarnRangeEnd      String?  @map("yarn_range_end")
+  defaultUnit       String   @map("default_unit")       // 'KG' | 'MTR' | 'PCS'
+  defaultWastagePct Decimal  @default(0.00) @map("default_wastage_pct")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("hs_consumption_rules")
+}
+
 enum AccountType {
   ASSET
   LIABILITY
