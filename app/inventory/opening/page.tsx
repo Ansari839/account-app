@@ -16,7 +16,11 @@ import {
     Trash2, 
     Globe, 
     Sparkles, 
-    ShieldAlert
+    ShieldAlert,
+    Search,
+    X,
+    RotateCcw,
+    Filter
 } from "lucide-react";
 import { useNotifications } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
@@ -28,6 +32,12 @@ export default function OpeningStockPage() {
     const [entries, setEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
+
+    // Multi-dimensional filters
+    const [searchQuery, setSearchQuery] = useState("");
+    const [warehouseFilter, setWarehouseFilter] = useState("ALL");
+    const [originFilter, setOriginFilter] = useState("ALL");
+    const [stageFilter, setStageFilter] = useState("ALL");
 
     useEffect(() => {
         fetchEntries();
@@ -65,11 +75,52 @@ export default function OpeningStockPage() {
         }
     };
 
-    // Calculate Summary Totals
-    const totalQty = entries.reduce((acc, e) => acc + (Number(e.qty) || 0), 0);
-    const totalValue = entries.reduce((acc, e) => acc + (Number(e.totalValue) || 0), 0);
-    const localCount = entries.filter(e => e.origin === "LOCAL").length;
-    const importCount = entries.filter(e => e.origin === "IMPORT").length;
+    // Extract unique warehouses for filter dropdown
+    const uniqueWarehouses = Array.from(new Set(entries.map(e => e.warehouseName).filter(Boolean))) as string[];
+
+    // Apply multidimensional filtering
+    const filteredEntries = entries.filter((row: any) => {
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase().trim();
+            const matchName = (row.productName || "").toLowerCase().includes(q);
+            const matchCode = (row.productCode || "").toLowerCase().includes(q);
+            const matchBatch = (row.batchNo || "").toLowerCase().includes(q);
+            const matchWh = (row.warehouseName || "").toLowerCase().includes(q);
+            if (!matchName && !matchCode && !matchBatch && !matchWh) return false;
+        }
+
+        if (warehouseFilter !== "ALL" && row.warehouseName !== warehouseFilter) {
+            return false;
+        }
+
+        if (originFilter === "LOCAL" && row.origin !== "LOCAL") return false;
+        if (originFilter === "IMPORT" && row.origin !== "IMPORT") return false;
+        if (originFilter === "IMPORT_EFS" && (!row.isEFS || row.origin !== "IMPORT")) return false;
+        if (originFilter === "IMPORT_NON_EFS" && (row.isEFS || row.origin !== "IMPORT")) return false;
+
+        if (stageFilter !== "ALL") {
+            const isSvc = row.isService || row.stage === "SERVICE";
+            if (stageFilter === "SERVICE" && !isSvc) return false;
+            if (stageFilter !== "SERVICE" && row.stage !== stageFilter) return false;
+        }
+
+        return true;
+    });
+
+    const hasActiveFilters = Boolean(searchQuery || warehouseFilter !== "ALL" || originFilter !== "ALL" || stageFilter !== "ALL");
+
+    const resetFilters = () => {
+        setSearchQuery("");
+        setWarehouseFilter("ALL");
+        setOriginFilter("ALL");
+        setStageFilter("ALL");
+    };
+
+    // Calculate Summary Totals dynamically based on filtered entries
+    const totalQty = filteredEntries.reduce((acc, e) => acc + (Number(e.qty) || 0), 0);
+    const totalValue = filteredEntries.reduce((acc, e) => acc + (Number(e.totalValue) || 0), 0);
+    const localCount = filteredEntries.filter(e => e.origin === "LOCAL").length;
+    const importCount = filteredEntries.filter(e => e.origin === "IMPORT").length;
 
     const columns: Column<any>[] = [
         {
@@ -227,7 +278,8 @@ export default function OpeningStockPage() {
                         </div>
                         <div>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Opening Lots</p>
-                            <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{entries.length}</p>
+                            <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{filteredEntries.length}</p>
+                            <span className="text-[10px] text-slate-400 font-mono">Qty: {totalQty.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
                         </div>
                     </div>
 
@@ -240,6 +292,7 @@ export default function OpeningStockPage() {
                             <p className="text-xl font-black text-slate-900 dark:text-white mt-0.5 font-mono">
                                 Rs. {totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             </p>
+                            <span className="text-[10px] text-slate-400">Filtered Valuation</span>
                         </div>
                     </div>
 
@@ -250,6 +303,7 @@ export default function OpeningStockPage() {
                         <div>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Local Stock Lots</p>
                             <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{localCount}</p>
+                            <span className="text-[10px] text-slate-400">Domestic Purchases</span>
                         </div>
                     </div>
 
@@ -260,6 +314,104 @@ export default function OpeningStockPage() {
                         <div>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Import Stock Lots</p>
                             <p className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{importCount}</p>
+                            <span className="text-[10px] text-slate-400">EFS & Commercial</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Filter Controls Bar */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        {/* Search Input */}
+                        <div className="relative flex-1 min-w-[260px]">
+                            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Filter opening lots by Item name, P-Code, Batch/GD #, or Warehouse..."
+                                className="w-full pl-10 pr-9 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery("")}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                >
+                                    <X size={15} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Filter Dropdowns Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                        {/* Warehouse Filter */}
+                        <div>
+                            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                                Warehouse
+                            </label>
+                            <select
+                                value={warehouseFilter}
+                                onChange={(e) => setWarehouseFilter(e.target.value)}
+                                className="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-indigo-500"
+                            >
+                                <option value="ALL">All Warehouses</option>
+                                {uniqueWarehouses.map(wh => (
+                                    <option key={wh} value={wh}>{wh}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Origin & Scheme Filter */}
+                        <div>
+                            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                                Origin / Scheme
+                            </label>
+                            <select
+                                value={originFilter}
+                                onChange={(e) => setOriginFilter(e.target.value)}
+                                className="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-indigo-500"
+                            >
+                                <option value="ALL">All Origins</option>
+                                <option value="LOCAL">Local Purchase Only</option>
+                                <option value="IMPORT">All Imports</option>
+                                <option value="IMPORT_EFS">Import EFS (Exempt)</option>
+                                <option value="IMPORT_NON_EFS">Import Commercial</option>
+                            </select>
+                        </div>
+
+                        {/* Stage Filter */}
+                        <div>
+                            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                                Stage / Material Type
+                            </label>
+                            <select
+                                value={stageFilter}
+                                onChange={(e) => setStageFilter(e.target.value)}
+                                className="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-indigo-500"
+                            >
+                                <option value="ALL">All Stages</option>
+                                <option value="RAW">RAW Material</option>
+                                <option value="GREY">GREY / WIP</option>
+                                <option value="FINISH">Finished Goods</option>
+                                <option value="SERVICE">Service / Unconsumed</option>
+                            </select>
+                        </div>
+
+                        {/* Reset Filters */}
+                        <div className="flex items-end">
+                            <button
+                                onClick={resetFilters}
+                                disabled={!hasActiveFilters}
+                                className={cn(
+                                    "w-full py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border",
+                                    hasActiveFilters
+                                        ? "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20 hover:bg-rose-100"
+                                        : "opacity-40 cursor-not-allowed bg-slate-50 dark:bg-slate-800/40 text-slate-400 border-slate-200 dark:border-slate-700/40"
+                                )}
+                            >
+                                <RotateCcw size={12} /> Clear Filters
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -267,10 +419,9 @@ export default function OpeningStockPage() {
                 {/* Table Section */}
                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
                     <DataTable 
-                        data={entries} 
+                        data={filteredEntries} 
                         columns={columns} 
                         isLoading={loading} 
-                        searchPlaceholder="Search by item, batch, warehouse..." 
                     />
                 </div>
             </div>

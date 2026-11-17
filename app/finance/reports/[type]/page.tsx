@@ -15,7 +15,16 @@ import {
     TrendingUp,
     TrendingDown,
     Layers,
-    Box
+    Box,
+    Search,
+    Filter,
+    X,
+    FolderTree,
+    SlidersHorizontal,
+    Warehouse as WarehouseIcon,
+    RotateCcw,
+    Grid,
+    ListFilter
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +46,21 @@ export default function ReportViewer() {
     // Stock Specific State
     const [products, setProducts] = useState<any[]>([]);
     const [selectedProduct, setSelectedProduct] = useState<string>(searchParams.get('productId') || '');
+
+    // Stock Multi-Dimension Filters
+    const [stockSearch, setStockSearch] = useState('');
+    const [stockCategoryFilter, setStockCategoryFilter] = useState('ALL');
+    const [stockWarehouseFilter, setStockWarehouseFilter] = useState('ALL');
+    const [stockOriginFilter, setStockOriginFilter] = useState('ALL');
+    const [stockStageFilter, setStockStageFilter] = useState('ALL');
+    const [stockStatusFilter, setStockStatusFilter] = useState('ALL');
+    const [stockViewMode, setStockViewMode] = useState<'grouped' | 'flat'>('grouped');
+
+    // Stock Ledger Specific Filters
+    const [ledgerSearch, setLedgerSearch] = useState('');
+    const [ledgerRefTypeFilter, setLedgerRefTypeFilter] = useState('ALL');
+    const [ledgerMovementFilter, setLedgerMovementFilter] = useState('ALL');
+    const [ledgerWarehouseFilter, setLedgerWarehouseFilter] = useState('ALL');
 
     // Default Dates
     const [dateRange, setDateRange] = useState({ start: '2025-01-01', end: '2026-12-31' });
@@ -384,122 +408,129 @@ export default function ReportViewer() {
             );
         }
 
-        // --- STOCK ITEM WISE ---
-        if (reportPath === 'stock-item-wise') {
-            const rowWithIds = data.map((r: any, i: number) => ({ ...r, id: `si-${i}` }));
-            const totalQty = data.reduce((sum: number, r: any) => sum + (Number(r.stock) || 0), 0);
-            const totalVal = data.reduce((sum: number, r: any) => sum + (Number(r.totalAmount) || 0), 0);
+        // --- STOCK REPORT (STOCK SUMMARY & STOCK ITEM WISE) ---
+        if (reportPath === 'stock-summary' || reportPath === 'stock-item-wise') {
+            const isSummary = reportPath === 'stock-summary';
+            const rawList: any[] = Array.isArray(data) ? data : [];
 
-            const columns: Column<any>[] = [
-                { header: 'Product Code', accessor: (row: any) => <span className="font-mono text-slate-500">{row.productCode}</span> },
-                {
-                    header: 'Product Name',
-                    accessor: (row: any) => (
-                        <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                setSelectedProduct(row.id);
-                                router.push(`/finance/reports/stock-ledger?productId=${row.id}`);
-                            }}
-                            className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold text-left transition-colors"
-                        >
-                            {row.productName}
-                        </button>
-                    )
-                },
-                { header: 'HS Code', accessor: (row: any) => <span className="font-mono text-xs font-bold text-slate-400">{row.hsCode || '-'}</span> },
-                { header: 'Category', accessor: (row: any) => <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{row.category}</span> },
-                {
-                    header: 'Origin & Scheme',
-                    accessor: (row: any) => (
-                        row.origin === 'LOCAL' ? (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                LOCAL
-                            </span>
-                        ) : (
-                            <div className="flex items-center gap-1">
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20">
-                                    IMPORT
-                                </span>
-                                {row.isEFS ? (
-                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30" title="Export Facilitation Scheme (Duty Exempt)">
-                                        EFS
-                                    </span>
-                                ) : (
-                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                                        NON-EFS
-                                    </span>
-                                )}
-                            </div>
-                        )
-                    )
-                },
-                { 
-                    header: 'Stage', 
-                    accessor: (row: any) => {
-                        const isSvc = row.isService || row.stage === 'SERVICE';
-                        return (
-                            <span className={cn(
-                                "text-[10px] uppercase font-black px-2 py-0.5 rounded-md tracking-wider border",
-                                isSvc
-                                    ? "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30"
-                                    : row.stage === 'RAW'
-                                        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
-                                        : row.stage === 'WIP'
-                                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                            )}>
-                                {isSvc ? 'SERVICE' : (row.stage || 'RAW')}
-                            </span>
-                        );
-                    } 
-                },
-                { header: 'Unit', accessor: (row: any) => <span className="text-xs uppercase font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full text-slate-500">{row.unit}</span> },
-                { header: 'Current Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-base">{Number(row.stock).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> : <span className="text-rose-500 font-black font-mono text-base">{row.stock}</span> },
-                { header: 'Avg Rate', accessor: (row: any) => <span className="font-mono text-slate-600 dark:text-slate-300 font-medium">Rs. {Number(row.avgRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
-                { header: 'Stock Amount', accessor: (row: any) => <span className="font-black text-indigo-600 dark:text-indigo-400 font-mono text-base">Rs. {Number(row.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
-            ];
-            return (
-                <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Stock Valuation</span>
-                            <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono mt-1">
-                                Rs. {totalVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </div>
-                        </div>
-                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Stock Quantity</span>
-                            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1">
-                                {totalQty.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                            </div>
-                        </div>
-                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Active Products</span>
-                            <div className="text-2xl font-black text-slate-800 dark:text-white font-mono mt-1">
-                                {data.length}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                        <DataTable data={rowWithIds} columns={columns} />
-                    </div>
-                </div>
+            // Extract unique categories and warehouses for filters
+            const uniqueCategories = Array.from(new Set(rawList.map((r: any) => r.category).filter(Boolean))) as string[];
+            const uniqueWarehouses = Array.from(new Set(rawList.map((r: any) => r.warehouse).filter(Boolean))) as string[];
+
+            // Apply all multidimensional filters
+            const filteredRows = rawList.filter((item: any) => {
+                // Search query: matches product name, code, hs code, warehouse
+                if (stockSearch.trim()) {
+                    const q = stockSearch.toLowerCase().trim();
+                    const matchName = item.productName?.toLowerCase().includes(q);
+                    const matchCode = item.productCode?.toLowerCase().includes(q);
+                    const matchHS = item.hsCode?.toLowerCase().includes(q);
+                    const matchWh = item.warehouse?.toLowerCase().includes(q);
+                    if (!matchName && !matchCode && !matchHS && !matchWh) return false;
+                }
+
+                // Category filter
+                if (stockCategoryFilter !== 'ALL' && item.category !== stockCategoryFilter) {
+                    return false;
+                }
+
+                // Warehouse filter (for stock-summary)
+                if (isSummary && stockWarehouseFilter !== 'ALL' && item.warehouse !== stockWarehouseFilter) {
+                    return false;
+                }
+
+                // Origin & Scheme filter
+                if (stockOriginFilter === 'LOCAL' && item.origin !== 'LOCAL') return false;
+                if (stockOriginFilter === 'IMPORT' && item.origin !== 'IMPORT') return false;
+                if (stockOriginFilter === 'IMPORT_EFS' && (!item.isEFS || item.origin !== 'IMPORT')) return false;
+                if (stockOriginFilter === 'IMPORT_NON_EFS' && (item.isEFS || item.origin !== 'IMPORT')) return false;
+
+                // Stage filter
+                if (stockStageFilter !== 'ALL') {
+                    const isSvc = item.isService || item.stage === 'SERVICE';
+                    if (stockStageFilter === 'SERVICE' && !isSvc) return false;
+                    if (stockStageFilter === 'RAW' && (item.stage !== 'RAW' || isSvc)) return false;
+                    if (stockStageFilter === 'GREY' && ((item.stage !== 'GREY' && item.stage !== 'WIP') || isSvc)) return false;
+                    if (stockStageFilter === 'FINISH' && (item.stage !== 'FINISH' || isSvc)) return false;
+                }
+
+                // Stock Status filter
+                const stockVal = Number(item.stock) || 0;
+                if (stockStatusFilter === 'IN_STOCK' && stockVal <= 0) return false;
+                if (stockStatusFilter === 'ZERO_STOCK' && stockVal !== 0) return false;
+                if (stockStatusFilter === 'NEGATIVE_STOCK' && stockVal >= 0) return false;
+
+                return true;
+            });
+
+            // Summary Totals on filtered rows
+            const totalQty = filteredRows.reduce((sum: number, r: any) => sum + (Number(r.stock) || 0), 0);
+            const totalVal = filteredRows.reduce((sum: number, r: any) => sum + (Number(r.totalAmount) || 0), 0);
+
+            // Group by Category
+            const categoryGroups: Record<string, any[]> = {};
+            filteredRows.forEach((r: any) => {
+                const cat = r.category || 'Uncategorized';
+                if (!categoryGroups[cat]) categoryGroups[cat] = [];
+                categoryGroups[cat].push(r);
+            });
+
+            const hasActiveFilters = Boolean(
+                stockSearch || 
+                stockCategoryFilter !== 'ALL' || 
+                (isSummary && stockWarehouseFilter !== 'ALL') || 
+                stockOriginFilter !== 'ALL' || 
+                stockStageFilter !== 'ALL' || 
+                stockStatusFilter !== 'ALL'
             );
-        }
 
-        // --- STOCK SUMMARY ---
-        if (reportPath === 'stock-summary') {
-            const rowWithIds = data.map((r: any, i: number) => ({ ...r, id: `ss-${i}` }));
-            const totalQty = data.reduce((sum: number, r: any) => sum + (Number(r.stock) || 0), 0);
-            const totalVal = data.reduce((sum: number, r: any) => sum + (Number(r.totalAmount) || 0), 0);
+            const resetFilters = () => {
+                setStockSearch('');
+                setStockCategoryFilter('ALL');
+                setStockWarehouseFilter('ALL');
+                setStockOriginFilter('ALL');
+                setStockStageFilter('ALL');
+                setStockStatusFilter('ALL');
+            };
 
-            const columns: Column<any>[] = [
-                { header: 'Product Code', accessor: (row: any) => <span className="font-mono text-slate-500">{row.productCode || '-'}</span> },
-                { header: 'Product Name', accessor: (row: any) => <span className="font-bold">{row.productName || '-'}</span> },
-                { header: 'HS Code', accessor: (row: any) => <span className="font-mono text-xs font-bold text-slate-400">{row.hsCode || '-'}</span> },
-                { header: 'Category', accessor: (row: any) => <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{row.category}</span> },
-                {
+            const buildColumns = (forCategoryTable = false): Column<any>[] => {
+                const cols: Column<any>[] = [
+                    { 
+                        header: 'Product Code', 
+                        accessor: (row: any) => <span className="font-mono text-xs font-semibold text-slate-500">{row.productCode || '-'}</span> 
+                    },
+                    {
+                        header: 'Product Name',
+                        accessor: (row: any) => (
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    const targetId = row.productId || row.id;
+                                    if (targetId) {
+                                        setSelectedProduct(targetId);
+                                        router.push(`/finance/reports/stock-ledger?productId=${targetId}`);
+                                    }
+                                }}
+                                className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold text-left transition-colors text-sm"
+                            >
+                                {row.productName}
+                            </button>
+                        )
+                    },
+                    { 
+                        header: 'HS Code', 
+                        accessor: (row: any) => <span className="font-mono text-xs font-bold text-slate-400">{row.hsCode || '-'}</span> 
+                    },
+                ];
+
+                if (!forCategoryTable) {
+                    cols.push({ 
+                        header: 'Category', 
+                        accessor: (row: any) => <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{row.category || '-'}</span> 
+                    });
+                }
+
+                cols.push({
                     header: 'Origin & Scheme',
                     accessor: (row: any) => (
                         row.origin === 'LOCAL' ? (
@@ -523,57 +554,379 @@ export default function ReportViewer() {
                             </div>
                         )
                     )
-                },
-                { header: 'Warehouse', accessor: (row: any) => <span className="text-slate-600 dark:text-slate-300 font-medium">{row.warehouse || '-'}</span> },
-                { 
-                    header: 'Stage', 
-                    accessor: (row: any) => {
-                        const isSvc = row.isService || row.stage === 'SERVICE';
-                        return (
-                            <span className={cn(
-                                "text-[10px] uppercase font-black px-2 py-0.5 rounded-md tracking-wider border",
-                                isSvc
-                                    ? "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30"
-                                    : row.stage === 'RAW'
-                                        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
-                                        : row.stage === 'WIP'
-                                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                            )}>
-                                {isSvc ? 'SERVICE' : (row.stage || 'RAW')}
+                });
+
+                if (isSummary) {
+                    cols.push({
+                        header: 'Warehouse',
+                        accessor: (row: any) => <span className="text-slate-600 dark:text-slate-300 font-medium text-xs">{row.warehouse || '-'}</span>
+                    });
+                }
+
+                cols.push(
+                    { 
+                        header: 'Stage', 
+                        accessor: (row: any) => {
+                            const isSvc = row.isService || row.stage === 'SERVICE';
+                            return (
+                                <span className={cn(
+                                    "text-[10px] uppercase font-black px-2 py-0.5 rounded-md tracking-wider border",
+                                    isSvc
+                                        ? "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                                        : row.stage === 'RAW'
+                                            ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
+                                            : (row.stage === 'WIP' || row.stage === 'GREY')
+                                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                )}>
+                                    {isSvc ? 'SERVICE' : (row.stage || 'RAW')}
+                                </span>
+                            );
+                        } 
+                    },
+                    { 
+                        header: 'Unit', 
+                        accessor: (row: any) => <span className="text-xs uppercase font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-slate-500">{row.unit || 'KG'}</span> 
+                    },
+                    { 
+                        header: 'Stock', 
+                        accessor: (row: any) => row.stock > 0 ? (
+                            <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-sm">
+                                {Number(row.stock).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                             </span>
-                        );
-                    } 
-                },
-                { header: 'Available Stock', accessor: (row: any) => row.stock > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-base">{Number(row.stock).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span> : <span className="text-rose-500 font-black font-mono text-base">{row.stock}</span> },
-                { header: 'Avg Rate', accessor: (row: any) => <span className="font-mono text-slate-600 dark:text-slate-300 font-medium">Rs. {Number(row.avgRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
-                { header: 'Stock Amount', accessor: (row: any) => <span className="font-black text-indigo-600 dark:text-indigo-400 font-mono text-base">Rs. {Number(row.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
-            ];
+                        ) : (
+                            <span className="text-rose-500 font-black font-mono text-sm">{row.stock}</span>
+                        )
+                    },
+                    { 
+                        header: 'Avg Rate', 
+                        accessor: (row: any) => (
+                            <span className="font-mono text-slate-600 dark:text-slate-300 font-medium text-xs">
+                                Rs. {Number(row.avgRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                        ) 
+                    },
+                    { 
+                        header: 'Stock Amount', 
+                        accessor: (row: any) => (
+                            <span className="font-black text-indigo-600 dark:text-indigo-400 font-mono text-sm">
+                                Rs. {Number(row.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                        ) 
+                    }
+                );
+
+                return cols;
+            };
+
             return (
-                <div className="space-y-4">
+                <div className="space-y-6">
+                    {/* KPI Summary Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Stock Valuation</span>
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Total Stock Valuation</span>
                             <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono mt-1">
                                 Rs. {totalVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
+                            <span className="text-[11px] text-slate-400 mt-1 block">
+                                {hasActiveFilters ? 'Based on active filters' : 'Entire current inventory'}
+                            </span>
                         </div>
-                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Stock Quantity</span>
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none"></div>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Total Stock Quantity</span>
                             <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1">
                                 {totalQty.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                             </div>
+                            <span className="text-[11px] text-slate-400 mt-1 block">
+                                {filteredRows.length} active lots / positions
+                            </span>
                         </div>
-                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Warehouses / Items</span>
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-2xl pointer-events-none"></div>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Categories & Positions</span>
                             <div className="text-2xl font-black text-slate-800 dark:text-white font-mono mt-1">
-                                {data.length}
+                                {Object.keys(categoryGroups).length} <span className="text-sm font-medium text-slate-400">categories /</span> {filteredRows.length} <span className="text-sm font-medium text-slate-400">items</span>
+                            </div>
+                            <span className="text-[11px] text-slate-400 mt-1 block">
+                                {rawList.length - filteredRows.length > 0 ? `${rawList.length - filteredRows.length} items hidden by filter` : 'Showing all items'}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Category Fast-Filter Pills */}
+                    {uniqueCategories.length > 0 && (
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
+                                <FolderTree size={14}/> Categories:
+                            </span>
+                            <button
+                                onClick={() => setStockCategoryFilter('ALL')}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 border",
+                                    stockCategoryFilter === 'ALL'
+                                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                                        : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                )}
+                            >
+                                All Categories ({rawList.length})
+                            </button>
+                            {uniqueCategories.map(cat => {
+                                const catCount = rawList.filter(r => r.category === cat).length;
+                                const isSelected = stockCategoryFilter === cat;
+                                return (
+                                    <button
+                                        key={cat}
+                                        onClick={() => setStockCategoryFilter(isSelected ? 'ALL' : cat)}
+                                        className={cn(
+                                            "px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 border",
+                                            isSelected
+                                                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                                                : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                        )}
+                                    >
+                                        {cat} <span className={cn("ml-1 px-1.5 py-0.2 rounded-full text-[10px]", isSelected ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500")}>{catCount}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Filter Controls Bar */}
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                            {/* Search Box */}
+                            <div className="relative flex-1 min-w-[260px]">
+                                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={stockSearch}
+                                    onChange={(e) => setStockSearch(e.target.value)}
+                                    placeholder="Filter by Item name, Code, HS Code or Warehouse..."
+                                    className="w-full pl-10 pr-9 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200"
+                                />
+                                {stockSearch && (
+                                    <button
+                                        onClick={() => setStockSearch('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    >
+                                        <X size={15} />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* View Mode Toggle */}
+                            <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 self-start lg:self-auto">
+                                <button
+                                    onClick={() => setStockViewMode('grouped')}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                                        stockViewMode === 'grouped'
+                                            ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                                    )}
+                                    title="Category Wise Grouped View"
+                                >
+                                    <FolderTree size={14} /> Category Wise
+                                </button>
+                                <button
+                                    onClick={() => setStockViewMode('flat')}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                                        stockViewMode === 'flat'
+                                            ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                                    )}
+                                    title="Flat Table View"
+                                >
+                                    <ListFilter size={14} /> Flat Table
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Multi-Value Dropdown Filters Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                            {/* Category Filter */}
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                                    Category
+                                </label>
+                                <select
+                                    value={stockCategoryFilter}
+                                    onChange={(e) => setStockCategoryFilter(e.target.value)}
+                                    className="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-indigo-500"
+                                >
+                                    <option value="ALL">All Categories</option>
+                                    {uniqueCategories.map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Warehouse Filter (if isSummary) */}
+                            {isSummary && (
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                                        Warehouse
+                                    </label>
+                                    <select
+                                        value={stockWarehouseFilter}
+                                        onChange={(e) => setStockWarehouseFilter(e.target.value)}
+                                        className="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-indigo-500"
+                                    >
+                                        <option value="ALL">All Warehouses</option>
+                                        {uniqueWarehouses.map(wh => (
+                                            <option key={wh} value={wh}>{wh}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* Origin & Scheme Filter */}
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                                    Origin / Scheme
+                                </label>
+                                <select
+                                    value={stockOriginFilter}
+                                    onChange={(e) => setStockOriginFilter(e.target.value)}
+                                    className="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-indigo-500"
+                                >
+                                    <option value="ALL">All Origins</option>
+                                    <option value="LOCAL">Local Purchase Only</option>
+                                    <option value="IMPORT">All Imports</option>
+                                    <option value="IMPORT_EFS">Import EFS (Exempt)</option>
+                                    <option value="IMPORT_NON_EFS">Import Commercial</option>
+                                </select>
+                            </div>
+
+                            {/* Stage Filter */}
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                                    Stage / Type
+                                </label>
+                                <select
+                                    value={stockStageFilter}
+                                    onChange={(e) => setStockStageFilter(e.target.value)}
+                                    className="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-indigo-500"
+                                >
+                                    <option value="ALL">All Stages</option>
+                                    <option value="RAW">RAW Material</option>
+                                    <option value="GREY">GREY / WIP</option>
+                                    <option value="FINISH">Finished Goods</option>
+                                    <option value="SERVICE">Service / Job-Work</option>
+                                </select>
+                            </div>
+
+                            {/* Stock Status Filter */}
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                                    Stock Level
+                                </label>
+                                <select
+                                    value={stockStatusFilter}
+                                    onChange={(e) => setStockStatusFilter(e.target.value)}
+                                    className="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-indigo-500"
+                                >
+                                    <option value="ALL">All Stock Levels</option>
+                                    <option value="IN_STOCK">In Stock (&gt; 0)</option>
+                                    <option value="ZERO_STOCK">Zero Stock (= 0)</option>
+                                    <option value="NEGATIVE_STOCK">Negative (&lt; 0)</option>
+                                </select>
+                            </div>
+
+                            {/* Reset Filters Button */}
+                            <div className="flex items-end">
+                                <button
+                                    onClick={resetFilters}
+                                    disabled={!hasActiveFilters}
+                                    className={cn(
+                                        "w-full py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border",
+                                        hasActiveFilters
+                                            ? "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20 hover:bg-rose-100"
+                                            : "opacity-40 cursor-not-allowed bg-slate-50 dark:bg-slate-800/40 text-slate-400 border-slate-200 dark:border-slate-700/40"
+                                    )}
+                                >
+                                    <RotateCcw size={12} /> Clear Filters
+                                </button>
                             </div>
                         </div>
                     </div>
-                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                        <DataTable data={rowWithIds} columns={columns} />
-                    </div>
+
+                    {/* Stock Content: Category-Wise or Flat Table */}
+                    {filteredRows.length === 0 ? (
+                        <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 space-y-3">
+                            <p className="text-slate-500 font-bold">No stock items match your filter criteria.</p>
+                            {hasActiveFilters && (
+                                <button
+                                    onClick={resetFilters}
+                                    className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-bold hover:bg-indigo-100"
+                                >
+                                    Reset all filters
+                                </button>
+                            )}
+                        </div>
+                    ) : stockViewMode === 'grouped' ? (
+                        <div className="space-y-6">
+                            {Object.entries(categoryGroups).map(([catName, catItems]) => {
+                                const catQty = catItems.reduce((s, x) => s + (Number(x.stock) || 0), 0);
+                                const catVal = catItems.reduce((s, x) => s + (Number(x.totalAmount) || 0), 0);
+                                const catRowsWithId = catItems.map((r, i) => ({ ...r, id: `cat-${catName}-${i}` }));
+
+                                return (
+                                    <div key={catName} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                                        {/* Category Header */}
+                                        <div className="px-6 py-4 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                                                    <FolderTree size={18} />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">{catName}</h3>
+                                                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                                            {catItems.length} {catItems.length === 1 ? 'item' : 'items'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4 text-xs font-bold">
+                                                <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                                                    <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-medium">Category Stock</span>
+                                                    <span className="font-mono text-sm font-black">
+                                                        {catQty.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
+                                                <div className="px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
+                                                    <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-medium">Category Valuation</span>
+                                                    <span className="font-mono text-sm font-black">
+                                                        Rs. {catVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Category Data Table */}
+                                        <DataTable data={catRowsWithId} columns={buildColumns(true)} />
+
+                                        {/* Category Subtotal Footer */}
+                                        <div className="px-6 py-3 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs font-bold text-slate-600 dark:text-slate-300">
+                                            <span>Subtotal for {catName}</span>
+                                            <div className="flex gap-6 font-mono text-xs">
+                                                <span>Total Qty: <strong className="text-emerald-600 dark:text-emerald-400">{catQty.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong></span>
+                                                <span>Total Amount: <strong className="text-indigo-600 dark:text-indigo-400">Rs. {catVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                            <DataTable data={filteredRows.map((r, i) => ({ ...r, id: `flat-${i}` }))} columns={buildColumns(false)} />
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -632,7 +985,55 @@ export default function ReportViewer() {
 
         // --- STOCK LEDGER ---
         if (reportPath === 'stock-ledger') {
-            const rowWithIds = data.map((r: any, i: number) => ({ ...r, id: `sl-${i}` }));
+            const rawLedger: any[] = Array.isArray(data) ? data : [];
+
+            // Extract unique ref types and warehouses
+            const uniqueRefTypes = Array.from(new Set(rawLedger.map((r: any) => r.refType).filter(Boolean))) as string[];
+            const uniqueLedgerWarehouses = Array.from(new Set(rawLedger.map((r: any) => r.warehouse?.name).filter(Boolean))) as string[];
+
+            // Filter ledger entries
+            const filteredLedger = rawLedger.filter((row: any) => {
+                if (ledgerSearch.trim()) {
+                    const q = ledgerSearch.toLowerCase().trim();
+                    const matchRef = (row.refNo || row.refId || '').toLowerCase().includes(q);
+                    const matchProd = (row.product?.name || '').toLowerCase().includes(q);
+                    const matchWh = (row.warehouse?.name || '').toLowerCase().includes(q);
+                    if (!matchRef && !matchProd && !matchWh) return false;
+                }
+
+                if (ledgerRefTypeFilter !== 'ALL' && row.refType !== ledgerRefTypeFilter) {
+                    return false;
+                }
+
+                if (ledgerWarehouseFilter !== 'ALL' && row.warehouse?.name !== ledgerWarehouseFilter) {
+                    return false;
+                }
+
+                if (ledgerMovementFilter === 'IN' && !(Number(row.qtyIn) > 0)) {
+                    return false;
+                }
+
+                if (ledgerMovementFilter === 'OUT' && !(Number(row.qtyOut) > 0)) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            const totalIn = filteredLedger.reduce((sum: number, r: any) => sum + (Number(r.qtyIn) || 0), 0);
+            const totalOut = filteredLedger.reduce((sum: number, r: any) => sum + (Number(r.qtyOut) || 0), 0);
+            const latestBalance = filteredLedger.length > 0 ? filteredLedger[filteredLedger.length - 1]?.balance : 0;
+
+            const hasActiveLedgerFilters = Boolean(ledgerSearch || ledgerRefTypeFilter !== 'ALL' || ledgerMovementFilter !== 'ALL' || ledgerWarehouseFilter !== 'ALL');
+
+            const resetLedgerFilters = () => {
+                setLedgerSearch('');
+                setLedgerRefTypeFilter('ALL');
+                setLedgerMovementFilter('ALL');
+                setLedgerWarehouseFilter('ALL');
+            };
+
+            const rowWithIds = filteredLedger.map((r: any, i: number) => ({ ...r, id: `sl-${i}` }));
             const columns: Column<any>[] = [
                 { header: 'Date', accessor: (row: any) => <span className="font-mono text-sm">{new Date(row.date || row.createdAt).toLocaleDateString()}</span> },
                 { header: 'Product', accessor: (row: any) => <span className="font-bold">{row.product?.name}</span> },
@@ -657,13 +1058,126 @@ export default function ReportViewer() {
                         );
                     }
                 },
-                { header: 'In', accessor: (row: any) => row.qtyIn > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono">{row.qtyIn}</span> : '-' },
-                { header: 'Out', accessor: (row: any) => row.qtyOut > 0 ? <span className="font-black text-rose-500 dark:text-rose-400 font-mono">{row.qtyOut}</span> : '-' },
-                { header: 'Balance', accessor: (row: any) => <span className="font-black font-mono text-slate-800 dark:text-white">{row.balance}</span> },
+                { header: 'Inward', accessor: (row: any) => row.qtyIn > 0 ? <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-sm">+{row.qtyIn}</span> : '-' },
+                { header: 'Outward', accessor: (row: any) => row.qtyOut > 0 ? <span className="font-black text-rose-500 dark:text-rose-400 font-mono text-sm">-{row.qtyOut}</span> : '-' },
+                { header: 'Running Balance', accessor: (row: any) => <span className="font-black font-mono text-slate-800 dark:text-white text-sm">{row.balance}</span> },
             ];
+
             return (
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                    <DataTable data={rowWithIds} columns={columns} />
+                <div className="space-y-6">
+                    {/* KPI Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Total Inward (Receipts)</span>
+                            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1">
+                                +{totalIn.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            </div>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Total Outward (Issues)</span>
+                            <div className="text-2xl font-black text-rose-500 dark:text-rose-400 font-mono mt-1">
+                                -{totalOut.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            </div>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Current Balance</span>
+                            <div className="text-2xl font-black text-slate-800 dark:text-white font-mono mt-1">
+                                {Number(latestBalance || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Stock Ledger Filter Controls */}
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                            <div className="relative flex-1 min-w-[260px]">
+                                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={ledgerSearch}
+                                    onChange={(e) => setLedgerSearch(e.target.value)}
+                                    placeholder="Filter by Ref #, Product, or Warehouse..."
+                                    className="w-full pl-10 pr-9 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-200"
+                                />
+                                {ledgerSearch && (
+                                    <button
+                                        onClick={() => setLedgerSearch('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    >
+                                        <X size={15} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                                    Ref Type
+                                </label>
+                                <select
+                                    value={ledgerRefTypeFilter}
+                                    onChange={(e) => setLedgerRefTypeFilter(e.target.value)}
+                                    className="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-indigo-500"
+                                >
+                                    <option value="ALL">All Ref Types</option>
+                                    {uniqueRefTypes.map(rt => (
+                                        <option key={rt} value={rt}>{rt}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                                    Movement
+                                </label>
+                                <select
+                                    value={ledgerMovementFilter}
+                                    onChange={(e) => setLedgerMovementFilter(e.target.value)}
+                                    className="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-indigo-500"
+                                >
+                                    <option value="ALL">All Movements</option>
+                                    <option value="IN">Inward Only (+)</option>
+                                    <option value="OUT">Outward Only (-)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                                    Warehouse
+                                </label>
+                                <select
+                                    value={ledgerWarehouseFilter}
+                                    onChange={(e) => setLedgerWarehouseFilter(e.target.value)}
+                                    className="w-full py-1.5 px-2.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/60 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-indigo-500"
+                                >
+                                    <option value="ALL">All Warehouses</option>
+                                    {uniqueLedgerWarehouses.map(wh => (
+                                        <option key={wh} value={wh}>{wh}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex items-end">
+                                <button
+                                    onClick={resetLedgerFilters}
+                                    disabled={!hasActiveLedgerFilters}
+                                    className={cn(
+                                        "w-full py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 border",
+                                        hasActiveLedgerFilters
+                                            ? "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20 hover:bg-rose-100"
+                                            : "opacity-40 cursor-not-allowed bg-slate-50 dark:bg-slate-800/40 text-slate-400 border-slate-200 dark:border-slate-700/40"
+                                    )}
+                                >
+                                    <RotateCcw size={12} /> Clear Filters
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                        <DataTable data={rowWithIds} columns={columns} />
+                    </div>
                 </div>
             );
         }
