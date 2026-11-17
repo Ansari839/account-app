@@ -242,31 +242,46 @@ export default function ProductionExecutionWizard() {
                 const isKnitting = s.serviceType === "KNITTING" || cat.includes("KNIT") || prod.includes("KNIT");
                 return !isWeaving && !isKnitting;
             })
-            .map(s => ({
-                value: s.id,
-                label: `${s.supplierName} | Inv: ${s.invoiceNo} | ${s.productName} [${s.categoryName || 'Service'}] | Avail: ${s.unconsumedQty.toLocaleString()} ${s.unit} @ Rs. ${s.rate}`
-            }));
-    }, [unconsumedServices]);
+            .map(s => {
+                const p = products.find(prod => prod.id === s.productId);
+                const hs = s.hsCode || p?.hsCode;
+                const hsTag = hs ? ` [HS: ${hs}]` : '';
+                return {
+                    value: s.id,
+                    label: `${s.supplierName} | Inv: ${s.invoiceNo} | ${s.productName}${hsTag} [${s.categoryName || 'Service'}] | Avail: ${s.unconsumedQty.toLocaleString()} ${s.unit} @ Rs. ${s.rate}`
+                };
+            });
+    }, [unconsumedServices, products]);
 
     // Stage 2: Weaving only
     const weavingServiceOptions = useMemo(() => {
         return unconsumedServices
             .filter(s => s.serviceType === "WEAVING" || s.categoryName.toUpperCase().includes("WEAV") || s.productName.toUpperCase().includes("WEAV"))
-            .map(s => ({
-                value: s.id,
-                label: `${s.supplierName} | Inv: ${s.invoiceNo} | ${s.productName} | Avail: ${s.unconsumedQty.toLocaleString()} ${s.unit} @ Rs. ${s.rate}`
-            }));
-    }, [unconsumedServices]);
+            .map(s => {
+                const p = products.find(prod => prod.id === s.productId);
+                const hs = s.hsCode || p?.hsCode;
+                const hsTag = hs ? ` [HS: ${hs}]` : '';
+                return {
+                    value: s.id,
+                    label: `${s.supplierName} | Inv: ${s.invoiceNo} | ${s.productName}${hsTag} | Avail: ${s.unconsumedQty.toLocaleString()} ${s.unit} @ Rs. ${s.rate}`
+                };
+            });
+    }, [unconsumedServices, products]);
 
     // Stage 2: Knitting only
     const knittingServiceOptions = useMemo(() => {
         return unconsumedServices
             .filter(s => s.serviceType === "KNITTING" || s.categoryName.toUpperCase().includes("KNIT") || s.productName.toUpperCase().includes("KNIT"))
-            .map(s => ({
-                value: s.id,
-                label: `${s.supplierName} | Inv: ${s.invoiceNo} | ${s.productName} | Avail: ${s.unconsumedQty.toLocaleString()} ${s.unit} @ Rs. ${s.rate}`
-            }));
-    }, [unconsumedServices]);
+            .map(s => {
+                const p = products.find(prod => prod.id === s.productId);
+                const hs = s.hsCode || p?.hsCode;
+                const hsTag = hs ? ` [HS: ${hs}]` : '';
+                return {
+                    value: s.id,
+                    label: `${s.supplierName} | Inv: ${s.invoiceNo} | ${s.productName}${hsTag} | Avail: ${s.unconsumedQty.toLocaleString()} ${s.unit} @ Rs. ${s.rate}`
+                };
+            });
+    }, [unconsumedServices, products]);
 
     // Maximum wastage among all active processing services
     const maxProcessingWastage = useMemo(() => {
@@ -433,12 +448,16 @@ export default function ProductionExecutionWizard() {
     const filteredModalServices = useMemo(() => {
         return unconsumedServices.filter(svc => {
             const search = serviceModalSearch.toLowerCase().trim();
+            const prod = products.find(p => p.id === svc.productId);
+            const hs = (svc.hsCode || prod?.hsCode || '').toLowerCase();
+
             if (search) {
                 const supp = (svc.supplierName || '').toLowerCase();
                 const inv = (svc.invoiceNo || '').toLowerCase();
-                const prod = (svc.productName || '').toLowerCase();
+                const pName = (svc.productName || '').toLowerCase();
+                const pCode = (svc.productCode || prod?.code || '').toLowerCase();
                 const cat = (svc.categoryName || '').toLowerCase();
-                if (!supp.includes(search) && !inv.includes(search) && !prod.includes(search) && !cat.includes(search)) {
+                if (!supp.includes(search) && !inv.includes(search) && !pName.includes(search) && !pCode.includes(search) && !cat.includes(search) && !hs.includes(search)) {
                     return false;
                 }
             }
@@ -446,17 +465,17 @@ export default function ProductionExecutionWizard() {
             if (serviceModalTypeFilter !== "ALL") {
                 if (svc.serviceType !== serviceModalTypeFilter) {
                     const cat = (svc.categoryName || '').toUpperCase();
-                    const prod = (svc.productName || '').toUpperCase();
-                    if (serviceModalTypeFilter === "WEAVING" && !cat.includes("WEAV") && !prod.includes("WEAV")) return false;
-                    if (serviceModalTypeFilter === "KNITTING" && !cat.includes("KNIT") && !prod.includes("KNIT")) return false;
-                    if (serviceModalTypeFilter === "DYEING" && !cat.includes("DYE") && !prod.includes("DYE")) return false;
-                    if (serviceModalTypeFilter === "PRINTING" && !cat.includes("PRINT") && !prod.includes("PRINT")) return false;
+                    const pName = (svc.productName || '').toUpperCase();
+                    if (serviceModalTypeFilter === "WEAVING" && !cat.includes("WEAV") && !pName.includes("WEAV")) return false;
+                    if (serviceModalTypeFilter === "KNITTING" && !cat.includes("KNIT") && !pName.includes("KNIT")) return false;
+                    if (serviceModalTypeFilter === "DYEING" && !cat.includes("DYE") && !pName.includes("DYE")) return false;
+                    if (serviceModalTypeFilter === "PRINTING" && !cat.includes("PRINT") && !pName.includes("PRINT")) return false;
                 }
             }
 
             return true;
         });
-    }, [unconsumedServices, serviceModalSearch, serviceModalTypeFilter]);
+    }, [unconsumedServices, products, serviceModalSearch, serviceModalTypeFilter]);
 
     // Modal Selection Handlers
     const handleSelectYarnLotFromModal = (lot: any) => {
@@ -1046,30 +1065,52 @@ export default function ProductionExecutionWizard() {
                                                     </div>
 
                                                     {ps.mode === "VENDOR_BILL" ? (
-                                                        <div className="flex flex-col sm:flex-row gap-2">
-                                                            <div className="flex-1">
-                                                                <Combobox
-                                                                    options={processingServiceOptions}
-                                                                    value={ps.serviceId}
-                                                                    onChange={(val) => handleProcessingServiceChange(ps.id, "serviceId", val)}
-                                                                    placeholder="Select Vendor Service Bill..."
-                                                                    searchPlaceholder="Search supplier or bill..."
-                                                                    className="w-full text-xs font-bold"
-                                                                />
+                                                        <div className="space-y-1.5">
+                                                            <div className="flex flex-col sm:flex-row gap-2">
+                                                                <div className="flex-1">
+                                                                    <Combobox
+                                                                        options={processingServiceOptions}
+                                                                        value={ps.serviceId}
+                                                                        onChange={(val) => handleProcessingServiceChange(ps.id, "serviceId", val)}
+                                                                        placeholder="Select Vendor Service Bill..."
+                                                                        searchPlaceholder="Search supplier or bill..."
+                                                                        className="w-full text-xs font-bold"
+                                                                    />
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setServiceModalTarget("PROCESSING");
+                                                                        setActiveProcessingRowIndex(index);
+                                                                        setServiceModalTypeFilter("ALL");
+                                                                        setServiceModalSearch("");
+                                                                        setIsServiceModalOpen(true);
+                                                                    }}
+                                                                    className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center gap-1 shrink-0"
+                                                                >
+                                                                    <Search size={13} /> Browse Bills
+                                                                </button>
                                                             </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setServiceModalTarget("PROCESSING");
-                                                                    setActiveProcessingRowIndex(index);
-                                                                    setServiceModalTypeFilter("ALL");
-                                                                    setServiceModalSearch("");
-                                                                    setIsServiceModalOpen(true);
-                                                                }}
-                                                                className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center gap-1 shrink-0"
-                                                            >
-                                                                <Search size={13} /> Browse Bills
-                                                            </button>
+                                                            {ps.serviceId && (() => {
+                                                                const s = unconsumedServices.find(item => item.id === ps.serviceId);
+                                                                const prod = products.find(p => p.id === s?.productId);
+                                                                const hs = s?.hsCode || prod?.hsCode;
+                                                                if (!s) return null;
+                                                                return (
+                                                                    <div className="flex flex-wrap items-center gap-2 px-2.5 py-1 bg-amber-500/5 dark:bg-amber-950/20 rounded-lg border border-amber-500/15 text-[11px]">
+                                                                        <span className="font-bold text-slate-700 dark:text-slate-200">{s.supplierName}</span>
+                                                                        <span className="text-slate-400 font-mono">({s.invoiceNo})</span>
+                                                                        {hs && (
+                                                                            <span className="px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-[10px]">
+                                                                                HS {hs}
+                                                                            </span>
+                                                                        )}
+                                                                        <span className="ml-auto text-emerald-600 dark:text-emerald-400 font-bold font-mono">
+                                                                            Avail: {Number(s.unconsumedQty).toLocaleString()} {s.unit}
+                                                                        </span>
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     ) : (
                                                         <input
@@ -1234,6 +1275,26 @@ export default function ProductionExecutionWizard() {
                                                 <Search size={13} /> Browse Bills
                                             </button>
                                         </div>
+                                        {selectedWeavingServiceId && (() => {
+                                            const s = unconsumedServices.find(item => item.id === selectedWeavingServiceId);
+                                            const prod = products.find(p => p.id === s?.productId);
+                                            const hs = s?.hsCode || prod?.hsCode;
+                                            if (!s) return null;
+                                            return (
+                                                <div className="flex flex-wrap items-center gap-2 px-2.5 py-1 bg-blue-500/5 dark:bg-blue-950/20 rounded-lg border border-blue-500/15 text-[11px]">
+                                                    <span className="font-bold text-slate-700 dark:text-slate-200">{s.supplierName}</span>
+                                                    <span className="text-slate-400 font-mono">({s.invoiceNo})</span>
+                                                    {hs && (
+                                                        <span className="px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-[10px]">
+                                                            HS {hs}
+                                                        </span>
+                                                    )}
+                                                    <span className="ml-auto text-emerald-600 dark:text-emerald-400 font-bold font-mono">
+                                                        Avail: {Number(s.unconsumedQty).toLocaleString()} {s.unit}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 )}
 
@@ -1751,7 +1812,7 @@ export default function ProductionExecutionWizard() {
                                     type="text"
                                     value={serviceModalSearch}
                                     onChange={(e) => setServiceModalSearch(e.target.value)}
-                                    placeholder="Search supplier, bill no, service name..."
+                                    placeholder="Search supplier, bill #, HS Code, product name..."
                                     className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold outline-none focus:ring-2 focus:ring-amber-500"
                                 />
                             </div>
@@ -1796,6 +1857,7 @@ export default function ProductionExecutionWizard() {
                                                 <th className="py-3 px-4">Vendor / Supplier</th>
                                                 <th className="py-3 px-3">Bill / Invoice No</th>
                                                 <th className="py-3 px-3">Service / Process</th>
+                                                <th className="py-3 px-3">HS Code</th>
                                                 <th className="py-3 px-3">Type</th>
                                                 <th className="py-3 px-3 text-right">Available Qty</th>
                                                 <th className="py-3 px-3 text-right">Rate</th>
@@ -1805,6 +1867,8 @@ export default function ProductionExecutionWizard() {
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                                             {filteredModalServices.map((svc, idx) => {
+                                                const prod = products.find(p => p.id === svc.productId);
+                                                const hsCode = svc.hsCode || prod?.hsCode;
                                                 const remVal = (Number(svc.unconsumedQty) || 0) * (Number(svc.rate) || 0);
 
                                                 return (
@@ -1831,9 +1895,21 @@ export default function ProductionExecutionWizard() {
                                                             <div className="font-bold text-slate-900 dark:text-white">
                                                                 {svc.productName}
                                                             </div>
-                                                            <div className="text-[10px] text-slate-400">
-                                                                {svc.categoryName || 'Service'}
+                                                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono mt-0.5">
+                                                                <span>{svc.productCode || prod?.code || ''}</span>
+                                                                {svc.categoryName && <span>• {svc.categoryName}</span>}
                                                             </div>
+                                                        </td>
+
+                                                        <td className="py-3 px-3">
+                                                            {hsCode ? (
+                                                                <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs inline-flex items-center gap-1">
+                                                                    <span className="text-[10px] font-black opacity-75">HS</span>
+                                                                    {hsCode}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[11px] text-slate-400 font-mono italic">-</span>
+                                                            )}
                                                         </td>
 
                                                         <td className="py-3 px-3">
