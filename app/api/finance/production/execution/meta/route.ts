@@ -184,7 +184,25 @@ export async function GET(req: NextRequest) {
                 Product: { isManufactured: false }
             },
             include: {
-                PurchaseInvoice: { select: { invoiceNo: true, date: true } }
+                PurchaseInvoice: { 
+                    select: { 
+                        invoiceNo: true, 
+                        date: true,
+                        Supplier: { select: { name: true } }
+                    } 
+                },
+                Product: {
+                    select: {
+                        id: true,
+                        name: true,
+                        code: true,
+                        hsCode: true,
+                        stage: true,
+                        isService: true,
+                        Unit: { select: { code: true } }
+                    }
+                },
+                Unit: { select: { code: true } }
             },
             orderBy: { PurchaseInvoice: { date: 'desc' } }
         });
@@ -214,12 +232,20 @@ export async function GET(req: NextRequest) {
                     availableLots.push({
                         id: item.id,
                         productId: item.productId,
+                        productName: item.Product?.name || 'Raw Material',
+                        productCode: item.Product?.code || '',
+                        hsCode: item.Product?.hsCode || '',
+                        unitName: item.Unit?.code || item.Product?.Unit?.code || 'KG',
+                        stage: item.Product?.stage || 'RAW',
+                        isService: item.Product?.isService || false,
+                        supplierName: item.PurchaseInvoice?.Supplier?.name || 'Vendor',
                         invoiceNo: item.PurchaseInvoice.invoiceNo,
-                        date: item.PurchaseInvoice.date,
+                        date: item.PurchaseInvoice.date ? new Date(item.PurchaseInvoice.date).toISOString().split('T')[0] : '',
                         qty: cappedQty,
                         rate: Number(item.rate),
                         isOpening: false,
-                        isEFS: false
+                        isEFS: false,
+                        origin: 'LOCAL'
                     });
                     remainingStock -= cappedQty;
                 }
@@ -234,27 +260,46 @@ export async function GET(req: NextRequest) {
                 Product: { isManufactured: false }
             },
             include: {
-                Product: { select: { id: true, name: true, code: true } }
+                Product: { 
+                    select: { 
+                        id: true, 
+                        name: true, 
+                        code: true,
+                        hsCode: true,
+                        stage: true,
+                        isService: true,
+                        Unit: { select: { code: true } }
+                    } 
+                },
+                Warehouse: { select: { name: true } }
             },
             orderBy: { date: 'asc' }
         });
 
         for (const op of openingStockRecords) {
             const isEFS = Boolean(op.isEFS || (op.batchNo && op.batchNo.includes('[EFS]')));
+            const isImport = Boolean(isEFS || (op.batchNo && op.batchNo.includes('[IMPORT]')));
             const stockKey = `${op.productId}-${op.stage || 'RAW'}-${isEFS ? 'EFS' : 'STD'}`;
             const remainingStock = stockRates[stockKey] ? stockRates[stockKey].qty : 0;
             
             if (remainingStock > 0) {
-                // Check if already in availableLots or add opening stock lot
                 availableLots.push({
                     id: `OPENING-${op.id}`,
                     productId: op.productId,
+                    productName: op.Product?.name || 'Raw Material',
+                    productCode: op.Product?.code || '',
+                    hsCode: op.Product?.hsCode || '',
+                    unitName: op.Product?.Unit?.code || 'KG',
+                    stage: op.stage || op.Product?.stage || 'RAW',
+                    isService: op.Product?.isService || false,
+                    supplierName: `Opening Lot (${op.Warehouse?.name || 'Warehouse'})`,
                     invoiceNo: op.batchNo ? `OPENING (${op.batchNo})` : `OPENING-STOCK`,
-                    date: op.date,
+                    date: op.date ? new Date(op.date).toISOString().split('T')[0] : '',
                     qty: Math.min(Number(op.qtyIn), remainingStock),
                     rate: Number(op.costRate),
                     isOpening: true,
-                    isEFS
+                    isEFS,
+                    origin: isImport ? 'IMPORT' : 'LOCAL'
                 });
             }
         }

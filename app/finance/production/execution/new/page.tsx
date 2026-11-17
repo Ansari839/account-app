@@ -8,7 +8,7 @@ import {
     Loader2, Save, Layers, Package, Factory, Scissors, CheckCircle2,
     Calculator, Droplets, Box, AlertTriangle, ArrowRight, Plus, Trash2,
     Calendar, Warehouse, FileText, Check, ShieldCheck, ShoppingCart, RefreshCw,
-    Printer, Info, Sparkles
+    Printer, Info, Sparkles, Search, X, Filter
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Combobox from "@/components/Combobox";
@@ -39,6 +39,19 @@ export default function ProductionExecutionWizard() {
     const [unconsumedServices, setUnconsumedServices] = useState<any[]>([]);
     const [stockRates, setStockRates] = useState<Record<string, { qty: number, rate: number, isEFS: boolean }>>({});
     const [availableLots, setAvailableLots] = useState<any[]>([]);
+
+    // Modal state for Yarn Lot Selection Table
+    const [isYarnModalOpen, setIsYarnModalOpen] = useState(false);
+    const [activeYarnRowIndex, setActiveYarnRowIndex] = useState<number | null>(null);
+    const [yarnModalSearch, setYarnModalSearch] = useState("");
+    const [yarnModalFilter, setYarnModalFilter] = useState<"ALL" | "LOCAL" | "IMPORT_EFS" | "IMPORT_COMMERCIAL" | "OPENING">("ALL");
+
+    // Modal state for Service Bill Selection Table (Weaving, Knitting, Dyeing, Printing)
+    const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+    const [serviceModalTarget, setServiceModalTarget] = useState<"WEAVING_KNITTING" | "PROCESSING">("WEAVING_KNITTING");
+    const [activeProcessingRowIndex, setActiveProcessingRowIndex] = useState<number | null>(null);
+    const [serviceModalSearch, setServiceModalSearch] = useState("");
+    const [serviceModalTypeFilter, setServiceModalTypeFilter] = useState<"ALL" | "DYEING" | "PRINTING" | "WEAVING" | "KNITTING" | "OTHER">("ALL");
 
     // 1. Target Production Mode (Full Flexibility)
     const [executionMode, setExecutionMode] = useState<ExecutionMode>("DIRECT_FINISH");
@@ -317,16 +330,40 @@ export default function ProductionExecutionWizard() {
         }
     }, [executionMode, effectiveNetWeightKg]);
 
+    // Helper to strictly identify Yarn items (Raw Materials only, excluding fabrics & services)
+    const isYarnProduct = (p: any) => {
+        if (!p || p.isService) return false;
+        if (p.stage === "RAW") return true;
+        const hs = (p.hsCode || "").replace(/\./g, "").trim();
+        if (hs.startsWith("5402") || hs.startsWith("5401") || hs.startsWith("5509") || hs.startsWith("5510") || hs.startsWith("5508")) return true;
+        if (hs.startsWith("54") || hs.startsWith("55")) {
+            // Exclude woven fabric HS codes (5407, 5408, 5512-5516)
+            if (!hs.startsWith("5407") && !hs.startsWith("5408") && !hs.startsWith("5512") && !hs.startsWith("5513") && !hs.startsWith("5514") && !hs.startsWith("5515") && !hs.startsWith("5516")) {
+                return true;
+            }
+        }
+        const name = `${p.name || ''} ${p.code || ''}`.toUpperCase();
+        return name.includes("YARN") || name.includes("DTY") || name.includes("FDY") || name.includes("SPUN") || name.includes("FILAMENT") || name.includes("DENIER") || /\b\d+\/\d+\b/.test(name);
+    };
+
+    // Available Yarn Lots (strictly filtered so ONLY Yarn shows up on yarn side)
+    const availableYarnLots = useMemo(() => {
+        return availableLots.filter(lot => {
+            const prod = products.find(p => p.id === lot.productId);
+            return isYarnProduct(prod || lot);
+        });
+    }, [availableLots, products]);
+
     // Yarn Options with Available Lots (Purchase Lots + Opening Stock Lots)
     const yarnProductList = useMemo(() => {
-        return products.filter(p => p.stage === "RAW" || p.hsCode?.startsWith("54") || p.hsCode?.startsWith("55") || p.name.toUpperCase().includes("DEN") || p.name.toUpperCase().includes("YARN"));
+        return products.filter(p => isYarnProduct(p));
     }, [products]);
 
     const yarnOptions = useMemo(() => {
         const opts: { value: string; label: string }[] = [];
 
         // 1. First add individual available lots (Purchased lots + Opening Stock lots)
-        for (const lot of availableLots) {
+        for (const lot of availableYarnLots) {
             const prod = products.find(p => p.id === lot.productId);
             const lotLabel = lot.isOpening 
                 ? `[Opening Stock] ${prod ? `${prod.code} - ${prod.name}` : ''} | Avail: ${lot.qty.toLocaleString()} KG @ Rs. ${Number(lot.rate).toFixed(2)}`
@@ -365,7 +402,117 @@ export default function ProductionExecutionWizard() {
             }
         }
         return opts;
-    }, [availableLots, yarnProductList, products, stockRates]);
+    }, [availableYarnLots, yarnProductList, products, stockRates]);
+
+    // Filtered Yarn Lots for Modal Table
+    const filteredModalYarnLots = useMemo(() => {
+        return availableYarnLots.filter(lot => {
+            const prod = products.find(p => p.id === lot.productId);
+            const search = yarnModalSearch.toLowerCase().trim();
+            if (search) {
+                const name = (prod?.name || lot.productName || '').toLowerCase();
+                const code = (prod?.code || lot.productCode || '').toLowerCase();
+                const hs = (prod?.hsCode || lot.hsCode || '').toLowerCase();
+                const inv = (lot.invoiceNo || '').toLowerCase();
+                const supp = (lot.supplierName || '').toLowerCase();
+                if (!name.includes(search) && !code.includes(search) && !hs.includes(search) && !inv.includes(search) && !supp.includes(search)) {
+                    return false;
+                }
+            }
+
+            if (yarnModalFilter === "LOCAL") {
+                if (lot.isEFS || lot.origin === "IMPORT" || (lot.invoiceNo && lot.invoiceNo.includes("[EFS]")) || (lot.invoiceNo && lot.invoiceNo.includes("[IMPORT]"))) {
+                    return false;
+                }
+            } else if (yarnModalFilter === "IMPORT_EFS") {
+                if (!lot.isEFS && !(lot.invoiceNo && lot.invoiceNo.includes("[EFS]"))) {
+                    return false;
+                }
+            } else if (yarnModalFilter === "IMPORT_COMMERCIAL") {
+                const isEfs = Boolean(lot.isEFS || (lot.invoiceNo && lot.invoiceNo.includes("[EFS]")));
+                const isImport = lot.origin === "IMPORT" || (lot.invoiceNo && lot.invoiceNo.includes("[IMPORT]"));
+                if (!isImport || isEfs) return false;
+            } else if (yarnModalFilter === "OPENING") {
+                if (!lot.isOpening) return false;
+            }
+
+            return true;
+        });
+    }, [availableYarnLots, products, yarnModalSearch, yarnModalFilter]);
+
+    // Filtered Services for Modal Table
+    const filteredModalServices = useMemo(() => {
+        return unconsumedServices.filter(svc => {
+            const search = serviceModalSearch.toLowerCase().trim();
+            if (search) {
+                const supp = (svc.supplierName || '').toLowerCase();
+                const inv = (svc.invoiceNo || '').toLowerCase();
+                const prod = (svc.productName || '').toLowerCase();
+                const cat = (svc.categoryName || '').toLowerCase();
+                if (!supp.includes(search) && !inv.includes(search) && !prod.includes(search) && !cat.includes(search)) {
+                    return false;
+                }
+            }
+
+            if (serviceModalTypeFilter !== "ALL") {
+                if (svc.serviceType !== serviceModalTypeFilter) {
+                    const cat = (svc.categoryName || '').toUpperCase();
+                    const prod = (svc.productName || '').toUpperCase();
+                    if (serviceModalTypeFilter === "WEAVING" && !cat.includes("WEAV") && !prod.includes("WEAV")) return false;
+                    if (serviceModalTypeFilter === "KNITTING" && !cat.includes("KNIT") && !prod.includes("KNIT")) return false;
+                    if (serviceModalTypeFilter === "DYEING" && !cat.includes("DYE") && !prod.includes("DYE")) return false;
+                    if (serviceModalTypeFilter === "PRINTING" && !cat.includes("PRINT") && !prod.includes("PRINT")) return false;
+                }
+            }
+
+            return true;
+        });
+    }, [unconsumedServices, serviceModalSearch, serviceModalTypeFilter]);
+
+    // Modal Selection Handlers
+    const handleSelectYarnLotFromModal = (lot: any) => {
+        if (activeYarnRowIndex === null) return;
+        const next = [...yarnInputs];
+        const currentQty = parseFloat(next[activeYarnRowIndex].quantity) || 0;
+        const autoQty = lot.qty ? Math.min(lot.qty, Math.max(0, reqYarnQty - totalYarnAllocated + currentQty)) : 0;
+        
+        next[activeYarnRowIndex] = {
+            productId: lot.productId,
+            isEFS: Boolean(lot.isEFS),
+            quantity: autoQty > 0 ? autoQty.toString() : (lot.qty ? lot.qty.toString() : ""),
+            costRate: Number(lot.rate || 0).toFixed(2),
+            lotNumber: lot.invoiceNo || "",
+            purchaseInvoiceItemId: lot.isOpening ? undefined : lot.id
+        };
+        setYarnInputs(next);
+        setIsYarnModalOpen(false);
+        setActiveYarnRowIndex(null);
+    };
+
+    const handleSelectServiceFromModal = (svc: any) => {
+        if (serviceModalTarget === "WEAVING_KNITTING") {
+            setSelectedWeavingServiceId(svc.id);
+            setWeavingServiceQty(Math.min(svc.unconsumedQty, reqWeavingQty).toString());
+        } else if (serviceModalTarget === "PROCESSING" && activeProcessingRowIndex !== null) {
+            setProcessingServices(prev => prev.map((p, idx) => {
+                if (idx !== activeProcessingRowIndex) return p;
+                let autoQty = p.qty;
+                if (svc.unit === "MTR" && outputUnitCode === "MTR") {
+                    autoQty = outputQuantity;
+                } else if (!p.qty || p.qty === "0") {
+                    autoQty = effectiveNetWeightKg.toString();
+                }
+                return {
+                    ...p,
+                    serviceId: svc.id,
+                    rate: Number(svc.rate || 0).toString(),
+                    unit: svc.unit || "KG",
+                    qty: autoQty
+                };
+            }));
+        }
+        setIsServiceModalOpen(false);
+    };
 
     // Grey Fabric Options
     const greyProductList = useMemo(() => {
@@ -964,14 +1111,33 @@ export default function ProductionExecutionWizard() {
                                                                         {processingServiceOptions.length} bill(s) available
                                                                     </span>
                                                                 </div>
-                                                                <Combobox
-                                                                    options={processingServiceOptions}
-                                                                    value={ps.serviceId}
-                                                                    onChange={(val) => handleProcessingServiceChange(ps.id, "serviceId", val)}
-                                                                    placeholder="-- Choose Processing Service Bill (Category: Dyeing, Printing, etc.) --"
-                                                                    searchPlaceholder="Search supplier, item or invoice #..."
-                                                                    className="w-full text-sm font-bold"
-                                                                />
+                                                                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                                                                    <div className="flex-1">
+                                                                        <Combobox
+                                                                            options={processingServiceOptions}
+                                                                            value={ps.serviceId}
+                                                                            onChange={(val) => handleProcessingServiceChange(ps.id, "serviceId", val)}
+                                                                            placeholder="-- Choose Processing Service Bill (Category: Dyeing, Printing, etc.) --"
+                                                                            searchPlaceholder="Search supplier, item or invoice #..."
+                                                                            className="w-full text-sm font-bold"
+                                                                        />
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setServiceModalTarget("PROCESSING");
+                                                                            setActiveProcessingRowIndex(index);
+                                                                            setServiceModalTypeFilter("ALL");
+                                                                            setServiceModalSearch("");
+                                                                            setIsServiceModalOpen(true);
+                                                                        }}
+                                                                        className="px-3.5 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 transition-all shadow-sm active:scale-95"
+                                                                        title="Open full table to search and select process bills"
+                                                                    >
+                                                                        <Search size={14} />
+                                                                        <span>Browse Service Bills</span>
+                                                                    </button>
+                                                                </div>
                                                             </div>
 
                                                             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
@@ -1227,18 +1393,35 @@ export default function ProductionExecutionWizard() {
                                             </span>
                                         </div>
 
-                                        <Combobox
-                                            options={fabricProcessType === "WEAVING" ? weavingServiceOptions : knittingServiceOptions}
-                                            value={selectedWeavingServiceId}
-                                            onChange={(val) => {
-                                                setSelectedWeavingServiceId(val);
-                                                const s = unconsumedServices.find(it => it.id === val);
-                                                if (s) setWeavingServiceQty(Math.min(s.unconsumedQty, reqWeavingQty).toString());
-                                            }}
-                                            placeholder={`-- Choose ${fabricProcessType} Vendor Invoice --`}
-                                            searchPlaceholder={`Search ${fabricProcessType} supplier or invoice no...`}
-                                            className="w-full text-sm font-bold"
-                                        />
+                                        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                                            <div className="flex-1">
+                                                <Combobox
+                                                    options={fabricProcessType === "WEAVING" ? weavingServiceOptions : knittingServiceOptions}
+                                                    value={selectedWeavingServiceId}
+                                                    onChange={(val) => {
+                                                        setSelectedWeavingServiceId(val);
+                                                        const s = unconsumedServices.find(it => it.id === val);
+                                                        if (s) setWeavingServiceQty(Math.min(s.unconsumedQty, reqWeavingQty).toString());
+                                                    }}
+                                                    placeholder={`-- Choose ${fabricProcessType} Vendor Invoice --`}
+                                                    searchPlaceholder={`Search ${fabricProcessType} supplier or invoice no...`}
+                                                    className="w-full text-sm font-bold"
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setServiceModalTarget("WEAVING_KNITTING");
+                                                    setServiceModalTypeFilter(fabricProcessType === "WEAVING" ? "WEAVING" : "KNITTING");
+                                                    setServiceModalSearch("");
+                                                    setIsServiceModalOpen(true);
+                                                }}
+                                                className="px-3.5 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 transition-all shadow-sm active:scale-95"
+                                            >
+                                                <Search size={14} />
+                                                <span>Browse {fabricProcessType} Bills Table</span>
+                                            </button>
+                                        </div>
 
                                         {/* Fallback to manual rate if no invoice available */}
                                         {(fabricProcessType === "WEAVING" ? weavingServiceOptions : knittingServiceOptions).length === 0 && (
@@ -1329,15 +1512,31 @@ export default function ProductionExecutionWizard() {
                                         return (
                                             <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-4 sm:items-center shadow-sm">
                                                 {/* Product & Lot Selection */}
-                                                <div className="flex-1 space-y-1">
-                                                    <Combobox
-                                                        options={yarnOptions}
-                                                        value={row.purchaseInvoiceItemId ? `LOT|${row.purchaseInvoiceItemId}|${row.productId}|${row.costRate}|${row.isEFS}|${row.lotNumber}` : (row.productId ? `PROD|${row.productId}|${row.isEFS}` : "")}
-                                                        onChange={(val) => handleYarnProductChange(idx, val)}
-                                                        placeholder="-- Select Yarn Lot from Purchase or Opening Stock --"
-                                                        searchPlaceholder="Search yarn by name, invoice no, or opening stock..."
-                                                        className="w-full text-sm font-bold"
-                                                    />
+                                                <div className="flex-1 flex flex-col sm:flex-row gap-2 sm:items-center">
+                                                    <div className="flex-1">
+                                                        <Combobox
+                                                            options={yarnOptions}
+                                                            value={row.purchaseInvoiceItemId ? `LOT|${row.purchaseInvoiceItemId}|${row.productId}|${row.costRate}|${row.isEFS}|${row.lotNumber}` : (row.productId ? `PROD|${row.productId}|${row.isEFS}` : "")}
+                                                            onChange={(val) => handleYarnProductChange(idx, val)}
+                                                            placeholder="-- Select Yarn Lot from Purchase or Opening Stock --"
+                                                            searchPlaceholder="Search yarn by name, invoice no, or opening stock..."
+                                                            className="w-full text-sm font-bold"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActiveYarnRowIndex(idx);
+                                                            setYarnModalSearch("");
+                                                            setYarnModalFilter("ALL");
+                                                            setIsYarnModalOpen(true);
+                                                        }}
+                                                        className="px-3.5 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 transition-all shadow-sm active:scale-95"
+                                                        title="Open full table to search and select yarn lots"
+                                                    >
+                                                        <Search size={14} />
+                                                        <span>Browse Yarn Table</span>
+                                                    </button>
                                                 </div>
 
                                                 {/* Allocated Qty */}
@@ -1580,6 +1779,369 @@ export default function ProductionExecutionWizard() {
                 </div>
 
             </div>
+
+            {/* 1. YARN LOT SELECTION MODAL TABLE */}
+            {isYarnModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-5xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                                    <Package size={22} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                        Select Yarn Lot (Purchase Invoices & Opening Stock)
+                                    </h3>
+                                    <p className="text-xs text-slate-400">
+                                        Strictly filtered to raw yarn materials. Click &quot;Select Lot&quot; to allocate to batch row.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => { setIsYarnModalOpen(false); setActiveYarnRowIndex(null); }}
+                                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Filter and Search Bar */}
+                        <div className="p-4 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <div className="relative w-full sm:w-80">
+                                <Search size={16} className="absolute left-3 top-3 text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={yarnModalSearch}
+                                    onChange={(e) => setYarnModalSearch(e.target.value)}
+                                    placeholder="Search yarn name, count, invoice, lot..."
+                                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+                                {(["ALL", "LOCAL", "IMPORT_EFS", "IMPORT_COMMERCIAL", "OPENING"] as const).map(flt => (
+                                    <button
+                                        key={flt}
+                                        type="button"
+                                        onClick={() => setYarnModalFilter(flt)}
+                                        className={cn(
+                                            "px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
+                                            yarnModalFilter === flt
+                                                ? "bg-indigo-600 text-white shadow-sm font-black"
+                                                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                        )}
+                                    >
+                                        {flt === "ALL" && "All Lots"}
+                                        {flt === "LOCAL" && "Local Stock"}
+                                        {flt === "IMPORT_EFS" && "Import EFS"}
+                                        {flt === "IMPORT_COMMERCIAL" && "Commercial Import"}
+                                        {flt === "OPENING" && "Opening Stock"}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Table Area */}
+                        <div className="overflow-y-auto flex-1 p-4">
+                            {filteredModalYarnLots.length === 0 ? (
+                                <div className="text-center py-16 space-y-2">
+                                    <Package size={36} className="mx-auto text-slate-400/50" />
+                                    <p className="text-sm font-bold text-slate-500">No matching yarn lots found in stock.</p>
+                                    <p className="text-xs text-slate-400">Ensure raw yarn purchases or opening stock have been entered.</p>
+                                </div>
+                            ) : (
+                                <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                                    <table className="w-full text-left border-collapse text-xs">
+                                        <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black uppercase tracking-wider">
+                                            <tr>
+                                                <th className="py-3 px-4">Yarn Product</th>
+                                                <th className="py-3 px-3">Origin / Scheme</th>
+                                                <th className="py-3 px-3">Reference / Source</th>
+                                                <th className="py-3 px-3">Date</th>
+                                                <th className="py-3 px-3 text-right">Available Qty</th>
+                                                <th className="py-3 px-3 text-right">Rate (PKR)</th>
+                                                <th className="py-3 px-3 text-right">Total Value</th>
+                                                <th className="py-3 px-4 text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                                            {filteredModalYarnLots.map((lot, idx) => {
+                                                const prod = products.find(p => p.id === lot.productId);
+                                                const isEfs = Boolean(lot.isEFS || (lot.invoiceNo && lot.invoiceNo.includes("[EFS]")));
+                                                const isImport = lot.origin === "IMPORT" || isEfs || (lot.invoiceNo && lot.invoiceNo.includes("[IMPORT]"));
+                                                const totalVal = (Number(lot.qty) || 0) * (Number(lot.rate) || 0);
+
+                                                return (
+                                                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                                                        <td className="py-3 px-4">
+                                                            <div className="font-bold text-slate-900 dark:text-white">
+                                                                {prod?.name || lot.productName || 'Yarn'}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-0.5 font-mono text-[11px] text-slate-400">
+                                                                <span>{prod?.code || lot.productCode}</span>
+                                                                {(prod?.hsCode || lot.hsCode) && (
+                                                                    <span className="px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold">
+                                                                        HS {prod?.hsCode || lot.hsCode}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+
+                                                        <td className="py-3 px-3">
+                                                            {!isImport ? (
+                                                                <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                                    Local
+                                                                </span>
+                                                            ) : isEfs ? (
+                                                                <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                                                    Import EFS
+                                                                </span>
+                                                            ) : (
+                                                                <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30">
+                                                                    Import Non-EFS
+                                                                </span>
+                                                            )}
+                                                        </td>
+
+                                                        <td className="py-3 px-3 font-mono">
+                                                            <div className="font-bold text-slate-700 dark:text-slate-300">
+                                                                {lot.isOpening ? '[Opening Stock]' : lot.invoiceNo}
+                                                            </div>
+                                                            <div className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                                                                {lot.supplierName || (lot.isOpening ? 'Opening Balance' : 'Vendor Invoice')}
+                                                            </div>
+                                                        </td>
+
+                                                        <td className="py-3 px-3 text-slate-500 font-mono">
+                                                            {lot.date || '-'}
+                                                        </td>
+
+                                                        <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white">
+                                                            {Number(lot.qty).toLocaleString()} <span className="text-[10px] text-slate-400">KG</span>
+                                                        </td>
+
+                                                        <td className="py-3 px-3 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                                            Rs. {Number(lot.rate).toFixed(2)}
+                                                        </td>
+
+                                                        <td className="py-3 px-3 text-right font-mono font-black text-slate-700 dark:text-slate-300">
+                                                            Rs. {totalVal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                                        </td>
+
+                                                        <td className="py-3 px-4 text-center">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleSelectYarnLotFromModal(lot)}
+                                                                className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm active:scale-95 transition-all"
+                                                            >
+                                                                Select Lot
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs text-slate-400">
+                            <span>Showing {filteredModalYarnLots.length} lot(s)</span>
+                            <button
+                                type="button"
+                                onClick={() => { setIsYarnModalOpen(false); setActiveYarnRowIndex(null); }}
+                                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 2. SERVICE BILL SELECTION MODAL TABLE */}
+            {isServiceModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-5xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                                    <FileText size={22} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                        Select Service / Process Bill (Dyeing, Printing, Weaving, Knitting)
+                                    </h3>
+                                    <p className="text-xs text-slate-400">
+                                        Choose available vendor service bill or opening service to offset conversion costs.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsServiceModalOpen(false)}
+                                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Filter and Search Bar */}
+                        <div className="p-4 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <div className="relative w-full sm:w-80">
+                                <Search size={16} className="absolute left-3 top-3 text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={serviceModalSearch}
+                                    onChange={(e) => setServiceModalSearch(e.target.value)}
+                                    placeholder="Search supplier, bill no, service name..."
+                                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold outline-none focus:ring-2 focus:ring-amber-500"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+                                {(["ALL", "WEAVING", "KNITTING", "DYEING", "PRINTING", "OTHER"] as const).map(flt => (
+                                    <button
+                                        key={flt}
+                                        type="button"
+                                        onClick={() => setServiceModalTypeFilter(flt)}
+                                        className={cn(
+                                            "px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
+                                            serviceModalTypeFilter === flt
+                                                ? "bg-amber-600 text-white shadow-sm font-black"
+                                                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                        )}
+                                    >
+                                        {flt === "ALL" && "All Bills"}
+                                        {flt === "WEAVING" && "Weaving"}
+                                        {flt === "KNITTING" && "Knitting"}
+                                        {flt === "DYEING" && "Dyeing"}
+                                        {flt === "PRINTING" && "Printing"}
+                                        {flt === "OTHER" && "Other"}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Table Area */}
+                        <div className="overflow-y-auto flex-1 p-4">
+                            {filteredModalServices.length === 0 ? (
+                                <div className="text-center py-16 space-y-2">
+                                    <FileText size={36} className="mx-auto text-slate-400/50" />
+                                    <p className="text-sm font-bold text-slate-500">No matching service bills found.</p>
+                                    <p className="text-xs text-slate-400">Ensure service purchase invoices or opening services have been recorded.</p>
+                                </div>
+                            ) : (
+                                <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                                    <table className="w-full text-left border-collapse text-xs">
+                                        <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black uppercase tracking-wider">
+                                            <tr>
+                                                <th className="py-3 px-4">Vendor / Supplier</th>
+                                                <th className="py-3 px-3">Bill / Invoice No</th>
+                                                <th className="py-3 px-3">Service / Process</th>
+                                                <th className="py-3 px-3">Type</th>
+                                                <th className="py-3 px-3 text-right">Available Qty</th>
+                                                <th className="py-3 px-3 text-right">Rate</th>
+                                                <th className="py-3 px-3 text-right">Remaining Value</th>
+                                                <th className="py-3 px-4 text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                                            {filteredModalServices.map((svc, idx) => {
+                                                const remVal = (Number(svc.unconsumedQty) || 0) * (Number(svc.rate) || 0);
+
+                                                return (
+                                                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                                                        <td className="py-3 px-4">
+                                                            <div className="font-bold text-slate-900 dark:text-white">
+                                                                {svc.supplierName}
+                                                            </div>
+                                                            <div className="text-[10px] text-slate-400">
+                                                                {svc.isOpening ? 'Opening Service Lot' : 'Job Work Vendor'}
+                                                            </div>
+                                                        </td>
+
+                                                        <td className="py-3 px-3 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                                            {svc.invoiceNo}
+                                                            {svc.date && (
+                                                                <div className="text-[10px] text-slate-400 font-normal">
+                                                                    {new Date(svc.date).toISOString().split('T')[0]}
+                                                                </div>
+                                                            )}
+                                                        </td>
+
+                                                        <td className="py-3 px-3">
+                                                            <div className="font-bold text-slate-900 dark:text-white">
+                                                                {svc.productName}
+                                                            </div>
+                                                            <div className="text-[10px] text-slate-400">
+                                                                {svc.categoryName || 'Service'}
+                                                            </div>
+                                                        </td>
+
+                                                        <td className="py-3 px-3">
+                                                            <span className={cn(
+                                                                "px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider",
+                                                                svc.serviceType === "WEAVING" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20" :
+                                                                svc.serviceType === "KNITTING" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" :
+                                                                svc.serviceType === "DYEING" ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20" :
+                                                                svc.serviceType === "PRINTING" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" :
+                                                                "bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20"
+                                                            )}>
+                                                                {svc.serviceType}
+                                                            </span>
+                                                        </td>
+
+                                                        <td className="py-3 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400">
+                                                            {Number(svc.unconsumedQty).toLocaleString()} <span className="text-[10px] text-slate-400">{svc.unit || 'KG'}</span>
+                                                        </td>
+
+                                                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 dark:text-white">
+                                                            Rs. {Number(svc.rate).toFixed(2)}
+                                                        </td>
+
+                                                        <td className="py-3 px-3 text-right font-mono font-black text-amber-600 dark:text-amber-400">
+                                                            Rs. {remVal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                                        </td>
+
+                                                        <td className="py-3 px-4 text-center">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleSelectServiceFromModal(svc)}
+                                                                className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-sm active:scale-95 transition-all"
+                                                            >
+                                                                Select Bill
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs text-slate-400">
+                            <span>Showing {filteredModalServices.length} bill(s)</span>
+                            <button
+                                type="button"
+                                onClick={() => setIsServiceModalOpen(false)}
+                                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </MainLayout>
     );
 }

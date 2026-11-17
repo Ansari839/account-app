@@ -8,11 +8,19 @@ export async function GET(req: Request) {
         const { companyId, error } = AuthUtils.getCompanyId(req);
         if (error) return error;
 
+        const { searchParams } = new URL(req.url);
+        const productId = searchParams.get('productId');
+
+        const whereClause: any = {
+            companyId,
+            refType: 'OPENING_STOCK'
+        };
+        if (productId) {
+            whereClause.productId = productId;
+        }
+
         const entries = await prisma.stockLedger.findMany({
-            where: {
-                companyId,
-                refType: 'OPENING_STOCK'
-            },
+            where: whereClause,
             include: {
                 Product: {
                     include: {
@@ -40,6 +48,9 @@ export async function GET(req: Request) {
                 isEFS = false;
             }
 
+            // Extract raw batch number without the tag prefix
+            const cleanBatch = displayBatch.replace(/^\[(LOCAL|IMPORT|EFS)\]\s*/i, '').replace(/^\[EFS\]\s*/i, '').trim();
+
             return {
                 id: e.id,
                 productId: e.productId,
@@ -49,7 +60,7 @@ export async function GET(req: Request) {
                 warehouseId: e.warehouseId,
                 warehouseName: e.Warehouse?.name || 'Warehouse',
                 unitName: e.Product?.Unit?.name || 'Unit',
-                date: e.date,
+                date: e.date ? new Date(e.date).toISOString().split('T')[0] : '',
                 qty: Number(e.qtyIn),
                 costRate: Number(e.costRate),
                 itpRate: Number(e.itpRate || 0),
@@ -57,7 +68,8 @@ export async function GET(req: Request) {
                 stage: e.stage || 'RAW',
                 origin,
                 isEFS,
-                batchNo: e.batchNo
+                batchNo: displayBatch,
+                rawBatchNo: cleanBatch
             };
         });
 
@@ -145,6 +157,65 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, data: entry });
     } catch (err: any) {
         console.error('Create Opening Stock Error:', err);
+        return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    }
+}
+
+export async function PUT(req: Request) {
+    try {
+        const { companyId, error } = AuthUtils.getCompanyId(req);
+        if (error) return error;
+
+        const body = await req.json();
+        const {
+            id,
+            warehouseId,
+            stage = 'RAW',
+            origin = 'LOCAL',
+            isEFS = false,
+            qty,
+            costRate,
+            itpRate = 0,
+            batchNo = '',
+            date
+        } = body;
+
+        if (!id) {
+            return NextResponse.json({ success: false, error: 'ID is required' }, { status: 400 });
+        }
+        if (Number(qty) <= 0) {
+            return NextResponse.json({ success: false, error: 'Quantity must be greater than 0' }, { status: 400 });
+        }
+
+        const tagPrefix = origin === 'IMPORT' ? (isEFS ? '[EFS]' : '[IMPORT]') : '[LOCAL]';
+        const formattedBatch = batchNo ? `${tagPrefix} ${batchNo}` : tagPrefix;
+
+        const updateData: any = {
+            qtyIn: Number(qty),
+            costRate: Number(costRate || 0),
+            itpRate: origin === 'IMPORT' ? Number(itpRate || 0) : 0,
+            stage: stage as any,
+            isEFS: origin === 'IMPORT' ? Boolean(isEFS) : false,
+            batchNo: formattedBatch
+        };
+        if (warehouseId) updateData.warehouseId = warehouseId;
+        if (date) updateData.date = new Date(date);
+
+        const entry = await prisma.stockLedger.update({
+            where: {
+                id,
+                companyId,
+                refType: 'OPENING_STOCK'
+            },
+            data: updateData
+        });
+
+        // Automatically sync Opening Stock to General Ledger
+        await syncOpeningStockGL(companyId);
+
+        return NextResponse.json({ success: true, data: entry });
+    } catch (err: any) {
+        console.error('Update Opening Stock Error:', err);
         return NextResponse.json({ success: false, error: err.message }, { status: 500 });
     }
 }
