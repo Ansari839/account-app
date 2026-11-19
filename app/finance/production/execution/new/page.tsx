@@ -773,34 +773,34 @@ export default function ProductionExecutionWizard() {
 
     return (
         <MainLayout>
-            <div className="w-full max-w-7xl mx-auto space-y-6 px-3 sm:px-6 pb-32 animate-in fade-in duration-300">
+            <div className="w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto space-y-6 px-2 sm:px-4 pb-32 animate-in fade-in duration-300">
                 
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center gap-1.5">
-                                <Factory size={13} /> Production Execution
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center gap-1.5">
+                                <Factory size={14} /> Production Execution
                             </span>
                         </div>
-                        <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                             Production Execution Entry
                         </h1>
-                        <p className="text-xs font-medium text-slate-500 mt-0.5">
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
                             Record batch production, allocate raw yarn from warehouse lots, and link job-work service bills.
                         </p>
                     </div>
 
                     {/* Mode Selector Tabs */}
-                    <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/60 shrink-0 gap-1 text-xs font-bold self-start md:self-auto">
+                    <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700/60 shrink-0 gap-1.5 text-sm font-bold self-start md:self-auto">
                         <button
                             type="button"
                             onClick={() => setExecutionMode("DIRECT_FINISH")}
                             className={cn(
-                                "px-3.5 py-2 rounded-lg transition-all",
+                                "px-4 py-2.5 rounded-lg transition-all",
                                 executionMode === "DIRECT_FINISH" 
                                     ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm font-black" 
-                                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                             )}
                         >
                             1. Direct to Finish
@@ -809,10 +809,10 @@ export default function ProductionExecutionWizard() {
                             type="button"
                             onClick={() => setExecutionMode("YARN_TO_GREY")}
                             className={cn(
-                                "px-3.5 py-2 rounded-lg transition-all",
+                                "px-4 py-2.5 rounded-lg transition-all",
                                 executionMode === "YARN_TO_GREY" 
                                     ? "bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm font-black" 
-                                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                             )}
                         >
                             2. Grey Fabric Only
@@ -821,10 +821,10 @@ export default function ProductionExecutionWizard() {
                             type="button"
                             onClick={() => setExecutionMode("GREY_TO_FINISH")}
                             className={cn(
-                                "px-3.5 py-2 rounded-lg transition-all",
+                                "px-4 py-2.5 rounded-lg transition-all",
                                 executionMode === "GREY_TO_FINISH" 
                                     ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm font-black" 
-                                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                             )}
                         >
                             3. Grey to Finish
@@ -839,28 +839,28 @@ export default function ProductionExecutionWizard() {
                     <div className="xl:col-span-8 space-y-6">
                         
                         {/* SECTION 1: TARGET OUTPUT PRODUCT & QUANTITIES */}
-                        <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
+                        <div className="p-6 sm:p-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+                            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-base">
                                         1
                                     </div>
                                     <div>
-                                        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                                        <h2 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
                                             {executionMode === "YARN_TO_GREY" ? "Target Output: Grey Fabric (WIP)" : "Target Output: Finished Goods"}
                                         </h2>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">Specify the manufactured item, warehouse location, and batch metrics.</p>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400">Specify the manufactured item, warehouse location, and batch metrics.</p>
                                     </div>
                                 </div>
-                                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                <span className="text-xs sm:text-sm font-bold px-3.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                                     Stage: {executionMode === "YARN_TO_GREY" ? "GREY" : "FINISH"}
                                 </span>
                             </div>
 
                             {/* Row 1: Product, Warehouse, Date */}
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5">
                                 <div className="md:col-span-6 space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                    <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                         Manufactured Item *
                                     </label>
                                     <Combobox
@@ -869,18 +869,18 @@ export default function ProductionExecutionWizard() {
                                         onChange={(val) => setOutputProductId(val)}
                                         placeholder="Select manufactured product..."
                                         searchPlaceholder="Search product code or name..."
-                                        className="w-full text-xs font-semibold"
+                                        className="w-full text-sm font-semibold"
                                     />
                                 </div>
 
                                 <div className="md:col-span-3 space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                    <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                         Warehouse *
                                     </label>
                                     <select
                                         value={warehouseId}
                                         onChange={(e) => setWarehouseId(e.target.value)}
-                                        className="w-full px-3 py-2 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 h-[40px]"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 h-[44px]"
                                     >
                                         {warehouses.map(w => (
                                             <option key={w.id} value={w.id}>{w.name}</option>
@@ -889,22 +889,22 @@ export default function ProductionExecutionWizard() {
                                 </div>
 
                                 <div className="md:col-span-3 space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                    <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                         Date
                                     </label>
                                     <input
                                         type="date"
                                         value={date}
                                         onChange={(e) => setDate(e.target.value)}
-                                        className="w-full px-3 py-2 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 h-[40px]"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 h-[44px]"
                                     />
                                 </div>
                             </div>
 
                             {/* Row 2: UOM, Quantities, Unit Weight, Total Net Weight (4 Equal Columns!) */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                    <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                         Export UOM *
                                     </label>
                                     <select
@@ -916,7 +916,7 @@ export default function ProductionExecutionWizard() {
                                                 setOutputNetWeightKg(outputQuantity);
                                             }
                                         }}
-                                        className="w-full px-3 py-2 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 h-[40px]"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 h-[44px]"
                                     >
                                         <option value="PCS">PCS (Pieces)</option>
                                         <option value="MTR">MTR (Meters)</option>
@@ -927,7 +927,7 @@ export default function ProductionExecutionWizard() {
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                    <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                         Ready Qty ({outputUnitCode}) *
                                     </label>
                                     <input
@@ -937,12 +937,12 @@ export default function ProductionExecutionWizard() {
                                         placeholder="0.00"
                                         value={outputQuantity}
                                         onChange={(e) => handleOutputQtyChange(e.target.value)}
-                                        className="w-full px-3 py-2 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-white text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[40px]"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono font-bold text-slate-900 dark:text-white text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[44px]"
                                     />
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                    <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                         Wt / {outputUnitCode} (KG)
                                     </label>
                                     <input
@@ -953,12 +953,12 @@ export default function ProductionExecutionWizard() {
                                         value={outputUnitCode === "KG" ? "1" : weightPerUnit}
                                         disabled={outputUnitCode === "KG"}
                                         onChange={(e) => handleWeightPerUnitChange(e.target.value)}
-                                        className="w-full px-3 py-2 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-slate-800 dark:text-slate-200 text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[40px] disabled:opacity-60 disabled:cursor-not-allowed"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-slate-800 dark:text-slate-200 text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[44px] disabled:opacity-60 disabled:cursor-not-allowed"
                                     />
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                    <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                         Total Weight (KG) *
                                     </label>
                                     <input
@@ -968,15 +968,15 @@ export default function ProductionExecutionWizard() {
                                         placeholder="0.00"
                                         value={outputNetWeightKg}
                                         onChange={(e) => handleNetWeightChange(e.target.value)}
-                                        className="w-full px-3 py-2 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-black text-indigo-600 dark:text-indigo-400 text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[40px]"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono font-black text-indigo-600 dark:text-indigo-400 text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[44px]"
                                     />
                                 </div>
                             </div>
 
                             {/* Row 3: Batch/Lot #, Bales/Packages, Stage Info (Spacious Alignment!) */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                    <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                         Batch / Lot #
                                     </label>
                                     <input
@@ -984,12 +984,12 @@ export default function ProductionExecutionWizard() {
                                         placeholder="Optional (e.g. LOT-01)"
                                         value={lotNumber}
                                         onChange={(e) => setLotNumber(e.target.value)}
-                                        className="w-full px-3 py-2 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500 h-[40px]"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500 h-[44px]"
                                     />
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                    <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                         Bales / Packages
                                     </label>
                                     <input
@@ -997,15 +997,15 @@ export default function ProductionExecutionWizard() {
                                         placeholder="Optional (e.g. 50 Bales)"
                                         value={balesCount}
                                         onChange={(e) => setBalesCount(e.target.value)}
-                                        className="w-full px-3 py-2 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500 h-[40px]"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500 h-[44px]"
                                     />
                                 </div>
 
-                                <div className="sm:col-span-2 flex items-center justify-between px-4 py-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 mt-auto h-[40px]">
-                                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                <div className="sm:col-span-2 flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 mt-auto h-[44px]">
+                                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
                                         Stage: <strong className="text-slate-800 dark:text-slate-200 font-bold ml-1">{executionMode === "YARN_TO_GREY" ? "Grey WIP" : "Finished"}</strong>
                                     </span>
-                                    <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                    <span className="text-sm font-mono font-bold text-indigo-600 dark:text-indigo-400">
                                         Effective: {effectiveNetWeightKg.toLocaleString()} KG
                                     </span>
                                 </div>
@@ -1014,59 +1014,59 @@ export default function ProductionExecutionWizard() {
 
                         {/* SECTION 2: WET PROCESSING & FINISHING SERVICES */}
                         {executionMode !== "YARN_TO_GREY" && (
-                            <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-sm">
+                            <div className="p-6 sm:p-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                                <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black text-base">
                                             2
                                         </div>
                                         <div>
-                                            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                                            <h2 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
                                                 Wet Processing Services (Dyeing / Printing)
                                             </h2>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400">Attach vendor conversion bills or record in-house processing charges.</p>
+                                            <p className="text-sm text-slate-500 dark:text-slate-400">Attach vendor conversion bills or record in-house processing charges.</p>
                                         </div>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={handleAddProcessingService}
-                                        className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm"
+                                        className="px-4 py-2 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold rounded-xl text-sm flex items-center gap-1.5 transition-all shadow-sm"
                                     >
-                                        <Plus size={14} /> Add Service
+                                        <Plus size={16} /> Add Service
                                     </button>
                                 </div>
 
                                 {processingServices.length === 0 ? (
                                     <div className="py-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/40 dark:bg-slate-800/20">
-                                        <p className="text-xs font-bold text-slate-600 dark:text-slate-400">No processing services attached.</p>
-                                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Click &quot;Add Service&quot; if this batch consumes dyeing, printing, or finishing bills.</p>
+                                        <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No processing services attached.</p>
+                                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Click &quot;Add Service&quot; if this batch consumes dyeing, printing, or finishing bills.</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
                                         {processingServices.map((ps, index) => {
                                             const lineCost = (parseFloat(ps.qty) || 0) * (parseFloat(ps.rate) || 0);
                                             return (
-                                                <div key={ps.id} className="p-4 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/80 space-y-3">
+                                                <div key={ps.id} className="p-4 sm:p-5 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/80 space-y-3.5">
                                                     <div className="flex items-center justify-between">
-                                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                                                            <span className="w-5 h-5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[11px] font-black flex items-center justify-center">
+                                                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                                            <span className="w-6 h-6 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-black flex items-center justify-center">
                                                                 {index + 1}
                                                             </span>
                                                             Service Bill #{index + 1}
                                                         </span>
                                                         <div className="flex items-center gap-2">
-                                                            <div className="flex bg-white dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] font-bold">
+                                                            <div className="flex bg-white dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold">
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleProcessingServiceChange(ps.id, "mode", "VENDOR_BILL")}
-                                                                    className={cn("px-2.5 py-1 rounded transition-all", ps.mode === "VENDOR_BILL" ? "bg-amber-600 text-white font-bold" : "text-slate-500 dark:text-slate-400")}
+                                                                    className={cn("px-3 py-1 rounded transition-all", ps.mode === "VENDOR_BILL" ? "bg-amber-600 text-white font-bold" : "text-slate-500 dark:text-slate-400")}
                                                                 >
                                                                     Vendor Bill
                                                                 </button>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleProcessingServiceChange(ps.id, "mode", "MANUAL")}
-                                                                    className={cn("px-2.5 py-1 rounded transition-all", ps.mode === "MANUAL" ? "bg-amber-600 text-white font-bold" : "text-slate-500 dark:text-slate-400")}
+                                                                    className={cn("px-3 py-1 rounded transition-all", ps.mode === "MANUAL" ? "bg-amber-600 text-white font-bold" : "text-slate-500 dark:text-slate-400")}
                                                                 >
                                                                     Manual Rate
                                                                 </button>
@@ -1077,14 +1077,14 @@ export default function ProductionExecutionWizard() {
                                                                 className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
                                                                 title="Remove service"
                                                             >
-                                                                <Trash2 size={15} />
+                                                                <Trash2 size={16} />
                                                             </button>
                                                         </div>
                                                     </div>
 
                                                     {ps.mode === "VENDOR_BILL" ? (
                                                         <div className="space-y-2">
-                                                            <div className="flex flex-col sm:flex-row gap-2">
+                                                            <div className="flex flex-col sm:flex-row gap-2.5">
                                                                 <div className="flex-1">
                                                                     <Combobox
                                                                         options={processingServiceOptions}
@@ -1092,7 +1092,7 @@ export default function ProductionExecutionWizard() {
                                                                         onChange={(val) => handleProcessingServiceChange(ps.id, "serviceId", val)}
                                                                         placeholder="Select Vendor Service Bill..."
                                                                         searchPlaceholder="Search supplier or bill..."
-                                                                        className="w-full text-xs font-semibold"
+                                                                        className="w-full text-sm font-semibold"
                                                                     />
                                                                 </div>
                                                                 <button
@@ -1104,9 +1104,9 @@ export default function ProductionExecutionWizard() {
                                                                         setServiceModalSearch("");
                                                                         setIsServiceModalOpen(true);
                                                                     }}
-                                                                    className="px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5 shrink-0 h-[40px]"
+                                                                    className="px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-sm font-bold flex items-center gap-1.5 shrink-0 h-[44px]"
                                                                 >
-                                                                    <Search size={14} /> Browse Bills
+                                                                    <Search size={15} /> Browse Bills
                                                                 </button>
                                                             </div>
                                                             {ps.serviceId && (() => {
@@ -1115,11 +1115,11 @@ export default function ProductionExecutionWizard() {
                                                                 const hs = s?.hsCode || prod?.hsCode;
                                                                 if (!s) return null;
                                                                 return (
-                                                                    <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 bg-amber-500/5 dark:bg-amber-950/20 rounded-lg border border-amber-500/15 text-xs">
+                                                                    <div className="flex flex-wrap items-center gap-2.5 px-3.5 py-2 bg-amber-500/5 dark:bg-amber-950/20 rounded-lg border border-amber-500/15 text-sm">
                                                                         <span className="font-bold text-slate-800 dark:text-slate-200">{s.supplierName}</span>
                                                                         <span className="text-slate-400 font-mono">({s.invoiceNo})</span>
                                                                         {hs && (
-                                                                            <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-[11px]">
+                                                                            <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs">
                                                                                 HS {hs}
                                                                             </span>
                                                                         )}
@@ -1136,45 +1136,45 @@ export default function ProductionExecutionWizard() {
                                                             placeholder="Service Description (e.g. Dyeing Service)"
                                                             value={ps.manualName}
                                                             onChange={(e) => handleProcessingServiceChange(ps.id, "manualName", e.target.value)}
-                                                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 h-[40px]"
+                                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-200 h-[44px]"
                                                         />
                                                     )}
 
                                                     {/* Service inputs row: 4 equal columns */}
-                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-                                                        <div className="space-y-1">
-                                                            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Wastage %</label>
+                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-1">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Wastage %</label>
                                                             <input
                                                                 type="number"
                                                                 placeholder="0"
                                                                 value={ps.wastage || ""}
                                                                 onChange={(e) => handleProcessingServiceChange(ps.id, "wastage", parseFloat(e.target.value) || 0)}
-                                                                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-right h-[40px]"
+                                                                className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
                                                             />
                                                         </div>
-                                                        <div className="space-y-1">
-                                                            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Billing Qty ({ps.unit || 'KG'})</label>
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Billing Qty ({ps.unit || 'KG'})</label>
                                                             <input
                                                                 type="number"
                                                                 placeholder="0.00"
                                                                 value={ps.qty}
                                                                 onChange={(e) => handleProcessingServiceChange(ps.id, "qty", e.target.value)}
-                                                                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-right h-[40px]"
+                                                                className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
                                                             />
                                                         </div>
-                                                        <div className="space-y-1">
-                                                            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Rate (PKR)</label>
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Rate (PKR)</label>
                                                             <input
                                                                 type="number"
                                                                 placeholder="0.00"
                                                                 value={ps.rate}
                                                                 onChange={(e) => handleProcessingServiceChange(ps.id, "rate", e.target.value)}
-                                                                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-right h-[40px]"
+                                                                className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
                                                             />
                                                         </div>
-                                                        <div className="space-y-1">
-                                                            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block">Line Total</label>
-                                                            <div className="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/60 text-xs font-mono font-bold text-amber-600 dark:text-amber-400 text-right h-[40px] flex items-center justify-end">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Line Total</label>
+                                                            <div className="px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/60 text-sm font-mono font-bold text-amber-600 dark:text-amber-400 text-right h-[44px] flex items-center justify-end">
                                                                 Rs. {lineCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                             </div>
                                                         </div>
@@ -1189,55 +1189,55 @@ export default function ProductionExecutionWizard() {
 
                         {/* SECTION 3: FABRIC MANUFACTURING (WEAVING / KNITTING) */}
                         {executionMode !== "GREY_TO_FINISH" && (
-                            <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
+                            <div className="p-6 sm:p-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                                <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-base">
                                             3
                                         </div>
                                         <div>
-                                            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                                            <h2 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
                                                 Fabric Manufacturing ({fabricProcessType})
                                             </h2>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400">Choose process and execution mode (In-House vs Outsourced vendor bill).</p>
+                                            <p className="text-sm text-slate-500 dark:text-slate-400">Choose process and execution mode (In-House vs Outsourced vendor bill).</p>
                                         </div>
                                     </div>
 
-                                    <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold">
                                         <button
                                             type="button"
                                             onClick={() => { setFabricProcessType("WEAVING"); setSelectedWeavingServiceId(""); }}
-                                            className={cn("px-3.5 py-1.5 rounded-lg transition-all", fabricProcessType === "WEAVING" ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 dark:text-slate-400 hover:text-slate-900")}
+                                            className={cn("px-4 py-2 rounded-lg transition-all", fabricProcessType === "WEAVING" ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white")}
                                         >
                                             Weaving
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => { setFabricProcessType("KNITTING"); setSelectedWeavingServiceId(""); }}
-                                            className={cn("px-3.5 py-1.5 rounded-lg transition-all", fabricProcessType === "KNITTING" ? "bg-cyan-600 text-white shadow-sm" : "text-slate-600 dark:text-slate-400 hover:text-slate-900")}
+                                            className={cn("px-4 py-2 rounded-lg transition-all", fabricProcessType === "KNITTING" ? "bg-cyan-600 text-white shadow-sm" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white")}
                                         >
                                             Knitting
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                             Execution Mode
                                         </label>
-                                        <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl h-[40px]">
+                                        <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl h-[44px]">
                                             <button
                                                 type="button"
                                                 onClick={() => setWeavingMode("IN_HOUSE")}
-                                                className={cn("py-1 text-xs font-bold rounded-lg transition-all", weavingMode === "IN_HOUSE" ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm font-black" : "text-slate-500")}
+                                                className={cn("py-1.5 text-xs sm:text-sm font-bold rounded-lg transition-all", weavingMode === "IN_HOUSE" ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm font-black" : "text-slate-500")}
                                             >
                                                 In-House
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setWeavingMode("OUT_HOUSE")}
-                                                className={cn("py-1 text-xs font-bold rounded-lg transition-all", weavingMode === "OUT_HOUSE" ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm font-black" : "text-slate-500")}
+                                                className={cn("py-1.5 text-xs sm:text-sm font-bold rounded-lg transition-all", weavingMode === "OUT_HOUSE" ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm font-black" : "text-slate-500")}
                                             >
                                                 Out-House
                                             </button>
@@ -1245,24 +1245,24 @@ export default function ProductionExecutionWizard() {
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                             Fabric Wastage %
                                         </label>
                                         <input
                                             type="number"
                                             value={weavingWastage}
                                             onChange={(e) => setWeavingWastage(parseFloat(e.target.value) || 0)}
-                                            className="w-full px-3 py-2 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-slate-800 dark:text-slate-200 text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[40px]"
+                                            className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-slate-800 dark:text-slate-200 text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[44px]"
                                         />
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                             Required Grey Fabric
                                         </label>
-                                        <div className="px-3.5 py-2 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 flex items-center justify-between h-[40px]">
-                                            <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Target WIP</span>
-                                            <span className="text-sm font-black font-mono text-blue-700 dark:text-blue-300">
+                                        <div className="px-4 py-2.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 flex items-center justify-between h-[44px]">
+                                            <span className="text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400">Target WIP</span>
+                                            <span className="text-base font-black font-mono text-blue-700 dark:text-blue-300">
                                                 {reqWeavingQty.toLocaleString()} KG
                                             </span>
                                         </div>
@@ -1272,10 +1272,10 @@ export default function ProductionExecutionWizard() {
                                 {/* If Out-House */}
                                 {weavingMode === "OUT_HOUSE" && (
                                     <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                             {fabricProcessType} Vendor Bill *
                                         </label>
-                                        <div className="flex flex-col sm:flex-row gap-2">
+                                        <div className="flex flex-col sm:flex-row gap-2.5">
                                             <div className="flex-1">
                                                 <Combobox
                                                     options={fabricProcessType === "WEAVING" ? weavingServiceOptions : knittingServiceOptions}
@@ -1286,7 +1286,7 @@ export default function ProductionExecutionWizard() {
                                                         if (svc) setWeavingServiceQty(Math.min(svc.unconsumedQty, reqWeavingQty).toString());
                                                     }}
                                                     placeholder={`Select ${fabricProcessType} Vendor Bill...`}
-                                                    className="w-full text-xs font-semibold"
+                                                    className="w-full text-sm font-semibold"
                                                 />
                                             </div>
                                             <button
@@ -1297,9 +1297,9 @@ export default function ProductionExecutionWizard() {
                                                     setServiceModalSearch("");
                                                     setIsServiceModalOpen(true);
                                                 }}
-                                                className="px-3.5 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center gap-1.5 shrink-0 h-[40px]"
+                                                className="px-4 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-700 dark:text-blue-300 text-sm font-bold flex items-center gap-1.5 shrink-0 h-[44px]"
                                             >
-                                                <Search size={14} /> Browse Bills
+                                                <Search size={15} /> Browse Bills
                                             </button>
                                         </div>
                                         {selectedWeavingServiceId && (() => {
@@ -1308,11 +1308,11 @@ export default function ProductionExecutionWizard() {
                                             const hs = s?.hsCode || prod?.hsCode;
                                             if (!s) return null;
                                             return (
-                                                <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 bg-blue-500/5 dark:bg-blue-950/20 rounded-lg border border-blue-500/15 text-xs">
+                                                <div className="flex flex-wrap items-center gap-2.5 px-3.5 py-2 bg-blue-500/5 dark:bg-blue-950/20 rounded-lg border border-blue-500/15 text-sm">
                                                     <span className="font-bold text-slate-800 dark:text-slate-200">{s.supplierName}</span>
                                                     <span className="text-slate-400 font-mono">({s.invoiceNo})</span>
                                                     {hs && (
-                                                        <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-[11px]">
+                                                        <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs">
                                                             HS {hs}
                                                         </span>
                                                     )}
@@ -1327,9 +1327,9 @@ export default function ProductionExecutionWizard() {
 
                                 {/* If In-House */}
                                 {weavingMode === "IN_HOUSE" && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 pt-2 border-t border-slate-100 dark:border-slate-800">
                                         <div className="space-y-1.5">
-                                            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                            <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                                 In-House Rate (PKR / KG)
                                             </label>
                                             <input
@@ -1337,16 +1337,16 @@ export default function ProductionExecutionWizard() {
                                                 placeholder="0.00"
                                                 value={inHouseWeavingRate}
                                                 onChange={(e) => setInHouseWeavingRate(e.target.value)}
-                                                className="w-full px-3 py-2 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-slate-800 dark:text-slate-200 text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[40px]"
+                                                className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-slate-800 dark:text-slate-200 text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[44px]"
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                                            <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                                 Total Fabric Making Cost
                                             </label>
-                                            <div className="px-3.5 py-2 rounded-xl bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex items-center justify-between h-[40px]">
-                                                <span className="text-xs text-slate-500 dark:text-slate-400">Total</span>
-                                                <span className="text-sm font-black font-mono text-slate-900 dark:text-white">
+                                            <div className="px-4 py-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex items-center justify-between h-[44px]">
+                                                <span className="text-sm text-slate-500 dark:text-slate-400">Total</span>
+                                                <span className="text-base font-black font-mono text-slate-900 dark:text-white">
                                                     Rs. {fabricMakingCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </span>
                                             </div>
@@ -1358,32 +1358,32 @@ export default function ProductionExecutionWizard() {
 
                         {/* SECTION 4: RAW YARN ALLOCATION */}
                         {executionMode !== "GREY_TO_FINISH" ? (
-                            <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
+                            <div className="p-6 sm:p-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-base">
                                             4
                                         </div>
                                         <div>
-                                            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                                            <h2 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
                                                 Raw Yarn Consumption (Physical Stock)
                                             </h2>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400">Allocate raw yarn from warehouse lots or opening inventory.</p>
+                                            <p className="text-sm text-slate-500 dark:text-slate-400">Allocate raw yarn from warehouse lots or opening inventory.</p>
                                         </div>
                                     </div>
 
                                     <div className="flex items-center gap-3">
-                                        <div className="flex items-center gap-1.5">
-                                            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">Yarn Wastage %:</label>
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400">Yarn Wastage %:</label>
                                             <input
                                                 type="number"
                                                 value={yarnWastage}
                                                 onChange={(e) => setYarnWastage(parseFloat(e.target.value) || 0)}
-                                                className="w-16 px-2.5 py-1.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-bold text-right"
+                                                className="w-20 px-3 py-1.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono font-bold text-right"
                                             />
                                         </div>
                                         <div className={cn(
-                                            "px-3 py-1.5 rounded-xl text-xs font-black font-mono border",
+                                            "px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-black font-mono border",
                                             isYarnCovered 
                                                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
                                                 : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
@@ -1394,7 +1394,7 @@ export default function ProductionExecutionWizard() {
                                 </div>
 
                                 {/* Table Header for Yarn Rows */}
-                                <div className="hidden lg:grid grid-cols-12 gap-3 px-3 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                                <div className="hidden lg:grid grid-cols-12 gap-3 px-3 text-xs font-bold text-slate-500 dark:text-slate-400">
                                     <div className="col-span-5">Yarn Product & Lot Selection</div>
                                     <div className="col-span-2 text-right">Consumed Qty</div>
                                     <div className="col-span-2 text-right">Cost Rate (PKR)</div>
@@ -1416,7 +1416,7 @@ export default function ProductionExecutionWizard() {
                                                                 value={row.purchaseInvoiceItemId ? `LOT|${row.purchaseInvoiceItemId}|${row.productId}|${row.costRate}|${row.isEFS}|${row.lotNumber}` : (row.productId ? `PROD|${row.productId}|${row.isEFS}` : "")}
                                                                 onChange={(val) => handleYarnProductChange(idx, val)}
                                                                 placeholder="Select Yarn Lot or Item..."
-                                                                className="w-full text-xs font-semibold"
+                                                                className="w-full text-sm font-semibold"
                                                             />
                                                         </div>
                                                         <button
@@ -1427,9 +1427,9 @@ export default function ProductionExecutionWizard() {
                                                                 setYarnModalFilter("ALL");
                                                                 setIsYarnModalOpen(true);
                                                             }}
-                                                            className="px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center gap-1 shrink-0 h-[40px]"
+                                                            className="px-3.5 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-sm font-bold flex items-center gap-1 shrink-0 h-[44px]"
                                                         >
-                                                            <Search size={13} /> Browse Lots
+                                                            <Search size={14} /> Browse Lots
                                                         </button>
                                                     </div>
 
@@ -1444,9 +1444,9 @@ export default function ProductionExecutionWizard() {
                                                                     next[idx].quantity = e.target.value;
                                                                     setYarnInputs(next);
                                                                 }}
-                                                                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[40px] pr-8"
+                                                                className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono font-bold text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[44px] pr-9"
                                                             />
-                                                            <span className="absolute right-2.5 top-2.5 text-[10px] font-bold text-slate-400">KG</span>
+                                                            <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">KG</span>
                                                         </div>
                                                     </div>
 
@@ -1461,13 +1461,13 @@ export default function ProductionExecutionWizard() {
                                                                     next[idx].costRate = e.target.value;
                                                                     setYarnInputs(next);
                                                                 }}
-                                                                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[40px] pl-7"
+                                                                className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[44px] pl-8"
                                                             />
-                                                            <span className="absolute left-2.5 top-2.5 text-[10px] font-bold text-slate-400">Rs.</span>
+                                                            <span className="absolute left-3 top-3 text-xs font-bold text-slate-400">Rs.</span>
                                                         </div>
                                                     </div>
 
-                                                    <div className="col-span-10 sm:col-span-5 lg:col-span-2.5 text-right px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/60 font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 h-[40px] flex items-center justify-end">
+                                                    <div className="col-span-10 sm:col-span-5 lg:col-span-2.5 text-right px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/60 font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400 h-[44px] flex items-center justify-end">
                                                         Rs. {rowTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </div>
 
@@ -1479,7 +1479,7 @@ export default function ProductionExecutionWizard() {
                                                             className="p-2 text-slate-400 hover:text-rose-500 disabled:opacity-20 transition-colors rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700"
                                                             title="Remove yarn row"
                                                         >
-                                                            <Trash2 size={16} />
+                                                            <Trash2 size={17} />
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1491,29 +1491,29 @@ export default function ProductionExecutionWizard() {
                                 <button
                                     type="button"
                                     onClick={addYarnRow}
-                                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-bold flex items-center gap-1.5 transition-colors"
                                 >
-                                    <Plus size={14} /> Add Yarn Row
+                                    <Plus size={16} /> Add Yarn Row
                                 </button>
                             </div>
                         ) : (
                             /* SECTION 4 ALT: GREY FABRIC INPUT (MODE 3) */
-                            <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
-                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
+                            <div className="p-6 sm:p-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                                <div className="flex items-center gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-base">
                                         4
                                     </div>
                                     <div>
-                                        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                                        <h2 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">
                                             Grey Fabric Input (Direct Thaan)
                                         </h2>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">Select consumed grey fabric from warehouse inventory.</p>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400">Select consumed grey fabric from warehouse inventory.</p>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">Grey Fabric Item *</label>
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">Grey Fabric Item *</label>
                                         <Combobox
                                             options={greyOptions}
                                             value={greyInputProductId}
@@ -1524,27 +1524,27 @@ export default function ProductionExecutionWizard() {
                                                 if (matched) setGreyInputCostRate(matched.rate.toFixed(2));
                                             }}
                                             placeholder="Select Grey Fabric..."
-                                            className="w-full text-xs font-semibold"
+                                            className="w-full text-sm font-semibold"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">Quantity (KG) *</label>
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">Quantity (KG) *</label>
                                         <input
                                             type="number"
                                             placeholder="0.00"
                                             value={greyInputQty}
                                             onChange={(e) => setGreyInputQty(e.target.value)}
-                                            className="w-full px-3 py-2 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-right h-[40px]"
+                                            className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">Cost Rate (PKR)</label>
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">Cost Rate (PKR)</label>
                                         <input
                                             type="number"
                                             placeholder="0.00"
                                             value={greyInputCostRate}
                                             onChange={(e) => setGreyInputCostRate(e.target.value)}
-                                            className="w-full px-3 py-2 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-right h-[40px]"
+                                            className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
                                         />
                                     </div>
                                 </div>
@@ -1554,79 +1554,79 @@ export default function ProductionExecutionWizard() {
 
                     {/* RIGHT SIDEBAR: REALTIME COSTING & POST BUTTON (4 Cols) */}
                     <div className="xl:col-span-4 space-y-6">
-                        <div className="p-6 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5 sticky top-6">
-                            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-                                        <Calculator size={18} />
+                        <div className="p-6 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 sticky top-6">
+                            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                                        <Calculator size={20} />
                                     </div>
-                                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">Batch Cost Summary</h3>
+                                    <h3 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">Batch Cost Summary</h3>
                                 </div>
-                                <span className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-full">Live Preview</span>
+                                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-3 py-1 rounded-full">Live Preview</span>
                             </div>
 
-                            <div className="space-y-3 text-xs">
-                                <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <div className="space-y-3.5 text-sm">
+                                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
                                     <span className="text-slate-600 dark:text-slate-400 font-medium">1. Raw Yarn Cost:</span>
-                                    <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                                    <span className="font-mono font-bold text-base text-slate-900 dark:text-slate-100">
                                         Rs. {yarnCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                 </div>
 
                                 {executionMode !== "GREY_TO_FINISH" && (
-                                    <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
                                         <span className="text-slate-600 dark:text-slate-400 font-medium">2. {fabricProcessType} Cost:</span>
-                                        <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                                        <span className="font-mono font-bold text-base text-slate-900 dark:text-slate-100">
                                             Rs. {fabricMakingCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
                                     </div>
                                 )}
 
-                                <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800">
+                                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
                                     <span className="text-slate-600 dark:text-slate-400 font-medium">3. Processing Services:</span>
-                                    <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                                    <span className="font-mono font-bold text-base text-amber-600 dark:text-amber-400">
                                         Rs. {processingCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                 </div>
 
-                                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80">
+                                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80">
                                     <span className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">Total Batch Cost:</span>
-                                    <span className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400 block mt-1">
+                                    <span className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400 block mt-1.5">
                                         Rs. {totalBatchCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3 pt-1">
-                                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
-                                        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">Cost / KG:</span>
-                                        <span className="text-sm font-black font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
+                                <div className="grid grid-cols-2 gap-3.5 pt-1">
+                                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+                                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">Cost / KG:</span>
+                                        <span className="text-base font-black font-mono text-slate-900 dark:text-slate-100 mt-1 block">
                                             Rs. {costPerKg.toFixed(2)}
                                         </span>
                                     </div>
-                                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
-                                        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">Cost / {outputUnitCode}:</span>
-                                        <span className="text-sm font-black font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
+                                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+                                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">Cost / {outputUnitCode}:</span>
+                                        <span className="text-base font-black font-mono text-slate-900 dark:text-slate-100 mt-1 block">
                                             Rs. {costPerUnit.toFixed(2)}
                                         </span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-2.5 pt-2">
+                            <div className="space-y-3 pt-2">
                                 <button
                                     type="button"
                                     onClick={handleSubmit}
                                     disabled={submitting}
-                                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-black rounded-xl shadow-md shadow-indigo-600/20 text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
                                 >
                                     {submitting ? (
                                         <>
-                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <Loader2 className="w-5 h-5 animate-spin" />
                                             <span>Posting Batch...</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Save size={16} />
+                                            <Save size={18} />
                                             <span>Post Production Execution</span>
                                         </>
                                     )}
@@ -1635,7 +1635,7 @@ export default function ProductionExecutionWizard() {
                                 <button
                                     type="button"
                                     onClick={() => router.push("/finance/production")}
-                                    className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition-colors"
+                                    className="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-xl transition-colors"
                                 >
                                     Cancel
                                 </button>
