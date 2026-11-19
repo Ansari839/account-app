@@ -379,6 +379,11 @@ export default function NewPurchaseInvoicePage() {
         label: `${s.code} - ${s.name}`
     }));
 
+    const warehouseOptions = warehouses.map(w => ({
+        value: w.id,
+        label: w.name
+    }));
+
     const sourceOptions = sources.map(s => ({
         value: s.id,
         label: `${formData.sourceType === "PO" ? s.poNo : s.grnNo} - ${s.supplier?.name || "Unknown"}`
@@ -485,14 +490,13 @@ export default function NewPurchaseInvoicePage() {
                                         <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
                                             <Warehouse size={14} /> Target Warehouse
                                         </label>
-                                        <select
-                                            className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                        <Combobox
+                                            options={warehouseOptions}
                                             value={formData.warehouseId}
-                                            onChange={(e) => setFormData({ ...formData, warehouseId: e.target.value })}
-                                        >
-                                            <option value="">Choose Warehouse...</option>
-                                            {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                        </select>
+                                            onChange={(val) => setFormData({ ...formData, warehouseId: val })}
+                                            placeholder="Choose Warehouse..."
+                                            className="w-full bg-slate-900/60 border-slate-700 text-white"
+                                        />
                                     </div>
                                 </>
                             )}

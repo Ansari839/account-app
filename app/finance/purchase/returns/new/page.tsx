@@ -171,6 +171,22 @@ export default function CreatePurchaseReturnPage() {
         label: s.code ? `(${s.code}) ${s.name}` : s.name
     }));
 
+    const warehouseOptions = warehouses.map(w => ({
+        value: w.id,
+        label: w.name
+    }));
+
+    const productOptions = products.map(p => ({
+        value: p.id,
+        label: `${p.name} (${p.code})`,
+        sublabel: p.category?.name ? `Category: ${p.category.name}` : undefined
+    }));
+
+    const unitOptions = units.map(u => ({
+        value: u.id,
+        label: u.name
+    }));
+
     return (
         <MainLayout>
             <div className="max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-6 pb-32 animate-in fade-in duration-500">
@@ -188,8 +204,10 @@ export default function CreatePurchaseReturnPage() {
                 </div>
 
                 {/* Premium Dark Header Card */}
-                <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-rose-500/10 relative overflow-hidden border border-slate-800">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-rose-500/10 relative border border-slate-800 z-20">
+                    <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                    </div>
                     
                     <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8">
                         <div className="col-span-12 md:col-span-4 space-y-2">
@@ -207,7 +225,7 @@ export default function CreatePurchaseReturnPage() {
                                     value={formData.supplierId}
                                     onChange={(val) => setFormData({ ...formData, supplierId: val })}
                                     placeholder="Select supplier..."
-                                    className="w-full bg-slate-900/50 border-slate-700 text-white"
+                                    className="w-full bg-slate-900/60 border-slate-700 text-white"
                                 />
                             </div>
 
@@ -215,15 +233,13 @@ export default function CreatePurchaseReturnPage() {
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
                                     <Warehouse size={14} /> From Warehouse
                                 </label>
-                                <select
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-rose-500"
-                                    required
+                                <Combobox
+                                    options={warehouseOptions}
                                     value={formData.warehouseId}
-                                    onChange={e => setFormData({ ...formData, warehouseId: e.target.value })}
-                                >
-                                    <option value="">Choose Warehouse...</option>
-                                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                </select>
+                                    onChange={(val) => setFormData({ ...formData, warehouseId: val })}
+                                    placeholder="Choose Warehouse..."
+                                    className="w-full bg-slate-900/60 border-slate-700 text-white"
+                                />
                             </div>
 
                             <div className="lg:col-span-2 space-y-2">
@@ -283,28 +299,22 @@ export default function CreatePurchaseReturnPage() {
                                 {formData.items.map((item: any) => (
                                     <div key={item.id} className="grid grid-cols-12 gap-4 items-center bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 transition-all hover:border-rose-200 dark:hover:border-rose-500/30">
                                         <div className="col-span-4">
-                                            <select
+                                            <Combobox
+                                                options={productOptions}
                                                 value={item.productId}
-                                                onChange={e => handleItemChange(item.id, 'productId', e.target.value)}
-                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-rose-500 text-sm font-medium"
-                                            >
-                                                <option value="">Select product...</option>
-                                                {products.map(p => (
-                                                    <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
-                                                ))}
-                                            </select>
+                                                onChange={val => handleItemChange(item.id, 'productId', val)}
+                                                placeholder="Select product..."
+                                                size="sm"
+                                            />
                                         </div>
                                         <div className="col-span-2">
-                                            <select
+                                            <Combobox
+                                                options={unitOptions}
                                                 value={item.unitId}
-                                                onChange={e => handleItemChange(item.id, 'unitId', e.target.value)}
-                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-rose-500 text-sm font-medium"
-                                            >
-                                                <option value="">Unit</option>
-                                                {units.map(u => (
-                                                    <option key={u.id} value={u.id}>{u.name}</option>
-                                                ))}
-                                            </select>
+                                                onChange={val => handleItemChange(item.id, 'unitId', val)}
+                                                placeholder="Unit"
+                                                size="sm"
+                                            />
                                         </div>
                                         
                                         <div className="col-span-2">

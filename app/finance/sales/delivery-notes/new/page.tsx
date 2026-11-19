@@ -151,6 +151,16 @@ export default function NewDeliveryNotePage() {
         label: c.code ? `(${c.code}) ${c.name}` : c.name
     }));
 
+    const warehouseOptions = warehouses.map(w => ({
+        value: w.id,
+        label: w.name
+    }));
+
+    const unitOptions = units.map(u => ({
+        value: u.id,
+        label: u.name
+    }));
+
     return (
         <MainLayout>
             <div className="max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-6 pb-32 animate-in fade-in duration-500">
@@ -168,8 +178,10 @@ export default function NewDeliveryNotePage() {
                 </div>
 
                 {/* Premium Dark Header Card */}
-                <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-emerald-500/10 relative overflow-hidden border border-slate-800">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-emerald-500/10 relative border border-slate-800 z-20">
+                    <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                    </div>
                     
                     <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8">
                         <div className="col-span-12 md:col-span-4 space-y-2">
@@ -187,7 +199,7 @@ export default function NewDeliveryNotePage() {
                                     value={formData.orderId}
                                     onChange={handleSelectOrder}
                                     placeholder="Search Sales Order..."
-                                    className="w-full bg-slate-900/50 border-slate-700 text-white shadow-inner"
+                                    className="w-full bg-slate-900/60 border-slate-700 text-white shadow-inner"
                                 />
                             </div>
 
@@ -201,7 +213,7 @@ export default function NewDeliveryNotePage() {
                                     onChange={(val) => setFormData({ ...formData, customerId: val })}
                                     placeholder="Auto-filled from PO..."
                                     disabled={true}
-                                    className="w-full bg-slate-900/50 border-slate-700 text-white opacity-80"
+                                    className="w-full bg-slate-900/60 border-slate-700 text-white opacity-80"
                                 />
                             </div>
 
@@ -209,14 +221,13 @@ export default function NewDeliveryNotePage() {
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
                                     <Warehouse size={14} /> Dispatch Warehouse
                                 </label>
-                                <select
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                <Combobox
+                                    options={warehouseOptions}
                                     value={formData.warehouseId}
-                                    onChange={e => setFormData({ ...formData, warehouseId: e.target.value })}
-                                >
-                                    <option value="">Select Warehouse...</option>
-                                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                </select>
+                                    onChange={(val) => setFormData({ ...formData, warehouseId: val })}
+                                    placeholder="Select Warehouse..."
+                                    className="w-full bg-slate-900/60 border-slate-700 text-white"
+                                />
                             </div>
                         </div>
                     </div>
@@ -253,17 +264,17 @@ export default function NewDeliveryNotePage() {
                                                     <div className="text-xs text-slate-500">{item.productCode}</div>
                                                 </div>
                                                 <div className="col-span-2">
-                                                    <select
+                                                    <Combobox
+                                                        options={unitOptions}
                                                         value={item.unitId}
-                                                        onChange={(e) => {
+                                                        onChange={(val) => {
                                                             const n = [...formData.items];
-                                                            n[i].unitId = e.target.value;
+                                                            n[i].unitId = val;
                                                             setFormData({ ...formData, items: n });
                                                         }}
-                                                        className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium"
-                                                    >
-                                                        {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                                                    </select>
+                                                        placeholder="Unit"
+                                                        size="sm"
+                                                    />
                                                 </div>
                                                 
                                                 <div className="col-span-1 text-right font-medium text-slate-600 dark:text-slate-400">

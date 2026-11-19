@@ -202,6 +202,27 @@ export default function NewGRNPage() {
         label: `${s.code} - ${s.name}`
     }));
 
+    const poOptions = [
+        { value: '', label: 'Direct GRN (No PO)' },
+        ...pos.map(p => ({ value: p.id, label: `${p.poNo} - ${p.supplier?.name || 'Unknown'}` }))
+    ];
+
+    const warehouseOptions = warehouses.map(w => ({
+        value: w.id,
+        label: w.name
+    }));
+
+    const productOptions = products.map(p => ({
+        value: p.id,
+        label: `${p.name} (${p.code})`,
+        sublabel: p.category?.name ? `Category: ${p.category.name}` : undefined
+    }));
+
+    const unitOptions = units.map(u => ({
+        value: u.id,
+        label: u.name
+    }));
+
     return (
         <MainLayout>
             <div className="max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-6 pb-32 animate-in fade-in duration-500">
@@ -219,8 +240,10 @@ export default function NewGRNPage() {
                 </div>
 
                 {/* Premium Dark Header Card */}
-                <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-indigo-500/10 relative overflow-hidden border border-slate-800">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                <div className="bg-slate-950 rounded-[2rem] p-8 shadow-2xl shadow-indigo-500/10 relative border border-slate-800 z-20">
+                    <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                    </div>
                     
                     <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8">
                         <div className="col-span-12 md:col-span-4 space-y-2">
@@ -233,14 +256,13 @@ export default function NewGRNPage() {
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
                                     <FileText size={14} /> Link Purchase Order
                                 </label>
-                                <select
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                <Combobox
+                                    options={poOptions}
                                     value={formData.poId}
-                                    onChange={(e) => handleSelectPO(e.target.value)}
-                                >
-                                    <option value="">Direct GRN (No PO)</option>
-                                    {pos.map(p => <option key={p.id} value={p.id}>{p.poNo} - {p.supplier?.name}</option>)}
-                                </select>
+                                    onChange={(val) => handleSelectPO(val)}
+                                    placeholder="Direct GRN (No PO)"
+                                    className="w-full bg-slate-900/60 border-slate-700 text-white"
+                                />
                             </div>
                             
                             {!formData.poId && (
@@ -253,7 +275,7 @@ export default function NewGRNPage() {
                                         value={formData.supplierId}
                                         onChange={(val) => setFormData({ ...formData, supplierId: val })}
                                         placeholder="Select supplier..."
-                                        className="w-full bg-slate-900/50 border-slate-700 text-white"
+                                        className="w-full bg-slate-900/60 border-slate-700 text-white"
                                     />
                                 </div>
                             )}
@@ -262,15 +284,13 @@ export default function NewGRNPage() {
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
                                     <Warehouse size={14} /> Target Warehouse
                                 </label>
-                                <select
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
-                                    required
+                                <Combobox
+                                    options={warehouseOptions}
                                     value={formData.warehouseId}
-                                    onChange={e => setFormData({ ...formData, warehouseId: e.target.value })}
-                                >
-                                    <option value="">Choose Warehouse...</option>
-                                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                </select>
+                                    onChange={(val) => setFormData({ ...formData, warehouseId: val })}
+                                    placeholder="Choose Warehouse..."
+                                    className="w-full bg-slate-900/60 border-slate-700 text-white"
+                                />
                             </div>
 
                             {!selectedPO && (
@@ -291,8 +311,8 @@ export default function NewGRNPage() {
                 </div>
 
                 {/* Items Section */}
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                    <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50 rounded-t-[2rem]">
                         <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
                             <PackageOpen size={20} className="text-indigo-500" /> Receiving Items
                         </h2>
@@ -306,7 +326,7 @@ export default function NewGRNPage() {
                         )}
                     </div>
 
-                    <div className="p-6 overflow-x-auto">
+                    <div className="p-6 min-h-[250px]">
                         <div className="min-w-[800px]">
                             <div className="grid grid-cols-12 gap-4 mb-3 px-4 text-xs font-bold uppercase tracking-widest text-slate-400">
                                 <div className="col-span-4">Product</div>
@@ -332,29 +352,23 @@ export default function NewGRNPage() {
                                                     {item.productName}
                                                 </div>
                                             ) : (
-                                                <select
+                                                <Combobox
+                                                    options={productOptions}
                                                     value={item.productId}
-                                                    onChange={e => updateItem(item.id, 'productId', e.target.value)}
-                                                    className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
-                                                >
-                                                    <option value="">Select product...</option>
-                                                    {products.map(p => (
-                                                        <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
-                                                    ))}
-                                                </select>
+                                                    onChange={val => updateItem(item.id, 'productId', val)}
+                                                    placeholder="Select product..."
+                                                    size="sm"
+                                                />
                                             )}
                                         </div>
                                         <div className="col-span-2">
-                                            <select
+                                            <Combobox
+                                                options={unitOptions}
                                                 value={item.unitId}
-                                                onChange={e => updateItem(item.id, 'unitId', e.target.value)}
-                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
-                                            >
-                                                <option value="">Unit</option>
-                                                {units.map(u => (
-                                                    <option key={u.id} value={u.id}>{u.name}</option>
-                                                ))}
-                                            </select>
+                                                onChange={val => updateItem(item.id, 'unitId', val)}
+                                                placeholder="Unit"
+                                                size="sm"
+                                            />
                                         </div>
                                         
                                         {formData.poId && (
