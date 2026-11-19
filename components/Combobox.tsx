@@ -48,7 +48,6 @@ export default function Combobox({
     const triggerRef = useRef<HTMLButtonElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
-    const [isPointer, setIsPointer] = useState(false);
 
     // Auto-detect dark mode if forceDark or if caller passed dark classes
     const isDark = forceDark || 
@@ -108,7 +107,10 @@ export default function Combobox({
         onChange(val);
         setIsOpen(false);
         setSearchTerm("");
-        setTimeout(() => triggerRef.current?.focus(), 0);
+        // Return focus to trigger button so user can continue keyboard navigation
+        requestAnimationFrame(() => {
+            triggerRef.current?.focus();
+        });
     }, [onChange]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -163,14 +165,7 @@ export default function Combobox({
                     disabled && "opacity-50 cursor-not-allowed",
                     className
                 )}
-                onPointerDown={() => setIsPointer(true)}
-                onFocus={() => {
-                    if (!disabled && !isOpen && !isPointer) {
-                        setIsOpen(true);
-                    }
-                    setIsPointer(false);
-                }}
-                onClick={() => !disabled && setIsOpen(!isOpen)}
+                onClick={() => !disabled && setIsOpen(prev => !prev)}
                 onKeyDown={(e) => {
                     if (onKeyDown) onKeyDown(e);
                     if (e.defaultPrevented) return;
@@ -279,7 +274,14 @@ export default function Combobox({
                                                     ? (isDark ? "bg-slate-800 text-white font-medium" : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium")
                                                     : (isDark ? "text-slate-300 hover:bg-slate-800/60" : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60")
                                         )}
-                                        onClick={() => selectOption(option.value)}
+                                        onMouseDown={(e) => {
+                                            // Prevent input from losing focus prematurely
+                                            e.preventDefault();
+                                        }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            selectOption(option.value);
+                                        }}
                                         onMouseEnter={() => setHighlightedIndex(idx)}
                                     >
                                         <div className="flex flex-col truncate">
