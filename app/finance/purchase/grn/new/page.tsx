@@ -109,6 +109,7 @@ export default function NewGRNPage() {
                 id: Date.now().toString() + Math.random(),
                 productId: item.productId,
                 productName: item.product?.name,
+                hsCode: item.product?.hsCode || '',
                 unitId: item.unitId,
                 poItemId: item.id,
                 qtyOrdered: item.qty,
@@ -123,7 +124,7 @@ export default function NewGRNPage() {
     const addItem = () => {
         setFormData((prev: any) => ({
             ...prev,
-            items: [...prev.items, { id: Date.now().toString(), productId: '', unitId: '', qtyReceived: 1, qtyRejected: 0, rate: 0 }]
+            items: [...prev.items, { id: Date.now().toString(), productId: '', hsCode: '', unitId: '', qtyReceived: 1, qtyRejected: 0, rate: 0 }]
         }));
     };
 
@@ -135,7 +136,17 @@ export default function NewGRNPage() {
                     if (field === "qtyReceived" || field === "qtyRejected" || field === "rate") {
                         refinedValue = isNaN(value) ? 0 : value;
                     }
-                    return { ...item, [field]: refinedValue };
+                    const updated = { ...item, [field]: refinedValue };
+                    if (field === 'productId') {
+                        const prod = products.find(p => p.id === value);
+                        if (prod) {
+                            updated.hsCode = prod.hsCode || '';
+                            if (!updated.unitId && prod.unitId) {
+                                updated.unitId = prod.unitId;
+                            }
+                        }
+                    }
+                    return updated;
                 }
                 return item;
             });
@@ -161,9 +172,9 @@ export default function NewGRNPage() {
             return;
         }
 
-        const validItems = formData.items.filter((i: any) => i.productId && (Number(i.qtyReceived) > 0 || Number(i.qtyRejected) > 0));
+        const validItems = formData.items.filter((i: any) => i.productId && Number(i.qtyReceived) > 0);
         if (validItems.length === 0) {
-            showNotification('error', 'Please add at least one valid item with received/rejected quantity.');
+            showNotification('error', 'Please add at least one valid item with received quantity.');
             return;
         }
 
@@ -215,7 +226,10 @@ export default function NewGRNPage() {
     const productOptions = products.map(p => ({
         value: p.id,
         label: `${p.name} (${p.code})`,
-        sublabel: p.category?.name ? `Category: ${p.category.name}` : undefined
+        sublabel: [
+            p.hsCode ? `HS: ${p.hsCode}` : null,
+            p.category?.name ? `Category: ${p.category.name}` : null
+        ].filter(Boolean).join(' • ')
     }));
 
     const unitOptions = units.map(u => ({
@@ -329,11 +343,11 @@ export default function NewGRNPage() {
                     <div className="p-6 min-h-[250px]">
                         <div className="min-w-[800px]">
                             <div className="grid grid-cols-12 gap-4 mb-3 px-4 text-xs font-bold uppercase tracking-widest text-slate-400">
-                                <div className="col-span-4">Product</div>
-                                <div className="col-span-2">Unit</div>
+                                <div className={formData.poId ? "col-span-3" : "col-span-4"}>Product</div>
+                                <div className="col-span-2">HS Code</div>
+                                <div className={formData.poId ? "col-span-2" : "col-span-1"}>Unit</div>
                                 {formData.poId && <div className="col-span-2">Ordered / Prior</div>}
-                                <div className={formData.poId ? "col-span-2" : "col-span-2"}>Receive Qty</div>
-                                <div className="col-span-1">Reject Qty</div>
+                                <div className={formData.poId ? "col-span-3" : "col-span-2"}>Receive Qty</div>
                                 {!formData.poId && <div className="col-span-2">Rate</div>}
                                 {!formData.poId && <div className="col-span-1 text-center">Act</div>}
                             </div>
@@ -346,9 +360,9 @@ export default function NewGRNPage() {
                                             ? "bg-indigo-50/30 dark:bg-indigo-500/5 border-indigo-100 dark:border-indigo-500/20" 
                                             : "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700/50"
                                     )}>
-                                        <div className="col-span-4">
+                                        <div className={formData.poId ? "col-span-3" : "col-span-4"}>
                                             {formData.poId ? (
-                                                <div className="px-2 font-bold text-slate-800 dark:text-slate-200">
+                                                <div className="px-2 font-bold text-slate-800 dark:text-slate-200 truncate">
                                                     {item.productName}
                                                 </div>
                                             ) : (
@@ -361,7 +375,21 @@ export default function NewGRNPage() {
                                                 />
                                             )}
                                         </div>
+
                                         <div className="col-span-2">
+                                            <div className="w-full py-2 px-3 rounded-xl bg-slate-100/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between min-h-[38px]">
+                                                <span className="font-mono text-xs sm:text-sm font-bold text-indigo-600 dark:text-indigo-400 tracking-wide truncate">
+                                                    {item.hsCode || products.find(p => p.id === item.productId)?.hsCode || '—'}
+                                                </span>
+                                                {(item.hsCode || products.find(p => p.id === item.productId)?.hsCode) && (
+                                                    <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 border border-indigo-200/50 dark:border-indigo-500/20">
+                                                        HS
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className={formData.poId ? "col-span-2" : "col-span-1"}>
                                             <Combobox
                                                 options={unitOptions}
                                                 value={item.unitId}
@@ -379,7 +407,7 @@ export default function NewGRNPage() {
                                             </div>
                                         )}
 
-                                        <div className={formData.poId ? "col-span-2" : "col-span-2"}>
+                                        <div className={formData.poId ? "col-span-3" : "col-span-2"}>
                                             <input
                                                 type="number"
                                                 value={item.qtyReceived || ''}
@@ -388,17 +416,6 @@ export default function NewGRNPage() {
                                                 min="0"
                                                 max={formData.poId ? (item.qtyOrdered - item.qtyReceivedPrior) : undefined}
                                                 className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-400 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
-                                            />
-                                        </div>
-                                        
-                                        <div className="col-span-1">
-                                            <input
-                                                type="number"
-                                                value={item.qtyRejected || ''}
-                                                onChange={e => updateItem(item.id, 'qtyRejected', parseFloat(e.target.value))}
-                                                placeholder="0"
-                                                min="0"
-                                                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 outline-none focus:ring-2 focus:ring-rose-500 font-bold text-sm"
                                             />
                                         </div>
 
