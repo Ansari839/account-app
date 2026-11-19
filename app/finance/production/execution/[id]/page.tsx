@@ -51,7 +51,7 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
 
     return (
         <MainLayout>
-            <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
+            <div className="w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-8 animate-in fade-in duration-500 pb-20">
                 
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">

@@ -31,7 +31,7 @@ export default function BOMPage() {
 
     return (
         <MainLayout>
-            <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
+            <div className="w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-6 animate-in fade-in duration-500">
                 
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm">

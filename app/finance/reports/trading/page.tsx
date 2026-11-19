@@ -43,7 +43,7 @@ export default function TradingAccountPage() {
 
     return (
         <MainLayout>
-            <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700 pb-32">
+            <div className="w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-8 animate-in fade-in duration-700 pb-32">
                 
                 {/* SCREEN ONLY HEADER */}
                 <div className="print:hidden bg-slate-950 rounded-[2rem] p-8 shadow-2xl relative overflow-hidden border border-slate-800 flex flex-col lg:flex-row justify-between lg:items-center gap-6">

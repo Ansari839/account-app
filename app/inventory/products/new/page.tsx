@@ -345,7 +345,7 @@ export default function NewProductPage() {
 
     return (
         <MainLayout>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-8 pb-32 animate-in fade-in duration-500">
+            <div className="w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-8 pb-32 animate-in fade-in duration-500">
                 {/* Header Action Bar */}
                 <div className="flex items-center justify-between">
                     <button 
@@ -1131,7 +1131,7 @@ export default function NewProductPage() {
 
             {/* Sticky Footer */}
             <div className="fixed bottom-0 left-0 lg:left-64 right-0 p-4 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-end gap-4">
+                <div className="w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 flex flex-col md:flex-row items-center justify-end gap-4">
                     <div className="flex gap-3 w-full md:w-auto">
                         <button 
                             onClick={() => router.back()}

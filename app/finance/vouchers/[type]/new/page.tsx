@@ -304,7 +304,7 @@ export default function VoucherCreatePage() {
 
     return (
         <MainLayout>
-            <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <div className="flex items-center justify-between bg-slate-900 dark:bg-slate-950 p-8 rounded-3xl shadow-xl shadow-slate-900/20 mb-2">
                     <div className="flex items-center gap-6">
                         <button 

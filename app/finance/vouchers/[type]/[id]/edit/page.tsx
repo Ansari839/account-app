@@ -166,7 +166,7 @@ export default function VoucherEditPage() {
 
     return (
         <MainLayout>
-            <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold">Edit {type?.toString().toUpperCase()} Voucher</h1>
                     <button onClick={() => router.back()} className="text-slate-500 hover:underline">Cancel</button>

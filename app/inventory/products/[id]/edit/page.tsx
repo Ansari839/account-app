@@ -471,7 +471,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
     return (
         <MainLayout>
-            <div className="max-w-5xl mx-auto space-y-6 pb-32 animate-in fade-in duration-500">
+            <div className="w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-6 pb-32 animate-in fade-in duration-500">
                 {/* Header Action Bar */}
                 <div className="flex items-center justify-between">
                     <button 
@@ -1167,7 +1167,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
                 {/* Sticky Action Footer */}
                 <div className="fixed bottom-0 left-0 lg:left-64 right-0 p-4 z-40 bg-slate-950/90 backdrop-blur-xl border-t border-slate-800 shadow-2xl">
-                    <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-end gap-4">
+                    <div className="w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 flex flex-col md:flex-row items-center justify-end gap-4">
                         <div className="flex gap-3 w-full md:w-auto">
                             <button 
                                 type="button"

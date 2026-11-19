@@ -38,7 +38,7 @@ const inventoryModules = [
 export default function InventoryIndex() {
     return (
         <MainLayout>
-            <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex flex-col gap-2">
                     <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
                         Inventory Management

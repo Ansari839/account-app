@@ -101,7 +101,7 @@ export default function NewBOMPage() {
 
     return (
         <MainLayout>
-            <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
+            <div className="w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-6 animate-in fade-in duration-500 pb-20">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 p-8 rounded-[2rem] shadow-2xl relative overflow-hidden border border-slate-800">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>

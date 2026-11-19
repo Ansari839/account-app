@@ -153,7 +153,7 @@ export default function NewPurchaseOrderPage() {
 
     return (
         <MainLayout>
-            <div className="max-w-6xl mx-auto space-y-6 pb-32 animate-in fade-in duration-500">
+            <div className="max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-6 pb-32 animate-in fade-in duration-500">
                 {/* Header Action Bar */}
                 <div className="flex items-center justify-between">
                     <button 
@@ -296,7 +296,7 @@ export default function NewPurchaseOrderPage() {
 
             {/* Sticky Footer */}
             <div className="fixed bottom-0 left-0 lg:left-64 right-0 p-4 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-                <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                             <Calculator size={24} />

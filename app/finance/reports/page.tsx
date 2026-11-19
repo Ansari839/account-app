@@ -83,7 +83,7 @@ export default function ReportsHub() {
 
     return (
         <MainLayout>
-            <div className="max-w-7xl mx-auto space-y-8 pb-32 animate-in fade-in duration-700">
+            <div className="w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-8 pb-32 animate-in fade-in duration-700">
                 
                 {/* Premium Dark Header Card */}
                 <div className="bg-slate-950 rounded-[2rem] p-10 shadow-2xl shadow-indigo-500/10 relative overflow-hidden border border-slate-800">

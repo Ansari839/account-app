@@ -45,7 +45,7 @@ export default function PurchaseReturnDetailPage() {
 
     return (
         <MainLayout>
-            <div className="p-6 max-w-5xl mx-auto space-y-6">
+            <div className="p-6 w-full max-w-[98%] 2xl:max-w-[1700px] mx-auto px-2 sm:px-4 space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
