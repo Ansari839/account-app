@@ -11,7 +11,14 @@ export async function GET(req: NextRequest) {
 
         // Fetch products (non-service for inputs/outputs)
         const rawProducts = await prisma.product.findMany({
-            where: { companyId, isService: false },
+            where: {
+                deletedAt: null,
+                isService: false,
+                OR: [
+                    { companyId },
+                    { companyId: 'default-company' }
+                ]
+            },
             include: {
                 Unit: true,
                 Category: true
@@ -32,7 +39,22 @@ export async function GET(req: NextRequest) {
 
         // Fetch strictly service products (Dyeing, Printing, Weaving, Knitting, etc.)
         const rawServiceProducts = await prisma.product.findMany({
-            where: { companyId, isService: true },
+            where: {
+                deletedAt: null,
+                OR: [
+                    { isService: true },
+                    { Category: { isService: true } },
+                    { Category: { name: { in: ['DYEING', 'PRINTING', 'WEAVING', 'KNITTING', 'SERVICES', 'PROCESSING'] } } }
+                ],
+                AND: [
+                    {
+                        OR: [
+                            { companyId },
+                            { companyId: 'default-company' }
+                        ]
+                    }
+                ]
+            },
             include: {
                 Unit: true,
                 Category: true

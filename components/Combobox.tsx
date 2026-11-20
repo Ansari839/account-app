@@ -303,7 +303,11 @@ export default function Combobox({
                             })
                         ) : (
                             <div className="py-6 px-4 text-xs font-semibold text-slate-400 text-center flex flex-col items-center justify-center gap-1">
-                                <span>No results matching &ldquo;{searchTerm}&rdquo;</span>
+                                {searchTerm ? (
+                                    <span>No results matching &ldquo;{searchTerm}&rdquo;</span>
+                                ) : (
+                                    <span>No options available</span>
+                                )}
                             </div>
                         )}
                     </div>

@@ -305,11 +305,24 @@ export default function ProductionExecutionWizard() {
 
     // Service Products for Accrual (Strictly Service Products: Dyeing, Printing, Bleaching, Washing, etc.)
     const serviceProductOptions = useMemo(() => {
-        return serviceProducts.map(p => ({
+        // Collect services from serviceProducts with fallback to any service-tagged product
+        const list = (serviceProducts && serviceProducts.length > 0)
+            ? [...serviceProducts]
+            : products.filter(p => p.isService || p.Category?.isService || p.category?.name?.toUpperCase().includes("SERVICE") || ['DYEING', 'PRINTING', 'WEAVING', 'KNITTING'].some(term => (p.name || '').toUpperCase().includes(term)));
+        
+        // Also ensure any service products from products array are merged if missing
+        for (const p of products) {
+            if ((p.isService || p.Category?.isService) && !list.some(item => item.id === p.id)) {
+                list.push(p);
+            }
+        }
+
+        return list.map(p => ({
             value: p.id,
-            label: `${p.name} (${p.code}) ${p.hsCode ? `[HS: ${p.hsCode}]` : ''}`
+            label: `${p.name} (${p.code}) ${p.hsCode ? `[HS: ${p.hsCode}]` : ''}`,
+            sublabel: (p.category?.name || p.Category?.name) ? `Category: ${p.category?.name || p.Category?.name}` : undefined
         }));
-    }, [serviceProducts]);
+    }, [serviceProducts, products]);
 
     // Supplier Options for Accrual Linking
     const supplierOptions = useMemo(() => {
@@ -559,6 +572,45 @@ export default function ProductionExecutionWizard() {
         setIsServiceModalOpen(false);
     };
 
+    const openModalAccrualForm = () => {
+        setModalShowAccrualForm(true);
+        const r = (serviceModalTarget === "PROCESSING" && activeProcessingRowIndex !== null && activeProcessingRowIndex < processingServices.length)
+            ? processingServices[activeProcessingRowIndex]
+            : null;
+
+        // Sensible default product
+        let defaultProdId = r?.productId || "";
+        if (!defaultProdId) {
+            const list = (serviceProducts && serviceProducts.length > 0) ? serviceProducts : products;
+            if (serviceModalTarget === "WEAVING_KNITTING") {
+                const match = list.find(p => (p.name || '').toUpperCase().includes("WEAV") || (p.name || '').toUpperCase().includes("KNIT"));
+                if (match) defaultProdId = match.id;
+            } else {
+                const match = list.find(p => (p.name || '').toUpperCase().includes("DYE") || (p.name || '').toUpperCase().includes("PRINT"));
+                if (match) defaultProdId = match.id;
+            }
+            if (!defaultProdId && list.length > 0) {
+                const firstService = list.find(p => p.isService) || list[0];
+                if (firstService) defaultProdId = firstService.id;
+            }
+        }
+
+        setModalAccrualProductId(defaultProdId);
+        setModalAccrualSupplierId(r?.supplierId || "");
+        
+        let defaultQty = r?.qty || "";
+        if (!defaultQty || defaultQty === "0") {
+            if (effectiveNetWeightKg > 0) {
+                defaultQty = effectiveNetWeightKg.toString();
+            } else if (outputQuantity && outputUnitCode === "KG") {
+                defaultQty = outputQuantity;
+            }
+        }
+        setModalAccrualQty(defaultQty);
+        setModalAccrualRate(r?.rate || "");
+        setModalAccrualWastage((r?.wastage !== undefined ? r.wastage : (serviceModalTarget === "WEAVING_KNITTING" ? weavingWastage : 0)).toString());
+    };
+
     const handleApplyAccrualFromModal = () => {
         if (!modalAccrualProductId) {
             alert("Please select a Service / Process product.");
@@ -570,25 +622,53 @@ export default function ProductionExecutionWizard() {
             return;
         }
         const r = parseFloat(modalAccrualRate) || 0;
-        const selProd = serviceProducts.find(p => p.id === modalAccrualProductId);
-        const unitCode = selProd?.baseUnit?.code || "KG";
+        const selProd = (serviceProducts && serviceProducts.find(p => p.id === modalAccrualProductId)) || products.find(p => p.id === modalAccrualProductId);
+        const unitCode = selProd?.baseUnit?.code || selProd?.Unit?.code || "KG";
 
-        if (serviceModalTarget === "PROCESSING" && activeProcessingRowIndex !== null) {
-            setProcessingServices(prev => prev.map((p, idx) => {
-                if (idx !== activeProcessingRowIndex) return p;
-                return {
-                    ...p,
-                    mode: "ACCRUAL",
-                    serviceId: "",
-                    productId: modalAccrualProductId,
-                    supplierId: modalAccrualSupplierId || "",
-                    manualName: selProd?.name || p.manualName,
-                    qty: modalAccrualQty,
-                    rate: modalAccrualRate,
-                    wastage: parseFloat(modalAccrualWastage) || 0,
-                    unit: unitCode
-                };
-            }));
+        if (serviceModalTarget === "PROCESSING") {
+            if (activeProcessingRowIndex !== null && activeProcessingRowIndex < processingServices.length) {
+                setProcessingServices(prev => prev.map((p, idx) => {
+                    if (idx !== activeProcessingRowIndex) return p;
+                    return {
+                        ...p,
+                        mode: "ACCRUAL",
+                        serviceId: "",
+                        productId: modalAccrualProductId,
+                        supplierId: modalAccrualSupplierId || "",
+                        manualName: selProd?.name || p.manualName,
+                        qty: modalAccrualQty,
+                        rate: modalAccrualRate,
+                        wastage: parseFloat(modalAccrualWastage) || 0,
+                        unit: unitCode
+                    };
+                }));
+            } else {
+                setProcessingServices(prev => [
+                    ...prev,
+                    {
+                        id: `ps-${Date.now()}`,
+                        mode: "ACCRUAL",
+                        serviceId: "",
+                        productId: modalAccrualProductId,
+                        supplierId: modalAccrualSupplierId || "",
+                        manualName: selProd?.name || "Processing Service",
+                        qty: modalAccrualQty,
+                        rate: modalAccrualRate,
+                        wastage: parseFloat(modalAccrualWastage) || 0,
+                        unit: unitCode
+                    }
+                ]);
+            }
+        } else if (serviceModalTarget === "WEAVING_KNITTING") {
+            setWeavingMode("OUT_HOUSE");
+            setOutHouseFabricMode("MANUAL");
+            setOutHouseFabricManualRate(modalAccrualRate);
+            if (modalAccrualWastage && parseFloat(modalAccrualWastage) > 0) {
+                setWeavingWastage(parseFloat(modalAccrualWastage));
+            }
+            if (q > 0) {
+                setWeavingServiceQty(modalAccrualQty);
+            }
         }
         setIsServiceModalOpen(false);
     };
@@ -2013,7 +2093,7 @@ export default function ProductionExecutionWizard() {
 
                         {/* Tab Switcher: Available Bills vs Create Accrual */}
                         <div className="px-5 py-3 bg-slate-100/70 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                            <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-bold w-full sm:w-auto">
+                            <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-bold w-full sm:w-auto shadow-sm">
                                 <button
                                     type="button"
                                     onClick={() => setModalShowAccrualForm(false)}
@@ -2029,17 +2109,7 @@ export default function ProductionExecutionWizard() {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setModalShowAccrualForm(true);
-                                        if (activeProcessingRowIndex !== null) {
-                                            const r = processingServices[activeProcessingRowIndex];
-                                            setModalAccrualProductId(r?.productId || (serviceProducts[0]?.id || ""));
-                                            setModalAccrualSupplierId(r?.supplierId || "");
-                                            setModalAccrualQty(r?.qty || (effectiveNetWeightKg > 0 ? effectiveNetWeightKg.toString() : ""));
-                                            setModalAccrualRate(r?.rate || "");
-                                            setModalAccrualWastage((r?.wastage || 0).toString());
-                                        }
-                                    }}
+                                    onClick={openModalAccrualForm}
                                     className={cn(
                                         "flex-1 sm:flex-initial px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2",
                                         modalShowAccrualForm
@@ -2054,47 +2124,53 @@ export default function ProductionExecutionWizard() {
 
                             {!modalShowAccrualForm && (
                                 <span className="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">
-                                    Stock na milne per &quot;+ Create Accrual&quot; per click karke adjustment entry banayein.
+                                    Stock na milne per &quot;+ Create Accrual&quot; per click karke unbilled adjustment entry banayein.
                                 </span>
                             )}
                         </div>
 
                         {modalShowAccrualForm ? (
-                            /* IN-MODAL ACCRUAL FORM */
-                            <div className="overflow-y-auto flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
-                                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
-                                    <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 font-black text-base shadow-sm">
-                                        !
+                            /* IN-MODAL ACCRUAL FORM (PREMIUM CLEAN UI) */
+                            <div className="overflow-y-auto flex-1 p-6 sm:p-8 max-w-3xl mx-auto w-full space-y-6">
+                                <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/25 flex items-start gap-3.5">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-sm">
+                                        <FileText size={20} />
                                     </div>
-                                    <div className="text-xs sm:text-sm space-y-0.5">
-                                        <span className="font-bold text-amber-700 dark:text-amber-300 block text-sm sm:text-base">
-                                            Stock Not in ERP? Record Unbilled Service Accrual
-                                        </span>
-                                        <span className="text-slate-600 dark:text-slate-400">
-                                            Agar dyeing/printing factory floor per use ho chuki hai magar vendor ka bill nahi aaya, to yahan entry banayein. Ye entry batch cost me shamil ho jayegi aur Accrued Expenses me record hogi. Baad me Purchase Invoice me partial ya complete match ki ja sakti hai.
-                                        </span>
+                                    <div className="space-y-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h4 className="font-black text-sm text-slate-900 dark:text-white">Unbilled Service Accrual Entry</h4>
+                                            <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-[10px] font-black uppercase tracking-wider border border-amber-500/30">
+                                                Account 2130 (Accrued Expenses)
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                                            Agar dyeing/printing ya weaving factory floor per use ho chuki hai magar vendor ka invoice ERP me nahi aaya, to yahan entry banayein. Batch run hone par system auto <b>Dr WIP (1320)</b> aur <b>Cr Accrued Expenses (2130)</b> record karega. Baad me actual bill aane par Purchase Invoice se partial ya complete match kiya ja sakega.
+                                        </p>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                     <div className="space-y-1.5">
-                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                                            Service / Process Product <span className="text-rose-500 font-black">*</span>
-                                            <span className="text-[11px] text-slate-400 font-normal">(Strictly Services)</span>
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                                            <span>Service / Process Product <span className="text-rose-500 font-black">*</span></span>
+                                            <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                                                {serviceProductOptions.length} Service(s) Available
+                                            </span>
                                         </label>
                                         <Combobox
                                             options={serviceProductOptions}
                                             value={modalAccrualProductId}
                                             onChange={(val) => setModalAccrualProductId(val)}
-                                            placeholder="Select Service (Dyeing, Printing, etc)..."
+                                            placeholder="Select Service (Dyeing, Printing, Weaving, etc)..."
                                             searchPlaceholder="Search service name or HS code..."
                                             className="w-full text-sm font-semibold"
                                         />
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
-                                            Job Work Vendor / Supplier <span className="text-slate-400 font-normal">(Optional)</span>
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                                            <span>Job Work Vendor / Supplier</span>
+                                            <span className="text-[11px] text-slate-400 font-normal">Optional</span>
                                         </label>
                                         <Combobox
                                             options={supplierOptions}
@@ -2108,48 +2184,58 @@ export default function ProductionExecutionWizard() {
                                 </div>
 
                                 {modalAccrualProductId && (() => {
-                                    const prod = serviceProducts.find(p => p.id === modalAccrualProductId);
+                                    const prod = serviceProducts.find(p => p.id === modalAccrualProductId) || products.find(p => p.id === modalAccrualProductId);
+                                    if (!prod) return null;
                                     return (
-                                        <div className="flex flex-wrap items-center gap-2.5 px-4 py-2.5 bg-indigo-500/5 dark:bg-indigo-950/20 rounded-xl border border-indigo-500/15 text-xs sm:text-sm">
-                                            <span className="font-bold text-slate-800 dark:text-slate-200">{prod?.name}</span>
-                                            <span className="text-slate-400 font-mono">({prod?.code})</span>
-                                            {prod?.hsCode && (
-                                                <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs inline-flex items-center gap-1">
-                                                    <span className="text-[10px] font-black opacity-75">HS</span>
-                                                    {prod.hsCode}
-                                                </span>
-                                            )}
-                                            <span className="ml-auto text-amber-600 dark:text-amber-400 font-bold text-xs">
-                                                ● Production Accrual Liability
-                                            </span>
+                                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="font-bold text-slate-900 dark:text-white text-sm">{prod.name}</span>
+                                                <span className="text-slate-400 font-mono">({prod.code})</span>
+                                                {prod.hsCode && (
+                                                    <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs inline-flex items-center gap-1">
+                                                        <span className="text-[10px] font-black opacity-75">HS</span>
+                                                        {prod.hsCode}
+                                                    </span>
+                                                )}
+                                                {prod.category?.name && (
+                                                    <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-bold text-[11px] uppercase">
+                                                        {prod.category.name}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="text-slate-500 text-xs font-medium">
+                                                Billing Unit: <b className="font-mono text-slate-800 dark:text-slate-200">{prod.baseUnit?.code || prod.Unit?.code || 'KG'}</b>
+                                            </div>
                                         </div>
                                     );
                                 })()}
 
-                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5 pt-1">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
+                                            Billing Qty <span className="text-rose-500 font-black">*</span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="any"
+                                            value={modalAccrualQty}
+                                            onChange={(e) => setModalAccrualQty(e.target.value)}
+                                            placeholder="0.00"
+                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                        />
+                                    </div>
+
                                     <div className="space-y-1.5">
                                         <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
                                             Wastage %
                                         </label>
                                         <input
                                             type="number"
+                                            step="any"
                                             value={modalAccrualWastage}
                                             onChange={(e) => setModalAccrualWastage(e.target.value)}
                                             placeholder="0"
-                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
-                                            Billing Qty (KG) <span className="text-rose-500 font-black">*</span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={modalAccrualQty}
-                                            onChange={(e) => setModalAccrualQty(e.target.value)}
-                                            placeholder="0.00"
-                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
                                         />
                                     </div>
 
@@ -2159,38 +2245,49 @@ export default function ProductionExecutionWizard() {
                                         </label>
                                         <input
                                             type="number"
+                                            step="any"
                                             value={modalAccrualRate}
                                             onChange={(e) => setModalAccrualRate(e.target.value)}
                                             placeholder="0.00"
-                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
                                         />
                                     </div>
 
                                     <div className="space-y-1.5">
                                         <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
-                                            Line Total (PKR)
+                                            Estimated Line Total
                                         </label>
-                                        <div className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/60 font-mono text-sm font-bold text-amber-600 dark:text-amber-400 text-right h-[44px] flex items-center justify-end">
+                                        <div className="px-3.5 py-2 bg-gradient-to-br from-amber-500/10 to-amber-600/5 dark:from-amber-950/30 dark:to-slate-900 rounded-xl border border-amber-500/25 font-mono text-sm font-black text-amber-600 dark:text-amber-400 text-right h-[44px] flex items-center justify-end">
                                             Rs. {((parseFloat(modalAccrualQty) || 0) * (parseFloat(modalAccrualRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                <div className="flex items-center justify-between pt-5 border-t border-slate-100 dark:border-slate-800">
                                     <button
                                         type="button"
                                         onClick={() => setModalShowAccrualForm(false)}
-                                        className="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all text-sm"
+                                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold transition-all text-xs sm:text-sm"
                                     >
-                                        Cancel / Back to Bills
+                                        ← Back to Available Bills
                                     </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleApplyAccrualFromModal}
-                                        className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center gap-2"
-                                    >
-                                        <CheckCircle2 size={16} /> Apply Accrual to Batch
-                                    </button>
+                                    <div className="flex items-center gap-2.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsServiceModalOpen(false)}
+                                            className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-xs sm:text-sm"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleApplyAccrualFromModal}
+                                            disabled={!modalAccrualProductId || !modalAccrualQty || parseFloat(modalAccrualQty) <= 0}
+                                            className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all flex items-center gap-2"
+                                        >
+                                            <CheckCircle2 size={16} /> Apply Accrual to Batch
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ) : (
@@ -2244,16 +2341,7 @@ export default function ProductionExecutionWizard() {
                                             </p>
                                             <button
                                                 type="button"
-                                                onClick={() => {
-                                                    setModalShowAccrualForm(true);
-                                                    if (activeProcessingRowIndex !== null) {
-                                                        const r = processingServices[activeProcessingRowIndex];
-                                                        setModalAccrualProductId(r?.productId || (serviceProducts[0]?.id || ""));
-                                                        setModalAccrualSupplierId(r?.supplierId || "");
-                                                        setModalAccrualQty(r?.qty || (effectiveNetWeightKg > 0 ? effectiveNetWeightKg.toString() : ""));
-                                                        setModalAccrualRate(r?.rate || "");
-                                                    }
-                                                }}
+                                                onClick={openModalAccrualForm}
                                                 className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-sm shadow-md active:scale-95 transition-all inline-flex items-center gap-2 mt-2"
                                             >
                                                 <Plus size={16} /> + Create Service Accrual Entry
