@@ -199,30 +199,63 @@ export async function GET(req: NextRequest) {
 
         // Also fetch GRN services (services received in warehouse via GRN)
         try {
-            const grnServices = await prisma.gRNItem.findMany({
-                where: {
-                    grn: { companyId },
-                    product: { isService: true }
-                },
-                include: {
-                    grn: {
-                        select: {
-                            grnNo: true,
-                            date: true,
-                            supplier: { select: { name: true } }
-                        }
+            let grnServices: any[] = [];
+            try {
+                grnServices = await (prisma.gRNItem as any).findMany({
+                    where: {
+                        grn: { companyId },
+                        product: { isService: true }
                     },
-                    product: {
-                        include: {
-                            Category: { select: { name: true } },
-                            Unit: { select: { code: true } }
-                        }
+                    include: {
+                        grn: {
+                            select: {
+                                grnNo: true,
+                                date: true,
+                                supplier: { select: { name: true } }
+                            }
+                        },
+                        product: {
+                            include: {
+                                Category: { select: { name: true } },
+                                Unit: { select: { code: true } }
+                            }
+                        },
+                        unit: { select: { code: true } }
+                    }
+                });
+            } catch (err: any) {
+                // Fallback for capitalized schema relations
+                grnServices = await (prisma.gRNItem as any).findMany({
+                    where: {
+                        GRN: { companyId },
+                        Product: { isService: true }
                     },
-                    unit: { select: { code: true } }
-                }
-            });
+                    include: {
+                        GRN: {
+                            select: {
+                                grnNo: true,
+                                date: true,
+                                supplier: { select: { name: true } }
+                            }
+                        },
+                        Product: {
+                            include: {
+                                Category: { select: { name: true } },
+                                Unit: { select: { code: true } }
+                            }
+                        },
+                        Unit: { select: { code: true } }
+                    }
+                }).catch(() => []);
+            }
 
-            for (const grnItem of grnServices) {
+            for (const rawGrn of grnServices) {
+                const grnItem = {
+                    ...rawGrn,
+                    grn: rawGrn.grn || rawGrn.GRN,
+                    product: rawGrn.product || rawGrn.Product,
+                    unit: rawGrn.unit || rawGrn.Unit
+                };
                 const receivedQty = Number(grnItem.qtyReceived);
                 if (receivedQty <= 0) continue;
 
@@ -433,35 +466,73 @@ export async function GET(req: NextRequest) {
 
         // Fetch GRN lots for raw materials (received via GRN)
         try {
-            const grnRawItems = await prisma.gRNItem.findMany({
-                where: {
-                    grn: { companyId },
-                    product: { isManufactured: false, isService: false }
-                },
-                include: {
-                    grn: {
-                        select: {
-                            grnNo: true,
-                            date: true,
-                            supplier: { select: { name: true } }
-                        }
+            let grnRawItems: any[] = [];
+            try {
+                grnRawItems = await (prisma.gRNItem as any).findMany({
+                    where: {
+                        grn: { companyId },
+                        product: { isManufactured: false, isService: false }
                     },
-                    product: {
-                        select: {
-                            id: true,
-                            name: true,
-                            code: true,
-                            hsCode: true,
-                            stage: true,
-                            isService: true,
-                            Unit: { select: { code: true } }
-                        }
+                    include: {
+                        grn: {
+                            select: {
+                                grnNo: true,
+                                date: true,
+                                supplier: { select: { name: true } }
+                            }
+                        },
+                        product: {
+                            select: {
+                                id: true,
+                                name: true,
+                                code: true,
+                                hsCode: true,
+                                stage: true,
+                                isService: true,
+                                Unit: { select: { code: true } }
+                            }
+                        },
+                        unit: { select: { code: true } }
+                    }
+                });
+            } catch (err: any) {
+                // Fallback for capitalized schema relations
+                grnRawItems = await (prisma.gRNItem as any).findMany({
+                    where: {
+                        GRN: { companyId },
+                        Product: { isManufactured: false, isService: false }
                     },
-                    unit: { select: { code: true } }
-                }
-            });
+                    include: {
+                        GRN: {
+                            select: {
+                                grnNo: true,
+                                date: true,
+                                supplier: { select: { name: true } }
+                            }
+                        },
+                        Product: {
+                            select: {
+                                id: true,
+                                name: true,
+                                code: true,
+                                hsCode: true,
+                                stage: true,
+                                isService: true,
+                                Unit: { select: { code: true } }
+                            }
+                        },
+                        Unit: { select: { code: true } }
+                    }
+                }).catch(() => []);
+            }
 
-            for (const grnItem of grnRawItems) {
+            for (const rawItem of grnRawItems) {
+                const grnItem = {
+                    ...rawItem,
+                    grn: rawItem.grn || rawItem.GRN,
+                    product: rawItem.product || rawItem.Product,
+                    unit: rawItem.unit || rawItem.Unit
+                };
                 const stockKey = `${grnItem.productId}-${grnItem.product?.stage || 'RAW'}-STD`;
                 const remainingStock = stockRates[stockKey] ? stockRates[stockKey].qty : 0;
                 const receivedQty = Number(grnItem.qtyReceived);

@@ -111,12 +111,27 @@ export async function POST(req: NextRequest) {
                             creditAccount = anyAcc?.id;
                         }
 
+                        let validSupplierId: string | null = null;
+                        if (ov.supplierId) {
+                            const s = await tx.supplier.findFirst({ where: { id: ov.supplierId, companyId } });
+                            if (s) validSupplierId = s.id;
+                        }
+
+                        let validUnitId: string | null = null;
+                        if (ov.unitId) {
+                            const u = await tx.unit.findFirst({ where: { id: ov.unitId } });
+                            if (u) validUnitId = u.id;
+                        }
+                        if (!validUnitId && prod?.baseUnitId) {
+                            validUnitId = prod.baseUnitId;
+                        }
+
                         accrualRecordsToCreate.push({
                             companyId,
                             accrualNo,
                             productId: ov.productId || (await tx.product.findFirst({ where: { companyId } }))?.id,
-                            supplierId: ov.supplierId || null,
-                            unitId: ov.unitId || prod?.baseUnitId || null,
+                            supplierId: validSupplierId,
+                            unitId: validUnitId,
                             date: new Date(date),
                             stage: processStage,
                             serviceType: ov.serviceType || (prodName.toUpperCase().includes('DYE') ? 'DYEING' : prodName.toUpperCase().includes('PRINT') ? 'PRINTING' : 'WEAVING'),
@@ -132,7 +147,7 @@ export async function POST(req: NextRequest) {
                             description: `Unbilled Accrual [${accrualNo}]: ${prodName} (@ Rs. ${rate})`,
                             amount: ovAmount,
                             quantity: consumeQty,
-                            unitId: ov.unitId || prod?.baseUnitId || null
+                            unitId: validUnitId
                         });
 
                         if (creditAccount) {
@@ -199,24 +214,34 @@ export async function POST(req: NextRequest) {
                             }
                         } else if (ov.purchaseInvoiceItemId.startsWith("GRN-SVC-")) {
                             const grnItemId = ov.purchaseInvoiceItemId.replace("GRN-SVC-", "");
-                            const grnItem = await tx.gRNItem.findUnique({
-                                where: { id: grnItemId },
-                                include: { grn: true, product: { include: { Category: true } } }
-                            });
+                            let grnItem: any = null;
+                            try {
+                                grnItem = await (tx.gRNItem as any).findUnique({
+                                    where: { id: grnItemId },
+                                    include: { grn: true, product: { include: { Category: true } } }
+                                });
+                            } catch {
+                                grnItem = await (tx.gRNItem as any).findUnique({
+                                    where: { id: grnItemId },
+                                    include: { GRN: true, Product: { include: { Category: true } } }
+                                });
+                            }
                             if (!grnItem) throw new Error("GRN Service item not found");
+                            const grnObj = grnItem.grn || grnItem.GRN;
+                            const prodObj = grnItem.product || grnItem.Product;
 
                             const consumeQty = Number(ov.quantity);
                             const ovAmount = consumeQty * Number(grnItem.rate || 0);
                             serviceCost += ovAmount;
 
                             overheadRecords.push({
-                                description: `GRN Service Consumed: ${grnItem.grn?.grnNo} - ${grnItem.product?.name}`,
+                                description: `GRN Service Consumed: ${grnObj?.grnNo || 'GRN'} - ${prodObj?.name || 'Service'}`,
                                 amount: ovAmount,
                                 quantity: consumeQty,
                                 unitId: grnItem.unitId
                             });
 
-                            const cat = grnItem.product?.Category;
+                            const cat = prodObj?.Category;
                             let creditAccount = cat?.wipAccountId;
                             if (!creditAccount) {
                                 const fallbackAcc = await tx.account.findFirst({
@@ -316,11 +341,7 @@ export async function POST(req: NextRequest) {
             const isOutputEFS = inputs.some((input: any) => input.isEFS === true);
             
             // Generate Batch Number (Journal No)
-            const lastRecord = await tx.productionRecord.findFirst({
-                where: { companyId },
-                orderBy: { createdAt: 'desc' }
-            });
-            const batchNo = `BATCH-${Date.now().toString().slice(-6)}`;
+            const batchNo = `BATCH-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 900 + 100)}`;
             const jvNo = `JV-${batchNo}`;
 
             // 2. Create Production Record
@@ -513,6 +534,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ success: true, data: result });
     } catch (e: any) {
-        return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+        console.error("[PRODUCTION_EXECUTION_POST_ERROR]:", e);
+        return NextResponse.json({ success: false, error: e.message || "Failed to post production batch" }, { status: 500 });
     }
 }
