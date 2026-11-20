@@ -998,11 +998,8 @@ export default function ProductionExecutionWizard() {
                     </div>
                 </div>
 
-                {/* Main 2-Column Content Layout */}
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-                    
-                    {/* LEFT CANVAS: PRODUCTION STAGES (8 Cols) */}
-                    <div className="xl:col-span-8 space-y-6">
+                {/* Main Full-Width Production Stages & Costing Layout */}
+                <div className="space-y-8 w-full">
                         
                         {/* SECTION 1: TARGET OUTPUT PRODUCT & QUANTITIES */}
                         <div className="p-6 sm:p-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
@@ -1783,98 +1780,144 @@ export default function ProductionExecutionWizard() {
                                 </div>
                             </div>
                         )}
-                    </div>
 
-                    {/* RIGHT SIDEBAR: REALTIME COSTING & POST BUTTON (4 Cols) */}
-                    <div className="xl:col-span-4 space-y-6">
-                        <div className="p-6 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 sticky top-6">
-                            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-                                        <Calculator size={20} />
+                        {/* SECTION 5: FULL-WIDTH BATCH COST SUMMARY & EXECUTION ACTION */}
+                        <div className="p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
+                                        <Calculator size={22} />
                                     </div>
-                                    <h3 className="text-base font-black uppercase tracking-wider text-slate-900 dark:text-white">Batch Cost Summary</h3>
+                                    <div>
+                                        <h3 className="text-lg sm:text-xl font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                                            Batch Cost Summary & Execution
+                                        </h3>
+                                        <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
+                                            Realtime production costing breakdown before posting execution to General Ledger and Inventory.
+                                        </p>
+                                    </div>
                                 </div>
-                                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-3 py-1 rounded-full">Live Preview</span>
+                                <span className="text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 px-3.5 py-1.5 rounded-full self-start sm:self-auto">
+                                    Live Cost Valuation
+                                </span>
                             </div>
 
-                            <div className="space-y-3.5 text-sm">
-                                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
-                                    <span className="text-slate-600 dark:text-slate-400 font-medium">1. Raw Yarn Cost:</span>
-                                    <span className="font-mono font-bold text-base text-slate-900 dark:text-slate-100">
+                            {/* Cost Breakdown Cards (Full Width Grid) */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+                                {/* Card 1: Yarn / Grey Cost */}
+                                <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-1">
+                                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                                        1. Raw Material / Yarn
+                                    </span>
+                                    <span className="text-2xl font-black font-mono text-slate-900 dark:text-white block">
                                         Rs. {yarnCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
+                                    <span className="text-xs text-slate-400">Stage 3 physical warehouse stock</span>
                                 </div>
 
-                                {executionMode !== "GREY_TO_FINISH" && (
-                                    <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
-                                        <span className="text-slate-600 dark:text-slate-400 font-medium">2. {fabricProcessType} Cost:</span>
-                                        <span className="font-mono font-bold text-base text-slate-900 dark:text-slate-100">
+                                {/* Card 2: Fabric Making */}
+                                {executionMode !== "GREY_TO_FINISH" ? (
+                                    <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-1">
+                                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                                            2. {fabricProcessType} Making
+                                        </span>
+                                        <span className="text-2xl font-black font-mono text-blue-600 dark:text-blue-400 block">
                                             Rs. {fabricMakingCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
+                                        <span className="text-xs text-slate-400">{weavingMode === "IN_HOUSE" ? "In-House Rate Overhead" : "Vendor / Accrual"}</span>
+                                    </div>
+                                ) : (
+                                    <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-1">
+                                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                                            2. Fabric Making
+                                        </span>
+                                        <span className="text-2xl font-black font-mono text-slate-400 block">
+                                            -
+                                        </span>
+                                        <span className="text-xs text-slate-400">Direct Grey Fabric Input</span>
                                     </div>
                                 )}
 
-                                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
-                                    <span className="text-slate-600 dark:text-slate-400 font-medium">3. Processing Services:</span>
-                                    <span className="font-mono font-bold text-base text-amber-600 dark:text-amber-400">
+                                {/* Card 3: Wet Processing Services */}
+                                <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-1">
+                                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                                        3. Processing Services
+                                    </span>
+                                    <span className="text-2xl font-black font-mono text-amber-600 dark:text-amber-400 block">
                                         Rs. {processingCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
+                                    <span className="text-xs text-slate-400">Dyeing, printing & finishing</span>
                                 </div>
 
-                                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80">
-                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">Total Batch Cost:</span>
-                                    <span className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400 block mt-1.5">
+                                {/* Card 4: TOTAL BATCH COST */}
+                                <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent dark:from-emerald-950/40 dark:to-slate-900 border border-emerald-500/30 space-y-1 shadow-sm">
+                                    <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
+                                        Total Batch Cost
+                                    </span>
+                                    <span className="text-2xl sm:text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400 block">
                                         Rs. {totalBatchCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3.5 pt-1">
-                                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
-                                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">Cost / KG:</span>
-                                        <span className="text-base font-black font-mono text-slate-900 dark:text-slate-100 mt-1 block">
-                                            Rs. {costPerKg.toFixed(2)}
-                                        </span>
-                                    </div>
-                                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
-                                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">Cost / {outputUnitCode}:</span>
-                                        <span className="text-base font-black font-mono text-slate-900 dark:text-slate-100 mt-1 block">
-                                            Rs. {costPerUnit.toFixed(2)}
-                                        </span>
-                                    </div>
+                                    <span className="text-xs text-emerald-600/80 dark:text-emerald-400/80 font-bold">Comprehensive Valuation</span>
                                 </div>
                             </div>
 
-                            <div className="space-y-3 pt-2">
+                            {/* Unit Metrics Strip */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
+                                <div>
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">Effective Net Weight:</span>
+                                    <span className="text-base sm:text-lg font-black font-mono text-slate-800 dark:text-slate-200 mt-0.5 block">
+                                        {effectiveNetWeightKg.toLocaleString()} KG
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">Output Units:</span>
+                                    <span className="text-base sm:text-lg font-black font-mono text-slate-800 dark:text-slate-200 mt-0.5 block">
+                                        {outputQuantity ? `${Number(outputQuantity).toLocaleString()} ${outputUnitCode}` : '-'}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">Cost / KG:</span>
+                                    <span className="text-base sm:text-lg font-black font-mono text-indigo-600 dark:text-indigo-400 mt-0.5 block">
+                                        Rs. {costPerKg.toFixed(2)}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">Cost / {outputUnitCode}:</span>
+                                    <span className="text-base sm:text-lg font-black font-mono text-indigo-600 dark:text-indigo-400 mt-0.5 block">
+                                        Rs. {costPerUnit.toFixed(2)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Full Width Action Buttons Row */}
+                            <div className="flex flex-col sm:flex-row items-center gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <button
+                                    type="button"
+                                    onClick={() => router.push("/finance/production")}
+                                    className="w-full sm:w-auto px-8 py-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-base rounded-2xl transition-all"
+                                >
+                                    Cancel
+                                </button>
                                 <button
                                     type="button"
                                     onClick={handleSubmit}
                                     disabled={submitting}
-                                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-black rounded-xl shadow-md shadow-indigo-600/20 text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                                    className="flex-1 w-full py-4 px-8 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] disabled:opacity-50 text-white font-black rounded-2xl shadow-xl shadow-indigo-600/25 text-lg flex items-center justify-center gap-3 transition-all cursor-pointer"
                                 >
                                     {submitting ? (
                                         <>
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                            <span>Posting Batch...</span>
+                                            <Loader2 className="w-6 h-6 animate-spin" />
+                                            <span>Posting Production Batch to ERP & GL...</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Save size={18} />
-                                            <span>Post Production Execution</span>
+                                            <Save size={22} />
+                                            <span>Post Production Execution Batch (GL & Stock Ledger)</span>
                                         </>
                                     )}
                                 </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => router.push("/finance/production")}
-                                    className="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-xl transition-colors"
-                                >
-                                    Cancel
-                                </button>
                             </div>
                         </div>
-                    </div>
 
                 </div>
 
@@ -2065,19 +2108,19 @@ export default function ProductionExecutionWizard() {
 
             {/* 2. SERVICE BILL SELECTION MODAL TABLE */}
             {isServiceModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-                    <div className="w-full max-w-[96vw] 2xl:max-w-[1650px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+                    <div className="w-full max-w-[96vw] 2xl:max-w-[1650px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden h-[88vh] max-h-[900px] min-h-[660px] flex flex-col animate-in fade-in zoom-in-95 duration-200">
                         {/* Modal Header */}
                         <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
                                     <FileText size={24} />
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-wider">
                                         Select Service / Process Bill (Dyeing, Printing, Weaving, Knitting, GRN & Opening)
                                     </h3>
-                                    <p className="text-xs sm:text-sm text-slate-400">
+                                    <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
                                         Choose available vendor service bill, GRN receipt or opening service to offset conversion costs.
                                     </p>
                                 </div>
@@ -2085,7 +2128,7 @@ export default function ProductionExecutionWizard() {
                             <button
                                 type="button"
                                 onClick={() => setIsServiceModalOpen(false)}
-                                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                className="p-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             >
                                 <X size={22} />
                             </button>
@@ -2130,30 +2173,30 @@ export default function ProductionExecutionWizard() {
                         </div>
 
                         {modalShowAccrualForm ? (
-                            /* IN-MODAL ACCRUAL FORM (PREMIUM CLEAN UI) */
-                            <div className="overflow-y-auto flex-1 p-6 sm:p-8 max-w-3xl mx-auto w-full space-y-6">
-                                <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/25 flex items-start gap-3.5">
-                                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-sm">
-                                        <FileText size={20} />
+                            /* IN-MODAL ACCRUAL FORM (PREMIUM SPACIOUS CLEAN UI) */
+                            <div className="overflow-y-auto flex-1 p-6 sm:p-10 max-w-4xl mx-auto w-full space-y-7">
+                                <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/30 flex items-start gap-4 shadow-sm">
+                                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-inner">
+                                        <FileText size={24} />
                                     </div>
-                                    <div className="space-y-1">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <h4 className="font-black text-sm text-slate-900 dark:text-white">Unbilled Service Accrual Entry</h4>
-                                            <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-[10px] font-black uppercase tracking-wider border border-amber-500/30">
+                                    <div className="space-y-1.5">
+                                        <div className="flex flex-wrap items-center gap-2.5">
+                                            <h4 className="font-black text-base text-slate-900 dark:text-white">Unbilled Service Accrual Entry</h4>
+                                            <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-xs font-black uppercase tracking-wider border border-amber-500/30">
                                                 Account 2130 (Accrued Expenses)
                                             </span>
                                         </div>
-                                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                                             Agar dyeing/printing ya weaving factory floor per use ho chuki hai magar vendor ka invoice ERP me nahi aaya, to yahan entry banayein. Batch run hone par system auto <b>Dr WIP (1320)</b> aur <b>Cr Accrued Expenses (2130)</b> record karega. Baad me actual bill aane par Purchase Invoice se partial ya complete match kiya ja sakega.
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
                                             <span>Service / Process Product <span className="text-rose-500 font-black">*</span></span>
-                                            <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
                                                 {serviceProductOptions.length} Service(s) Available
                                             </span>
                                         </label>
@@ -2167,10 +2210,10 @@ export default function ProductionExecutionWizard() {
                                         />
                                     </div>
 
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
                                             <span>Job Work Vendor / Supplier</span>
-                                            <span className="text-[11px] text-slate-400 font-normal">Optional</span>
+                                            <span className="text-xs text-slate-400 font-medium">Optional</span>
                                         </label>
                                         <Combobox
                                             options={supplierOptions}
@@ -2187,32 +2230,32 @@ export default function ProductionExecutionWizard() {
                                     const prod = serviceProducts.find(p => p.id === modalAccrualProductId) || products.find(p => p.id === modalAccrualProductId);
                                     if (!prod) return null;
                                     return (
-                                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="font-bold text-slate-900 dark:text-white text-sm">{prod.name}</span>
-                                                <span className="text-slate-400 font-mono">({prod.code})</span>
+                                        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs shadow-sm">
+                                            <div className="flex flex-wrap items-center gap-2.5">
+                                                <span className="font-bold text-slate-900 dark:text-white text-base">{prod.name}</span>
+                                                <span className="text-slate-400 font-mono font-semibold">({prod.code})</span>
                                                 {prod.hsCode && (
-                                                    <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs inline-flex items-center gap-1">
+                                                    <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs inline-flex items-center gap-1">
                                                         <span className="text-[10px] font-black opacity-75">HS</span>
                                                         {prod.hsCode}
                                                     </span>
                                                 )}
                                                 {prod.category?.name && (
-                                                    <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-bold text-[11px] uppercase">
+                                                    <span className="px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-bold text-xs uppercase">
                                                         {prod.category.name}
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="text-slate-500 text-xs font-medium">
-                                                Billing Unit: <b className="font-mono text-slate-800 dark:text-slate-200">{prod.baseUnit?.code || prod.Unit?.code || 'KG'}</b>
+                                            <div className="text-slate-600 dark:text-slate-300 text-sm font-medium">
+                                                Billing Unit: <b className="font-mono text-slate-900 dark:text-white text-base">{prod.baseUnit?.code || prod.Unit?.code || 'KG'}</b>
                                             </div>
                                         </div>
                                     );
                                 })()}
 
-                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5 pt-1">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
+                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-1">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
                                             Billing Qty <span className="text-rose-500 font-black">*</span>
                                         </label>
                                         <input
@@ -2221,12 +2264,12 @@ export default function ProductionExecutionWizard() {
                                             value={modalAccrualQty}
                                             onChange={(e) => setModalAccrualQty(e.target.value)}
                                             placeholder="0.00"
-                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[48px]"
                                         />
                                     </div>
 
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
                                             Wastage %
                                         </label>
                                         <input
@@ -2235,12 +2278,12 @@ export default function ProductionExecutionWizard() {
                                             value={modalAccrualWastage}
                                             onChange={(e) => setModalAccrualWastage(e.target.value)}
                                             placeholder="0"
-                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[48px]"
                                         />
                                     </div>
 
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
                                             Estimated Rate (PKR) <span className="text-rose-500 font-black">*</span>
                                         </label>
                                         <input
@@ -2249,44 +2292,17 @@ export default function ProductionExecutionWizard() {
                                             value={modalAccrualRate}
                                             onChange={(e) => setModalAccrualRate(e.target.value)}
                                             placeholder="0.00"
-                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[48px]"
                                         />
                                     </div>
 
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
                                             Estimated Line Total
                                         </label>
-                                        <div className="px-3.5 py-2 bg-gradient-to-br from-amber-500/10 to-amber-600/5 dark:from-amber-950/30 dark:to-slate-900 rounded-xl border border-amber-500/25 font-mono text-sm font-black text-amber-600 dark:text-amber-400 text-right h-[44px] flex items-center justify-end">
+                                        <div className="px-4 py-3 bg-gradient-to-br from-amber-500/15 to-amber-600/5 dark:from-amber-950/40 dark:to-slate-900 rounded-xl border border-amber-500/30 font-mono text-base font-black text-amber-600 dark:text-amber-400 text-right h-[48px] flex items-center justify-end shadow-inner">
                                             Rs. {((parseFloat(modalAccrualQty) || 0) * (parseFloat(modalAccrualRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between pt-5 border-t border-slate-100 dark:border-slate-800">
-                                    <button
-                                        type="button"
-                                        onClick={() => setModalShowAccrualForm(false)}
-                                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold transition-all text-xs sm:text-sm"
-                                    >
-                                        ← Back to Available Bills
-                                    </button>
-                                    <div className="flex items-center gap-2.5">
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsServiceModalOpen(false)}
-                                            className="px-4 py-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-xs sm:text-sm"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={handleApplyAccrualFromModal}
-                                            disabled={!modalAccrualProductId || !modalAccrualQty || parseFloat(modalAccrualQty) <= 0}
-                                            className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all flex items-center gap-2"
-                                        >
-                                            <CheckCircle2 size={16} /> Apply Accrual to Batch
-                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -2467,16 +2483,49 @@ export default function ProductionExecutionWizard() {
                             </>
                         )}
 
-                        {/* Modal Footer */}
-                        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs sm:text-sm text-slate-400">
-                            <span>Showing {filteredModalServices.length} bill(s)</span>
-                            <button
-                                type="button"
-                                onClick={() => setIsServiceModalOpen(false)}
-                                className="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all text-xs sm:text-sm"
-                            >
-                                Close
-                            </button>
+                        {/* Modal Footer (Dynamic Clean Bar) */}
+                        <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 flex items-center justify-between text-xs sm:text-sm">
+                            {modalShowAccrualForm ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => setModalShowAccrualForm(false)}
+                                        className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold transition-all text-xs sm:text-sm"
+                                    >
+                                        ← Back to Available Bills
+                                    </button>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsServiceModalOpen(false)}
+                                            className="px-5 py-2.5 rounded-xl text-slate-500 hover:text-slate-700 dark:hover:text-white font-bold text-xs sm:text-sm transition-all"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleApplyAccrualFromModal}
+                                            disabled={!modalAccrualProductId || !modalAccrualQty || parseFloat(modalAccrualQty) <= 0}
+                                            className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                                        >
+                                            <CheckCircle2 size={16} /> Apply Accrual to Batch
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-slate-500 dark:text-slate-400 font-medium">
+                                        Showing {filteredModalServices.length} available service bill(s) / receipt(s)
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsServiceModalOpen(false)}
+                                        className="px-6 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all text-xs sm:text-sm"
+                                    >
+                                        Close
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
