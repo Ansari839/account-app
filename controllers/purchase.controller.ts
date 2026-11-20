@@ -321,9 +321,61 @@ export class PurchaseController {
             if (error) return error;
 
             const body = await req.json();
-            const { poId, supplierId, warehouseId, date, items } = body;
+            const { poId, warehouseId, date, items } = body;
+            let supplierId = body.supplierId;
 
-            // Generate GRN Number
+            if (!warehouseId) {
+                return NextResponse.json({ success: false, error: "Warehouse is required" }, { status: 400 });
+            }
+
+            // If poId is provided and supplierId is empty, get supplier from PO
+            if (!supplierId && poId) {
+                const linkedPo = await prisma.purchaseOrder.findUnique({ where: { id: poId } });
+                if (linkedPo) supplierId = linkedPo.supplierId;
+            }
+
+            // If supplierId is an Account ID, find or create corresponding Supplier
+            if (supplierId) {
+                const account = await prisma.account.findUnique({ where: { id: supplierId } });
+                if (account) {
+                    let supplier = await prisma.supplier.findFirst({
+                        where: { payableAccountId: account.id }
+                    });
+
+                    if (!supplier) {
+                        const lastSupplier = await prisma.supplier.findFirst({
+                            where: { code: { startsWith: 'SUP-' } },
+                            orderBy: { code: 'desc' }
+                        });
+                        let nextSupSeq = 1;
+                        if (lastSupplier) {
+                            const lastNum = parseInt(lastSupplier.code.split('-')[1]);
+                            if (!isNaN(lastNum)) nextSupSeq = lastNum + 1;
+                        }
+                        const baseCurr = await prisma.currency.findFirst({ where: { companyId, isBase: true } }) 
+                                || await prisma.currency.findFirst({ where: { companyId } });
+                        if (!baseCurr) {
+                            throw new Error("No currency found. Please configure a currency in settings first.");
+                        }
+
+                        supplier = await prisma.supplier.create({
+                            data: {
+                                companyId,
+                                code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
+                                name: account.name,
+                                currencyCode: baseCurr.id,
+                                payableAccountId: account.id
+                            }
+                        });
+                    }
+                    supplierId = supplier.id;
+                }
+            }
+
+            if (!supplierId) {
+                return NextResponse.json({ success: false, error: "Supplier is required" }, { status: 400 });
+            }
+
             // Generate GRN Number
             const lastGrn = await prisma.gRN.findFirst({
                 where: { grnNo: { startsWith: `GRN-${new Date().getFullYear()}-` } },
@@ -340,7 +392,7 @@ export class PurchaseController {
             // Transaction to ensure atomic updates
             const result = await prisma.$transaction(async (tx) => {
                 // 1. Create GRN
-                const validItems = items.filter((item: any) => (item.qtyReceived > 0 || item.qtyRejected > 0));
+                const validItems = (items || []).filter((item: any) => (Number(item.qtyReceived) > 0 || Number(item.qtyRejected) > 0));
 
                 if (validItems.length === 0) {
                     throw new Error("No items to receive");
@@ -352,7 +404,7 @@ export class PurchaseController {
                         grnNo,
                         poId: poId || null,
                         supplierId,
-                        warehouseId: warehouseId || null,
+                        warehouseId,
                         date: new Date(date),
                         items: {
                             create: validItems.map((item: any) => ({
@@ -360,8 +412,8 @@ export class PurchaseController {
                                 variantId: item.variantId || null,
                                 unitId: item.unitId || null,
                                 poItemId: item.poItemId || null,
-                                qtyReceived: item.qtyReceived,
-                                qtyRejected: item.qtyRejected,
+                                qtyReceived: Number(item.qtyReceived),
+                                qtyRejected: Number(item.qtyRejected || 0),
                                 rate: Number(item.rate || 0)
                             }))
                         }

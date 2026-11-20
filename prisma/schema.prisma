@@ -328,11 +328,11 @@ model GRN {
   createdAt       DateTime          @default(now())
   updatedAt DateTime @updatedAt
   Company         Company           @relation(fields: [companyId], references: [id])
-  PurchaseOrder   PurchaseOrder?    @relation(fields: [poId], references: [id])
-  Supplier        Supplier          @relation(fields: [supplierId], references: [id])
-  Warehouse       Warehouse         @relation(fields: [warehouseId], references: [id])
-  GRNItem         GRNItem[]
-  PurchaseInvoice PurchaseInvoice[]
+  po              PurchaseOrder?    @relation(fields: [poId], references: [id])
+  supplier        Supplier          @relation(fields: [supplierId], references: [id])
+  warehouse       Warehouse         @relation(fields: [warehouseId], references: [id])
+  items           GRNItem[]
+  invoices        PurchaseInvoice[]
 
   @@unique([companyId, grnNo])
 }
@@ -347,11 +347,11 @@ model GRNItem {
   qtyRejected       Decimal            @default(0.0)
   rate              Decimal            @default(0.0)
   unitId            String?
-  GRN               GRN                @relation(fields: [grnId], references: [id])
-  PurchaseOrderItem PurchaseOrderItem? @relation(fields: [poItemId], references: [id])
-  Product           Product            @relation(fields: [productId], references: [id])
-  Unit              Unit?              @relation(fields: [unitId], references: [id])
-  ProductVariant    ProductVariant?    @relation(fields: [variantId], references: [id])
+  grn               GRN                @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  poItem            PurchaseOrderItem? @relation(fields: [poItemId], references: [id])
+  product           Product            @relation(fields: [productId], references: [id])
+  unit              Unit?              @relation(fields: [unitId], references: [id])
+  variant           ProductVariant?    @relation(fields: [variantId], references: [id])
 }
 
 model JournalEntry {
@@ -619,12 +619,12 @@ model PurchaseOrder {
   companyId         String
   createdAt         DateTime            @default(now())
   updatedAt DateTime @updatedAt
-  GRN               GRN[]
-  PurchaseInvoice   PurchaseInvoice[]
-  Company           Company             @relation(fields: [companyId], references: [id])
-  Supplier          Supplier            @relation(fields: [supplierId], references: [id])
-  Warehouse         Warehouse?          @relation(fields: [warehouseId], references: [id])
-  items PurchaseOrderItem[]
+  grns              GRN[]
+  invoices          PurchaseInvoice[]
+  company           Company             @relation(fields: [companyId], references: [id])
+  supplier          Supplier            @relation(fields: [supplierId], references: [id])
+  warehouse         Warehouse?          @relation(fields: [warehouseId], references: [id])
+  items             PurchaseOrderItem[]
   PurchaseReturn    PurchaseReturn[]
 
   @@unique([companyId, poNo])
@@ -643,13 +643,13 @@ model PurchaseOrderItem {
   invoicedQty         Decimal               @default(0.0)
   receivedQty         Decimal               @default(0.0)
   unitId              String?
-  GRNItem             GRNItem[]
-  items PurchaseInvoiceItem[]
-  PurchaseOrder       PurchaseOrder         @relation(fields: [poId], references: [id], onDelete: Cascade)
-  Product             Product               @relation(fields: [productId], references: [id])
-  TaxCode             TaxCode?              @relation(fields: [taxCodeId], references: [id])
-  Unit                Unit?                 @relation(fields: [unitId], references: [id])
-  ProductVariant      ProductVariant?       @relation(fields: [variantId], references: [id])
+  grnItems            GRNItem[]
+  items               PurchaseInvoiceItem[]
+  po                  PurchaseOrder         @relation(fields: [poId], references: [id], onDelete: Cascade)
+  product             Product               @relation(fields: [productId], references: [id])
+  taxCode             TaxCode?              @relation(fields: [taxCodeId], references: [id])
+  unit                Unit?                 @relation(fields: [unitId], references: [id])
+  variant             ProductVariant?       @relation(fields: [variantId], references: [id])
 }
 
 model PurchaseRequest {
