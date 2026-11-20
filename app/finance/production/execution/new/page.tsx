@@ -27,6 +27,7 @@ export interface ProcessingServiceItem {
     qty: string;
     rate: string;
     unit: string;
+    baseStageId?: string;
 }
 
 export default function ProductionExecutionWizard() {
@@ -64,6 +65,10 @@ export default function ProductionExecutionWizard() {
     const [modalAccrualQty, setModalAccrualQty] = useState("");
     const [modalAccrualRate, setModalAccrualRate] = useState("");
     const [modalAccrualWastage, setModalAccrualWastage] = useState("0");
+    const [modalAccrualBaseStageId, setModalAccrualBaseStageId] = useState<string>("AUTO");
+
+    // Quick sync indicator (e.g. on Ctrl+S)
+    const [syncNotification, setSyncNotification] = useState<string | null>(null);
 
     // 1. Target Production Mode (Full Flexibility)
     const [executionMode, setExecutionMode] = useState<ExecutionMode>("DIRECT_FINISH");
@@ -106,42 +111,57 @@ export default function ProductionExecutionWizard() {
     };
 
     const handleProcessingServiceChange = (id: string, field: keyof ProcessingServiceItem, value: any) => {
-        setProcessingServices(prev => prev.map(p => {
-            if (p.id !== id) return p;
-            const updated = { ...p, [field]: value };
-            if (field === "serviceId") {
-                const svc = unconsumedServices.find(s => s.id === value);
-                if (svc) {
-                    updated.rate = svc.rate.toString();
-                    updated.unit = svc.unit || "KG";
-                    if (svc.unit === "MTR" && outputUnitCode === "MTR") {
-                        updated.qty = outputQuantity;
-                    } else if (!p.qty || p.qty === "0") {
+        setProcessingServices(prev => {
+            const index = prev.findIndex(p => p.id === id);
+            return prev.map((p, idx) => {
+                if (p.id !== id) return p;
+                const updated = { ...p, [field]: value };
+                if (field === "serviceId") {
+                    const svc = unconsumedServices.find(s => s.id === value);
+                    if (svc) {
+                        updated.rate = svc.rate.toString();
+                        updated.unit = svc.unit || "KG";
+                        if (svc.unit === "MTR" && outputUnitCode === "MTR") {
+                            updated.qty = outputQuantity;
+                        } else if (!p.qty || p.qty === "0") {
+                            updated.qty = effectiveNetWeightKg > 0 ? effectiveNetWeightKg.toString() : "";
+                        }
+                    }
+                } else if (field === "mode" && value === "ACCRUAL") {
+                    if (!updated.qty || updated.qty === "0") {
                         updated.qty = effectiveNetWeightKg > 0 ? effectiveNetWeightKg.toString() : "";
                     }
+                } else if (field === "wastage" || field === "baseStageId") {
+                    const w = field === "wastage" ? (parseFloat(value) || 0) : (p.wastage || 0);
+                    updated.wastage = w;
+
+                    const baseStage = field === "baseStageId" ? value : p.baseStageId;
+                    let baseWeight = effectiveNetWeightKg;
+                    if (baseStage && baseStage !== "TARGET_OUTPUT") {
+                        const prevMatch = prev.find(item => item.id === baseStage);
+                        if (prevMatch) {
+                            baseWeight = parseFloat(prevMatch.qty) || effectiveNetWeightKg;
+                        }
+                    } else if (!baseStage && idx > 0) {
+                        baseWeight = parseFloat(prev[idx - 1].qty) || effectiveNetWeightKg;
+                    }
+
+                    if (w > 0 && w < 100 && baseWeight > 0) {
+                        const gross = Math.round((baseWeight / ((100 - w) / 100)) * 100) / 100;
+                        updated.qty = gross.toString();
+                    } else if (w === 0 && baseWeight > 0) {
+                        updated.qty = baseWeight.toString();
+                    }
                 }
-            } else if (field === "mode" && value === "ACCRUAL") {
-                if (!updated.qty || updated.qty === "0") {
-                    updated.qty = effectiveNetWeightKg > 0 ? effectiveNetWeightKg.toString() : "";
-                }
-            } else if (field === "wastage") {
-                const w = parseFloat(value) || 0;
-                updated.wastage = w;
-                if (w > 0 && w < 100 && effectiveNetWeightKg > 0) {
-                    const gross = Math.round((effectiveNetWeightKg / ((100 - w) / 100)) * 100) / 100;
-                    updated.qty = gross.toString();
-                } else if (w === 0 && effectiveNetWeightKg > 0) {
-                    updated.qty = effectiveNetWeightKg.toString();
-                }
-            }
-            return updated;
-        }));
+                return updated;
+            });
+        });
     };
 
     // 4. Stage 2: Fabric Manufacturing (Weaving vs Knitting)
     const [fabricProcessType, setFabricProcessType] = useState<FabricProcessType>("WEAVING");
     const [fabricBillingUnit, setFabricBillingUnit] = useState<"KG" | "MTR">("KG");
-    const [wastageCalcMode, setWastageCalcMode] = useState<"CASCADE" | "DIRECT_OUTPUT">("CASCADE");
+    const [weavingBaseStageId, setWeavingBaseStageId] = useState<string>("AUTO");
     const [weavingWastage, setWeavingWastage] = useState<number>(4.0);
     const [weavingMode, setWeavingMode] = useState<"IN_HOUSE" | "OUT_HOUSE">("IN_HOUSE");
     const [inHouseWeavingRate, setInHouseWeavingRate] = useState<string>("");
@@ -151,6 +171,7 @@ export default function ProductionExecutionWizard() {
     const [outHouseFabricManualRate, setOutHouseFabricManualRate] = useState<string>("");
 
     // 5. Stage 3: Yarn Consumption
+    const [yarnBaseStageId, setYarnBaseStageId] = useState<string>("WEAVING");
     const [yarnWastage, setYarnWastage] = useState<number>(4.0);
     const [yarnInputs, setYarnInputs] = useState<Array<{
         productId: string;
@@ -353,27 +374,69 @@ export default function ProductionExecutionWizard() {
         }));
     }, [suppliers]);
 
-    // Sequential Processing Gross Weight (compounding all wet processing services)
-    const processingGrossKg = useMemo(() => {
-        if (processingServices.length === 0 || effectiveNetWeightKg <= 0) return effectiveNetWeightKg;
-        // Compound yield across all active processing services
-        const compoundYield = processingServices.reduce((acc, ps) => {
+    // Dynamically computed processing services with live gross weights and stage labels
+    const computedProcessingServices = useMemo(() => {
+        const results: Array<ProcessingServiceItem & { baseWeight: number; grossQty: number; lossQty: number; stageLabel: string }> = [];
+
+        processingServices.forEach((ps, index) => {
+            let baseWeight = effectiveNetWeightKg;
+            let baseLabel = `Target Output (${effectiveNetWeightKg.toLocaleString()} KG)`;
+
+            if (ps.baseStageId && ps.baseStageId !== "TARGET_OUTPUT") {
+                const prevMatch = results.find(r => r.id === ps.baseStageId);
+                if (prevMatch) {
+                    baseWeight = prevMatch.grossQty;
+                    baseLabel = `${prevMatch.stageLabel} (${prevMatch.grossQty.toLocaleString()} KG)`;
+                }
+            } else if (!ps.baseStageId && index > 0) {
+                const prev = results[index - 1];
+                baseWeight = prev.grossQty;
+                baseLabel = `${prev.stageLabel} (${prev.grossQty.toLocaleString()} KG)`;
+            }
+
             const w = ps.wastage || 0;
-            return acc * (w > 0 && w < 100 ? (100 - w) / 100 : 1);
-        }, 1);
-        return compoundYield > 0 && compoundYield < 1 
-            ? Math.round((effectiveNetWeightKg / compoundYield) * 100) / 100 
-            : effectiveNetWeightKg;
-    }, [processingServices, effectiveNetWeightKg]);
+            const grossQty = w > 0 && w < 100 && baseWeight > 0
+                ? Math.round((baseWeight / ((100 - w) / 100)) * 100) / 100
+                : baseWeight;
+            const lossQty = Math.round((grossQty - baseWeight) * 100) / 100;
+
+            const prod = products.find(p => p.id === ps.productId);
+            const svcBill = unconsumedServices.find(s => s.id === ps.serviceId);
+            const displayName = ps.manualName || prod?.name || svcBill?.productName || `Service #${index + 1}`;
+
+            results.push({
+                ...ps,
+                baseWeight,
+                grossQty,
+                lossQty,
+                stageLabel: `Service #${index + 1}: ${displayName}`
+            });
+        });
+
+        return results;
+    }, [processingServices, effectiveNetWeightKg, products, unconsumedServices]);
+
+    // Weaving Base Weight from user's selected stage
+    const weavingBaseWeight = useMemo(() => {
+        if (weavingBaseStageId === "TARGET_OUTPUT") return effectiveNetWeightKg;
+        if (weavingBaseStageId && weavingBaseStageId !== "AUTO") {
+            const found = computedProcessingServices.find(s => s.id === weavingBaseStageId);
+            if (found) return found.grossQty;
+        }
+        // AUTO: Latest processing service gross weight if any, else target output
+        if (computedProcessingServices.length > 0) {
+            return computedProcessingServices[computedProcessingServices.length - 1].grossQty;
+        }
+        return effectiveNetWeightKg;
+    }, [weavingBaseStageId, computedProcessingServices, effectiveNetWeightKg]);
 
     // Physical Grey Fabric Weight in KG needed for the batch
     const reqGreyWeightKg = useMemo(() => {
         if (executionMode === "GREY_TO_FINISH") return 0;
-        const base = wastageCalcMode === "CASCADE" ? processingGrossKg : effectiveNetWeightKg;
         return weavingWastage > 0 
-            ? Math.round((base / ((100 - weavingWastage) / 100)) * 100) / 100 
-            : base;
-    }, [processingGrossKg, effectiveNetWeightKg, weavingWastage, executionMode, wastageCalcMode]);
+            ? Math.round((weavingBaseWeight / ((100 - weavingWastage) / 100)) * 100) / 100 
+            : weavingBaseWeight;
+    }, [weavingBaseWeight, weavingWastage, executionMode]);
 
     // Weaving Length in Meters (if Cut Size or Meter Output is provided)
     const reqWeavingMeters = useMemo(() => {
@@ -391,13 +454,22 @@ export default function ProductionExecutionWizard() {
         return reqGreyWeightKg;
     }, [fabricBillingUnit, reqWeavingMeters, reqGreyWeightKg]);
 
-    // Stage 3 Raw Yarn Quantity ALWAYS in KG (Physical Stock) based on Grey Weight
+    // Raw Yarn Base Weight from user's selected stage
+    const yarnBaseWeight = useMemo(() => {
+        if (yarnBaseStageId === "WEAVING") return reqGreyWeightKg;
+        if (yarnBaseStageId === "TARGET_OUTPUT") return effectiveNetWeightKg;
+        const found = computedProcessingServices.find(s => s.id === yarnBaseStageId);
+        if (found) return found.grossQty;
+        return reqGreyWeightKg;
+    }, [yarnBaseStageId, reqGreyWeightKg, effectiveNetWeightKg, computedProcessingServices]);
+
+    // Stage 3 Raw Yarn Quantity ALWAYS in KG (Physical Stock) based on selected Base Weight
     const reqYarnQty = useMemo(() => {
         if (executionMode === "GREY_TO_FINISH") return 0;
         return yarnWastage > 0 
-            ? Math.round((reqGreyWeightKg / ((100 - yarnWastage) / 100)) * 100) / 100 
-            : reqGreyWeightKg;
-    }, [reqGreyWeightKg, yarnWastage, executionMode]);
+            ? Math.round((yarnBaseWeight / ((100 - yarnWastage) / 100)) * 100) / 100 
+            : yarnBaseWeight;
+    }, [yarnBaseWeight, yarnWastage, executionMode]);
 
     // Sync weaving service qty default
     useEffect(() => {
@@ -424,6 +496,19 @@ export default function ProductionExecutionWizard() {
             setGreyInputQty(effectiveNetWeightKg.toString());
         }
     }, [executionMode, effectiveNetWeightKg]);
+
+    // Quick-sync & calculate on Ctrl+S / Cmd+S
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+                e.preventDefault();
+                setSyncNotification(`Batch Stages Synced! Reverse flow updated: Finished ${effectiveNetWeightKg.toLocaleString()} KG → Grey Fabric ${reqGreyWeightKg.toLocaleString()} KG (${reqWeavingQty.toLocaleString()} ${fabricBillingUnit}) → Target Yarn ${reqYarnQty.toLocaleString()} KG.`);
+                setTimeout(() => setSyncNotification(null), 4000);
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [effectiveNetWeightKg, reqGreyWeightKg, reqWeavingQty, fabricBillingUnit, reqYarnQty]);
 
     // Helper to strictly identify Yarn items (Raw Materials only, excluding fabrics & services)
     const isYarnProduct = (p: any) => {
@@ -640,17 +725,67 @@ export default function ProductionExecutionWizard() {
         setModalAccrualProductId(defaultProdId);
         setModalAccrualSupplierId(r?.supplierId || "");
         
-        let defaultQty = r?.qty || "";
-        if (!defaultQty || defaultQty === "0") {
-            if (effectiveNetWeightKg > 0) {
-                defaultQty = effectiveNetWeightKg.toString();
-            } else if (outputQuantity && outputUnitCode === "KG") {
-                defaultQty = outputQuantity;
+        const defaultBaseId = r?.baseStageId || (
+            computedProcessingServices.length > 0 
+                ? computedProcessingServices[computedProcessingServices.length - 1].id 
+                : "TARGET_OUTPUT"
+        );
+        setModalAccrualBaseStageId(defaultBaseId);
+        const base = getModalBaseWeight(defaultBaseId);
+        const w = r?.wastage !== undefined ? r.wastage : (serviceModalTarget === "WEAVING_KNITTING" ? weavingWastage : 0);
+        setModalAccrualWastage(w.toString());
+
+        if (r?.qty && parseFloat(r.qty) > 0) {
+            setModalAccrualQty(r.qty);
+        } else if (base > 0) {
+            const gross = w > 0 && w < 100 ? Math.round((base / ((100 - w) / 100)) * 100) / 100 : base;
+            setModalAccrualQty(gross.toString());
+        } else {
+            setModalAccrualQty(effectiveNetWeightKg > 0 ? effectiveNetWeightKg.toString() : "");
+        }
+        setModalAccrualRate(r?.rate || "");
+    };
+
+    const getModalBaseWeight = (baseId: string) => {
+        if (serviceModalTarget === "WEAVING_KNITTING") {
+            return weavingBaseWeight;
+        }
+        if (baseId && baseId !== "AUTO" && baseId !== "TARGET_OUTPUT") {
+            const found = computedProcessingServices.find(s => s.id === baseId);
+            if (found) return found.grossQty;
+        }
+        if (baseId === "AUTO" && computedProcessingServices.length > 0) {
+            return computedProcessingServices[computedProcessingServices.length - 1].grossQty;
+        }
+        return effectiveNetWeightKg;
+    };
+
+    const handleModalWastageChange = (val: string) => {
+        setModalAccrualWastage(val);
+        const w = parseFloat(val) || 0;
+        const base = getModalBaseWeight(modalAccrualBaseStageId);
+        if (base > 0) {
+            if (w > 0 && w < 100) {
+                const gross = Math.round((base / ((100 - w) / 100)) * 100) / 100;
+                setModalAccrualQty(gross.toString());
+            } else if (w === 0) {
+                setModalAccrualQty(base.toString());
             }
         }
-        setModalAccrualQty(defaultQty);
-        setModalAccrualRate(r?.rate || "");
-        setModalAccrualWastage((r?.wastage !== undefined ? r.wastage : (serviceModalTarget === "WEAVING_KNITTING" ? weavingWastage : 0)).toString());
+    };
+
+    const handleModalBaseStageChange = (baseId: string) => {
+        setModalAccrualBaseStageId(baseId);
+        const w = parseFloat(modalAccrualWastage) || 0;
+        const base = getModalBaseWeight(baseId);
+        if (base > 0) {
+            if (w > 0 && w < 100) {
+                const gross = Math.round((base / ((100 - w) / 100)) * 100) / 100;
+                setModalAccrualQty(gross.toString());
+            } else {
+                setModalAccrualQty(base.toString());
+            }
+        }
     };
 
     const handleApplyAccrualFromModal = () => {
@@ -681,7 +816,8 @@ export default function ProductionExecutionWizard() {
                         qty: modalAccrualQty,
                         rate: modalAccrualRate,
                         wastage: parseFloat(modalAccrualWastage) || 0,
-                        unit: unitCode
+                        unit: unitCode,
+                        baseStageId: modalAccrualBaseStageId
                     };
                 }));
             } else {
@@ -697,7 +833,8 @@ export default function ProductionExecutionWizard() {
                         qty: modalAccrualQty,
                         rate: modalAccrualRate,
                         wastage: parseFloat(modalAccrualWastage) || 0,
-                        unit: unitCode
+                        unit: unitCode,
+                        baseStageId: modalAccrualBaseStageId
                     }
                 ]);
             }
@@ -1444,88 +1581,115 @@ export default function ProductionExecutionWizard() {
                                                         />
                                                     )}
 
-                                                    {/* Service inputs row: 4 equal columns */}
+                                                    {/* Stage Base Dropdown & Service inputs row */}
                                                     {(() => {
-                                                        const itemGrossQty = (ps.wastage || 0) > 0 && effectiveNetWeightKg > 0
+                                                        const computed = computedProcessingServices[index];
+                                                        const itemGrossQty = computed ? computed.grossQty : ((ps.wastage || 0) > 0 && effectiveNetWeightKg > 0
                                                             ? Math.round((effectiveNetWeightKg / ((100 - (ps.wastage || 0)) / 100)) * 100) / 100
-                                                            : effectiveNetWeightKg;
-                                                        const itemLossQty = Math.round((itemGrossQty - effectiveNetWeightKg) * 100) / 100;
+                                                            : effectiveNetWeightKg);
+                                                        const itemLossQty = computed ? computed.lossQty : Math.round((itemGrossQty - effectiveNetWeightKg) * 100) / 100;
 
                                                         return (
-                                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-1">
-                                                                <div className="space-y-1.5">
-                                                                    <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Wastage %</label>
-                                                                    <input
-                                                                        type="number"
-                                                                        placeholder="0"
-                                                                        value={ps.wastage || ""}
-                                                                        onChange={(e) => handleProcessingServiceChange(ps.id, "wastage", parseFloat(e.target.value) || 0)}
-                                                                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
-                                                                    />
+                                                            <div className="space-y-3 pt-1">
+                                                                {/* Wastage Stage Selection Strip */}
+                                                                <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-100/70 dark:bg-slate-800/50 rounded-xl text-xs">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-slate-600 dark:text-slate-300">Wastage Base Stage:</span>
+                                                                        <select
+                                                                            value={ps.baseStageId || (index === 0 ? "TARGET_OUTPUT" : processingServices[index - 1]?.id)}
+                                                                            onChange={(e) => handleProcessingServiceChange(ps.id, "baseStageId", e.target.value)}
+                                                                            className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200 outline-none cursor-pointer"
+                                                                        >
+                                                                            <option value="TARGET_OUTPUT">Target Finished Output ({effectiveNetWeightKg.toLocaleString()} KG)</option>
+                                                                            {computedProcessingServices.slice(0, index).map((prevSvc) => (
+                                                                                <option key={prevSvc.id} value={prevSvc.id}>
+                                                                                    {prevSvc.stageLabel} ({prevSvc.grossQty.toLocaleString()} KG)
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 font-mono text-xs">
+                                                                        <span className="text-slate-500">Base: <b className="text-slate-700 dark:text-slate-200">{computed?.baseWeight.toLocaleString()} KG</b></span>
+                                                                        <span>→</span>
+                                                                        <span className="text-amber-600 dark:text-amber-400 font-bold">Gross Needed: <b>{itemGrossQty.toLocaleString()} KG</b></span>
+                                                                    </div>
                                                                 </div>
-                                                                <div className="space-y-1.5">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400">
-                                                                            Billing Qty ({ps.unit || 'KG'})
-                                                                        </label>
-                                                                        {(ps.wastage || 0) > 0 && effectiveNetWeightKg > 0 && (
-                                                                            <div className="flex items-center gap-1 text-[10px] font-mono">
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => handleProcessingServiceChange(ps.id, "qty", itemGrossQty.toString())}
-                                                                                    className={cn(
-                                                                                        "px-1.5 py-0.5 rounded transition-all font-bold",
-                                                                                        parseFloat(ps.qty) === itemGrossQty 
-                                                                                            ? "bg-amber-600 text-white shadow-sm" 
-                                                                                            : "bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
-                                                                                    )}
-                                                                                    title="Use Gross Input Qty"
-                                                                                >
-                                                                                    Gross ({itemGrossQty.toLocaleString()})
-                                                                                </button>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => handleProcessingServiceChange(ps.id, "qty", effectiveNetWeightKg.toString())}
-                                                                                    className={cn(
-                                                                                        "px-1.5 py-0.5 rounded transition-all font-bold",
-                                                                                        parseFloat(ps.qty) === effectiveNetWeightKg 
-                                                                                            ? "bg-slate-700 text-white shadow-sm" 
-                                                                                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-                                                                                    )}
-                                                                                    title="Use Net Output Qty"
-                                                                                >
-                                                                                    Net
-                                                                                </button>
-                                                                            </div>
+
+                                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                                                                    <div className="space-y-1.5">
+                                                                        <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Wastage %</label>
+                                                                        <input
+                                                                            type="number"
+                                                                            placeholder="0"
+                                                                            value={ps.wastage || ""}
+                                                                            onChange={(e) => handleProcessingServiceChange(ps.id, "wastage", parseFloat(e.target.value) || 0)}
+                                                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-1.5">
+                                                                        <div className="flex items-center justify-between">
+                                                                            <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400">
+                                                                                Billing Qty ({ps.unit || 'KG'})
+                                                                            </label>
+                                                                            {(ps.wastage || 0) > 0 && (
+                                                                                <div className="flex items-center gap-1 text-[10px] font-mono">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleProcessingServiceChange(ps.id, "qty", itemGrossQty.toString())}
+                                                                                        className={cn(
+                                                                                            "px-1.5 py-0.5 rounded transition-all font-bold",
+                                                                                            parseFloat(ps.qty) === itemGrossQty 
+                                                                                                ? "bg-amber-600 text-white shadow-sm" 
+                                                                                                : "bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
+                                                                                        )}
+                                                                                        title="Use Gross Input Qty"
+                                                                                    >
+                                                                                        Gross ({itemGrossQty.toLocaleString()})
+                                                                                    </button>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleProcessingServiceChange(ps.id, "qty", (computed?.baseWeight || effectiveNetWeightKg).toString())}
+                                                                                        className={cn(
+                                                                                            "px-1.5 py-0.5 rounded transition-all font-bold",
+                                                                                            parseFloat(ps.qty) === (computed?.baseWeight || effectiveNetWeightKg)
+                                                                                                ? "bg-slate-700 text-white shadow-sm" 
+                                                                                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                                                                                        )}
+                                                                                        title="Use Net Base Qty"
+                                                                                    >
+                                                                                        Net
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <input
+                                                                            type="number"
+                                                                            placeholder="0.00"
+                                                                            value={ps.qty}
+                                                                            onChange={(e) => handleProcessingServiceChange(ps.id, "qty", e.target.value)}
+                                                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
+                                                                        />
+                                                                        {(ps.wastage || 0) > 0 && itemLossQty > 0 && (
+                                                                            <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono block text-right font-medium">
+                                                                                Loss: +{itemLossQty.toLocaleString()} KG
+                                                                            </span>
                                                                         )}
                                                                     </div>
-                                                                    <input
-                                                                        type="number"
-                                                                        placeholder="0.00"
-                                                                        value={ps.qty}
-                                                                        onChange={(e) => handleProcessingServiceChange(ps.id, "qty", e.target.value)}
-                                                                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
-                                                                    />
-                                                                    {(ps.wastage || 0) > 0 && itemLossQty > 0 && (
-                                                                        <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono block text-right font-medium">
-                                                                            Loss: +{itemLossQty.toLocaleString()} KG
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                                <div className="space-y-1.5">
-                                                                    <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Rate (PKR)</label>
-                                                                    <input
-                                                                        type="number"
-                                                                        placeholder="0.00"
-                                                                        value={ps.rate}
-                                                                        onChange={(e) => handleProcessingServiceChange(ps.id, "rate", e.target.value)}
-                                                                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
-                                                                    />
-                                                                </div>
-                                                                <div className="space-y-1.5">
-                                                                    <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Line Total</label>
-                                                                    <div className="px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/60 text-sm font-mono font-bold text-amber-600 dark:text-amber-400 text-right h-[44px] flex items-center justify-end">
-                                                                        Rs. {lineCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    <div className="space-y-1.5">
+                                                                        <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Rate (PKR)</label>
+                                                                        <input
+                                                                            type="number"
+                                                                            placeholder="0.00"
+                                                                            value={ps.rate}
+                                                                            onChange={(e) => handleProcessingServiceChange(ps.id, "rate", e.target.value)}
+                                                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-1.5">
+                                                                        <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Line Total</label>
+                                                                        <div className="px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/60 text-sm font-mono font-bold text-amber-600 dark:text-amber-400 text-right h-[44px] flex items-center justify-end">
+                                                                            Rs. {lineCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1632,6 +1796,33 @@ export default function ProductionExecutionWizard() {
                                         </span>
                                     </div>
                                 )}
+
+                                {/* Dynamic Weaving Wastage Base Selector */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-200/80 dark:border-blue-800/50">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <label className="text-xs sm:text-sm font-bold text-blue-900 dark:text-blue-200">
+                                            Calculate Wastage From (Base):
+                                        </label>
+                                        <select
+                                            value={weavingBaseStageId}
+                                            onChange={(e) => setWeavingBaseStageId(e.target.value)}
+                                            className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 rounded-lg text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                                        >
+                                            <option value="AUTO">AUTO: Previous Wet Process ({weavingBaseWeight.toLocaleString()} KG)</option>
+                                            <option value="TARGET_OUTPUT">Target Finished Output ({effectiveNetWeightKg.toLocaleString()} KG)</option>
+                                            {computedProcessingServices.map((svc) => (
+                                                <option key={svc.id} value={svc.id}>
+                                                    {svc.stageLabel} ({svc.grossQty.toLocaleString()} KG)
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="flex items-center gap-2 font-mono text-xs">
+                                        <span className="text-slate-500 dark:text-slate-400">Base Weight: <b className="text-slate-800 dark:text-slate-200">{weavingBaseWeight.toLocaleString()} KG</b></span>
+                                        <span>→</span>
+                                        <span className="text-blue-600 dark:text-blue-400 font-bold">Required Grey: <b>{reqGreyWeightKg.toLocaleString()} KG</b> {totalFabricMeters > 0 && `(${reqWeavingQty.toLocaleString()} ${fabricBillingUnit})`}</span>
+                                    </div>
+                                </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
                                     <div className="space-y-1.5">
@@ -1807,6 +1998,33 @@ export default function ProductionExecutionWizard() {
                                         )}>
                                             {isYarnCovered ? "Covered ✓" : `Short: ${yarnShortfall.toLocaleString()} KG`}
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Dynamic Yarn Wastage Base Selector */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl border border-emerald-200/80 dark:border-emerald-800/50">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <label className="text-xs sm:text-sm font-bold text-emerald-900 dark:text-emerald-200">
+                                            Calculate Wastage From (Base):
+                                        </label>
+                                        <select
+                                            value={yarnBaseStageId}
+                                            onChange={(e) => setYarnBaseStageId(e.target.value)}
+                                            className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+                                        >
+                                            <option value="WEAVING">Fabric Manufacturing / Grey Fabric ({reqGreyWeightKg.toLocaleString()} KG)</option>
+                                            {computedProcessingServices.map((svc) => (
+                                                <option key={svc.id} value={svc.id}>
+                                                    {svc.stageLabel} ({svc.grossQty.toLocaleString()} KG)
+                                                </option>
+                                            ))}
+                                            <option value="TARGET_OUTPUT">Target Finished Output ({effectiveNetWeightKg.toLocaleString()} KG)</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex items-center gap-2 font-mono text-xs">
+                                        <span className="text-slate-500 dark:text-slate-400">Base Weight: <b className="text-slate-800 dark:text-slate-200">{yarnBaseWeight.toLocaleString()} KG</b></span>
+                                        <span>→</span>
+                                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">Target Raw Yarn: <b>{reqYarnQty.toLocaleString()} KG</b></span>
                                     </div>
                                 </div>
 
@@ -2445,21 +2663,34 @@ export default function ProductionExecutionWizard() {
                                     );
                                 })()}
 
-                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
-                                            Billing Qty <span className="text-rose-500 font-black">*</span>
+                                {/* Base Stage Dropdown for In-Modal Accrual Calculation */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <label className="font-bold text-amber-900 dark:text-amber-200">
+                                            Calculate Wastage From (Base):
                                         </label>
-                                        <input
-                                            type="number"
-                                            step="any"
-                                            value={modalAccrualQty}
-                                            onChange={(e) => setModalAccrualQty(e.target.value)}
-                                            placeholder="0.00"
-                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm sm:text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[46px]"
-                                        />
+                                        <select
+                                            value={modalAccrualBaseStageId}
+                                            onChange={(e) => handleModalBaseStageChange(e.target.value)}
+                                            className="px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-amber-500 shadow-sm"
+                                        >
+                                            <option value="AUTO">AUTO: Latest Stage ({getModalBaseWeight("AUTO").toLocaleString()} KG)</option>
+                                            <option value="TARGET_OUTPUT">Target Finished Output ({effectiveNetWeightKg.toLocaleString()} KG)</option>
+                                            {computedProcessingServices.map((svc) => (
+                                                <option key={svc.id} value={svc.id}>
+                                                    {svc.stageLabel} ({svc.grossQty.toLocaleString()} KG)
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
+                                    <div className="flex items-center gap-2 font-mono">
+                                        <span className="text-slate-500 dark:text-slate-400">Base: <b className="text-slate-800 dark:text-slate-200">{getModalBaseWeight(modalAccrualBaseStageId).toLocaleString()} KG</b></span>
+                                        <span>→</span>
+                                        <span className="text-amber-600 dark:text-amber-400 font-bold">Billing Qty: <b>{modalAccrualQty || '0'} KG</b></span>
+                                    </div>
+                                </div>
 
+                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                                     <div className="space-y-1.5">
                                         <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
                                             Wastage %
@@ -2468,8 +2699,52 @@ export default function ProductionExecutionWizard() {
                                             type="number"
                                             step="any"
                                             value={modalAccrualWastage}
-                                            onChange={(e) => setModalAccrualWastage(e.target.value)}
+                                            onChange={(e) => handleModalWastageChange(e.target.value)}
                                             placeholder="0"
+                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm sm:text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[46px]"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
+                                                Billing Qty <span className="text-rose-500 font-black">*</span>
+                                            </label>
+                                            {(parseFloat(modalAccrualWastage) || 0) > 0 && (
+                                                <div className="flex items-center gap-1 text-[10px] font-mono">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const base = getModalBaseWeight(modalAccrualBaseStageId);
+                                                            const w = parseFloat(modalAccrualWastage) || 0;
+                                                            const gross = Math.round((base / ((100 - w) / 100)) * 100) / 100;
+                                                            setModalAccrualQty(gross.toString());
+                                                        }}
+                                                        className="px-1.5 py-0.5 rounded bg-amber-600 text-white font-bold shadow-sm"
+                                                        title="Recalculate Gross Qty"
+                                                    >
+                                                        Gross
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const base = getModalBaseWeight(modalAccrualBaseStageId);
+                                                            setModalAccrualQty(base.toString());
+                                                        }}
+                                                        className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 font-bold"
+                                                        title="Use Base Qty"
+                                                    >
+                                                        Net
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <input
+                                            type="number"
+                                            step="any"
+                                            value={modalAccrualQty}
+                                            onChange={(e) => setModalAccrualQty(e.target.value)}
+                                            placeholder="0.00"
                                             className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm sm:text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[46px]"
                                         />
                                     </div>
@@ -2732,6 +3007,23 @@ export default function ProductionExecutionWizard() {
                             )}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Floating Live Sync & Recomputation Indicator */}
+            {syncNotification && (
+                <div className="fixed bottom-6 right-6 z-50 p-4 max-w-lg bg-emerald-600 dark:bg-emerald-700 text-white rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300 border border-emerald-400/30">
+                    <CheckCircle2 size={24} className="shrink-0 text-emerald-100" />
+                    <div className="text-xs sm:text-sm font-semibold leading-snug flex-1">
+                        {syncNotification}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setSyncNotification(null)}
+                        className="p-1 hover:bg-emerald-700 dark:hover:bg-emerald-800 rounded-lg text-emerald-100 transition-colors"
+                    >
+                        <X size={16} />
+                    </button>
                 </div>
             )}
         </MainLayout>
