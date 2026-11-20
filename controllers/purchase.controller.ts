@@ -1024,19 +1024,41 @@ export class PurchaseController {
                         });
                     }
                     if (item.productionAccrualId) {
-                        const pAccrual = await tx.productionAccrual.findUnique({
-                            where: { id: item.productionAccrualId }
-                        });
-                        if (pAccrual) {
-                            const newBilled = Number(pAccrual.billedQty) + Number(item.qty);
-                            const newStatus = newBilled >= Number(pAccrual.qty) ? 'BILLED' : 'PARTIALLY_BILLED';
-                            await tx.productionAccrual.update({
-                                where: { id: pAccrual.id },
-                                data: {
-                                    billedQty: newBilled,
-                                    status: newStatus
+                        try {
+                            const pAccrualGetter = (tx as any).productionAccrual || (prisma as any).productionAccrual;
+                            let pAccrual: any = null;
+                            if (pAccrualGetter?.findUnique) {
+                                pAccrual = await pAccrualGetter.findUnique({
+                                    where: { id: item.productionAccrualId }
+                                });
+                            } else {
+                                const raw = await tx.$queryRaw<any[]>`
+                                    SELECT * FROM "ProductionAccrual" WHERE id = ${item.productionAccrualId} LIMIT 1
+                                `;
+                                if (raw && raw.length > 0) pAccrual = raw[0];
+                            }
+
+                            if (pAccrual) {
+                                const newBilled = Number(pAccrual.billedQty || 0) + Number(item.qty);
+                                const newStatus = newBilled >= Number(pAccrual.qty) ? 'BILLED' : 'PARTIALLY_BILLED';
+                                if (pAccrualGetter?.update) {
+                                    await pAccrualGetter.update({
+                                        where: { id: pAccrual.id },
+                                        data: {
+                                            billedQty: newBilled,
+                                            status: newStatus
+                                        }
+                                    });
+                                } else {
+                                    await tx.$executeRaw`
+                                        UPDATE "ProductionAccrual"
+                                        SET "billedQty" = ${newBilled}, "status" = ${newStatus}, "updatedAt" = NOW()
+                                        WHERE id = ${pAccrual.id}
+                                    `;
                                 }
-                            });
+                            }
+                        } catch (pAccErr) {
+                            console.error('[ProductionAccrual update error on invoice]:', pAccErr);
                         }
                     }
                 }
@@ -1105,10 +1127,31 @@ export class PurchaseController {
                             throw new Error("No 'Accrued Expenses' liability account found to settle production accrual.");
                         }
 
-                        const pAccrual = await tx.productionAccrual.findUnique({
-                            where: { id: item.productionAccrualId },
-                            include: { Product: true }
-                        });
+                        let pAccrual: any = null;
+                        try {
+                            const pAccrualGetter = (tx as any).productionAccrual || (prisma as any).productionAccrual;
+                            if (pAccrualGetter?.findUnique) {
+                                pAccrual = await pAccrualGetter.findUnique({
+                                    where: { id: item.productionAccrualId },
+                                    include: { Product: true }
+                                });
+                            } else {
+                                const raw = await tx.$queryRaw<any[]>`
+                                    SELECT pa.*, p.name as "productName"
+                                    FROM "ProductionAccrual" pa
+                                    LEFT JOIN "Product" p ON pa."productId" = p.id
+                                    WHERE pa.id = ${item.productionAccrualId} LIMIT 1
+                                `;
+                                if (raw && raw.length > 0) {
+                                    pAccrual = {
+                                        ...raw[0],
+                                        Product: { name: raw[0].productName }
+                                    };
+                                }
+                            }
+                        } catch (fetchErr) {
+                            console.error('[ProductionAccrual fetch for journal error]:', fetchErr);
+                        }
 
                         lines.push({
                             accountId: accruedAcc.id,

@@ -373,8 +373,9 @@ export async function POST(req: NextRequest) {
 
             // 2.1 Persist Production Accruals (Unbilled services/materials for future invoice offset)
             for (const acc of accrualRecordsToCreate) {
+                let saved = false;
                 try {
-                    const accrualCreator = (tx as any).productionAccrual || (prisma as any).productionAccrual;
+                    const accrualCreator = (tx as any).productionAccrual;
                     if (accrualCreator?.create) {
                         await accrualCreator.create({
                             data: {
@@ -382,8 +383,14 @@ export async function POST(req: NextRequest) {
                                 productionId: record.id
                             }
                         });
-                    } else {
-                        // Direct raw SQL insert - immune to dev server cached prisma client!
+                        saved = true;
+                    }
+                } catch (prismaErr) {
+                    console.warn('[ProductionAccrual prisma create failed, using raw SQL]:', prismaErr);
+                }
+
+                if (!saved) {
+                    try {
                         const newAccId = 'pa-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
                         await tx.$executeRaw`
                             INSERT INTO "ProductionAccrual" (
@@ -395,9 +402,9 @@ export async function POST(req: NextRequest) {
                                 ${acc.billedQty}, ${acc.status}, ${acc.remarks}, NOW()
                             )
                         `;
+                    } catch (rawSqlErr: any) {
+                        console.error('[ProductionAccrual raw SQL insert error]:', rawSqlErr);
                     }
-                } catch (err: any) {
-                    console.error('[ProductionAccrual create error]:', err);
                 }
             }
 
