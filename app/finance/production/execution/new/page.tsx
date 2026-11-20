@@ -75,6 +75,7 @@ export default function ProductionExecutionWizard() {
     const [outputQuantity, setOutputQuantity] = useState<string>("");
     const [outputNetWeightKg, setOutputNetWeightKg] = useState<string>("");
     const [weightPerUnit, setWeightPerUnit] = useState<string>("");
+    const [cutSizeLength, setCutSizeLength] = useState<string>(""); // Cut Size / Length per Piece (MTR), e.g. 1.25
     const [balesCount, setBalesCount] = useState<string>("");
     const [warehouseId, setWarehouseId] = useState("");
     const [lotNumber, setLotNumber] = useState<string>("");
@@ -130,6 +131,7 @@ export default function ProductionExecutionWizard() {
 
     // 4. Stage 2: Fabric Manufacturing (Weaving vs Knitting)
     const [fabricProcessType, setFabricProcessType] = useState<FabricProcessType>("WEAVING");
+    const [fabricBillingUnit, setFabricBillingUnit] = useState<"KG" | "MTR">("KG");
     const [weavingWastage, setWeavingWastage] = useState<number>(4.0);
     const [weavingMode, setWeavingMode] = useState<"IN_HOUSE" | "OUT_HOUSE">("IN_HOUSE");
     const [inHouseWeavingRate, setInHouseWeavingRate] = useState<string>("");
@@ -251,6 +253,15 @@ export default function ProductionExecutionWizard() {
         return parseFloat(outputNetWeightKg) || 0;
     }, [outputQuantity, outputNetWeightKg, outputUnitCode]);
 
+    // Total Fabric Length in Meters (MTR)
+    const totalFabricMeters = useMemo(() => {
+        if (outputUnitCode === "MTR") return parseFloat(outputQuantity) || 0;
+        const qty = parseFloat(outputQuantity) || 0;
+        const cut = parseFloat(cutSizeLength) || 0;
+        if (qty > 0 && cut > 0) return Math.round(qty * cut * 100) / 100;
+        return 0;
+    }, [outputUnitCode, outputQuantity, cutSizeLength]);
+
     // Service Bill Options Categorized
     // Stage 1: All processing services EXCEPT Weaving and Knitting
     const processingServiceOptions = useMemo(() => {
@@ -338,8 +349,8 @@ export default function ProductionExecutionWizard() {
         return processingServices.reduce((max, ps) => Math.max(max, ps.wastage || 0), 0);
     }, [processingServices]);
 
-    // Stage 2 Weaving / Knitting Quantity (KG)
-    const reqWeavingQty = useMemo(() => {
+    // Physical Grey Fabric Weight in KG needed for the batch
+    const reqGreyWeightKg = useMemo(() => {
         if (executionMode === "GREY_TO_FINISH") return 0;
         const base = maxProcessingWastage > 0 
             ? Math.round((effectiveNetWeightKg / ((100 - maxProcessingWastage) / 100)) * 100) / 100 
@@ -349,17 +360,33 @@ export default function ProductionExecutionWizard() {
             : base;
     }, [effectiveNetWeightKg, maxProcessingWastage, weavingWastage, executionMode]);
 
-    // Stage 3 Raw Yarn Quantity (KG)
+    // Weaving Length in Meters (if Cut Size or Meter Output is provided)
+    const reqWeavingMeters = useMemo(() => {
+        if (totalFabricMeters <= 0) return 0;
+        return weavingWastage > 0 
+            ? Math.round((totalFabricMeters / ((100 - weavingWastage) / 100)) * 100) / 100 
+            : totalFabricMeters;
+    }, [totalFabricMeters, weavingWastage]);
+
+    // Stage 2 Weaving / Knitting Quantity (Dynamic based on selected Billing Unit: MTR vs KG)
+    const reqWeavingQty = useMemo(() => {
+        if (fabricBillingUnit === "MTR" && reqWeavingMeters > 0) {
+            return reqWeavingMeters;
+        }
+        return reqGreyWeightKg;
+    }, [fabricBillingUnit, reqWeavingMeters, reqGreyWeightKg]);
+
+    // Stage 3 Raw Yarn Quantity ALWAYS in KG (Physical Stock) based on Grey Weight
     const reqYarnQty = useMemo(() => {
         if (executionMode === "GREY_TO_FINISH") return 0;
         return yarnWastage > 0 
-            ? Math.round((reqWeavingQty / ((100 - yarnWastage) / 100)) * 100) / 100 
-            : reqWeavingQty;
-    }, [reqWeavingQty, yarnWastage, executionMode]);
+            ? Math.round((reqGreyWeightKg / ((100 - yarnWastage) / 100)) * 100) / 100 
+            : reqGreyWeightKg;
+    }, [reqGreyWeightKg, yarnWastage, executionMode]);
 
     // Sync weaving service qty default
     useEffect(() => {
-        if (reqWeavingQty > 0 && !weavingServiceQty) {
+        if (reqWeavingQty > 0) {
             setWeavingServiceQty(reqWeavingQty.toString());
         }
     }, [reqWeavingQty]);
@@ -811,7 +838,7 @@ export default function ProductionExecutionWizard() {
                 const amt = reqWeavingQty * (parseFloat(inHouseWeavingRate) || 0);
                 if (amt > 0) {
                     finalOverheads.push({
-                        description: `In-house ${fabricProcessType} Overhead (@ Rs. ${inHouseWeavingRate}/KG)`,
+                        description: `In-house ${fabricProcessType} Overhead (@ Rs. ${inHouseWeavingRate}/${fabricBillingUnit})`,
                         amount: amt,
                         quantity: reqWeavingQty
                     });
@@ -825,7 +852,7 @@ export default function ProductionExecutionWizard() {
                 const amt = reqWeavingQty * (parseFloat(outHouseFabricManualRate) || 0);
                 if (amt > 0) {
                     finalOverheads.push({
-                        description: `Out-house ${fabricProcessType} Overhead (@ Rs. ${outHouseFabricManualRate}/KG)`,
+                        description: `Out-house ${fabricProcessType} Overhead (@ Rs. ${outHouseFabricManualRate}/${fabricBillingUnit})`,
                         amount: amt,
                         quantity: reqWeavingQty
                     });
@@ -1064,8 +1091,13 @@ export default function ProductionExecutionWizard() {
                                 </div>
                             </div>
 
-                            {/* Row 2: UOM, Quantities, Unit Weight, Total Net Weight (4 Equal Columns!) */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+                            {/* Row 2: UOM, Quantities, Unit Weight, Total Net Weight */}
+                            <div className={cn(
+                                "grid gap-4 sm:gap-5",
+                                outputUnitCode === "PCS" 
+                                    ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-5" 
+                                    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+                            )}>
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
                                         Export UOM *
@@ -1103,6 +1135,33 @@ export default function ProductionExecutionWizard() {
                                         className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono font-bold text-slate-900 dark:text-white text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[44px]"
                                     />
                                 </div>
+
+                                {outputUnitCode === "PCS" && (
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block flex items-center justify-between">
+                                            <span>Cut Size (MTR/PC)</span>
+                                            {totalFabricMeters > 0 && (
+                                                <span className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 font-bold">
+                                                    ={totalFabricMeters.toLocaleString()} M
+                                                </span>
+                                            )}
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="any"
+                                            placeholder="e.g. 1.25"
+                                            value={cutSizeLength}
+                                            onChange={(e) => {
+                                                setCutSizeLength(e.target.value);
+                                                if (parseFloat(e.target.value) > 0) {
+                                                    setFabricBillingUnit("MTR");
+                                                }
+                                            }}
+                                            className="w-full px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono font-bold text-slate-900 dark:text-white text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[44px]"
+                                        />
+                                    </div>
+                                )}
 
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
@@ -1433,21 +1492,52 @@ export default function ProductionExecutionWizard() {
                                         </div>
                                     </div>
 
-                                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold">
-                                        <button
-                                            type="button"
-                                            onClick={() => { setFabricProcessType("WEAVING"); setSelectedWeavingServiceId(""); }}
-                                            className={cn("px-4 py-2 rounded-lg transition-all", fabricProcessType === "WEAVING" ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white")}
-                                        >
-                                            Weaving
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => { setFabricProcessType("KNITTING"); setSelectedWeavingServiceId(""); }}
-                                            className={cn("px-4 py-2 rounded-lg transition-all", fabricProcessType === "KNITTING" ? "bg-cyan-600 text-white shadow-sm" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white")}
-                                        >
-                                            Knitting
-                                        </button>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setFabricProcessType("WEAVING"); setSelectedWeavingServiceId(""); }}
+                                                className={cn("px-4 py-2 rounded-lg transition-all", fabricProcessType === "WEAVING" ? "bg-blue-600 text-white shadow-sm font-black" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white")}
+                                            >
+                                                Weaving
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setFabricProcessType("KNITTING"); setSelectedWeavingServiceId(""); }}
+                                                className={cn("px-4 py-2 rounded-lg transition-all", fabricProcessType === "KNITTING" ? "bg-cyan-600 text-white shadow-sm font-black" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white")}
+                                            >
+                                                Knitting
+                                            </button>
+                                        </div>
+
+                                        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-bold">
+                                            <button
+                                                type="button"
+                                                onClick={() => setFabricBillingUnit("KG")}
+                                                className={cn(
+                                                    "px-3 py-1.5 rounded-lg transition-all",
+                                                    fabricBillingUnit === "KG"
+                                                        ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm font-black"
+                                                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                                )}
+                                                title="Calculate fabric making by weight (KG)"
+                                            >
+                                                KG (Weight)
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFabricBillingUnit("MTR")}
+                                                className={cn(
+                                                    "px-3 py-1.5 rounded-lg transition-all",
+                                                    fabricBillingUnit === "MTR"
+                                                        ? "bg-blue-600 text-white shadow-sm font-black"
+                                                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                                )}
+                                                title="Calculate fabric making by length (Meters)"
+                                            >
+                                                MTR (Meters)
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -1487,13 +1577,18 @@ export default function ProductionExecutionWizard() {
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
-                                            Required Grey Fabric
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block flex items-center justify-between">
+                                            <span>Required Fabric ({fabricBillingUnit})</span>
+                                            {fabricBillingUnit === "MTR" && (
+                                                <span className="text-xs text-slate-400 font-mono font-medium">
+                                                    Wt: {reqGreyWeightKg.toLocaleString()} KG
+                                                </span>
+                                            )}
                                         </label>
                                         <div className="px-4 py-2.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 flex items-center justify-between h-[44px]">
                                             <span className="text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400">Target WIP</span>
                                             <span className="text-base font-black font-mono text-blue-700 dark:text-blue-300">
-                                                {reqWeavingQty.toLocaleString()} KG
+                                                {reqWeavingQty.toLocaleString()} {fabricBillingUnit}
                                             </span>
                                         </div>
                                     </div>
@@ -1560,7 +1655,7 @@ export default function ProductionExecutionWizard() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 pt-2 border-t border-slate-100 dark:border-slate-800">
                                         <div className="space-y-1.5">
                                             <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
-                                                In-House Rate (PKR / KG)
+                                                In-House Rate (PKR / {fabricBillingUnit})
                                             </label>
                                             <input
                                                 type="number"
