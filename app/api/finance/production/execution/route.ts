@@ -53,10 +53,98 @@ export async function POST(req: NextRequest) {
             let inHouseServiceCost = 0;
             const overheadRecords = [];
             const outHouseServiceInvoiceIds = [];
+            const accrualRecordsToCreate: any[] = [];
 
             if (overheads && overheads.length > 0) {
                 for (const ov of overheads) {
-                    if (ov.purchaseInvoiceItemId) {
+                    if (ov.isAccrual || ov.mode === "ACCRUAL") {
+                        const consumeQty = Number(ov.quantity || 0);
+                        const rate = Number(ov.rate || 0);
+                        const ovAmount = consumeQty * rate;
+                        serviceCost += ovAmount;
+
+                        let prod = null;
+                        if (ov.productId) {
+                            prod = await tx.product.findUnique({
+                                where: { id: ov.productId },
+                                include: { Category: true, Unit: true }
+                            });
+                        }
+
+                        const prodName = prod?.name || ov.manualName || "Unbilled Production Service";
+
+                        // Sequence for PAC-YYYY-XXXX
+                        const existingCount = accrualRecordsToCreate.length;
+                        const lastAccrual = await tx.productionAccrual.findFirst({
+                            where: { companyId, accrualNo: { startsWith: `PAC-${new Date().getFullYear()}-` } },
+                            orderBy: { accrualNo: 'desc' }
+                        });
+                        let nextSeq = 1;
+                        if (lastAccrual) {
+                            const parts = lastAccrual.accrualNo.split('-');
+                            const lastNum = parseInt(parts[parts.length - 1]);
+                            if (!isNaN(lastNum)) nextSeq = lastNum + 1;
+                        }
+                        const accrualNo = `PAC-${new Date().getFullYear()}-${(nextSeq + existingCount).toString().padStart(4, '0')}`;
+
+                        // Find Accrued Liability account (Credit side)
+                        let creditAccount = null;
+                        const accruedAcc = await tx.account.findFirst({
+                            where: {
+                                companyId,
+                                OR: [
+                                    { code: '2130' },
+                                    { name: { contains: 'Accrued', mode: 'insensitive' } },
+                                    { name: { contains: 'Unbilled', mode: 'insensitive' } }
+                                ]
+                            }
+                        });
+                        creditAccount = accruedAcc?.id;
+                        if (!creditAccount) {
+                            const anyLiability = await tx.account.findFirst({
+                                where: { companyId, type: 'LIABILITY', isPosting: true }
+                            });
+                            creditAccount = anyLiability?.id;
+                        }
+                        if (!creditAccount) {
+                            const anyAcc = await tx.account.findFirst({ where: { companyId } });
+                            creditAccount = anyAcc?.id;
+                        }
+
+                        accrualRecordsToCreate.push({
+                            companyId,
+                            accrualNo,
+                            productId: ov.productId || (await tx.product.findFirst({ where: { companyId } }))?.id,
+                            supplierId: ov.supplierId || null,
+                            unitId: ov.unitId || prod?.baseUnitId || null,
+                            date: new Date(date),
+                            stage: processStage,
+                            serviceType: ov.serviceType || (prodName.toUpperCase().includes('DYE') ? 'DYEING' : prodName.toUpperCase().includes('PRINT') ? 'PRINTING' : 'WEAVING'),
+                            qty: consumeQty,
+                            rate: rate,
+                            amount: ovAmount,
+                            billedQty: 0,
+                            status: 'PENDING',
+                            remarks: ov.remarks || `Accrued Service for Production Batch`
+                        });
+
+                        overheadRecords.push({
+                            description: `Unbilled Accrual [${accrualNo}]: ${prodName} (@ Rs. ${rate})`,
+                            amount: ovAmount,
+                            quantity: consumeQty,
+                            unitId: ov.unitId || prod?.baseUnitId || null
+                        });
+
+                        if (creditAccount) {
+                            outHouseServiceInvoiceIds.push({
+                                piItemId: accrualNo,
+                                consumeQty,
+                                amount: ovAmount,
+                                creditAccount,
+                                customNarration: `Accrual [${accrualNo}] - ${prodName} (${consumeQty} @ ${rate})`
+                            });
+                        }
+                    } else if (ov.purchaseInvoiceItemId) {
                         if (ov.purchaseInvoiceItemId.startsWith("OPENING-SVC-")) {
                             const ledgerId = ov.purchaseInvoiceItemId.replace("OPENING-SVC-", "");
                             const opEntry = await tx.stockLedger.findUnique({
@@ -108,6 +196,49 @@ export async function POST(req: NextRequest) {
 
                             if (creditAccount) {
                                 outHouseServiceInvoiceIds.push({ piItemId: opEntry.id, consumeQty, amount: ovAmount, creditAccount });
+                            }
+                        } else if (ov.purchaseInvoiceItemId.startsWith("GRN-SVC-")) {
+                            const grnItemId = ov.purchaseInvoiceItemId.replace("GRN-SVC-", "");
+                            const grnItem = await tx.gRNItem.findUnique({
+                                where: { id: grnItemId },
+                                include: { grn: true, product: { include: { Category: true } } }
+                            });
+                            if (!grnItem) throw new Error("GRN Service item not found");
+
+                            const consumeQty = Number(ov.quantity);
+                            const ovAmount = consumeQty * Number(grnItem.rate || 0);
+                            serviceCost += ovAmount;
+
+                            overheadRecords.push({
+                                description: `GRN Service Consumed: ${grnItem.grn?.grnNo} - ${grnItem.product?.name}`,
+                                amount: ovAmount,
+                                quantity: consumeQty,
+                                unitId: grnItem.unitId
+                            });
+
+                            const cat = grnItem.product?.Category;
+                            let creditAccount = cat?.wipAccountId;
+                            if (!creditAccount) {
+                                const fallbackAcc = await tx.account.findFirst({
+                                    where: {
+                                        companyId,
+                                        OR: [
+                                            { name: { contains: 'Accrued', mode: 'insensitive' } },
+                                            { name: { contains: 'WIP', mode: 'insensitive' } },
+                                            { name: { contains: 'Direct Expense', mode: 'insensitive' } },
+                                            { name: { contains: 'Cost', mode: 'insensitive' } }
+                                        ]
+                                    }
+                                });
+                                creditAccount = fallbackAcc?.id;
+                            }
+                            if (!creditAccount) {
+                                const anyAcc = await tx.account.findFirst({ where: { companyId } });
+                                creditAccount = anyAcc?.id;
+                            }
+
+                            if (creditAccount) {
+                                outHouseServiceInvoiceIds.push({ piItemId: grnItem.id, consumeQty, amount: ovAmount, creditAccount });
                             }
                         } else {
                             const piItem = await tx.purchaseInvoiceItem.findUnique({
@@ -207,6 +338,16 @@ export async function POST(req: NextRequest) {
                     ProductionOverhead: { create: overheadRecords }
                 }
             });
+
+            // 2.1 Persist Production Accruals (Unbilled services/materials for future invoice offset)
+            for (const acc of accrualRecordsToCreate) {
+                await tx.productionAccrual.create({
+                    data: {
+                        ...acc,
+                        productionId: record.id
+                    }
+                });
+            }
 
             // 3. Stock Ledger Updates
             const outputCostRate = totalOutputCost / Number(outputQuantity);
@@ -321,7 +462,7 @@ export async function POST(req: NextRequest) {
                         accountId: svc.creditAccount,
                         debit: 0,
                         credit: svc.amount,
-                        narration: `Service consumed for Batch ${batchNo}`
+                        narration: (svc as any).customNarration || `Service consumed for Batch ${batchNo}`
                     });
                 }
             }

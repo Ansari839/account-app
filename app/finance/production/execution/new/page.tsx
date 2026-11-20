@@ -19,8 +19,10 @@ type FabricProcessType = "WEAVING" | "KNITTING";
 export interface ProcessingServiceItem {
     id: string;
     serviceId: string;
-    mode: "VENDOR_BILL" | "MANUAL";
+    mode: "VENDOR_BILL" | "ACCRUAL" | "MANUAL";
     manualName: string;
+    productId?: string;
+    supplierId?: string;
     wastage: number;
     qty: string;
     rate: string;
@@ -39,6 +41,7 @@ export default function ProductionExecutionWizard() {
     const [unconsumedServices, setUnconsumedServices] = useState<any[]>([]);
     const [stockRates, setStockRates] = useState<Record<string, { qty: number, rate: number, isEFS: boolean }>>({});
     const [availableLots, setAvailableLots] = useState<any[]>([]);
+    const [suppliers, setSuppliers] = useState<any[]>([]);
 
     // Modal state for Yarn Lot Selection Table
     const [isYarnModalOpen, setIsYarnModalOpen] = useState(false);
@@ -78,6 +81,8 @@ export default function ProductionExecutionWizard() {
                 serviceId: "",
                 mode: "VENDOR_BILL",
                 manualName: "Processing / Dyeing Service",
+                productId: "",
+                supplierId: "",
                 wastage: 0,
                 qty: effectiveNetWeightKg > 0 ? effectiveNetWeightKg.toString() : "",
                 rate: "",
@@ -104,6 +109,10 @@ export default function ProductionExecutionWizard() {
                     } else if (!p.qty || p.qty === "0") {
                         updated.qty = effectiveNetWeightKg > 0 ? effectiveNetWeightKg.toString() : "";
                     }
+                }
+            } else if (field === "mode" && value === "ACCRUAL") {
+                if (!updated.qty || updated.qty === "0") {
+                    updated.qty = effectiveNetWeightKg > 0 ? effectiveNetWeightKg.toString() : "";
                 }
             }
             return updated;
@@ -154,6 +163,7 @@ export default function ProductionExecutionWizard() {
                 setUnconsumedServices(json.data.unconsumedServices);
                 setStockRates(json.data.stockRates);
                 if (json.data.availableLots) setAvailableLots(json.data.availableLots);
+                if (json.data.suppliers) setSuppliers(json.data.suppliers);
                 if (json.data.warehouses.length > 0) setWarehouseId(json.data.warehouses[0].id);
             }
         } catch (error) {
@@ -282,6 +292,24 @@ export default function ProductionExecutionWizard() {
                 };
             });
     }, [unconsumedServices, products]);
+
+    // Service Products for Accrual (Services like Dyeing, Printing, Bleaching, Washing)
+    const serviceProductOptions = useMemo(() => {
+        return products
+            .filter(p => p.isService || p.stage === "FINISH" || p.Category?.name?.toUpperCase().includes("SERVICE") || p.name.toUpperCase().includes("DYE") || p.name.toUpperCase().includes("PRINT"))
+            .map(p => ({
+                value: p.id,
+                label: `${p.name} (${p.code}) ${p.hsCode ? `[HS: ${p.hsCode}]` : ''}`
+            }));
+    }, [products]);
+
+    // Supplier Options for Accrual Linking
+    const supplierOptions = useMemo(() => {
+        return suppliers.map(s => ({
+            value: s.id,
+            label: `${s.name} (${s.code})`
+        }));
+    }, [suppliers]);
 
     // Maximum wastage among all active processing services
     const maxProcessingWastage = useMemo(() => {
@@ -692,6 +720,21 @@ export default function ProductionExecutionWizard() {
                         quantity: q
                     });
                 }
+            } else if (ps.mode === "ACCRUAL") {
+                const q = parseFloat(ps.qty) || 0;
+                const r = parseFloat(ps.rate) || 0;
+                if (q > 0) {
+                    finalOverheads.push({
+                        isAccrual: true,
+                        mode: "ACCRUAL",
+                        productId: ps.productId,
+                        supplierId: ps.supplierId || null,
+                        quantity: q,
+                        rate: r,
+                        amount: q * r,
+                        unitId: units.find(u => u.code === ps.unit)?.id
+                    });
+                }
             } else if (ps.mode === "MANUAL") {
                 const q = parseFloat(ps.qty) || 0;
                 const r = parseFloat(ps.rate) || 0;
@@ -1061,14 +1104,21 @@ export default function ProductionExecutionWizard() {
                                                                     onClick={() => handleProcessingServiceChange(ps.id, "mode", "VENDOR_BILL")}
                                                                     className={cn("px-3 py-1 rounded transition-all", ps.mode === "VENDOR_BILL" ? "bg-amber-600 text-white font-bold" : "text-slate-500 dark:text-slate-400")}
                                                                 >
-                                                                    Vendor Bill
+                                                                    Vendor Bill / GRN
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleProcessingServiceChange(ps.id, "mode", "ACCRUAL")}
+                                                                    className={cn("px-3 py-1 rounded transition-all", ps.mode === "ACCRUAL" ? "bg-amber-600 text-white font-bold" : "text-slate-500 dark:text-slate-400")}
+                                                                >
+                                                                    Accrue / Estimate (No Bill Yet)
                                                                 </button>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleProcessingServiceChange(ps.id, "mode", "MANUAL")}
                                                                     className={cn("px-3 py-1 rounded transition-all", ps.mode === "MANUAL" ? "bg-amber-600 text-white font-bold" : "text-slate-500 dark:text-slate-400")}
                                                                 >
-                                                                    Manual Rate
+                                                                    Internal / Manual Rate
                                                                 </button>
                                                             </div>
                                                             <button
@@ -1090,7 +1140,7 @@ export default function ProductionExecutionWizard() {
                                                                         options={processingServiceOptions}
                                                                         value={ps.serviceId}
                                                                         onChange={(val) => handleProcessingServiceChange(ps.id, "serviceId", val)}
-                                                                        placeholder="Select Vendor Service Bill..."
+                                                                        placeholder="Select Vendor Service Bill or GRN..."
                                                                         searchPlaceholder="Search supplier or bill..."
                                                                         className="w-full text-sm font-semibold"
                                                                     />
@@ -1106,7 +1156,7 @@ export default function ProductionExecutionWizard() {
                                                                     }}
                                                                     className="px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-sm font-bold flex items-center gap-1.5 shrink-0 h-[44px]"
                                                                 >
-                                                                    <Search size={15} /> Browse Bills
+                                                                    <Search size={15} /> Browse Bills & GRN
                                                                 </button>
                                                             </div>
                                                             {ps.serviceId && (() => {
@@ -1125,6 +1175,66 @@ export default function ProductionExecutionWizard() {
                                                                         )}
                                                                         <span className="ml-auto text-emerald-600 dark:text-emerald-400 font-bold font-mono">
                                                                             Available: {Number(s.unconsumedQty).toLocaleString()} {s.unit}
+                                                                        </span>
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    ) : ps.mode === "ACCRUAL" ? (
+                                                        <div className="space-y-2.5">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                                <div className="space-y-1">
+                                                                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                                        Service / Process Product <span className="text-rose-500">*</span>
+                                                                    </label>
+                                                                    <Combobox
+                                                                        options={serviceProductOptions}
+                                                                        value={ps.productId || ""}
+                                                                        onChange={(val) => {
+                                                                            const selProd = products.find(p => p.id === val);
+                                                                            setProcessingServices(prev => prev.map(p => {
+                                                                                if (p.id !== ps.id) return p;
+                                                                                return {
+                                                                                    ...p,
+                                                                                    productId: val,
+                                                                                    unit: selProd?.Unit?.code || p.unit || "KG",
+                                                                                    manualName: selProd?.name || p.manualName
+                                                                                };
+                                                                            }));
+                                                                        }}
+                                                                        placeholder="Select Service (Dyeing, Printing, etc)..."
+                                                                        searchPlaceholder="Search service name or HS code..."
+                                                                        className="w-full text-sm font-semibold"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                                        Job Work Vendor / Supplier <span className="text-slate-400 font-normal">(Optional)</span>
+                                                                    </label>
+                                                                    <Combobox
+                                                                        options={supplierOptions}
+                                                                        value={ps.supplierId || ""}
+                                                                        onChange={(val) => handleProcessingServiceChange(ps.id, "supplierId", val)}
+                                                                        placeholder="Select Vendor / Supplier (Optional)..."
+                                                                        searchPlaceholder="Search supplier name or code..."
+                                                                        className="w-full text-sm font-semibold"
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            {ps.productId && (() => {
+                                                                const prod = products.find(p => p.id === ps.productId);
+                                                                return (
+                                                                    <div className="flex flex-wrap items-center gap-2.5 px-3.5 py-2 bg-indigo-500/5 dark:bg-indigo-950/20 rounded-lg border border-indigo-500/15 text-xs sm:text-sm">
+                                                                        <span className="font-bold text-slate-800 dark:text-slate-200">{prod?.name}</span>
+                                                                        <span className="text-slate-400 font-mono">({prod?.code})</span>
+                                                                        {prod?.hsCode && (
+                                                                            <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs">
+                                                                                HS {prod.hsCode}
+                                                                            </span>
+                                                                        )}
+                                                                        <span className="ml-auto text-amber-600 dark:text-amber-400 font-bold">
+                                                                            Accrual Liability (Credits Accrued Expenses; offset partially or fully in Purchase Invoice later)
                                                                         </span>
                                                                     </div>
                                                                 );
@@ -1648,19 +1758,19 @@ export default function ProductionExecutionWizard() {
             </div>
             {/* 1. YARN LOT SELECTION MODAL TABLE */}
             {isYarnModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="w-full max-w-5xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+                    <div className="w-full max-w-[96vw] 2xl:max-w-[1650px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
                         {/* Modal Header */}
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
-                                    <Package size={22} />
+                                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                                    <Package size={24} />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                                        Select Yarn Lot (Purchase Invoices & Opening Stock)
+                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                        Select Yarn Lot (Invoices, GRN & Opening Stock)
                                     </h3>
-                                    <p className="text-xs text-slate-400">
+                                    <p className="text-xs sm:text-sm text-slate-400">
                                         Strictly filtered to raw yarn materials. Click &quot;Select Lot&quot; to allocate to batch row.
                                     </p>
                                 </div>
@@ -1670,31 +1780,31 @@ export default function ProductionExecutionWizard() {
                                 onClick={() => { setIsYarnModalOpen(false); setActiveYarnRowIndex(null); }}
                                 className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             >
-                                <X size={20} />
+                                <X size={22} />
                             </button>
                         </div>
 
                         {/* Filter and Search Bar */}
                         <div className="p-4 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-                            <div className="relative w-full sm:w-80">
-                                <Search size={16} className="absolute left-3 top-3 text-slate-400" />
+                            <div className="relative w-full sm:w-96">
+                                <Search size={18} className="absolute left-3.5 top-3 text-slate-400" />
                                 <input
                                     type="text"
                                     value={yarnModalSearch}
                                     onChange={(e) => setYarnModalSearch(e.target.value)}
-                                    placeholder="Search yarn name, count, invoice, lot..."
-                                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="Search yarn name, count, invoice, lot, HS code..."
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
                                 />
                             </div>
 
-                            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+                            <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
                                 {(["ALL", "LOCAL", "IMPORT_EFS", "IMPORT_COMMERCIAL", "OPENING"] as const).map(flt => (
                                     <button
                                         key={flt}
                                         type="button"
                                         onClick={() => setYarnModalFilter(flt)}
                                         className={cn(
-                                            "px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
+                                            "px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
                                             yarnModalFilter === flt
                                                 ? "bg-indigo-600 text-white shadow-sm font-black"
                                                 : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -1713,27 +1823,27 @@ export default function ProductionExecutionWizard() {
                         {/* Table Area */}
                         <div className="overflow-y-auto flex-1 p-4">
                             {filteredModalYarnLots.length === 0 ? (
-                                <div className="text-center py-16 space-y-2">
-                                    <Package size={36} className="mx-auto text-slate-400/50" />
-                                    <p className="text-sm font-bold text-slate-500">No matching yarn lots found in stock.</p>
-                                    <p className="text-xs text-slate-400">Ensure raw yarn purchases or opening stock have been entered.</p>
+                                <div className="text-center py-20 space-y-2">
+                                    <Package size={42} className="mx-auto text-slate-400/50" />
+                                    <p className="text-base font-bold text-slate-500">No matching yarn lots found in stock.</p>
+                                    <p className="text-xs sm:text-sm text-slate-400">Ensure raw yarn purchases, GRNs, or opening stock have been entered.</p>
                                 </div>
                             ) : (
                                 <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-                                    <table className="w-full text-left border-collapse text-xs">
-                                        <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black uppercase tracking-wider">
+                                    <table className="w-full text-left border-collapse text-sm">
+                                        <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black uppercase tracking-wider text-xs">
                                             <tr>
-                                                <th className="py-3 px-4">Yarn Product</th>
-                                                <th className="py-3 px-3">Origin / Scheme</th>
-                                                <th className="py-3 px-3">Reference / Source</th>
-                                                <th className="py-3 px-3">Date</th>
-                                                <th className="py-3 px-3 text-right">Available Qty</th>
-                                                <th className="py-3 px-3 text-right">Rate (PKR)</th>
-                                                <th className="py-3 px-3 text-right">Total Value</th>
-                                                <th className="py-3 px-4 text-center">Action</th>
+                                                <th className="py-3.5 px-4">Yarn Product</th>
+                                                <th className="py-3.5 px-3">Origin / Scheme</th>
+                                                <th className="py-3.5 px-3">Reference / Source</th>
+                                                <th className="py-3.5 px-3">Date</th>
+                                                <th className="py-3.5 px-3 text-right">Available Qty</th>
+                                                <th className="py-3.5 px-3 text-right">Rate (PKR)</th>
+                                                <th className="py-3.5 px-3 text-right">Total Value</th>
+                                                <th className="py-3.5 px-4 text-center">Action</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-sm">
                                             {filteredModalYarnLots.map((lot, idx) => {
                                                 const prod = products.find(p => p.id === lot.productId);
                                                 const isEfs = Boolean(lot.isEFS || (lot.invoiceNo && lot.invoiceNo.includes("[EFS]")));
@@ -1742,66 +1852,66 @@ export default function ProductionExecutionWizard() {
 
                                                 return (
                                                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                                                        <td className="py-3 px-4">
-                                                            <div className="font-bold text-slate-900 dark:text-white">
+                                                        <td className="py-3.5 px-4">
+                                                            <div className="font-bold text-slate-900 dark:text-white text-sm">
                                                                 {prod?.name || lot.productName || 'Yarn'}
                                                             </div>
-                                                            <div className="flex items-center gap-2 mt-0.5 font-mono text-[11px] text-slate-400">
+                                                            <div className="flex items-center gap-2 mt-1 font-mono text-xs text-slate-400">
                                                                 <span>{prod?.code || lot.productCode}</span>
-                                                                {(prod?.hsCode || lot.hsCode) && (
-                                                                    <span className="px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold">
-                                                                        HS {prod?.hsCode || lot.hsCode}
+                                                                {(lot.hsCode || prod?.hsCode) && (
+                                                                    <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 font-bold border border-indigo-500/20">
+                                                                        HS: {lot.hsCode || prod?.hsCode}
                                                                     </span>
                                                                 )}
                                                             </div>
                                                         </td>
 
-                                                        <td className="py-3 px-3">
-                                                            {!isImport ? (
-                                                                <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                                    Local
+                                                        <td className="py-3.5 px-3">
+                                                            {isEfs ? (
+                                                                <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                                                                    IMPORT EFS
                                                                 </span>
-                                                            ) : isEfs ? (
-                                                                <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                                                                    Import EFS
+                                                            ) : isImport ? (
+                                                                <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                                                    COMMERCIAL IMPORT
+                                                                </span>
+                                                            ) : lot.isOpening ? (
+                                                                <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                                                    OPENING STOCK
                                                                 </span>
                                                             ) : (
-                                                                <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30">
-                                                                    Import Non-EFS
+                                                                <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                                    LOCAL STOCK
                                                                 </span>
                                                             )}
                                                         </td>
 
-                                                        <td className="py-3 px-3 font-mono">
-                                                            <div className="font-bold text-slate-700 dark:text-slate-300">
-                                                                {lot.isOpening ? '[Opening Stock]' : lot.invoiceNo}
-                                                            </div>
-                                                            <div className="text-[10px] text-slate-400 truncate max-w-[150px]">
-                                                                {lot.supplierName || (lot.isOpening ? 'Opening Balance' : 'Vendor Invoice')}
-                                                            </div>
+                                                        <td className="py-3.5 px-3 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                                            <div className="text-sm">{lot.invoiceNo}</div>
+                                                            <div className="text-xs text-slate-400 font-normal">{lot.supplierName}</div>
                                                         </td>
 
-                                                        <td className="py-3 px-3 text-slate-500 font-mono">
+                                                        <td className="py-3.5 px-3 font-mono text-xs text-slate-500">
                                                             {lot.date || '-'}
                                                         </td>
 
-                                                        <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white">
-                                                            {Number(lot.qty).toLocaleString()} <span className="text-[10px] text-slate-400">KG</span>
+                                                        <td className="py-3.5 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                                                            {Number(lot.qty).toLocaleString()} <span className="text-xs text-slate-400">{lot.unitName || 'KG'}</span>
                                                         </td>
 
-                                                        <td className="py-3 px-3 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                                        <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-900 dark:text-white text-sm">
                                                             Rs. {Number(lot.rate).toFixed(2)}
                                                         </td>
 
-                                                        <td className="py-3 px-3 text-right font-mono font-black text-slate-700 dark:text-slate-300">
+                                                        <td className="py-3.5 px-3 text-right font-mono font-black text-indigo-600 dark:text-indigo-400 text-sm">
                                                             Rs. {totalVal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                                         </td>
 
-                                                        <td className="py-3 px-4 text-center">
+                                                        <td className="py-3.5 px-4 text-center">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleSelectYarnLotFromModal(lot)}
-                                                                className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm active:scale-95 transition-all"
+                                                                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm active:scale-95 transition-all"
                                                             >
                                                                 Select Lot
                                                             </button>
@@ -1816,12 +1926,12 @@ export default function ProductionExecutionWizard() {
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs text-slate-400">
+                        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs sm:text-sm text-slate-400">
                             <span>Showing {filteredModalYarnLots.length} lot(s)</span>
                             <button
                                 type="button"
                                 onClick={() => { setIsYarnModalOpen(false); setActiveYarnRowIndex(null); }}
-                                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all"
+                                className="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all text-xs sm:text-sm"
                             >
                                 Close
                             </button>
@@ -1832,20 +1942,20 @@ export default function ProductionExecutionWizard() {
 
             {/* 2. SERVICE BILL SELECTION MODAL TABLE */}
             {isServiceModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="w-full max-w-5xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+                    <div className="w-full max-w-[96vw] 2xl:max-w-[1650px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
                         {/* Modal Header */}
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                                    <FileText size={22} />
+                                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                                    <FileText size={24} />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                                        Select Service / Process Bill (Dyeing, Printing, Weaving, Knitting)
+                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                        Select Service / Process Bill (Dyeing, Printing, Weaving, Knitting, GRN & Opening)
                                     </h3>
-                                    <p className="text-xs text-slate-400">
-                                        Choose available vendor service bill or opening service to offset conversion costs.
+                                    <p className="text-xs sm:text-sm text-slate-400">
+                                        Choose available vendor service bill, GRN receipt or opening service to offset conversion costs.
                                     </p>
                                 </div>
                             </div>
@@ -1854,20 +1964,20 @@ export default function ProductionExecutionWizard() {
                                 onClick={() => setIsServiceModalOpen(false)}
                                 className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             >
-                                <X size={20} />
+                                <X size={22} />
                             </button>
                         </div>
 
                         {/* Filter and Search Bar */}
                         <div className="p-4 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-                            <div className="relative w-full sm:w-80">
-                                <Search size={16} className="absolute left-3 top-3 text-slate-400" />
+                            <div className="relative w-full sm:w-96">
+                                <Search size={18} className="absolute left-3.5 top-3 text-slate-400" />
                                 <input
                                     type="text"
                                     value={serviceModalSearch}
                                     onChange={(e) => setServiceModalSearch(e.target.value)}
-                                    placeholder="Search supplier, bill #, HS Code, product name..."
-                                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold outline-none focus:ring-2 focus:ring-amber-500"
+                                    placeholder="Search supplier, bill #, GRN, HS Code, service name..."
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-amber-500"
                                 />
                             </div>
 
@@ -1878,7 +1988,7 @@ export default function ProductionExecutionWizard() {
                                         type="button"
                                         onClick={() => setServiceModalTypeFilter(flt)}
                                         className={cn(
-                                            "px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
+                                            "px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
                                             serviceModalTypeFilter === flt
                                                 ? "bg-amber-600 text-white shadow-sm font-black"
                                                 : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -1898,25 +2008,25 @@ export default function ProductionExecutionWizard() {
                         {/* Table Area */}
                         <div className="overflow-y-auto flex-1 p-4">
                             {filteredModalServices.length === 0 ? (
-                                <div className="text-center py-16 space-y-2">
-                                    <FileText size={36} className="mx-auto text-slate-400/50" />
-                                    <p className="text-sm font-bold text-slate-500">No matching service bills found.</p>
-                                    <p className="text-xs text-slate-400">Ensure service purchase invoices or opening services have been recorded.</p>
+                                <div className="text-center py-20 space-y-3">
+                                    <FileText size={42} className="mx-auto text-slate-400/50" />
+                                    <p className="text-base font-bold text-slate-500">No matching service bills or GRN receipts found.</p>
+                                    <p className="text-xs sm:text-sm text-slate-400">Ensure service purchase invoices, GRN receipts, or opening services have been recorded.</p>
                                 </div>
                             ) : (
                                 <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-                                    <table className="w-full text-left border-collapse text-xs">
-                                        <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black uppercase tracking-wider">
+                                    <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                                        <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black uppercase tracking-wider text-xs">
                                             <tr>
-                                                <th className="py-3 px-4">Vendor / Supplier</th>
-                                                <th className="py-3 px-3">Bill / Invoice No</th>
-                                                <th className="py-3 px-3">Service / Process</th>
-                                                <th className="py-3 px-3">HS Code</th>
-                                                <th className="py-3 px-3">Type</th>
-                                                <th className="py-3 px-3 text-right">Available Qty</th>
-                                                <th className="py-3 px-3 text-right">Rate</th>
-                                                <th className="py-3 px-3 text-right">Remaining Value</th>
-                                                <th className="py-3 px-4 text-center">Action</th>
+                                                <th className="py-3.5 px-4">Vendor / Supplier</th>
+                                                <th className="py-3.5 px-3">Bill / GRN No</th>
+                                                <th className="py-3.5 px-3">Service / Process</th>
+                                                <th className="py-3.5 px-3">HS Code</th>
+                                                <th className="py-3.5 px-3">Type</th>
+                                                <th className="py-3.5 px-3 text-right">Available Qty</th>
+                                                <th className="py-3.5 px-3 text-right">Rate</th>
+                                                <th className="py-3.5 px-3 text-right">Remaining Value</th>
+                                                <th className="py-3.5 px-4 text-center">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
@@ -1927,48 +2037,60 @@ export default function ProductionExecutionWizard() {
 
                                                 return (
                                                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                                                        <td className="py-3 px-4">
-                                                            <div className="font-bold text-slate-900 dark:text-white">
+                                                        <td className="py-3.5 px-4">
+                                                            <div className="font-bold text-slate-900 dark:text-white text-sm">
                                                                 {svc.supplierName}
                                                             </div>
-                                                            <div className="text-[10px] text-slate-400">
-                                                                {svc.isOpening ? 'Opening Service Lot' : 'Job Work Vendor'}
+                                                            <div className="text-xs text-slate-400 mt-0.5">
+                                                                {svc.isGRN ? (
+                                                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                                                        GRN Service Receipt
+                                                                    </span>
+                                                                ) : svc.isOpening ? (
+                                                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                                                                        Opening Service Lot
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                                                        Vendor Purchase Bill
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </td>
 
-                                                        <td className="py-3 px-3 font-mono font-bold text-slate-700 dark:text-slate-300">
-                                                            {svc.invoiceNo}
+                                                        <td className="py-3.5 px-3 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                                            <div className="text-sm">{svc.invoiceNo}</div>
                                                             {svc.date && (
-                                                                <div className="text-[10px] text-slate-400 font-normal">
+                                                                <div className="text-xs text-slate-400 font-normal mt-0.5">
                                                                     {new Date(svc.date).toISOString().split('T')[0]}
                                                                 </div>
                                                             )}
                                                         </td>
 
-                                                        <td className="py-3 px-3">
-                                                            <div className="font-bold text-slate-900 dark:text-white">
+                                                        <td className="py-3.5 px-3">
+                                                            <div className="font-bold text-slate-900 dark:text-white text-sm">
                                                                 {svc.productName}
                                                             </div>
-                                                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono mt-0.5">
+                                                            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono mt-0.5">
                                                                 <span>{svc.productCode || prod?.code || ''}</span>
                                                                 {svc.categoryName && <span>• {svc.categoryName}</span>}
                                                             </div>
                                                         </td>
 
-                                                        <td className="py-3 px-3">
+                                                        <td className="py-3.5 px-3">
                                                             {hsCode ? (
-                                                                <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs inline-flex items-center gap-1">
+                                                                <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs inline-flex items-center gap-1">
                                                                     <span className="text-[10px] font-black opacity-75">HS</span>
                                                                     {hsCode}
                                                                 </span>
                                                             ) : (
-                                                                <span className="text-[11px] text-slate-400 font-mono italic">-</span>
+                                                                <span className="text-xs text-slate-400 font-mono italic">-</span>
                                                             )}
                                                         </td>
 
-                                                        <td className="py-3 px-3">
+                                                        <td className="py-3.5 px-3">
                                                             <span className={cn(
-                                                                "px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider",
+                                                                "px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider",
                                                                 svc.serviceType === "WEAVING" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20" :
                                                                 svc.serviceType === "KNITTING" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" :
                                                                 svc.serviceType === "DYEING" ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20" :
@@ -1979,23 +2101,23 @@ export default function ProductionExecutionWizard() {
                                                             </span>
                                                         </td>
 
-                                                        <td className="py-3 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400">
-                                                            {Number(svc.unconsumedQty).toLocaleString()} <span className="text-[10px] text-slate-400">{svc.unit || 'KG'}</span>
+                                                        <td className="py-3.5 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                                                            {Number(svc.unconsumedQty).toLocaleString()} <span className="text-xs text-slate-400">{svc.unit || 'KG'}</span>
                                                         </td>
 
-                                                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 dark:text-white">
+                                                        <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-900 dark:text-white text-sm">
                                                             Rs. {Number(svc.rate).toFixed(2)}
                                                         </td>
 
-                                                        <td className="py-3 px-3 text-right font-mono font-black text-amber-600 dark:text-amber-400">
+                                                        <td className="py-3.5 px-3 text-right font-mono font-black text-amber-600 dark:text-amber-400 text-sm">
                                                             Rs. {remVal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                                         </td>
 
-                                                        <td className="py-3 px-4 text-center">
+                                                        <td className="py-3.5 px-4 text-center">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleSelectServiceFromModal(svc)}
-                                                                className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-sm active:scale-95 transition-all"
+                                                                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs sm:text-sm shadow-sm active:scale-95 transition-all"
                                                             >
                                                                 Select Bill
                                                             </button>
@@ -2010,12 +2132,12 @@ export default function ProductionExecutionWizard() {
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs text-slate-400">
+                        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs sm:text-sm text-slate-400">
                             <span>Showing {filteredModalServices.length} bill(s)</span>
                             <button
                                 type="button"
                                 onClick={() => setIsServiceModalOpen(false)}
-                                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all"
+                                className="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all text-xs sm:text-sm"
                             >
                                 Close
                             </button>

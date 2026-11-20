@@ -18,7 +18,8 @@ import {
     CheckCircle2,
     Settings2,
     FileText,
-    Truck
+    Truck,
+    Layers
 } from "lucide-react";
 import { useNotifications } from '@/context/NotificationContext';
 import { cn } from '@/lib/utils';
@@ -128,7 +129,9 @@ export default function NewPurchaseInvoicePage() {
         try {
             const endpoint = type === "PO"
                 ? "/api/finance/purchase/orders?status=OPEN"
-                : "/api/finance/purchase/grn";
+                : type === "GRN"
+                ? "/api/finance/purchase/grn"
+                : "/api/finance/production/accruals?pendingOnly=true";
             const res = await authenticatedFetch(endpoint);
             const json = await res.json();
             if (json.success) {
@@ -173,7 +176,7 @@ export default function NewPurchaseInvoicePage() {
                     total: available * item.rate,
                 };
             });
-        } else {
+        } else if (formData.sourceType === "GRN") {
             items = source.items.map((item: any) => ({
                 id: Date.now().toString() + Math.random(),
                 productId: item.productId,
@@ -186,12 +189,25 @@ export default function NewPurchaseInvoicePage() {
                 rate: item.poItem?.rate || 0,
                 total: item.qtyReceived * (item.poItem?.rate || 0),
             }));
+        } else {
+            // PRODUCTION ACCRUAL (allows partial or full billing)
+            items = [{
+                id: Date.now().toString() + Math.random(),
+                productId: source.productId,
+                productName: `${source.productName} [Accrual: ${source.accrualNo}]`,
+                unitId: source.unitId,
+                productionAccrualId: source.id,
+                qtyAvailable: source.remainingQty,
+                qty: source.remainingQty,
+                rate: source.rate || 0,
+                total: source.remainingQty * (source.rate || 0),
+            }];
         }
 
         setFormData({
             ...formData,
             sourceId: id,
-            supplierId: source.supplierId,
+            supplierId: source.supplierId || formData.supplierId,
             items,
         });
     };
@@ -339,6 +355,10 @@ export default function NewPurchaseInvoicePage() {
         if (formData.sourceType !== "DIRECT") {
             const overFullfilled = formData.items.some((it: any) => it.qty > it.qtyAvailable);
             if (overFullfilled) {
+                if (formData.sourceType === "PRODUCTION") {
+                    showNotification('error', 'Billed quantity cannot exceed the remaining pending accrual quantity.');
+                    return;
+                }
                 if (!confirm("One or more items exceed the remaining PO/GRN quantity. An 'Addendum PO' will be automatically created for the excess. Proceed?")) {
                     return;
                 }
@@ -384,10 +404,24 @@ export default function NewPurchaseInvoicePage() {
         label: w.name
     }));
 
-    const sourceOptions = sources.map(s => ({
-        value: s.id,
-        label: `${formData.sourceType === "PO" ? s.poNo : s.grnNo} - ${s.supplier?.name || "Unknown"}`
-    }));
+    const sourceOptions = sources.map(s => {
+        if (formData.sourceType === "PO") {
+            return {
+                value: s.id,
+                label: `${s.poNo} - ${s.supplier?.name || "Unknown"} (Rs. ${Number(s.totalAmount).toLocaleString()})`
+            };
+        } else if (formData.sourceType === "GRN") {
+            return {
+                value: s.id,
+                label: `${s.grnNo} - ${s.supplier?.name || "Unknown"}`
+            };
+        } else {
+            return {
+                value: s.id,
+                label: `${s.accrualNo} | ${s.productName} | ${s.supplierName} | Avail: ${Number(s.remainingQty).toLocaleString()} ${s.unitCode} @ Rs. ${s.rate}`
+            };
+        }
+    });
 
     return (
         <MainLayout>
@@ -428,7 +462,7 @@ export default function NewPurchaseInvoicePage() {
                                     onClick={() => setFormData({ ...formData, sourceType: "PO", sourceId: "", items: [] })}
                                     disabled={isGrnMandatory}
                                     className={cn(
-                                        "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all",
+                                        "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all",
                                         formData.sourceType === "PO" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-slate-200",
                                         isGrnMandatory && "opacity-50 cursor-not-allowed"
                                     )}
@@ -438,17 +472,26 @@ export default function NewPurchaseInvoicePage() {
                                 <button 
                                     onClick={() => setFormData({ ...formData, sourceType: "GRN", sourceId: "", items: [] })}
                                     className={cn(
-                                        "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all",
+                                        "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all",
                                         formData.sourceType === "GRN" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-slate-200"
                                     )}
                                 >
                                     <Truck size={14} /> GRN
                                 </button>
+                                <button 
+                                    onClick={() => setFormData({ ...formData, sourceType: "PRODUCTION", sourceId: "", items: [] })}
+                                    className={cn(
+                                        "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap",
+                                        formData.sourceType === "PRODUCTION" ? "bg-amber-600 text-white shadow-lg" : "text-slate-400 hover:text-slate-200"
+                                    )}
+                                >
+                                    <Layers size={14} /> Accrual
+                                </button>
                                 {!isGrnMandatory && (
                                     <button 
                                         onClick={() => setFormData({ ...formData, sourceType: "DIRECT", sourceId: "", items: [] })}
                                         className={cn(
-                                            "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all",
+                                            "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all",
                                             formData.sourceType === "DIRECT" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-slate-200"
                                         )}
                                     >
@@ -462,13 +505,14 @@ export default function NewPurchaseInvoicePage() {
                             {formData.sourceType !== "DIRECT" ? (
                                 <div className="md:col-span-2 space-y-2">
                                     <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                        <FileText size={14} /> Link {formData.sourceType}
+                                        <FileText size={14} /> Link {formData.sourceType === "PRODUCTION" ? "Production Accrual" : formData.sourceType}
                                     </label>
                                     <Combobox
                                         options={sourceOptions}
                                         value={formData.sourceId}
                                         onChange={(val) => handleSelectSource(val)}
-                                        placeholder={`Select ${formData.sourceType}...`}
+                                        placeholder={formData.sourceType === "PRODUCTION" ? "Select Pending Production Accrual to offset..." : `Select ${formData.sourceType}...`}
+                                        searchPlaceholder={formData.sourceType === "PRODUCTION" ? "Search accrual #, service, supplier, HS code..." : undefined}
                                         className="w-full bg-slate-900/50 border-slate-700 text-white"
                                     />
                                 </div>

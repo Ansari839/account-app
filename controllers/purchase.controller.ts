@@ -968,6 +968,7 @@ export class PurchaseController {
                                     unitId: item.unitId || null,
                                     poItemId: item.poItemId || null,
                                     grnItemId: item.grnItemId || null,
+                                    productionAccrualId: item.productionAccrualId || null,
                                     qty: item.qty,
                                     rate: item.rate,
                                     total: itemTotal,
@@ -992,6 +993,7 @@ export class PurchaseController {
 
                     if (finalWarehouseId) {
                         for (const item of items) {
+                            if (item.productionAccrualId) continue; // Production accruals already consumed in manufacturing
                             const product = await tx.product.findUnique({ where: { id: item.productId } });
                             if (product && !product.isService) {
                                 await tx.stockLedger.create({
@@ -1013,13 +1015,29 @@ export class PurchaseController {
                     }
                 }
 
-                // 4. Update PO Items (invoicedQty)
+                // 4. Update PO Items (invoicedQty) & Production Accruals (billedQty)
                 for (const item of items) {
                     if (item.poItemId) {
                         await tx.purchaseOrderItem.update({
                             where: { id: item.poItemId },
                             data: { invoicedQty: { increment: item.qty } }
                         });
+                    }
+                    if (item.productionAccrualId) {
+                        const pAccrual = await tx.productionAccrual.findUnique({
+                            where: { id: item.productionAccrualId }
+                        });
+                        if (pAccrual) {
+                            const newBilled = Number(pAccrual.billedQty) + Number(item.qty);
+                            const newStatus = newBilled >= Number(pAccrual.qty) ? 'BILLED' : 'PARTIALLY_BILLED';
+                            await tx.productionAccrual.update({
+                                where: { id: pAccrual.id },
+                                data: {
+                                    billedQty: newBilled,
+                                    status: newStatus
+                                }
+                            });
+                        }
                     }
                 }
 
@@ -1065,40 +1083,73 @@ export class PurchaseController {
                     }
                 }
 
-                // Debit Purchase/Inventory Accounts for items
+                // Debit Purchase/Inventory Accounts for items, or settle Accrued Expenses if from Production Accrual
                 for (const item of items) {
-                    const product = await tx.product.findUnique({ 
-                        where: { id: item.productId },
-                        include: { category: true }
-                    });
-                    
-                    let purchaseAccount = product?.inventoryAccountId || product?.purchaseAccountId;
-
-                    // If it's a service and has a WIP account linked to its category, use that
-                    if (!purchaseAccount && product?.category?.isService && product.category.wipAccountId) {
-                        purchaseAccount = product.category.wipAccountId;
-                    }
-
-                    if (!purchaseAccount) {
-                        const defInv = await tx.account.findFirst({
-                            where: { companyId, name: { contains: 'Inventory', mode: 'insensitive' }, type: 'ASSET', isPosting: true }
+                    if (item.productionAccrualId) {
+                        let accruedAcc = await tx.account.findFirst({
+                            where: {
+                                companyId,
+                                OR: [
+                                    { code: '2130' },
+                                    { name: { contains: 'Accrued', mode: 'insensitive' } },
+                                    { name: { contains: 'Unbilled', mode: 'insensitive' } }
+                                ]
+                            }
                         });
-                        const defPur = await tx.account.findFirst({
-                            where: { companyId, name: { contains: 'Purchase', mode: 'insensitive' }, type: 'EXPENSE', isPosting: true }
+                        if (!accruedAcc) {
+                            accruedAcc = await tx.account.findFirst({
+                                where: { companyId, type: 'LIABILITY', isPosting: true }
+                            });
+                        }
+                        if (!accruedAcc) {
+                            throw new Error("No 'Accrued Expenses' liability account found to settle production accrual.");
+                        }
+
+                        const pAccrual = await tx.productionAccrual.findUnique({
+                            where: { id: item.productionAccrualId },
+                            include: { Product: true }
                         });
-                        purchaseAccount = defInv?.id || defPur?.id;
+
+                        lines.push({
+                            accountId: accruedAcc.id,
+                            credit: 0,
+                            debit: Number(item.qty) * Number(item.rate),
+                            narration: `Settle Accrual [${pAccrual?.accrualNo || ''}] on Invoice ${txInvoiceNo} - ${pAccrual?.Product?.name || 'Production Service'} (${item.qty} @ ${item.rate})`
+                        });
+                    } else {
+                        const product = await tx.product.findUnique({ 
+                            where: { id: item.productId },
+                            include: { category: true }
+                        });
+                        
+                        let purchaseAccount = product?.inventoryAccountId || product?.purchaseAccountId;
+
+                        // If it's a service and has a WIP account linked to its category, use that
+                        if (!purchaseAccount && product?.category?.isService && product.category.wipAccountId) {
+                            purchaseAccount = product.category.wipAccountId;
+                        }
 
                         if (!purchaseAccount) {
-                            throw new Error(`Product '${product?.name || item.productId}' is not linked to a Purchase or Inventory Account.`);
-                        }
-                    }
+                            const defInv = await tx.account.findFirst({
+                                where: { companyId, name: { contains: 'Inventory', mode: 'insensitive' }, type: 'ASSET', isPosting: true }
+                            });
+                            const defPur = await tx.account.findFirst({
+                                where: { companyId, name: { contains: 'Purchase', mode: 'insensitive' }, type: 'EXPENSE', isPosting: true }
+                            });
+                            purchaseAccount = defInv?.id || defPur?.id;
 
-                    lines.push({
-                        accountId: purchaseAccount,
-                        credit: 0,
-                        debit: Number(item.qty) * Number(item.rate),
-                        narration: `Purchase of ${product?.name} (${item.qty} @ ${item.rate})`
-                    });
+                            if (!purchaseAccount) {
+                                throw new Error(`Product '${product?.name || item.productId}' is not linked to a Purchase or Inventory Account.`);
+                            }
+                        }
+
+                        lines.push({
+                            accountId: purchaseAccount,
+                            credit: 0,
+                            debit: Number(item.qty) * Number(item.rate),
+                            narration: `Purchase of ${product?.name} (${item.qty} @ ${item.rate})`
+                        });
+                    }
                 }
 
                 // Debit Tax Accounts

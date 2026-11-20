@@ -184,6 +184,7 @@ model Company {
   JournalEntry         JournalEntry[]
   Product              Product[]
   ProductionRecord     ProductionRecord[]
+  ProductionAccrual    ProductionAccrual[]
   PurchaseInvoice      PurchaseInvoice[]
   PurchaseOrder        PurchaseOrder[]
   PurchaseRequest      PurchaseRequest[]
@@ -439,6 +440,7 @@ model Product {
   ProductVariant                              ProductVariant[]
   ProductionInput                             ProductionInput[]
   ProductionRecord                            ProductionRecord[]
+  ProductionAccrual                           ProductionAccrual[]
   PurchaseInvoiceItem                         PurchaseInvoiceItem[]
   PurchaseOrderItem                           PurchaseOrderItem[]
   PurchaseRequestItem                         PurchaseRequestItem[]
@@ -515,9 +517,40 @@ model ProductionRecord {
   outputStage        ProductionStage?
   ProductionInput    ProductionInput[]
   ProductionOverhead ProductionOverhead[]
+  ProductionAccrual  ProductionAccrual[]
   Company            Company              @relation(fields: [companyId], references: [id])
   Product            Product              @relation(fields: [outputProductId], references: [id])
   Warehouse          Warehouse            @relation(fields: [warehouseId], references: [id])
+}
+
+model ProductionAccrual {
+  id                  String                @id @default(uuid())
+  accrualNo           String
+  companyId           String
+  productionId        String?
+  productId           String
+  supplierId          String?
+  unitId              String?
+  date                DateTime
+  stage               ProductionStage?      @default(FINISH)
+  serviceType         String?
+  qty                 Decimal
+  rate                Decimal               @default(0.0)
+  amount              Decimal               @default(0.0)
+  billedQty           Decimal               @default(0.0)
+  status              String                @default("PENDING")
+  remarks             String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  Company             Company               @relation(fields: [companyId], references: [id])
+  ProductionRecord    ProductionRecord?     @relation(fields: [productionId], references: [id], onDelete: SetNull)
+  Product             Product               @relation(fields: [productId], references: [id])
+  Supplier            Supplier?             @relation(fields: [supplierId], references: [id])
+  Unit                Unit?                 @relation(fields: [unitId], references: [id])
+  PurchaseInvoiceItem PurchaseInvoiceItem[]
+
+  @@unique([companyId, accrualNo])
 }
 
 model PurchaseInvoice {
@@ -579,12 +612,14 @@ model PurchaseInvoiceItem {
   rdAmount           Decimal?             @default(0.0)
   acdAmount          Decimal?             @default(0.0)
   itpRate            Decimal?             @default(0.0)
-  grnItemId          String?
-  poItemId           String?
-  unitId             String?
-  consumedQty        Decimal              @default(0.0)
-  ProductionOverhead ProductionOverhead[]
-  PurchaseInvoice    PurchaseInvoice      @relation(fields: [invoiceId], references: [id])
+  grnItemId           String?
+  poItemId            String?
+  productionAccrualId String?
+  unitId              String?
+  consumedQty         Decimal              @default(0.0)
+  ProductionOverhead  ProductionOverhead[]
+  ProductionAccrual   ProductionAccrual?   @relation(fields: [productionAccrualId], references: [id])
+  PurchaseInvoice     PurchaseInvoice      @relation(fields: [invoiceId], references: [id])
   PurchaseOrderItem  PurchaseOrderItem?   @relation(fields: [poItemId], references: [id])
   Product            Product              @relation(fields: [productId], references: [id])
   TaxCode            TaxCode?             @relation(fields: [taxCodeId], references: [id])
@@ -966,6 +1001,7 @@ model Supplier {
   PurchaseInvoice  PurchaseInvoice[]
   PurchaseOrder    PurchaseOrder[]
   PurchaseReturn   PurchaseReturn[]
+  ProductionAccrual ProductionAccrual[]
   Company          Company           @relation(fields: [companyId], references: [id])
   Currency         Currency          @relation(fields: [currencyCode], references: [id])
   Account          Account?          @relation(fields: [payableAccountId], references: [id])
@@ -1043,6 +1079,7 @@ model Unit {
   GRNItem                                        GRNItem[]
   Product                                        Product[]
   ProductionOverhead                             ProductionOverhead[]
+  ProductionAccrual                              ProductionAccrual[]
   PurchaseInvoiceItem                            PurchaseInvoiceItem[]
   PurchaseOrderItem                              PurchaseOrderItem[]
   PurchaseReturnItem                             PurchaseReturnItem[]

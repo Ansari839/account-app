@@ -153,6 +153,83 @@ export async function GET(req: NextRequest) {
             });
         }
 
+        // Also fetch GRN services (services received in warehouse via GRN)
+        try {
+            const grnServices = await prisma.gRNItem.findMany({
+                where: {
+                    grn: { companyId },
+                    product: { isService: true }
+                },
+                include: {
+                    grn: {
+                        select: {
+                            grnNo: true,
+                            date: true,
+                            supplier: { select: { name: true } }
+                        }
+                    },
+                    product: {
+                        include: {
+                            Category: { select: { name: true } },
+                            Unit: { select: { code: true } }
+                        }
+                    },
+                    unit: { select: { code: true } }
+                }
+            });
+
+            for (const grnItem of grnServices) {
+                const receivedQty = Number(grnItem.qtyReceived);
+                if (receivedQty <= 0) continue;
+
+                // Check already billed qty if linked to an invoice item
+                const billedAgg = await prisma.purchaseInvoiceItem.aggregate({
+                    where: { grnItemId: grnItem.id },
+                    _sum: { qty: true }
+                });
+                const alreadyBilledQty = Number(billedAgg._sum.qty || 0);
+                const unconsumedQty = Math.max(0, receivedQty - alreadyBilledQty);
+                if (unconsumedQty <= 0) continue;
+
+                const prodUpper = (grnItem.product?.name || "").toUpperCase();
+                const catUpper = (grnItem.product?.Category?.name || "").toUpperCase();
+
+                let serviceType: "DYEING" | "PRINTING" | "WEAVING" | "KNITTING" | "OTHER" = "OTHER";
+                if (catUpper.includes("DYE") || prodUpper.includes("DYE")) {
+                    serviceType = "DYEING";
+                } else if (catUpper.includes("PRINT") || prodUpper.includes("PRINT")) {
+                    serviceType = "PRINTING";
+                } else if (catUpper.includes("WEAV") || prodUpper.includes("WEAV")) {
+                    serviceType = "WEAVING";
+                } else if (catUpper.includes("KNIT") || prodUpper.includes("KNIT")) {
+                    serviceType = "KNITTING";
+                }
+
+                unconsumedServices.push({
+                    id: `GRN-SVC-${grnItem.id}`,
+                    date: grnItem.grn.date,
+                    invoiceNo: `[GRN] ${grnItem.grn.grnNo}`,
+                    supplierName: grnItem.grn.supplier?.name ? `[GRN] ${grnItem.grn.supplier.name}` : `[GRN Receipt]`,
+                    productId: grnItem.productId,
+                    productName: grnItem.product?.name,
+                    productCode: grnItem.product?.code || '',
+                    hsCode: grnItem.product?.hsCode || '',
+                    categoryName: grnItem.product?.Category?.name || '',
+                    serviceType,
+                    unconsumedQty,
+                    totalQty: receivedQty,
+                    consumedQty: alreadyBilledQty,
+                    rate: Number(grnItem.rate || 0),
+                    unit: grnItem.unit?.code || grnItem.product?.Unit?.code || 'KG',
+                    inclAmount: unconsumedQty * Number(grnItem.rate || 0),
+                    isOpening: false,
+                    isGRN: true
+                });
+            }
+        } catch (e: any) {
+            console.warn("Could not load GRN services into meta:", e.message);
+        }
+
         // Current Stock Balances and Rates to auto-fill input rates
         const rawLedgers = await prisma.stockLedger.findMany({
             where: { companyId },
@@ -310,9 +387,78 @@ export async function GET(req: NextRequest) {
             }
         }
 
+        // Fetch GRN lots for raw materials (received via GRN)
+        try {
+            const grnRawItems = await prisma.gRNItem.findMany({
+                where: {
+                    grn: { companyId },
+                    product: { isManufactured: false, isService: false }
+                },
+                include: {
+                    grn: {
+                        select: {
+                            grnNo: true,
+                            date: true,
+                            supplier: { select: { name: true } }
+                        }
+                    },
+                    product: {
+                        select: {
+                            id: true,
+                            name: true,
+                            code: true,
+                            hsCode: true,
+                            stage: true,
+                            isService: true,
+                            Unit: { select: { code: true } }
+                        }
+                    },
+                    unit: { select: { code: true } }
+                }
+            });
+
+            for (const grnItem of grnRawItems) {
+                const stockKey = `${grnItem.productId}-${grnItem.product?.stage || 'RAW'}-STD`;
+                const remainingStock = stockRates[stockKey] ? stockRates[stockKey].qty : 0;
+                const receivedQty = Number(grnItem.qtyReceived);
+
+                if (remainingStock > 0 && receivedQty > 0) {
+                    const avail = Math.min(receivedQty, remainingStock);
+                    availableLots.push({
+                        id: `GRN-${grnItem.id}`,
+                        productId: grnItem.productId,
+                        productName: grnItem.product?.name || 'Raw Material',
+                        productCode: grnItem.product?.code || '',
+                        hsCode: grnItem.product?.hsCode || '',
+                        unitName: grnItem.unit?.code || grnItem.product?.Unit?.code || 'KG',
+                        stage: grnItem.product?.stage || 'RAW',
+                        isService: false,
+                        supplierName: grnItem.grn.supplier?.name ? `[GRN] ${grnItem.grn.supplier.name}` : `[GRN Receipt]`,
+                        invoiceNo: `GRN: ${grnItem.grn.grnNo}`,
+                        date: grnItem.grn.date ? new Date(grnItem.grn.date).toISOString().split('T')[0] : '',
+                        qty: avail,
+                        rate: Number(grnItem.rate || 0),
+                        isOpening: false,
+                        isGRN: true,
+                        isEFS: false,
+                        origin: 'LOCAL'
+                    });
+                }
+            }
+        } catch (e: any) {
+            console.warn("Could not load GRN raw lots into meta:", e.message);
+        }
+
+        // Fetch Suppliers for optional vendor linking on accruals
+        const suppliers = await prisma.supplier.findMany({
+            where: { companyId, deletedAt: null },
+            select: { id: true, name: true, code: true, payableAccountId: true },
+            orderBy: { name: 'asc' }
+        });
+
         return NextResponse.json({
             success: true,
-            data: { products, warehouses, units, unconsumedServices, stockRates, availableLots }
+            data: { products, warehouses, units, unconsumedServices, stockRates, availableLots, suppliers }
         });
     } catch (e: any) {
         return NextResponse.json({ success: false, error: e.message }, { status: 500 });
