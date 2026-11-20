@@ -24,8 +24,30 @@ export async function GET(req: NextRequest) {
             code: p.code,
             hsCode: p.hsCode,
             isManufactured: p.isManufactured,
+            isService: false,
             stage: p.stage,
-            baseUnit: p.Unit ? { code: p.Unit.code } : null,
+            baseUnit: p.Unit ? { id: p.Unit.id, code: p.Unit.code } : null,
+            category: p.Category ? { name: p.Category.name } : null
+        }));
+
+        // Fetch strictly service products (Dyeing, Printing, Weaving, Knitting, etc.)
+        const rawServiceProducts = await prisma.product.findMany({
+            where: { companyId, isService: true },
+            include: {
+                Unit: true,
+                Category: true
+            },
+            orderBy: { name: 'asc' }
+        });
+
+        const serviceProducts = rawServiceProducts.map(p => ({
+            id: p.id,
+            name: p.name,
+            code: p.code,
+            hsCode: p.hsCode,
+            isService: true,
+            stage: p.stage,
+            baseUnit: p.Unit ? { id: p.Unit.id, code: p.Unit.code } : null,
             category: p.Category ? { name: p.Category.name } : null
         }));
 
@@ -458,7 +480,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            data: { products, warehouses, units, unconsumedServices, stockRates, availableLots, suppliers }
+            data: { products, serviceProducts, warehouses, units, unconsumedServices, stockRates, availableLots, suppliers }
         });
     } catch (e: any) {
         return NextResponse.json({ success: false, error: e.message }, { status: 500 });

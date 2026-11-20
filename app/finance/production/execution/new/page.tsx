@@ -42,6 +42,7 @@ export default function ProductionExecutionWizard() {
     const [stockRates, setStockRates] = useState<Record<string, { qty: number, rate: number, isEFS: boolean }>>({});
     const [availableLots, setAvailableLots] = useState<any[]>([]);
     const [suppliers, setSuppliers] = useState<any[]>([]);
+    const [serviceProducts, setServiceProducts] = useState<any[]>([]);
 
     // Modal state for Yarn Lot Selection Table
     const [isYarnModalOpen, setIsYarnModalOpen] = useState(false);
@@ -55,6 +56,14 @@ export default function ProductionExecutionWizard() {
     const [activeProcessingRowIndex, setActiveProcessingRowIndex] = useState<number | null>(null);
     const [serviceModalSearch, setServiceModalSearch] = useState("");
     const [serviceModalTypeFilter, setServiceModalTypeFilter] = useState<"ALL" | "DYEING" | "PRINTING" | "WEAVING" | "KNITTING" | "OTHER">("ALL");
+
+    // In-Modal Accrual Creation State (When bill not found in ERP stock)
+    const [modalShowAccrualForm, setModalShowAccrualForm] = useState(false);
+    const [modalAccrualProductId, setModalAccrualProductId] = useState("");
+    const [modalAccrualSupplierId, setModalAccrualSupplierId] = useState("");
+    const [modalAccrualQty, setModalAccrualQty] = useState("");
+    const [modalAccrualRate, setModalAccrualRate] = useState("");
+    const [modalAccrualWastage, setModalAccrualWastage] = useState("0");
 
     // 1. Target Production Mode (Full Flexibility)
     const [executionMode, setExecutionMode] = useState<ExecutionMode>("DIRECT_FINISH");
@@ -164,6 +173,7 @@ export default function ProductionExecutionWizard() {
                 setStockRates(json.data.stockRates);
                 if (json.data.availableLots) setAvailableLots(json.data.availableLots);
                 if (json.data.suppliers) setSuppliers(json.data.suppliers);
+                if (json.data.serviceProducts) setServiceProducts(json.data.serviceProducts);
                 if (json.data.warehouses.length > 0) setWarehouseId(json.data.warehouses[0].id);
             }
         } catch (error) {
@@ -293,15 +303,13 @@ export default function ProductionExecutionWizard() {
             });
     }, [unconsumedServices, products]);
 
-    // Service Products for Accrual (Services like Dyeing, Printing, Bleaching, Washing)
+    // Service Products for Accrual (Strictly Service Products: Dyeing, Printing, Bleaching, Washing, etc.)
     const serviceProductOptions = useMemo(() => {
-        return products
-            .filter(p => p.isService || p.stage === "FINISH" || p.Category?.name?.toUpperCase().includes("SERVICE") || p.name.toUpperCase().includes("DYE") || p.name.toUpperCase().includes("PRINT"))
-            .map(p => ({
-                value: p.id,
-                label: `${p.name} (${p.code}) ${p.hsCode ? `[HS: ${p.hsCode}]` : ''}`
-            }));
-    }, [products]);
+        return serviceProducts.map(p => ({
+            value: p.id,
+            label: `${p.name} (${p.code}) ${p.hsCode ? `[HS: ${p.hsCode}]` : ''}`
+        }));
+    }, [serviceProducts]);
 
     // Supplier Options for Accrual Linking
     const supplierOptions = useMemo(() => {
@@ -540,10 +548,45 @@ export default function ProductionExecutionWizard() {
                 }
                 return {
                     ...p,
+                    mode: "VENDOR_BILL",
                     serviceId: svc.id,
                     rate: Number(svc.rate || 0).toString(),
                     unit: svc.unit || "KG",
                     qty: autoQty
+                };
+            }));
+        }
+        setIsServiceModalOpen(false);
+    };
+
+    const handleApplyAccrualFromModal = () => {
+        if (!modalAccrualProductId) {
+            alert("Please select a Service / Process product.");
+            return;
+        }
+        const q = parseFloat(modalAccrualQty) || 0;
+        if (q <= 0) {
+            alert("Please enter a valid billing quantity.");
+            return;
+        }
+        const r = parseFloat(modalAccrualRate) || 0;
+        const selProd = serviceProducts.find(p => p.id === modalAccrualProductId);
+        const unitCode = selProd?.baseUnit?.code || "KG";
+
+        if (serviceModalTarget === "PROCESSING" && activeProcessingRowIndex !== null) {
+            setProcessingServices(prev => prev.map((p, idx) => {
+                if (idx !== activeProcessingRowIndex) return p;
+                return {
+                    ...p,
+                    mode: "ACCRUAL",
+                    serviceId: "",
+                    productId: modalAccrualProductId,
+                    supplierId: modalAccrualSupplierId || "",
+                    manualName: selProd?.name || p.manualName,
+                    qty: modalAccrualQty,
+                    rate: modalAccrualRate,
+                    wastage: parseFloat(modalAccrualWastage) || 0,
+                    unit: unitCode
                 };
             }));
         }
@@ -1968,168 +2011,373 @@ export default function ProductionExecutionWizard() {
                             </button>
                         </div>
 
-                        {/* Filter and Search Bar */}
-                        <div className="p-4 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-                            <div className="relative w-full sm:w-96">
-                                <Search size={18} className="absolute left-3.5 top-3 text-slate-400" />
-                                <input
-                                    type="text"
-                                    value={serviceModalSearch}
-                                    onChange={(e) => setServiceModalSearch(e.target.value)}
-                                    placeholder="Search supplier, bill #, GRN, HS Code, service name..."
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-amber-500"
-                                />
+                        {/* Tab Switcher: Available Bills vs Create Accrual */}
+                        <div className="px-5 py-3 bg-slate-100/70 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-bold w-full sm:w-auto">
+                                <button
+                                    type="button"
+                                    onClick={() => setModalShowAccrualForm(false)}
+                                    className={cn(
+                                        "flex-1 sm:flex-initial px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2",
+                                        !modalShowAccrualForm
+                                            ? "bg-amber-600 text-white shadow-sm font-black"
+                                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                    )}
+                                >
+                                    <FileText size={16} /> 
+                                    <span>Available Bills & GRN Stock ({filteredModalServices.length})</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setModalShowAccrualForm(true);
+                                        if (activeProcessingRowIndex !== null) {
+                                            const r = processingServices[activeProcessingRowIndex];
+                                            setModalAccrualProductId(r?.productId || (serviceProducts[0]?.id || ""));
+                                            setModalAccrualSupplierId(r?.supplierId || "");
+                                            setModalAccrualQty(r?.qty || (effectiveNetWeightKg > 0 ? effectiveNetWeightKg.toString() : ""));
+                                            setModalAccrualRate(r?.rate || "");
+                                            setModalAccrualWastage((r?.wastage || 0).toString());
+                                        }
+                                    }}
+                                    className={cn(
+                                        "flex-1 sm:flex-initial px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2",
+                                        modalShowAccrualForm
+                                            ? "bg-amber-600 text-white shadow-sm font-black"
+                                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                    )}
+                                >
+                                    <Plus size={16} /> 
+                                    <span>+ Create Accrual / Estimate (No Bill in Stock)</span>
+                                </button>
                             </div>
 
-                            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
-                                {(["ALL", "WEAVING", "KNITTING", "DYEING", "PRINTING", "OTHER"] as const).map(flt => (
-                                    <button
-                                        key={flt}
-                                        type="button"
-                                        onClick={() => setServiceModalTypeFilter(flt)}
-                                        className={cn(
-                                            "px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
-                                            serviceModalTypeFilter === flt
-                                                ? "bg-amber-600 text-white shadow-sm font-black"
-                                                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                        )}
-                                    >
-                                        {flt === "ALL" && "All Bills"}
-                                        {flt === "WEAVING" && "Weaving"}
-                                        {flt === "KNITTING" && "Knitting"}
-                                        {flt === "DYEING" && "Dyeing"}
-                                        {flt === "PRINTING" && "Printing"}
-                                        {flt === "OTHER" && "Other"}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Table Area */}
-                        <div className="overflow-y-auto flex-1 p-4">
-                            {filteredModalServices.length === 0 ? (
-                                <div className="text-center py-20 space-y-3">
-                                    <FileText size={42} className="mx-auto text-slate-400/50" />
-                                    <p className="text-base font-bold text-slate-500">No matching service bills or GRN receipts found.</p>
-                                    <p className="text-xs sm:text-sm text-slate-400">Ensure service purchase invoices, GRN receipts, or opening services have been recorded.</p>
-                                </div>
-                            ) : (
-                                <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-                                    <table className="w-full text-left border-collapse text-xs sm:text-sm">
-                                        <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black uppercase tracking-wider text-xs">
-                                            <tr>
-                                                <th className="py-3.5 px-4">Vendor / Supplier</th>
-                                                <th className="py-3.5 px-3">Bill / GRN No</th>
-                                                <th className="py-3.5 px-3">Service / Process</th>
-                                                <th className="py-3.5 px-3">HS Code</th>
-                                                <th className="py-3.5 px-3">Type</th>
-                                                <th className="py-3.5 px-3 text-right">Available Qty</th>
-                                                <th className="py-3.5 px-3 text-right">Rate</th>
-                                                <th className="py-3.5 px-3 text-right">Remaining Value</th>
-                                                <th className="py-3.5 px-4 text-center">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                                            {filteredModalServices.map((svc, idx) => {
-                                                const prod = products.find(p => p.id === svc.productId);
-                                                const hsCode = svc.hsCode || prod?.hsCode;
-                                                const remVal = (Number(svc.unconsumedQty) || 0) * (Number(svc.rate) || 0);
-
-                                                return (
-                                                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                                                        <td className="py-3.5 px-4">
-                                                            <div className="font-bold text-slate-900 dark:text-white text-sm">
-                                                                {svc.supplierName}
-                                                            </div>
-                                                            <div className="text-xs text-slate-400 mt-0.5">
-                                                                {svc.isGRN ? (
-                                                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                                                                        GRN Service Receipt
-                                                                    </span>
-                                                                ) : svc.isOpening ? (
-                                                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                                                                        Opening Service Lot
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                                                        Vendor Purchase Bill
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </td>
-
-                                                        <td className="py-3.5 px-3 font-mono font-bold text-slate-700 dark:text-slate-300">
-                                                            <div className="text-sm">{svc.invoiceNo}</div>
-                                                            {svc.date && (
-                                                                <div className="text-xs text-slate-400 font-normal mt-0.5">
-                                                                    {new Date(svc.date).toISOString().split('T')[0]}
-                                                                </div>
-                                                            )}
-                                                        </td>
-
-                                                        <td className="py-3.5 px-3">
-                                                            <div className="font-bold text-slate-900 dark:text-white text-sm">
-                                                                {svc.productName}
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono mt-0.5">
-                                                                <span>{svc.productCode || prod?.code || ''}</span>
-                                                                {svc.categoryName && <span>• {svc.categoryName}</span>}
-                                                            </div>
-                                                        </td>
-
-                                                        <td className="py-3.5 px-3">
-                                                            {hsCode ? (
-                                                                <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs inline-flex items-center gap-1">
-                                                                    <span className="text-[10px] font-black opacity-75">HS</span>
-                                                                    {hsCode}
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-xs text-slate-400 font-mono italic">-</span>
-                                                            )}
-                                                        </td>
-
-                                                        <td className="py-3.5 px-3">
-                                                            <span className={cn(
-                                                                "px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider",
-                                                                svc.serviceType === "WEAVING" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20" :
-                                                                svc.serviceType === "KNITTING" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" :
-                                                                svc.serviceType === "DYEING" ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20" :
-                                                                svc.serviceType === "PRINTING" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" :
-                                                                "bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20"
-                                                            )}>
-                                                                {svc.serviceType}
-                                                            </span>
-                                                        </td>
-
-                                                        <td className="py-3.5 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">
-                                                            {Number(svc.unconsumedQty).toLocaleString()} <span className="text-xs text-slate-400">{svc.unit || 'KG'}</span>
-                                                        </td>
-
-                                                        <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-900 dark:text-white text-sm">
-                                                            Rs. {Number(svc.rate).toFixed(2)}
-                                                        </td>
-
-                                                        <td className="py-3.5 px-3 text-right font-mono font-black text-amber-600 dark:text-amber-400 text-sm">
-                                                            Rs. {remVal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                                                        </td>
-
-                                                        <td className="py-3.5 px-4 text-center">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleSelectServiceFromModal(svc)}
-                                                                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs sm:text-sm shadow-sm active:scale-95 transition-all"
-                                                            >
-                                                                Select Bill
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                            {!modalShowAccrualForm && (
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">
+                                    Stock na milne per &quot;+ Create Accrual&quot; per click karke adjustment entry banayein.
+                                </span>
                             )}
                         </div>
+
+                        {modalShowAccrualForm ? (
+                            /* IN-MODAL ACCRUAL FORM */
+                            <div className="overflow-y-auto flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
+                                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
+                                    <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 font-black text-base shadow-sm">
+                                        !
+                                    </div>
+                                    <div className="text-xs sm:text-sm space-y-0.5">
+                                        <span className="font-bold text-amber-700 dark:text-amber-300 block text-sm sm:text-base">
+                                            Stock Not in ERP? Record Unbilled Service Accrual
+                                        </span>
+                                        <span className="text-slate-600 dark:text-slate-400">
+                                            Agar dyeing/printing factory floor per use ho chuki hai magar vendor ka bill nahi aaya, to yahan entry banayein. Ye entry batch cost me shamil ho jayegi aur Accrued Expenses me record hogi. Baad me Purchase Invoice me partial ya complete match ki ja sakti hai.
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                            Service / Process Product <span className="text-rose-500 font-black">*</span>
+                                            <span className="text-[11px] text-slate-400 font-normal">(Strictly Services)</span>
+                                        </label>
+                                        <Combobox
+                                            options={serviceProductOptions}
+                                            value={modalAccrualProductId}
+                                            onChange={(val) => setModalAccrualProductId(val)}
+                                            placeholder="Select Service (Dyeing, Printing, etc)..."
+                                            searchPlaceholder="Search service name or HS code..."
+                                            className="w-full text-sm font-semibold"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
+                                            Job Work Vendor / Supplier <span className="text-slate-400 font-normal">(Optional)</span>
+                                        </label>
+                                        <Combobox
+                                            options={supplierOptions}
+                                            value={modalAccrualSupplierId}
+                                            onChange={(val) => setModalAccrualSupplierId(val)}
+                                            placeholder="Select Vendor / Supplier (Optional)..."
+                                            searchPlaceholder="Search supplier name or code..."
+                                            className="w-full text-sm font-semibold"
+                                        />
+                                    </div>
+                                </div>
+
+                                {modalAccrualProductId && (() => {
+                                    const prod = serviceProducts.find(p => p.id === modalAccrualProductId);
+                                    return (
+                                        <div className="flex flex-wrap items-center gap-2.5 px-4 py-2.5 bg-indigo-500/5 dark:bg-indigo-950/20 rounded-xl border border-indigo-500/15 text-xs sm:text-sm">
+                                            <span className="font-bold text-slate-800 dark:text-slate-200">{prod?.name}</span>
+                                            <span className="text-slate-400 font-mono">({prod?.code})</span>
+                                            {prod?.hsCode && (
+                                                <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs inline-flex items-center gap-1">
+                                                    <span className="text-[10px] font-black opacity-75">HS</span>
+                                                    {prod.hsCode}
+                                                </span>
+                                            )}
+                                            <span className="ml-auto text-amber-600 dark:text-amber-400 font-bold text-xs">
+                                                ● Production Accrual Liability
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
+
+                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
+                                            Wastage %
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={modalAccrualWastage}
+                                            onChange={(e) => setModalAccrualWastage(e.target.value)}
+                                            placeholder="0"
+                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
+                                            Billing Qty (KG) <span className="text-rose-500 font-black">*</span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={modalAccrualQty}
+                                            onChange={(e) => setModalAccrualQty(e.target.value)}
+                                            placeholder="0.00"
+                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
+                                            Estimated Rate (PKR) <span className="text-rose-500 font-black">*</span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={modalAccrualRate}
+                                            onChange={(e) => setModalAccrualRate(e.target.value)}
+                                            placeholder="0.00"
+                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
+                                            Line Total (PKR)
+                                        </label>
+                                        <div className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/60 font-mono text-sm font-bold text-amber-600 dark:text-amber-400 text-right h-[44px] flex items-center justify-end">
+                                            Rs. {((parseFloat(modalAccrualQty) || 0) * (parseFloat(modalAccrualRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setModalShowAccrualForm(false)}
+                                        className="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all text-sm"
+                                    >
+                                        Cancel / Back to Bills
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleApplyAccrualFromModal}
+                                        className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-sm shadow-md active:scale-95 transition-all flex items-center gap-2"
+                                    >
+                                        <CheckCircle2 size={16} /> Apply Accrual to Batch
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            /* AVAILABLE BILLS & GRN VIEW */
+                            <>
+                                {/* Filter and Search Bar */}
+                                <div className="p-4 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                    <div className="relative w-full sm:w-96">
+                                        <Search size={18} className="absolute left-3.5 top-3 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            value={serviceModalSearch}
+                                            onChange={(e) => setServiceModalSearch(e.target.value)}
+                                            placeholder="Search supplier, bill #, GRN, HS Code, service name..."
+                                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-amber-500"
+                                        />
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+                                        {(["ALL", "WEAVING", "KNITTING", "DYEING", "PRINTING", "OTHER"] as const).map(flt => (
+                                            <button
+                                                key={flt}
+                                                type="button"
+                                                onClick={() => setServiceModalTypeFilter(flt)}
+                                                className={cn(
+                                                    "px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
+                                                    serviceModalTypeFilter === flt
+                                                        ? "bg-amber-600 text-white shadow-sm font-black"
+                                                        : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                )}
+                                            >
+                                                {flt === "ALL" && "All Bills"}
+                                                {flt === "WEAVING" && "Weaving"}
+                                                {flt === "KNITTING" && "Knitting"}
+                                                {flt === "DYEING" && "Dyeing"}
+                                                {flt === "PRINTING" && "Printing"}
+                                                {flt === "OTHER" && "Other"}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Table Area */}
+                                <div className="overflow-y-auto flex-1 p-4">
+                                    {filteredModalServices.length === 0 ? (
+                                        <div className="text-center py-16 space-y-3 max-w-md mx-auto">
+                                            <FileText size={44} className="mx-auto text-amber-500/50" />
+                                            <p className="text-base font-bold text-slate-800 dark:text-slate-200">No Matching Service Bills or GRN in Stock</p>
+                                            <p className="text-xs sm:text-sm text-slate-400">
+                                                Agar ye service/process factory floor per complete ho chuki he magar vendor ka bill abhi tak nahi aaya, to aap yahan direct Unbilled Accrual Entry create kar sakte hain.
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setModalShowAccrualForm(true);
+                                                    if (activeProcessingRowIndex !== null) {
+                                                        const r = processingServices[activeProcessingRowIndex];
+                                                        setModalAccrualProductId(r?.productId || (serviceProducts[0]?.id || ""));
+                                                        setModalAccrualSupplierId(r?.supplierId || "");
+                                                        setModalAccrualQty(r?.qty || (effectiveNetWeightKg > 0 ? effectiveNetWeightKg.toString() : ""));
+                                                        setModalAccrualRate(r?.rate || "");
+                                                    }
+                                                }}
+                                                className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-sm shadow-md active:scale-95 transition-all inline-flex items-center gap-2 mt-2"
+                                            >
+                                                <Plus size={16} /> + Create Service Accrual Entry
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                                            <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                                                <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black uppercase tracking-wider text-xs">
+                                                    <tr>
+                                                        <th className="py-3.5 px-4">Vendor / Supplier</th>
+                                                        <th className="py-3.5 px-3">Bill / GRN No</th>
+                                                        <th className="py-3.5 px-3">Service / Process</th>
+                                                        <th className="py-3.5 px-3">HS Code</th>
+                                                        <th className="py-3.5 px-3">Type</th>
+                                                        <th className="py-3.5 px-3 text-right">Available Qty</th>
+                                                        <th className="py-3.5 px-3 text-right">Rate</th>
+                                                        <th className="py-3.5 px-3 text-right">Remaining Value</th>
+                                                        <th className="py-3.5 px-4 text-center">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                                                    {filteredModalServices.map((svc, idx) => {
+                                                        const prod = products.find(p => p.id === svc.productId) || serviceProducts.find(p => p.id === svc.productId);
+                                                        const hsCode = svc.hsCode || prod?.hsCode;
+                                                        const remVal = (Number(svc.unconsumedQty) || 0) * (Number(svc.rate) || 0);
+
+                                                        return (
+                                                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                                                                <td className="py-3.5 px-4">
+                                                                    <div className="font-bold text-slate-900 dark:text-white text-sm">
+                                                                        {svc.supplierName}
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-400 mt-0.5">
+                                                                        {svc.isGRN ? (
+                                                                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                                                                GRN Service Receipt
+                                                                            </span>
+                                                                        ) : svc.isOpening ? (
+                                                                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                                                                                Opening Service Lot
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                                                                Vendor Purchase Bill
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+
+                                                                <td className="py-3.5 px-3 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                                                    <div className="text-sm">{svc.invoiceNo}</div>
+                                                                    {svc.date && (
+                                                                        <div className="text-xs text-slate-400 font-normal mt-0.5">
+                                                                            {new Date(svc.date).toISOString().split('T')[0]}
+                                                                        </div>
+                                                                    )}
+                                                                </td>
+
+                                                                <td className="py-3.5 px-3">
+                                                                    <div className="font-bold text-slate-900 dark:text-white text-sm">
+                                                                        {svc.productName}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono mt-0.5">
+                                                                        <span>{svc.productCode || prod?.code || ''}</span>
+                                                                        {svc.categoryName && <span>• {svc.categoryName}</span>}
+                                                                    </div>
+                                                                </td>
+
+                                                                <td className="py-3.5 px-3">
+                                                                    {hsCode ? (
+                                                                        <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs inline-flex items-center gap-1">
+                                                                            <span className="text-[10px] font-black opacity-75">HS</span>
+                                                                            {hsCode}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="text-xs text-slate-400 font-mono italic">-</span>
+                                                                    )}
+                                                                </td>
+
+                                                                <td className="py-3.5 px-3">
+                                                                    <span className={cn(
+                                                                        "px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider",
+                                                                        svc.serviceType === "WEAVING" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20" :
+                                                                        svc.serviceType === "KNITTING" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" :
+                                                                        svc.serviceType === "DYEING" ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20" :
+                                                                        svc.serviceType === "PRINTING" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" :
+                                                                        "bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20"
+                                                                    )}>
+                                                                        {svc.serviceType}
+                                                                    </span>
+                                                                </td>
+
+                                                                <td className="py-3.5 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                                                                    {Number(svc.unconsumedQty).toLocaleString()} <span className="text-xs text-slate-400">{svc.unit || 'KG'}</span>
+                                                                </td>
+
+                                                                <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-900 dark:text-white text-sm">
+                                                                    Rs. {Number(svc.rate).toFixed(2)}
+                                                                </td>
+
+                                                                <td className="py-3.5 px-3 text-right font-mono font-black text-amber-600 dark:text-amber-400 text-sm">
+                                                                    Rs. {remVal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                                                </td>
+
+                                                                <td className="py-3.5 px-4 text-center">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleSelectServiceFromModal(svc)}
+                                                                        className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs sm:text-sm shadow-sm active:scale-95 transition-all"
+                                                                    >
+                                                                        Select Bill
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
 
                         {/* Modal Footer */}
                         <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs sm:text-sm text-slate-400">
