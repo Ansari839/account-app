@@ -1720,18 +1720,6 @@ export default function ProductionExecutionWizard() {
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
-                                            <span className="text-slate-500 dark:text-slate-400">Wastage Base:</span>
-                                            <select
-                                                value={wastageCalcMode}
-                                                onChange={(e) => setWastageCalcMode(e.target.value as any)}
-                                                className="bg-transparent font-bold text-slate-800 dark:text-slate-100 outline-none cursor-pointer"
-                                            >
-                                                <option value="CASCADE">Stage Cascade</option>
-                                                <option value="DIRECT_OUTPUT">Direct from Net Output</option>
-                                            </select>
-                                        </div>
-
                                         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold">
                                             <button
                                                 type="button"
@@ -1792,7 +1780,7 @@ export default function ProductionExecutionWizard() {
                                             <span>Target Raw Yarn: <b className="text-emerald-600 dark:text-emerald-400 font-black">{reqYarnQty.toLocaleString()} KG</b></span>
                                         </div>
                                         <span className="text-[10px] font-sans font-bold text-slate-400 uppercase tracking-wider">
-                                            {wastageCalcMode === "CASCADE" ? "Cascade Yield Mode" : "Direct Flat Mode"}
+                                            {weavingBaseStageId === "TARGET_OUTPUT" ? "Direct Flat Mode" : "Cascade Yield Mode"}
                                         </span>
                                     </div>
                                 )}
