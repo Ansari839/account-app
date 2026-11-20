@@ -2108,8 +2108,13 @@ export default function ProductionExecutionWizard() {
 
             {/* 2. SERVICE BILL SELECTION MODAL TABLE */}
             {isServiceModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
-                    <div className="w-full max-w-[96vw] 2xl:max-w-[1650px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden h-[88vh] max-h-[900px] min-h-[660px] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+                    <div className={cn(
+                        "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 my-auto",
+                        modalShowAccrualForm
+                            ? "w-full max-w-4xl"
+                            : "w-full max-w-[96vw] 2xl:max-w-[1650px] h-[88vh] max-h-[900px] min-h-[660px]"
+                    )}>
                         {/* Modal Header */}
                         <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -2173,26 +2178,26 @@ export default function ProductionExecutionWizard() {
                         </div>
 
                         {modalShowAccrualForm ? (
-                            /* IN-MODAL ACCRUAL FORM (PREMIUM SPACIOUS CLEAN UI) */
-                            <div className="overflow-y-auto flex-1 p-6 sm:p-10 max-w-4xl mx-auto w-full space-y-7">
-                                <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/30 flex items-start gap-4 shadow-sm">
-                                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-inner">
-                                        <FileText size={24} />
+                            /* IN-MODAL ACCRUAL FORM (COMPACT, ELEGANT & BALANCED) */
+                            <div className="p-6 sm:p-8 space-y-6">
+                                <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-4 shadow-sm">
+                                    <div className="w-11 h-11 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                                        <FileText size={22} />
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <div className="flex flex-wrap items-center gap-2.5">
-                                            <h4 className="font-black text-base text-slate-900 dark:text-white">Unbilled Service Accrual Entry</h4>
-                                            <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-xs font-black uppercase tracking-wider border border-amber-500/30">
-                                                Account 2130 (Accrued Expenses)
+                                    <div className="space-y-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">Unbilled Service Accrual Entry</h4>
+                                            <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-[11px] font-black uppercase tracking-wider border border-amber-500/30">
+                                                Cr. Account 2130 (Accrued Expenses)
                                             </span>
                                         </div>
                                         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                            Agar dyeing/printing ya weaving factory floor per use ho chuki hai magar vendor ka invoice ERP me nahi aaya, to yahan entry banayein. Batch run hone par system auto <b>Dr WIP (1320)</b> aur <b>Cr Accrued Expenses (2130)</b> record karega. Baad me actual bill aane par Purchase Invoice se partial ya complete match kiya ja sakega.
+                                            Agar dyeing/printing ya weaving factory floor per use ho chuki hai magar vendor ka invoice ERP me nahi aaya, to yahan entry banayein. Batch execute hone par system auto <b>Dr WIP (1320)</b> aur <b>Cr Accrued Expenses (2130)</b> post karega. Baad me actual bill aane par Purchase Invoice se partial ya complete match kiya ja sakega.
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
                                             <span>Service / Process Product <span className="text-rose-500 font-black">*</span></span>
@@ -2230,32 +2235,32 @@ export default function ProductionExecutionWizard() {
                                     const prod = serviceProducts.find(p => p.id === modalAccrualProductId) || products.find(p => p.id === modalAccrualProductId);
                                     if (!prod) return null;
                                     return (
-                                        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs shadow-sm">
-                                            <div className="flex flex-wrap items-center gap-2.5">
-                                                <span className="font-bold text-slate-900 dark:text-white text-base">{prod.name}</span>
+                                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 text-xs shadow-sm">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">{prod.name}</span>
                                                 <span className="text-slate-400 font-mono font-semibold">({prod.code})</span>
                                                 {prod.hsCode && (
-                                                    <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs inline-flex items-center gap-1">
+                                                    <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs inline-flex items-center gap-1">
                                                         <span className="text-[10px] font-black opacity-75">HS</span>
                                                         {prod.hsCode}
                                                     </span>
                                                 )}
                                                 {prod.category?.name && (
-                                                    <span className="px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-bold text-xs uppercase">
+                                                    <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-bold text-xs uppercase">
                                                         {prod.category.name}
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="text-slate-600 dark:text-slate-300 text-sm font-medium">
-                                                Billing Unit: <b className="font-mono text-slate-900 dark:text-white text-base">{prod.baseUnit?.code || prod.Unit?.code || 'KG'}</b>
+                                            <div className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm font-medium">
+                                                Billing Unit: <b className="font-mono text-slate-900 dark:text-white text-sm sm:text-base">{prod.baseUnit?.code || prod.Unit?.code || 'KG'}</b>
                                             </div>
                                         </div>
                                     );
                                 })()}
 
-                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-1">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
                                             Billing Qty <span className="text-rose-500 font-black">*</span>
                                         </label>
                                         <input
@@ -2264,12 +2269,12 @@ export default function ProductionExecutionWizard() {
                                             value={modalAccrualQty}
                                             onChange={(e) => setModalAccrualQty(e.target.value)}
                                             placeholder="0.00"
-                                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[48px]"
+                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm sm:text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[46px]"
                                         />
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
                                             Wastage %
                                         </label>
                                         <input
@@ -2278,12 +2283,12 @@ export default function ProductionExecutionWizard() {
                                             value={modalAccrualWastage}
                                             onChange={(e) => setModalAccrualWastage(e.target.value)}
                                             placeholder="0"
-                                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[48px]"
+                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm sm:text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[46px]"
                                         />
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
                                             Estimated Rate (PKR) <span className="text-rose-500 font-black">*</span>
                                         </label>
                                         <input
@@ -2292,18 +2297,30 @@ export default function ProductionExecutionWizard() {
                                             value={modalAccrualRate}
                                             onChange={(e) => setModalAccrualRate(e.target.value)}
                                             placeholder="0.00"
-                                            className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[48px]"
+                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm sm:text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[46px]"
                                         />
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
                                             Estimated Line Total
                                         </label>
-                                        <div className="px-4 py-3 bg-gradient-to-br from-amber-500/15 to-amber-600/5 dark:from-amber-950/40 dark:to-slate-900 rounded-xl border border-amber-500/30 font-mono text-base font-black text-amber-600 dark:text-amber-400 text-right h-[48px] flex items-center justify-end shadow-inner">
+                                        <div className="px-3.5 py-2.5 bg-gradient-to-br from-amber-500/15 to-amber-600/5 dark:from-amber-950/40 dark:to-slate-900 rounded-xl border border-amber-500/30 font-mono text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 text-right h-[46px] flex items-center justify-end shadow-inner">
                                             Rs. {((parseFloat(modalAccrualQty) || 0) * (parseFloat(modalAccrualRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* GL Posting Preview */}
+                                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                                    <div className="flex items-center gap-3 text-slate-600 dark:text-slate-400">
+                                        <span>GL Debit: <b className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">1320 - Work-in-Progress (WIP)</b></span>
+                                        <span>•</span>
+                                        <span>GL Credit: <b className="font-mono text-amber-600 dark:text-amber-400 font-bold">2130 - Accrued Expenses</b></span>
+                                    </div>
+                                    <span className="text-slate-500 dark:text-slate-400 font-medium">
+                                        Offset Policy: <b>Unbilled (Pending PI Match)</b>
+                                    </span>
                                 </div>
                             </div>
                         ) : (
