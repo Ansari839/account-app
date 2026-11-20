@@ -1,6 +1,22 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
-import { Pool } from 'pg'
+import { Pool, Client } from 'pg'
+import dns from 'node:dns'
+
+// Force IPv4 lookup first in Node 24 to prevent Neon IPv6 ETIMEDOUT / ENETUNREACH
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first')
+}
+
+class IPv4Client extends Client {
+  constructor(config?: any) {
+    if (typeof config === 'string') {
+      super({ connectionString: config, family: 4, ssl: { rejectUnauthorized: false } })
+    } else {
+      super({ ...(config || {}), family: 4, ssl: { rejectUnauthorized: false } })
+    }
+  }
+}
 
 const globalForPrisma = global as unknown as {
   prisma: PrismaClient | undefined;
@@ -14,12 +30,12 @@ if (!connectionString) {
 
 const pool = globalForPrisma.pool ?? new Pool({
   connectionString,
+  Client: IPv4Client,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 30000,
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
-  family: 4, // Force IPv4 to avoid IPv6 timeouts / ENETUNREACH
   ssl: { rejectUnauthorized: false },
 })
 

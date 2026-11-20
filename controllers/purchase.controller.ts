@@ -122,44 +122,48 @@ export class PurchaseController {
             // If supplierId is an Account ID, find or create corresponding Supplier
             let supplierId = body.supplierId;
 
-            // Check if this is an Account ID (not a Supplier ID)
-            const account = await prisma.account.findUnique({ where: { id: body.supplierId } });
+            if (supplierId && typeof supplierId === 'string') {
+                try {
+                    const existingSupplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
+                    if (!existingSupplier) {
+                        const account = await prisma.account.findUnique({ where: { id: supplierId } });
+                        if (account) {
+                            let supplier = await prisma.supplier.findFirst({
+                                where: { payableAccountId: account.id }
+                            });
 
-            if (account) {
-                // This is an Account, find or create Supplier
-                let supplier = await prisma.supplier.findFirst({
-                    where: { payableAccountId: account.id }
-                });
+                            if (!supplier) {
+                                const lastSupplier = await prisma.supplier.findFirst({
+                                    where: { code: { startsWith: 'SUP-' } },
+                                    orderBy: { code: 'desc' }
+                                });
+                                let nextSupSeq = 1;
+                                if (lastSupplier) {
+                                    const lastNum = parseInt(lastSupplier.code.split('-')[1]);
+                                    if (!isNaN(lastNum)) nextSupSeq = lastNum + 1;
+                                }
+                                const baseCurr = await prisma.currency.findFirst({ where: { companyId, isBase: true } }) 
+                                        || await prisma.currency.findFirst({ where: { companyId } });
+                                if (!baseCurr) {
+                                    throw new Error("No currency found. Please configure a currency in settings first.");
+                                }
 
-                if (!supplier) {
-                    // Create new Supplier from Account
-                    const lastSupplier = await prisma.supplier.findFirst({
-                        where: { code: { startsWith: 'SUP-' } },
-                        orderBy: { code: 'desc' }
-                    });
-                    let nextSupSeq = 1;
-                    if (lastSupplier) {
-                        const lastNum = parseInt(lastSupplier.code.split('-')[1]);
-                        if (!isNaN(lastNum)) nextSupSeq = lastNum + 1;
-                    }
-                    const baseCurr = await prisma.currency.findFirst({ where: { companyId, isBase: true } }) 
-                            || await prisma.currency.findFirst({ where: { companyId } });
-                    if (!baseCurr) {
-                        throw new Error("No currency found. Please configure a currency in settings first.");
-                    }
-
-                    supplier = await prisma.supplier.create({
-                        data: {
-                            companyId,
-                            code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
-                            name: account.name,
-                            currencyCode: baseCurr.id,
-                            payableAccountId: account.id
+                                supplier = await prisma.supplier.create({
+                                    data: {
+                                        companyId,
+                                        code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
+                                        name: account.name,
+                                        currencyCode: baseCurr.id,
+                                        payableAccountId: account.id
+                                    }
+                                });
+                            }
+                            supplierId = supplier.id;
                         }
-                    });
+                    }
+                } catch (e: any) {
+                    console.warn("PO supplier resolution warning:", e.message);
                 }
-
-                supplierId = supplier.id;
             }
 
             // Generate PO Number
@@ -335,40 +339,47 @@ export class PurchaseController {
             }
 
             // If supplierId is an Account ID, find or create corresponding Supplier
-            if (supplierId) {
-                const account = await prisma.account.findUnique({ where: { id: supplierId } });
-                if (account) {
-                    let supplier = await prisma.supplier.findFirst({
-                        where: { payableAccountId: account.id }
-                    });
+            if (supplierId && typeof supplierId === 'string') {
+                try {
+                    const existingSupplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
+                    if (!existingSupplier) {
+                        const account = await prisma.account.findUnique({ where: { id: supplierId } });
+                        if (account) {
+                            let supplier = await prisma.supplier.findFirst({
+                                where: { payableAccountId: account.id }
+                            });
 
-                    if (!supplier) {
-                        const lastSupplier = await prisma.supplier.findFirst({
-                            where: { code: { startsWith: 'SUP-' } },
-                            orderBy: { code: 'desc' }
-                        });
-                        let nextSupSeq = 1;
-                        if (lastSupplier) {
-                            const lastNum = parseInt(lastSupplier.code.split('-')[1]);
-                            if (!isNaN(lastNum)) nextSupSeq = lastNum + 1;
-                        }
-                        const baseCurr = await prisma.currency.findFirst({ where: { companyId, isBase: true } }) 
-                                || await prisma.currency.findFirst({ where: { companyId } });
-                        if (!baseCurr) {
-                            throw new Error("No currency found. Please configure a currency in settings first.");
-                        }
+                            if (!supplier) {
+                                const lastSupplier = await prisma.supplier.findFirst({
+                                    where: { code: { startsWith: 'SUP-' } },
+                                    orderBy: { code: 'desc' }
+                                });
+                                let nextSupSeq = 1;
+                                if (lastSupplier) {
+                                    const lastNum = parseInt(lastSupplier.code.split('-')[1]);
+                                    if (!isNaN(lastNum)) nextSupSeq = lastNum + 1;
+                                }
+                                const baseCurr = await prisma.currency.findFirst({ where: { companyId, isBase: true } }) 
+                                        || await prisma.currency.findFirst({ where: { companyId } });
+                                if (!baseCurr) {
+                                    throw new Error("No currency found. Please configure a currency in settings first.");
+                                }
 
-                        supplier = await prisma.supplier.create({
-                            data: {
-                                companyId,
-                                code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
-                                name: account.name,
-                                currencyCode: baseCurr.id,
-                                payableAccountId: account.id
+                                supplier = await prisma.supplier.create({
+                                    data: {
+                                        companyId,
+                                        code: `SUP-${nextSupSeq.toString().padStart(4, '0')}`,
+                                        name: account.name,
+                                        currencyCode: baseCurr.id,
+                                        payableAccountId: account.id
+                                    }
+                                });
                             }
-                        });
+                            supplierId = supplier.id;
+                        }
                     }
-                    supplierId = supplier.id;
+                } catch (e: any) {
+                    console.warn("GRN supplier resolution warning:", e.message);
                 }
             }
 
