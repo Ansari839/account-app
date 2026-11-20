@@ -75,25 +75,28 @@ export async function POST(req: NextRequest) {
 
                         // Sequence for PAC-YYYY-XXXX
                         const existingCount = accrualRecordsToCreate.length;
-                        const accrualDelegate = (tx as any).productionAccrual || (prisma as any).productionAccrual;
-                        let lastAccrual = null;
-                        if (accrualDelegate?.findFirst) {
-                            try {
-                                lastAccrual = await accrualDelegate.findFirst({
-                                    where: { companyId, accrualNo: { startsWith: `PAC-${new Date().getFullYear()}-` } },
-                                    orderBy: { accrualNo: 'desc' }
-                                });
-                            } catch (err) {
-                                console.warn('[Accrual seq lookup]:', err);
+                        const prefix = `PAC-${new Date().getFullYear()}-`;
+                        let lastAccrualNo: string | null = null;
+                        try {
+                            const rawLast = await tx.$queryRaw<Array<{ accrualNo: string }>>`
+                                SELECT "accrualNo" FROM "ProductionAccrual"
+                                WHERE "companyId" = ${companyId} AND "accrualNo" LIKE ${prefix + '%'}
+                                ORDER BY "accrualNo" DESC LIMIT 1
+                            `;
+                            if (rawLast && rawLast.length > 0) {
+                                lastAccrualNo = rawLast[0].accrualNo;
                             }
+                        } catch {
+                            // Raw query fallback
                         }
+
                         let nextSeq = 1;
-                        if (lastAccrual) {
-                            const parts = lastAccrual.accrualNo.split('-');
+                        if (lastAccrualNo) {
+                            const parts = lastAccrualNo.split('-');
                             const lastNum = parseInt(parts[parts.length - 1]);
                             if (!isNaN(lastNum)) nextSeq = lastNum + 1;
                         }
-                        const accrualNo = `PAC-${new Date().getFullYear()}-${(nextSeq + existingCount).toString().padStart(4, '0')}`;
+                        const accrualNo = `${prefix}${(nextSeq + existingCount).toString().padStart(4, '0')}`;
 
                         // Find Accrued Liability account (Credit side)
                         let creditAccount = null;
@@ -369,19 +372,32 @@ export async function POST(req: NextRequest) {
             });
 
             // 2.1 Persist Production Accruals (Unbilled services/materials for future invoice offset)
-            const accrualCreator = (tx as any).productionAccrual || (prisma as any).productionAccrual;
-            if (accrualCreator?.create) {
-                for (const acc of accrualRecordsToCreate) {
-                    try {
+            for (const acc of accrualRecordsToCreate) {
+                try {
+                    const accrualCreator = (tx as any).productionAccrual || (prisma as any).productionAccrual;
+                    if (accrualCreator?.create) {
                         await accrualCreator.create({
                             data: {
                                 ...acc,
                                 productionId: record.id
                             }
                         });
-                    } catch (err: any) {
-                        console.error('[ProductionAccrual create error]:', err);
+                    } else {
+                        // Direct raw SQL insert - immune to dev server cached prisma client!
+                        const newAccId = 'pa-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+                        await tx.$executeRaw`
+                            INSERT INTO "ProductionAccrual" (
+                                "id", "accrualNo", "companyId", "productionId", "productId", "supplierId", "unitId",
+                                "date", "stage", "serviceType", "qty", "rate", "amount", "billedQty", "status", "remarks", "updatedAt"
+                            ) VALUES (
+                                ${newAccId}, ${acc.accrualNo}, ${acc.companyId}, ${record.id}, ${acc.productId}, ${acc.supplierId}, ${acc.unitId},
+                                ${acc.date}, ${acc.stage}::"ProductionStage", ${acc.serviceType}, ${acc.qty}, ${acc.rate}, ${acc.amount},
+                                ${acc.billedQty}, ${acc.status}, ${acc.remarks}, NOW()
+                            )
+                        `;
                     }
+                } catch (err: any) {
+                    console.error('[ProductionAccrual create error]:', err);
                 }
             }
 

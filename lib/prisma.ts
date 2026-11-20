@@ -45,15 +45,6 @@ pool.on('error', (err) => {
 
 const adapter = new PrismaPg(pool)
 
-// Auto-detect stale PrismaClient in development global cache (e.g. after schema changes)
-if (globalForPrisma.prisma && !(globalForPrisma.prisma as any).productionAccrual) {
-  console.log('[Prisma]: Stale PrismaClient instance detected in global cache (missing latest models). Re-instantiating...');
-  try {
-    (globalForPrisma.prisma as any).$disconnect?.();
-  } catch {}
-  globalForPrisma.prisma = undefined;
-}
-
 const prisma = globalForPrisma.prisma ?? new PrismaClient({
     adapter,
     transactionOptions: {

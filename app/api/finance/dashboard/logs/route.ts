@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
             orderBy: { createdAt: 'desc' },
             take: 50,
             include: {
-                createdBy: {
+                User: {
                     select: { fullName: true, email: true }
                 },
                 lines: {
@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
 
         const mappedLogs = logs.map((log: any) => ({
             ...log,
+            createdBy: log.User || log.createdBy,
             lines: (log.lines || []).map((l: any) => ({
                 ...l,
                 account: l.Account || l.account
