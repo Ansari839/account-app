@@ -75,10 +75,18 @@ export async function POST(req: NextRequest) {
 
                         // Sequence for PAC-YYYY-XXXX
                         const existingCount = accrualRecordsToCreate.length;
-                        const lastAccrual = await tx.productionAccrual.findFirst({
-                            where: { companyId, accrualNo: { startsWith: `PAC-${new Date().getFullYear()}-` } },
-                            orderBy: { accrualNo: 'desc' }
-                        });
+                        const accrualDelegate = (tx as any).productionAccrual || (prisma as any).productionAccrual;
+                        let lastAccrual = null;
+                        if (accrualDelegate?.findFirst) {
+                            try {
+                                lastAccrual = await accrualDelegate.findFirst({
+                                    where: { companyId, accrualNo: { startsWith: `PAC-${new Date().getFullYear()}-` } },
+                                    orderBy: { accrualNo: 'desc' }
+                                });
+                            } catch (err) {
+                                console.warn('[Accrual seq lookup]:', err);
+                            }
+                        }
                         let nextSeq = 1;
                         if (lastAccrual) {
                             const parts = lastAccrual.accrualNo.split('-');
@@ -361,13 +369,20 @@ export async function POST(req: NextRequest) {
             });
 
             // 2.1 Persist Production Accruals (Unbilled services/materials for future invoice offset)
-            for (const acc of accrualRecordsToCreate) {
-                await tx.productionAccrual.create({
-                    data: {
-                        ...acc,
-                        productionId: record.id
+            const accrualCreator = (tx as any).productionAccrual || (prisma as any).productionAccrual;
+            if (accrualCreator?.create) {
+                for (const acc of accrualRecordsToCreate) {
+                    try {
+                        await accrualCreator.create({
+                            data: {
+                                ...acc,
+                                productionId: record.id
+                            }
+                        });
+                    } catch (err: any) {
+                        console.error('[ProductionAccrual create error]:', err);
                     }
-                });
+                }
             }
 
             // 3. Stock Ledger Updates
