@@ -2172,7 +2172,7 @@ export default function ProductionExecutionWizard() {
 
                             {!modalShowAccrualForm && (
                                 <span className="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">
-                                    Stock na milne per &quot;+ Create Accrual&quot; per click karke unbilled adjustment entry banayein.
+                                    If service bill is not in stock, click &quot;+ Create Accrual&quot; to record an unbilled conversion cost.
                                 </span>
                             )}
                         </div>
@@ -2192,7 +2192,7 @@ export default function ProductionExecutionWizard() {
                                             </span>
                                         </div>
                                         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                            Agar dyeing/printing ya weaving factory floor per use ho chuki hai magar vendor ka invoice ERP me nahi aaya, to yahan entry banayein. Batch execute hone par system auto <b>Dr WIP (1320)</b> aur <b>Cr Accrued Expenses (2130)</b> post karega. Baad me actual bill aane par Purchase Invoice se partial ya complete match kiya ja sakega.
+                                            Record unbilled conversion expenses when dyeing, printing, or weaving services have been executed in production prior to receiving the vendor invoice. Upon posting, the system automatically books <b>Dr WIP (1320)</b> and <b>Cr Accrued Expenses (2130)</b>, which will be reconciled once the vendor invoice is recorded.
                                         </p>
                                     </div>
                                 </div>
@@ -2370,7 +2370,7 @@ export default function ProductionExecutionWizard() {
                                             <FileText size={44} className="mx-auto text-amber-500/50" />
                                             <p className="text-base font-bold text-slate-800 dark:text-slate-200">No Matching Service Bills or GRN in Stock</p>
                                             <p className="text-xs sm:text-sm text-slate-400">
-                                                Agar ye service/process factory floor per complete ho chuki he magar vendor ka bill abhi tak nahi aaya, to aap yahan direct Unbilled Accrual Entry create kar sakte hain.
+                                                If this service has already been executed on the production floor without a vendor bill, you can record an Unbilled Accrual Entry directly.
                                             </p>
                                             <button
                                                 type="button"
