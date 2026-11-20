@@ -91,17 +91,44 @@ export class PurchaseController {
             const { companyId, error } = AuthUtils.getCompanyId(req);
             if (error) return error;
 
-            const grns = await prisma.gRN.findMany({
-                where: { companyId },
-                include: {
-                    supplier: true,
-                    items: { include: { product: true, unit: true } },
-                    invoices: { select: { id: true, invoiceNo: true } },
-                    warehouse: true,
-                    po: { select: { poNo: true } }
-                },
-                orderBy: { date: 'desc' }
-            });
+            let grns: any[] = [];
+            try {
+                grns = await prisma.gRN.findMany({
+                    where: { companyId },
+                    include: {
+                        supplier: true,
+                        items: { include: { product: true, unit: true } },
+                        invoices: { select: { id: true, invoiceNo: true } },
+                        warehouse: true,
+                        po: { select: { poNo: true } }
+                    },
+                    orderBy: { date: 'desc' }
+                });
+            } catch {
+                const legacy = await (prisma.gRN as any).findMany({
+                    where: { companyId },
+                    include: {
+                        Supplier: true,
+                        GRNItem: { include: { Product: true, Unit: true } },
+                        PurchaseInvoice: { select: { id: true, invoiceNo: true } },
+                        Warehouse: true,
+                        PurchaseOrder: { select: { poNo: true } }
+                    },
+                    orderBy: { date: 'desc' }
+                });
+                grns = (legacy || []).map((g: any) => ({
+                    ...g,
+                    supplier: g.Supplier,
+                    items: (g.GRNItem || []).map((it: any) => ({
+                        ...it,
+                        product: it.Product,
+                        unit: it.Unit
+                    })),
+                    invoices: g.PurchaseInvoice,
+                    warehouse: g.Warehouse,
+                    po: g.PurchaseOrder
+                }));
+            }
 
             return NextResponse.json({ success: true, data: grns });
         } catch (error: any) {
@@ -416,20 +443,24 @@ export class PurchaseController {
                         poId: poId || null,
                         supplierId,
                         warehouseId,
-                        date: new Date(date),
-                        items: {
-                            create: validItems.map((item: any) => ({
-                                productId: item.productId,
-                                variantId: item.variantId || null,
-                                unitId: item.unitId || null,
-                                poItemId: item.poItemId || null,
-                                qtyReceived: Number(item.qtyReceived),
-                                qtyRejected: Number(item.qtyRejected || 0),
-                                rate: Number(item.rate || 0)
-                            }))
-                        }
+                        date: new Date(date)
                     }
                 });
+
+                for (const item of validItems) {
+                    await tx.gRNItem.create({
+                        data: {
+                            grnId: grn.id,
+                            productId: item.productId,
+                            variantId: item.variantId || null,
+                            unitId: item.unitId || null,
+                            poItemId: item.poItemId || null,
+                            qtyReceived: Number(item.qtyReceived),
+                            qtyRejected: Number(item.qtyRejected || 0),
+                            rate: Number(item.rate || 0)
+                        }
+                    });
+                }
 
                 // 2. Handle Over-fulfillment (Addendum PO)
                 if (poId) {
@@ -526,17 +557,46 @@ export class PurchaseController {
         try {
             const { id } = await params;
 
-            const grn = await prisma.gRN.findUnique({
-                where: { id },
-                include: {
-                    supplier: true,
-                    warehouse: true,
-                    po: true,
-                    items: {
-                        include: { product: true, poItem: true, unit: true }
+            let grn: any = null;
+            try {
+                grn = await prisma.gRN.findUnique({
+                    where: { id },
+                    include: {
+                        supplier: true,
+                        warehouse: true,
+                        po: true,
+                        items: {
+                            include: { product: true, poItem: true, unit: true }
+                        }
                     }
+                });
+            } catch {
+                const legacy = await (prisma.gRN as any).findUnique({
+                    where: { id },
+                    include: {
+                        Supplier: true,
+                        Warehouse: true,
+                        PurchaseOrder: true,
+                        GRNItem: {
+                            include: { Product: true, PurchaseOrderItem: true, Unit: true }
+                        }
+                    }
+                });
+                if (legacy) {
+                    grn = {
+                        ...legacy,
+                        supplier: legacy.Supplier,
+                        warehouse: legacy.Warehouse,
+                        po: legacy.PurchaseOrder,
+                        items: (legacy.GRNItem || []).map((it: any) => ({
+                            ...it,
+                            product: it.Product,
+                            poItem: it.PurchaseOrderItem,
+                            unit: it.Unit
+                        }))
+                    };
                 }
-            });
+            }
 
             if (!grn) return NextResponse.json({ success: false, error: "GRN not found" }, { status: 404 });
             return NextResponse.json({ success: true, data: grn });
@@ -553,19 +613,16 @@ export class PurchaseController {
             const { id } = await params;
 
             const grn = await prisma.gRN.findUnique({
-                where: { id },
-                include: {
-                    items: true,
-                    _count: { select: { invoices: true } } // This relation exists in schema? Let me check.
-                }
+                where: { id }
             });
 
             if (!grn) return NextResponse.json({ success: false, error: "GRN not found" }, { status: 404 });
 
-            // Check if invoiced (in schema? GRN has invoices relation?)
-            // If not direct relation, check via GRNItems linked to PurchaseInvoiceItem
+            const grnItems = await prisma.gRNItem.findMany({ where: { grnId: id } });
+
+            // Check if invoiced
             const invoicedCount = await prisma.purchaseInvoiceItem.count({
-                where: { grnItemId: { in: grn.items.map(i => i.id) } }
+                where: { grnItemId: { in: grnItems.map(i => i.id) } }
             });
 
             if (invoicedCount > 0) {
@@ -574,7 +631,7 @@ export class PurchaseController {
 
             await prisma.$transaction(async (tx) => {
                 // 1. Revert PO item received quantities & Remove Stock Ledger
-                for (const item of grn.items) {
+                for (const item of grnItems) {
                     if (Number(item.qtyReceived) > 0) {
                         if (item.poItemId) {
                             await tx.purchaseOrderItem.update({
