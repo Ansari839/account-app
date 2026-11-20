@@ -1773,7 +1773,7 @@ export default function ProductionExecutionWizard() {
                                         <div className="flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-300">
                                             <span>Finished: <b className="text-slate-900 dark:text-white">{effectiveNetWeightKg.toLocaleString()} KG</b></span>
                                             <span>→</span>
-                                            <span>Wet Process: <b className="text-amber-600 dark:text-amber-400">{processingGrossKg.toLocaleString()} KG</b> {processingGrossKg > effectiveNetWeightKg && `(+${(processingGrossKg - effectiveNetWeightKg).toFixed(1)} KG)`}</span>
+                                            <span>Wet Process: <b className="text-amber-600 dark:text-amber-400">{weavingBaseWeight.toLocaleString()} KG</b> {weavingBaseWeight > effectiveNetWeightKg && `(+${(weavingBaseWeight - effectiveNetWeightKg).toFixed(1)} KG)`}</span>
                                             <span>→</span>
                                             <span>Grey Fabric: <b className="text-blue-600 dark:text-blue-400">{reqGreyWeightKg.toLocaleString()} KG</b> {totalFabricMeters > 0 && `(${reqWeavingQty.toLocaleString()} ${fabricBillingUnit})`}</span>
                                             <span>→</span>
