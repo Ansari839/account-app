@@ -124,6 +124,15 @@ export default function ProductionExecutionWizard() {
                 if (!updated.qty || updated.qty === "0") {
                     updated.qty = effectiveNetWeightKg > 0 ? effectiveNetWeightKg.toString() : "";
                 }
+            } else if (field === "wastage") {
+                const w = parseFloat(value) || 0;
+                updated.wastage = w;
+                if (w > 0 && w < 100 && effectiveNetWeightKg > 0) {
+                    const gross = Math.round((effectiveNetWeightKg / ((100 - w) / 100)) * 100) / 100;
+                    updated.qty = gross.toString();
+                } else if (w === 0 && effectiveNetWeightKg > 0) {
+                    updated.qty = effectiveNetWeightKg.toString();
+                }
             }
             return updated;
         }));
@@ -132,6 +141,7 @@ export default function ProductionExecutionWizard() {
     // 4. Stage 2: Fabric Manufacturing (Weaving vs Knitting)
     const [fabricProcessType, setFabricProcessType] = useState<FabricProcessType>("WEAVING");
     const [fabricBillingUnit, setFabricBillingUnit] = useState<"KG" | "MTR">("KG");
+    const [wastageCalcMode, setWastageCalcMode] = useState<"CASCADE" | "DIRECT_OUTPUT">("CASCADE");
     const [weavingWastage, setWeavingWastage] = useState<number>(4.0);
     const [weavingMode, setWeavingMode] = useState<"IN_HOUSE" | "OUT_HOUSE">("IN_HOUSE");
     const [inHouseWeavingRate, setInHouseWeavingRate] = useState<string>("");
@@ -343,22 +353,27 @@ export default function ProductionExecutionWizard() {
         }));
     }, [suppliers]);
 
-    // Maximum wastage among all active processing services
-    const maxProcessingWastage = useMemo(() => {
-        if (processingServices.length === 0) return 0;
-        return processingServices.reduce((max, ps) => Math.max(max, ps.wastage || 0), 0);
-    }, [processingServices]);
+    // Sequential Processing Gross Weight (compounding all wet processing services)
+    const processingGrossKg = useMemo(() => {
+        if (processingServices.length === 0 || effectiveNetWeightKg <= 0) return effectiveNetWeightKg;
+        // Compound yield across all active processing services
+        const compoundYield = processingServices.reduce((acc, ps) => {
+            const w = ps.wastage || 0;
+            return acc * (w > 0 && w < 100 ? (100 - w) / 100 : 1);
+        }, 1);
+        return compoundYield > 0 && compoundYield < 1 
+            ? Math.round((effectiveNetWeightKg / compoundYield) * 100) / 100 
+            : effectiveNetWeightKg;
+    }, [processingServices, effectiveNetWeightKg]);
 
     // Physical Grey Fabric Weight in KG needed for the batch
     const reqGreyWeightKg = useMemo(() => {
         if (executionMode === "GREY_TO_FINISH") return 0;
-        const base = maxProcessingWastage > 0 
-            ? Math.round((effectiveNetWeightKg / ((100 - maxProcessingWastage) / 100)) * 100) / 100 
-            : effectiveNetWeightKg;
+        const base = wastageCalcMode === "CASCADE" ? processingGrossKg : effectiveNetWeightKg;
         return weavingWastage > 0 
             ? Math.round((base / ((100 - weavingWastage) / 100)) * 100) / 100 
             : base;
-    }, [effectiveNetWeightKg, maxProcessingWastage, weavingWastage, executionMode]);
+    }, [processingGrossKg, effectiveNetWeightKg, weavingWastage, executionMode, wastageCalcMode]);
 
     // Weaving Length in Meters (if Cut Size or Meter Output is provided)
     const reqWeavingMeters = useMemo(() => {
@@ -1430,44 +1445,92 @@ export default function ProductionExecutionWizard() {
                                                     )}
 
                                                     {/* Service inputs row: 4 equal columns */}
-                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-1">
-                                                        <div className="space-y-1.5">
-                                                            <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Wastage %</label>
-                                                            <input
-                                                                type="number"
-                                                                placeholder="0"
-                                                                value={ps.wastage || ""}
-                                                                onChange={(e) => handleProcessingServiceChange(ps.id, "wastage", parseFloat(e.target.value) || 0)}
-                                                                className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-1.5">
-                                                            <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Billing Qty ({ps.unit || 'KG'})</label>
-                                                            <input
-                                                                type="number"
-                                                                placeholder="0.00"
-                                                                value={ps.qty}
-                                                                onChange={(e) => handleProcessingServiceChange(ps.id, "qty", e.target.value)}
-                                                                className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-1.5">
-                                                            <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Rate (PKR)</label>
-                                                            <input
-                                                                type="number"
-                                                                placeholder="0.00"
-                                                                value={ps.rate}
-                                                                onChange={(e) => handleProcessingServiceChange(ps.id, "rate", e.target.value)}
-                                                                className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-1.5">
-                                                            <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Line Total</label>
-                                                            <div className="px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/60 text-sm font-mono font-bold text-amber-600 dark:text-amber-400 text-right h-[44px] flex items-center justify-end">
-                                                                Rs. {lineCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    {(() => {
+                                                        const itemGrossQty = (ps.wastage || 0) > 0 && effectiveNetWeightKg > 0
+                                                            ? Math.round((effectiveNetWeightKg / ((100 - (ps.wastage || 0)) / 100)) * 100) / 100
+                                                            : effectiveNetWeightKg;
+                                                        const itemLossQty = Math.round((itemGrossQty - effectiveNetWeightKg) * 100) / 100;
+
+                                                        return (
+                                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-1">
+                                                                <div className="space-y-1.5">
+                                                                    <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Wastage %</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder="0"
+                                                                        value={ps.wastage || ""}
+                                                                        onChange={(e) => handleProcessingServiceChange(ps.id, "wastage", parseFloat(e.target.value) || 0)}
+                                                                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-1.5">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400">
+                                                                            Billing Qty ({ps.unit || 'KG'})
+                                                                        </label>
+                                                                        {(ps.wastage || 0) > 0 && effectiveNetWeightKg > 0 && (
+                                                                            <div className="flex items-center gap-1 text-[10px] font-mono">
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleProcessingServiceChange(ps.id, "qty", itemGrossQty.toString())}
+                                                                                    className={cn(
+                                                                                        "px-1.5 py-0.5 rounded transition-all font-bold",
+                                                                                        parseFloat(ps.qty) === itemGrossQty 
+                                                                                            ? "bg-amber-600 text-white shadow-sm" 
+                                                                                            : "bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
+                                                                                    )}
+                                                                                    title="Use Gross Input Qty"
+                                                                                >
+                                                                                    Gross ({itemGrossQty.toLocaleString()})
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleProcessingServiceChange(ps.id, "qty", effectiveNetWeightKg.toString())}
+                                                                                    className={cn(
+                                                                                        "px-1.5 py-0.5 rounded transition-all font-bold",
+                                                                                        parseFloat(ps.qty) === effectiveNetWeightKg 
+                                                                                            ? "bg-slate-700 text-white shadow-sm" 
+                                                                                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                                                                                    )}
+                                                                                    title="Use Net Output Qty"
+                                                                                >
+                                                                                    Net
+                                                                                </button>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder="0.00"
+                                                                        value={ps.qty}
+                                                                        onChange={(e) => handleProcessingServiceChange(ps.id, "qty", e.target.value)}
+                                                                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
+                                                                    />
+                                                                    {(ps.wastage || 0) > 0 && itemLossQty > 0 && (
+                                                                        <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono block text-right font-medium">
+                                                                            Loss: +{itemLossQty.toLocaleString()} KG
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="space-y-1.5">
+                                                                    <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Rate (PKR)</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder="0.00"
+                                                                        value={ps.rate}
+                                                                        onChange={(e) => handleProcessingServiceChange(ps.id, "rate", e.target.value)}
+                                                                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right h-[44px]"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-1.5">
+                                                                    <label className="text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-400 block">Line Total</label>
+                                                                    <div className="px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/60 text-sm font-mono font-bold text-amber-600 dark:text-amber-400 text-right h-[44px] flex items-center justify-end">
+                                                                        Rs. {lineCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             );
                                         })}
@@ -1493,6 +1556,18 @@ export default function ProductionExecutionWizard() {
                                     </div>
 
                                     <div className="flex flex-wrap items-center gap-2">
+                                        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                                            <span className="text-slate-500 dark:text-slate-400">Wastage Base:</span>
+                                            <select
+                                                value={wastageCalcMode}
+                                                onChange={(e) => setWastageCalcMode(e.target.value as any)}
+                                                className="bg-transparent font-bold text-slate-800 dark:text-slate-100 outline-none cursor-pointer"
+                                            >
+                                                <option value="CASCADE">Stage Cascade</option>
+                                                <option value="DIRECT_OUTPUT">Direct from Net Output</option>
+                                            </select>
+                                        </div>
+
                                         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold">
                                             <button
                                                 type="button"
@@ -1540,6 +1615,23 @@ export default function ProductionExecutionWizard() {
                                         </div>
                                     </div>
                                 </div>
+
+                                {effectiveNetWeightKg > 0 && (
+                                    <div className="p-3.5 bg-slate-50/80 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+                                        <div className="flex flex-wrap items-center gap-2 text-slate-600 dark:text-slate-300">
+                                            <span>Finished: <b className="text-slate-900 dark:text-white">{effectiveNetWeightKg.toLocaleString()} KG</b></span>
+                                            <span>→</span>
+                                            <span>Wet Process: <b className="text-amber-600 dark:text-amber-400">{processingGrossKg.toLocaleString()} KG</b> {processingGrossKg > effectiveNetWeightKg && `(+${(processingGrossKg - effectiveNetWeightKg).toFixed(1)} KG)`}</span>
+                                            <span>→</span>
+                                            <span>Grey Fabric: <b className="text-blue-600 dark:text-blue-400">{reqGreyWeightKg.toLocaleString()} KG</b> {totalFabricMeters > 0 && `(${reqWeavingQty.toLocaleString()} ${fabricBillingUnit})`}</span>
+                                            <span>→</span>
+                                            <span>Target Raw Yarn: <b className="text-emerald-600 dark:text-emerald-400 font-black">{reqYarnQty.toLocaleString()} KG</b></span>
+                                        </div>
+                                        <span className="text-[10px] font-sans font-bold text-slate-400 uppercase tracking-wider">
+                                            {wastageCalcMode === "CASCADE" ? "Cascade Yield Mode" : "Direct Flat Mode"}
+                                        </span>
+                                    </div>
+                                )}
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
                                     <div className="space-y-1.5">
