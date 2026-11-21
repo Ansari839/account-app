@@ -99,6 +99,70 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             }
         }
 
+        // Fetch associated batchNo and spec dimensions from StockLedger
+        const outLedger = await prisma.stockLedger.findFirst({
+            where: { refType: 'PRODUCTION', refId: id, qtyIn: { gt: 0 } },
+            select: { batchNo: true }
+        });
+        record.batchNo = outLedger?.batchNo || null;
+
+        // Fetch ProductionAccruals created for this batch (Yarn, Weaving, Dyeing)
+        let accruals: any[] = [];
+        try {
+            const accModel = (prisma as any).productionAccrual;
+            if (accModel?.findMany) {
+                accruals = await accModel.findMany({
+                    where: { productionId: id },
+                    include: {
+                        Product: { select: { id: true, name: true, code: true, hsCode: true } },
+                        Supplier: { select: { id: true, name: true, code: true } },
+                        Unit: { select: { id: true, code: true, name: true } }
+                    },
+                    orderBy: { accrualNo: 'asc' }
+                });
+            } else {
+                throw new Error();
+            }
+        } catch {
+            try {
+                const rawRows = await prisma.$queryRaw<any[]>`
+                    SELECT 
+                        pa.*,
+                        p.name as "productName",
+                        p.code as "productCode",
+                        p."hsCode" as "productHsCode",
+                        s.name as "supplierName",
+                        s.code as "supplierCode",
+                        u.code as "unitCode"
+                    FROM "ProductionAccrual" pa
+                    LEFT JOIN "Product" p ON pa."productId" = p.id
+                    LEFT JOIN "Supplier" s ON pa."supplierId" = s.id
+                    LEFT JOIN "Unit" u ON pa."unitId" = u.id
+                    WHERE pa."productionId" = ${id}
+                    ORDER BY pa."accrualNo" ASC
+                `;
+                accruals = (rawRows || []).map(r => ({
+                    id: r.id,
+                    accrualNo: r.accrualNo,
+                    date: r.date,
+                    stage: r.stage,
+                    serviceType: r.serviceType,
+                    qty: r.qty,
+                    rate: r.rate,
+                    amount: r.amount,
+                    billedQty: r.billedQty,
+                    status: r.status,
+                    remarks: r.remarks,
+                    Product: { id: r.productId, name: r.productName, code: r.productCode, hsCode: r.productHsCode },
+                    Supplier: r.supplierId ? { id: r.supplierId, name: r.supplierName, code: r.supplierCode } : null,
+                    Unit: r.unitId ? { id: r.unitId, code: r.unitCode } : null
+                }));
+            } catch (e) {
+                accruals = [];
+            }
+        }
+        record.accruals = accruals;
+
         return NextResponse.json({ success: true, data: record });
     } catch (e: any) {
         return NextResponse.json({ success: false, error: e.message }, { status: 500 });
@@ -156,7 +220,19 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
                 await tx.journalEntry.delete({ where: { id: je.id } });
             }
 
-            // 4. Explicitly delete inputs and overheads to avoid foreign key constraint errors
+            // 4. Delete associated pending ProductionAccruals
+            try {
+                const accModel = (tx as any).productionAccrual;
+                if (accModel?.deleteMany) {
+                    await accModel.deleteMany({ where: { productionId: record.id, status: 'PENDING' } });
+                } else {
+                    await tx.$executeRaw`DELETE FROM "ProductionAccrual" WHERE "productionId" = ${record.id} AND "status" = 'PENDING'`;
+                }
+            } catch (e) {
+                console.warn("Could not delete ProductionAccruals on production record delete:", e);
+            }
+
+            // 5. Explicitly delete inputs and overheads to avoid foreign key constraint errors
             await tx.productionOverhead.deleteMany({ where: { productionId: record.id } });
             await tx.productionInput.deleteMany({ where: { productionId: record.id } });
             await tx.productionRecord.delete({ where: { id: record.id } });

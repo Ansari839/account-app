@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
             // 1. Calculate Total Costs
             let rawMaterialCost = 0;
             const inputRecords = [];
+            const accrualRecordsToCreate: any[] = [];
             
             for (const input of inputs) {
                 const qty = Number(input.quantity);
@@ -44,16 +45,84 @@ export async function POST(req: NextRequest) {
                     productId: input.productId,
                     quantity: qty,
                     costValue: costValue,
-                    lotNumber: input.lotNumber || null,
+                    lotNumber: input.lotNumber || (input.isAccrual ? 'ACCRUAL-UNBILLED' : null),
                     inputStage: inputStageValue
                 });
+
+                // Raw Yarn Accrual (Unbilled raw material with supplier bill pending)
+                if (input.isAccrual || input.mode === 'ACCRUAL') {
+                    let yarnProd = null;
+                    if (input.productId) {
+                        yarnProd = await tx.product.findUnique({
+                            where: { id: input.productId },
+                            include: { Category: true, Unit: true }
+                        });
+                    }
+                    const yarnName = yarnProd?.name || "Raw Yarn (Unbilled)";
+
+                    // Sequence for PAC-YYYY-XXXX
+                    const existingCount = accrualRecordsToCreate.length;
+                    const prefix = `PAC-${new Date().getFullYear()}-`;
+                    let lastAccrualNo: string | null = null;
+                    try {
+                        const rawLast = await tx.$queryRaw<Array<{ accrualNo: string }>>`
+                            SELECT "accrualNo" FROM "ProductionAccrual"
+                            WHERE "companyId" = ${companyId} AND "accrualNo" LIKE ${prefix + '%'}
+                            ORDER BY "accrualNo" DESC LIMIT 1
+                        `;
+                        if (rawLast && rawLast.length > 0) {
+                            lastAccrualNo = rawLast[0].accrualNo;
+                        }
+                    } catch {
+                        // Raw query fallback
+                    }
+
+                    let nextSeq = 1;
+                    if (lastAccrualNo) {
+                        const parts = lastAccrualNo.split('-');
+                        const lastNum = parseInt(parts[parts.length - 1]);
+                        if (!isNaN(lastNum)) nextSeq = lastNum + 1;
+                    }
+                    const accrualNo = `${prefix}${(nextSeq + existingCount).toString().padStart(4, '0')}`;
+
+                    let validSupplierId: string | null = null;
+                    if (input.supplierId) {
+                        const s = await tx.supplier.findFirst({ where: { id: input.supplierId, companyId } });
+                        if (s) validSupplierId = s.id;
+                    }
+
+                    let validUnitId: string | null = null;
+                    if (input.unitId) {
+                        const u = await tx.unit.findFirst({ where: { id: input.unitId } });
+                        if (u) validUnitId = u.id;
+                    }
+                    if (!validUnitId && yarnProd?.baseUnitId) {
+                        validUnitId = yarnProd.baseUnitId;
+                    }
+
+                    accrualRecordsToCreate.push({
+                        companyId,
+                        accrualNo,
+                        productId: input.productId,
+                        supplierId: validSupplierId,
+                        unitId: validUnitId,
+                        date: new Date(date),
+                        stage: 'RAW',
+                        serviceType: 'RAW_YARN',
+                        qty: qty,
+                        rate: rate,
+                        amount: costValue,
+                        billedQty: 0,
+                        status: 'PENDING',
+                        remarks: input.remarks || `Accrued Unbilled Yarn [${yarnName}] for Production Batch`
+                    });
+                }
             }
 
             let serviceCost = 0;
             let inHouseServiceCost = 0;
             const overheadRecords = [];
             const outHouseServiceInvoiceIds = [];
-            const accrualRecordsToCreate: any[] = [];
 
             if (overheads && overheads.length > 0) {
                 for (const ov of overheads) {
@@ -105,6 +174,7 @@ export async function POST(req: NextRequest) {
                                 companyId,
                                 OR: [
                                     { code: '2130' },
+                                    { code: '2230' },
                                     { name: { contains: 'Accrued', mode: 'insensitive' } },
                                     { name: { contains: 'Unbilled', mode: 'insensitive' } }
                                 ]
@@ -137,6 +207,9 @@ export async function POST(req: NextRequest) {
                             validUnitId = prod.baseUnitId;
                         }
 
+                        const determinedStage = ov.stage || (ov.serviceType === 'WEAVING' || ov.serviceType === 'KNITTING' ? 'GREY' : processStage);
+                        const determinedServiceType = ov.serviceType || (prodName.toUpperCase().includes('DYE') ? 'DYEING' : prodName.toUpperCase().includes('PRINT') ? 'PRINTING' : (prodName.toUpperCase().includes('WEAV') ? 'WEAVING' : (prodName.toUpperCase().includes('KNIT') ? 'KNITTING' : 'DYEING')));
+
                         accrualRecordsToCreate.push({
                             companyId,
                             accrualNo,
@@ -144,8 +217,8 @@ export async function POST(req: NextRequest) {
                             supplierId: validSupplierId,
                             unitId: validUnitId,
                             date: new Date(date),
-                            stage: processStage,
-                            serviceType: ov.serviceType || (prodName.toUpperCase().includes('DYE') ? 'DYEING' : prodName.toUpperCase().includes('PRINT') ? 'PRINTING' : 'WEAVING'),
+                            stage: determinedStage,
+                            serviceType: determinedServiceType,
                             qty: consumeQty,
                             rate: rate,
                             amount: ovAmount,
@@ -351,6 +424,15 @@ export async function POST(req: NextRequest) {
             // Determine if the output is EFS (if any input is EFS)
             const isOutputEFS = inputs.some((input: any) => input.isEFS === true);
             
+            // Output dimensions & dynamic piece specs
+            const { cutSize, pieceWeightKg, totalFabricMeters, outputUom, outputNetWeightKg } = body;
+            const specNotes: string[] = [];
+            if (outputUom) specNotes.push(`${outputQuantity} ${outputUom}`);
+            if (cutSize) specNotes.push(`Cut: ${cutSize} MTR/PC`);
+            if (pieceWeightKg) specNotes.push(`Unit: ${pieceWeightKg} KG/PC`);
+            if (outputNetWeightKg) specNotes.push(`Net: ${outputNetWeightKg} KG`);
+            const specSummary = specNotes.length > 0 ? ` [${specNotes.join(' | ')}]` : '';
+
             // Generate Batch Number (Journal No)
             const batchNo = `BATCH-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 900 + 100)}`;
             const jvNo = `JV-${batchNo}`;
@@ -424,12 +506,18 @@ export async function POST(req: NextRequest) {
                     refType: 'PRODUCTION',
                     refId: record.id,
                     stage: processStage,
-                    isEFS: isOutputEFS
+                    isEFS: isOutputEFS,
+                    batchNo: `${batchNo}${specSummary}`
                 }
             });
 
             // Out (Input Products)
             for (const input of inputs) {
+                if (input.isAccrual || input.mode === "ACCRUAL") {
+                    // Do NOT deduct physical stock because this raw yarn is an unbilled accrual (no physical warehouse stock lot exists yet)
+                    continue;
+                }
+
                 let inputStageValue = input.stage;
                 if (!inputStageValue) {
                     if (processStage === 'GREY') inputStageValue = 'RAW';
@@ -448,7 +536,8 @@ export async function POST(req: NextRequest) {
                         refType: 'PRODUCTION',
                         refId: record.id,
                         stage: inputStageValue || null,
-                        isEFS: input.isEFS || false
+                        isEFS: input.isEFS || false,
+                        batchNo
                     }
                 });
 
@@ -480,33 +569,70 @@ export async function POST(req: NextRequest) {
                 accountId: debitAccount,
                 debit: totalOutputCost,
                 credit: 0,
-                narration: `Produced ${outputQuantity} of ${outputProduct?.name} [Batch ${batchNo}]`
+                narration: `Produced ${outputQuantity} of ${outputProduct?.name} [Batch ${batchNo}${specSummary}]`
             });
 
             // CREDIT Input Products (Raw Materials)
             for (const input of inputs) {
-                const inProduct = await tx.product.findUnique({ where: { id: input.productId }, include: { Category: true } });
-                let creditAcc = inProduct?.inventoryAccountId || inProduct?.Category?.wipAccountId;
-                if (!creditAcc) {
-                    const defInv = await tx.account.findFirst({
-                        where: { companyId, name: { contains: 'Inventory', mode: 'insensitive' }, type: 'ASSET' }
-                    });
-                    creditAcc = defInv?.id;
-                    if (!creditAcc) throw new Error(`No Inventory Account found for input product ${inProduct?.name}.`);
-                }
                 const inputCost = Number(input.quantity) * Number(input.costRate);
-                
-                // Check if line with this account already exists
-                const existing = lines.find(l => l.accountId === creditAcc && l.debit === 0);
-                if (existing) {
-                    existing.credit += inputCost;
-                } else {
-                    lines.push({
-                        accountId: creditAcc,
-                        debit: 0,
-                        credit: inputCost,
-                        narration: `Consumed ${input.quantity} of ${inProduct?.name} for Batch ${batchNo}`
+                if (input.isAccrual || input.mode === "ACCRUAL") {
+                    // Credit Accrued Liabilities (2130 / 2230) for Unbilled Raw Yarn
+                    let creditAcc = null;
+                    const accruedAcc = await tx.account.findFirst({
+                        where: {
+                            companyId,
+                            OR: [
+                                { code: '2130' },
+                                { code: '2230' },
+                                { name: { contains: 'Accrued', mode: 'insensitive' } },
+                                { name: { contains: 'Unbilled', mode: 'insensitive' } }
+                            ]
+                        }
                     });
+                    creditAcc = accruedAcc?.id;
+                    if (!creditAcc) {
+                        const anyLiability = await tx.account.findFirst({
+                            where: { companyId, type: 'LIABILITY', isPosting: true }
+                        });
+                        creditAcc = anyLiability?.id;
+                    }
+                    if (creditAcc) {
+                        const inProduct = await tx.product.findUnique({ where: { id: input.productId } });
+                        const existing = lines.find(l => l.accountId === creditAcc && l.debit === 0);
+                        if (existing) {
+                            existing.credit += inputCost;
+                        } else {
+                            lines.push({
+                                accountId: creditAcc,
+                                debit: 0,
+                                credit: inputCost,
+                                narration: `Accrued Unbilled Yarn: ${inProduct?.name || 'Raw Yarn'} (${input.quantity} KG @ Rs. ${input.costRate}) for Batch ${batchNo}`
+                            });
+                        }
+                    }
+                } else {
+                    const inProduct = await tx.product.findUnique({ where: { id: input.productId }, include: { Category: true } });
+                    let creditAcc = inProduct?.inventoryAccountId || inProduct?.Category?.wipAccountId;
+                    if (!creditAcc) {
+                        const defInv = await tx.account.findFirst({
+                            where: { companyId, name: { contains: 'Inventory', mode: 'insensitive' }, type: 'ASSET' }
+                        });
+                        creditAcc = defInv?.id;
+                        if (!creditAcc) throw new Error(`No Inventory Account found for input product ${inProduct?.name}.`);
+                    }
+                    
+                    // Check if line with this account already exists
+                    const existing = lines.find(l => l.accountId === creditAcc && l.debit === 0);
+                    if (existing) {
+                        existing.credit += inputCost;
+                    } else {
+                        lines.push({
+                            accountId: creditAcc,
+                            debit: 0,
+                            credit: inputCost,
+                            narration: `Consumed ${input.quantity} of ${inProduct?.name} for Batch ${batchNo}`
+                        });
+                    }
                 }
             }
 
@@ -559,7 +685,7 @@ export async function POST(req: NextRequest) {
                     date: new Date(date),
                     type: 'JOURNAL',
                     reference: batchNo,
-                    narration: `Production Batch ${batchNo} completed`,
+                    narration: `Production Batch ${batchNo} completed${specSummary}`,
                     lines: { create: lines }
                 }
             });

@@ -165,23 +165,28 @@ export default function ProductionExecutionWizard() {
     const [weavingWastage, setWeavingWastage] = useState<number>(4.0);
     const [weavingMode, setWeavingMode] = useState<"IN_HOUSE" | "OUT_HOUSE">("IN_HOUSE");
     const [inHouseWeavingRate, setInHouseWeavingRate] = useState<string>("");
-    const [outHouseFabricMode, setOutHouseFabricMode] = useState<"VENDOR_BILL" | "MANUAL">("VENDOR_BILL");
+    const [outHouseFabricMode, setOutHouseFabricMode] = useState<"VENDOR_BILL" | "ACCRUAL" | "MANUAL">("ACCRUAL");
     const [selectedWeavingServiceId, setSelectedWeavingServiceId] = useState<string>("");
     const [weavingServiceQty, setWeavingServiceQty] = useState<string>("");
+    const [outHouseFabricProductId, setOutHouseFabricProductId] = useState<string>("");
+    const [outHouseFabricSupplierId, setOutHouseFabricSupplierId] = useState<string>("");
+    const [outHouseFabricRate, setOutHouseFabricRate] = useState<string>("");
     const [outHouseFabricManualRate, setOutHouseFabricManualRate] = useState<string>("");
 
     // 5. Stage 3: Yarn Consumption
     const [yarnBaseStageId, setYarnBaseStageId] = useState<string>("WEAVING");
     const [yarnWastage, setYarnWastage] = useState<number>(4.0);
     const [yarnInputs, setYarnInputs] = useState<Array<{
+        mode: "STOCK" | "ACCRUAL";
         productId: string;
+        supplierId?: string;
         isEFS: boolean;
         quantity: string;
         costRate: string;
         lotNumber: string;
         purchaseInvoiceItemId?: string;
     }>>([
-        { productId: "", isEFS: false, quantity: "", costRate: "", lotNumber: "" }
+        { mode: "STOCK", productId: "", isEFS: false, quantity: "", costRate: "", lotNumber: "" }
     ]);
 
     // 6. For GREY_TO_FINISH: Grey Fabric Input
@@ -539,6 +544,13 @@ export default function ProductionExecutionWizard() {
         return products.filter(p => isYarnProduct(p));
     }, [products]);
 
+    const yarnAccrualProductOptions = useMemo(() => {
+        return yarnProductList.map(p => ({
+            value: p.id,
+            label: `${p.code} - ${p.name}${p.hsCode ? ` [HS: ${p.hsCode}]` : ''}`
+        }));
+    }, [yarnProductList]);
+
     const yarnOptions = useMemo(() => {
         const opts: { value: string; label: string }[] = [];
 
@@ -868,7 +880,22 @@ export default function ProductionExecutionWizard() {
     const handleYarnProductChange = (index: number, val: string) => {
         const next = [...yarnInputs];
         if (!val) {
-            next[index] = { productId: "", isEFS: false, quantity: "", costRate: "0", lotNumber: "" };
+            next[index] = { ...next[index], productId: "", isEFS: false, quantity: "", costRate: "0", lotNumber: "", purchaseInvoiceItemId: undefined };
+            setYarnInputs(next);
+            return;
+        }
+
+        if (next[index].mode === "ACCRUAL") {
+            const rateKey = `${val}-RAW-STD`;
+            const matched = stockRates[rateKey];
+            next[index] = {
+                ...next[index],
+                productId: val,
+                isEFS: false,
+                costRate: matched?.rate ? matched.rate.toFixed(2) : (next[index].costRate || "0"),
+                lotNumber: "ACCRUAL-UNBILLED",
+                purchaseInvoiceItemId: undefined
+            };
             setYarnInputs(next);
             return;
         }
@@ -880,6 +907,7 @@ export default function ProductionExecutionWizard() {
             const autoQty = lot ? Math.min(lot.qty, reqYarnQty - totalYarnAllocated + (parseFloat(next[index].quantity) || 0)) : 0;
 
             next[index] = {
+                mode: "STOCK",
                 productId: pid,
                 isEFS,
                 quantity: autoQty > 0 ? autoQty.toString() : "",
@@ -904,7 +932,7 @@ export default function ProductionExecutionWizard() {
     };
 
     const addYarnRow = () => {
-        setYarnInputs([...yarnInputs, { productId: "", isEFS: false, quantity: "", costRate: "", lotNumber: "" }]);
+        setYarnInputs([...yarnInputs, { mode: "STOCK", productId: "", isEFS: false, quantity: "", costRate: "", lotNumber: "" }]);
     };
 
     const removeYarnRow = (idx: number) => {
@@ -935,14 +963,17 @@ export default function ProductionExecutionWizard() {
             return reqWeavingQty * (parseFloat(inHouseWeavingRate) || 0);
         } else {
             if (outHouseFabricMode === "VENDOR_BILL") {
-                const svcList = fabricProcessType === "WEAVING" ? weavingServiceOptions : knittingServiceOptions;
                 const svc = unconsumedServices.find(s => s.id === selectedWeavingServiceId);
                 return svc ? (parseFloat(weavingServiceQty) || 0) * svc.rate : 0;
+            } else if (outHouseFabricMode === "ACCRUAL") {
+                const q = parseFloat(weavingServiceQty) || reqWeavingQty;
+                const r = parseFloat(outHouseFabricRate) || 0;
+                return q * r;
             } else {
                 return reqWeavingQty * (parseFloat(outHouseFabricManualRate) || 0);
             }
         }
-    }, [executionMode, weavingMode, outHouseFabricMode, reqWeavingQty, inHouseWeavingRate, selectedWeavingServiceId, weavingServiceQty, outHouseFabricManualRate, unconsumedServices, fabricProcessType, weavingServiceOptions, knittingServiceOptions]);
+    }, [executionMode, weavingMode, outHouseFabricMode, reqWeavingQty, inHouseWeavingRate, selectedWeavingServiceId, weavingServiceQty, outHouseFabricRate, outHouseFabricManualRate, unconsumedServices]);
 
     const processingCostTotal = useMemo(() => {
         return processingServices.reduce((sum, ps) => {
@@ -1000,6 +1031,24 @@ export default function ProductionExecutionWizard() {
                     purchaseInvoiceItemId: selectedWeavingServiceId,
                     quantity: parseFloat(weavingServiceQty) || reqWeavingQty
                 });
+            } else if (outHouseFabricMode === "ACCRUAL") {
+                const q = parseFloat(weavingServiceQty) || reqWeavingQty;
+                const r = parseFloat(outHouseFabricRate) || 0;
+                const amt = q * r;
+                if (amt > 0) {
+                    finalOverheads.push({
+                        isAccrual: true,
+                        mode: "ACCRUAL",
+                        stage: "GREY",
+                        serviceType: fabricProcessType,
+                        productId: outHouseFabricProductId || undefined,
+                        supplierId: outHouseFabricSupplierId || null,
+                        quantity: q,
+                        rate: r,
+                        amount: amt,
+                        unitId: units.find(u => u.code === fabricBillingUnit)?.id
+                    });
+                }
             } else if (outHouseFabricMode === "MANUAL") {
                 const amt = reqWeavingQty * (parseFloat(outHouseFabricManualRate) || 0);
                 if (amt > 0) {
@@ -1060,9 +1109,11 @@ export default function ProductionExecutionWizard() {
             isEFS: greyInputIsEFS
         }] : yarnInputs.map(y => ({
             productId: y.productId,
+            supplierId: y.supplierId || null,
+            isAccrual: y.mode === "ACCRUAL",
             quantity: parseFloat(y.quantity),
             costRate: parseFloat(y.costRate) || 0,
-            lotNumber: y.lotNumber || null,
+            lotNumber: y.lotNumber || (y.mode === "ACCRUAL" ? "ACCRUAL-UNBILLED" : null),
             purchaseInvoiceItemId: y.purchaseInvoiceItemId,
             stage: "RAW",
             isEFS: y.isEFS
@@ -1076,6 +1127,9 @@ export default function ProductionExecutionWizard() {
             outputQuantity: parseFloat(outputQuantity),
             outputUom: outputUnitCode,
             outputNetWeightKg: effectiveNetWeightKg,
+            cutSize: outputUnitCode === "PCS" ? parseFloat(cutSize) || null : null,
+            pieceWeightKg: outputUnitCode === "PCS" ? parseFloat(unitWeightKg) || null : null,
+            totalFabricMeters: totalFabricMeters || null,
             processStage,
             warehouseId,
             mode: (weavingMode === "OUT_HOUSE" || processingServices.some(p => p.mode === "VENDOR_BILL" && p.serviceId)) ? "OUT-HOUSE" : "IN-HOUSE",
@@ -1867,57 +1921,176 @@ export default function ProductionExecutionWizard() {
 
                                 {/* If Out-House */}
                                 {weavingMode === "OUT_HOUSE" && (
-                                    <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
-                                            {fabricProcessType} Vendor Bill *
-                                        </label>
-                                        <div className="flex flex-col sm:flex-row gap-2.5">
-                                            <div className="flex-1">
-                                                <Combobox
-                                                    options={fabricProcessType === "WEAVING" ? weavingServiceOptions : knittingServiceOptions}
-                                                    value={selectedWeavingServiceId}
-                                                    onChange={(val) => {
-                                                        setSelectedWeavingServiceId(val);
-                                                        const svc = unconsumedServices.find(s => s.id === val);
-                                                        if (svc) setWeavingServiceQty(Math.min(svc.unconsumedQty, reqWeavingQty).toString());
-                                                    }}
-                                                    placeholder={`Select ${fabricProcessType} Vendor Bill...`}
-                                                    className="w-full text-sm font-semibold"
-                                                />
+                                    <div className="space-y-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <label className="text-sm font-bold text-slate-700 dark:text-slate-200 block">
+                                                Out-House {fabricProcessType} Billing Mode
+                                            </label>
+                                            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setOutHouseFabricMode("VENDOR_BILL")}
+                                                    className={cn("px-3 py-1.5 rounded-lg transition-all", outHouseFabricMode === "VENDOR_BILL" ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm font-black" : "text-slate-500 hover:text-slate-800 dark:hover:text-white")}
+                                                >
+                                                    Vendor Bill / GRN
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setOutHouseFabricMode("ACCRUAL")}
+                                                    className={cn("px-3 py-1.5 rounded-lg transition-all", outHouseFabricMode === "ACCRUAL" ? "bg-amber-600 text-white shadow-sm font-black" : "text-slate-500 hover:text-slate-800 dark:hover:text-white")}
+                                                >
+                                                    Accrual / Estimate (No Bill Yet)
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setOutHouseFabricMode("MANUAL")}
+                                                    className={cn("px-3 py-1.5 rounded-lg transition-all", outHouseFabricMode === "MANUAL" ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm font-black" : "text-slate-500 hover:text-slate-800 dark:hover:text-white")}
+                                                >
+                                                    Internal / Manual Rate
+                                                </button>
                                             </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setServiceModalTarget("WEAVING_KNITTING");
-                                                    setServiceModalTypeFilter(fabricProcessType);
-                                                    setServiceModalSearch("");
-                                                    setIsServiceModalOpen(true);
-                                                }}
-                                                className="px-4 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-700 dark:text-blue-300 text-sm font-bold flex items-center gap-1.5 shrink-0 h-[44px]"
-                                            >
-                                                <Search size={15} /> Browse Bills
-                                            </button>
                                         </div>
-                                        {selectedWeavingServiceId && (() => {
-                                            const s = unconsumedServices.find(item => item.id === selectedWeavingServiceId);
-                                            const prod = products.find(p => p.id === s?.productId);
-                                            const hs = s?.hsCode || prod?.hsCode;
-                                            if (!s) return null;
-                                            return (
-                                                <div className="flex flex-wrap items-center gap-2.5 px-3.5 py-2 bg-blue-500/5 dark:bg-blue-950/20 rounded-lg border border-blue-500/15 text-sm">
-                                                    <span className="font-bold text-slate-800 dark:text-slate-200">{s.supplierName}</span>
-                                                    <span className="text-slate-400 font-mono">({s.invoiceNo})</span>
-                                                    {hs && (
-                                                        <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs">
-                                                            HS {hs}
-                                                        </span>
-                                                    )}
-                                                    <span className="ml-auto text-emerald-600 dark:text-emerald-400 font-bold font-mono">
-                                                        Available: {Number(s.unconsumedQty).toLocaleString()} {s.unit}
-                                                    </span>
+
+                                        {outHouseFabricMode === "VENDOR_BILL" && (
+                                            <div className="space-y-2">
+                                                <div className="flex flex-col sm:flex-row gap-2.5">
+                                                    <div className="flex-1">
+                                                        <Combobox
+                                                            options={fabricProcessType === "WEAVING" ? weavingServiceOptions : knittingServiceOptions}
+                                                            value={selectedWeavingServiceId}
+                                                            onChange={(val) => {
+                                                                setSelectedWeavingServiceId(val);
+                                                                const svc = unconsumedServices.find(s => s.id === val);
+                                                                if (svc) setWeavingServiceQty(Math.min(svc.unconsumedQty, reqWeavingQty).toString());
+                                                            }}
+                                                            placeholder={`Select ${fabricProcessType} Vendor Bill...`}
+                                                            className="w-full text-sm font-semibold"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setServiceModalTarget("WEAVING_KNITTING");
+                                                            setServiceModalTypeFilter(fabricProcessType);
+                                                            setServiceModalSearch("");
+                                                            setIsServiceModalOpen(true);
+                                                        }}
+                                                        className="px-4 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-700 dark:text-blue-300 text-sm font-bold flex items-center gap-1.5 shrink-0 h-[44px]"
+                                                    >
+                                                        <Search size={15} /> Browse Bills
+                                                    </button>
                                                 </div>
-                                            );
-                                        })()}
+                                                {selectedWeavingServiceId && (() => {
+                                                    const s = unconsumedServices.find(item => item.id === selectedWeavingServiceId);
+                                                    const prod = products.find(p => p.id === s?.productId);
+                                                    const hs = s?.hsCode || prod?.hsCode;
+                                                    if (!s) return null;
+                                                    return (
+                                                        <div className="flex flex-wrap items-center gap-2.5 px-3.5 py-2 bg-blue-500/5 dark:bg-blue-950/20 rounded-lg border border-blue-500/15 text-sm">
+                                                            <span className="font-bold text-slate-800 dark:text-slate-200">{s.supplierName}</span>
+                                                            <span className="text-slate-400 font-mono">({s.invoiceNo})</span>
+                                                            {hs && (
+                                                                <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-mono font-bold text-xs">
+                                                                    HS {hs}
+                                                                </span>
+                                                            )}
+                                                            <span className="ml-auto text-emerald-600 dark:text-emerald-400 font-bold font-mono">
+                                                                Available: {Number(s.unconsumedQty).toLocaleString()} {s.unit}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        )}
+
+                                        {outHouseFabricMode === "ACCRUAL" && (
+                                            <div className="p-4 bg-amber-500/5 dark:bg-amber-500/10 rounded-2xl border border-amber-500/20 space-y-3">
+                                                <div className="px-3.5 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs font-semibold text-amber-700 dark:text-amber-300 flex items-center justify-between">
+                                                    <span>Accrual Liability (Credits Accrued Expenses; offset partially or fully in Purchase Invoice later)</span>
+                                                    <span className="font-mono font-bold">Stage: GREY</span>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                                                    <div className="space-y-1">
+                                                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                            Process / Service Product <span className="text-rose-500">*</span>
+                                                        </label>
+                                                        <Combobox
+                                                            options={serviceProductOptions}
+                                                            value={outHouseFabricProductId}
+                                                            onChange={(val) => setOutHouseFabricProductId(val)}
+                                                            placeholder={`Select ${fabricProcessType} Service...`}
+                                                            className="w-full text-sm font-semibold"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                            Weaver / Knitter Vendor
+                                                        </label>
+                                                        <Combobox
+                                                            options={supplierOptions}
+                                                            value={outHouseFabricSupplierId}
+                                                            onChange={(val) => setOutHouseFabricSupplierId(val)}
+                                                            placeholder="Select Vendor / Supplier..."
+                                                            className="w-full text-sm font-semibold"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                            Billing Qty ({fabricBillingUnit}) <span className="text-rose-500">*</span>
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            step="any"
+                                                            value={weavingServiceQty || reqWeavingQty}
+                                                            onChange={(e) => setWeavingServiceQty(e.target.value)}
+                                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-1 focus:ring-amber-500 h-[44px]"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                            Rate (PKR / {fabricBillingUnit}) <span className="text-rose-500">*</span>
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            step="any"
+                                                            placeholder="0.00"
+                                                            value={outHouseFabricRate}
+                                                            onChange={(e) => setOutHouseFabricRate(e.target.value)}
+                                                            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-1 focus:ring-amber-500 h-[44px]"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {outHouseFabricMode === "MANUAL" && (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                        Manual / Estimated Rate (PKR / {fabricBillingUnit})
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        step="any"
+                                                        placeholder="0.00"
+                                                        value={outHouseFabricManualRate}
+                                                        onChange={(e) => setOutHouseFabricManualRate(e.target.value)}
+                                                        className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-1 focus:ring-indigo-500 h-[44px]"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                        Estimated Making Cost
+                                                    </label>
+                                                    <div className="px-4 py-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex items-center justify-between h-[44px]">
+                                                        <span className="text-xs text-slate-400">Total</span>
+                                                        <span className="text-base font-black font-mono text-slate-900 dark:text-white">
+                                                            Rs. {fabricMakingCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -2041,35 +2214,109 @@ export default function ProductionExecutionWizard() {
                                 <div className="space-y-3">
                                     {yarnInputs.map((row, idx) => {
                                         const rowTotal = (parseFloat(row.quantity) || 0) * (parseFloat(row.costRate) || 0);
+                                        const isAccrual = row.mode === "ACCRUAL";
                                         return (
-                                            <div key={idx} className="p-3.5 bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
-                                                <div className="grid grid-cols-12 gap-3 items-center">
-                                                    {/* Yarn Selection & Browse Lots */}
-                                                    <div className="col-span-12 lg:col-span-5 flex items-center gap-2">
-                                                        <div className="flex-1 min-w-0">
-                                                            <Combobox
-                                                                options={yarnOptions}
-                                                                value={row.purchaseInvoiceItemId ? `LOT|${row.purchaseInvoiceItemId}|${row.productId}|${row.costRate}|${row.isEFS}|${row.lotNumber}` : (row.productId ? `PROD|${row.productId}|${row.isEFS}` : "")}
-                                                                onChange={(val) => handleYarnProductChange(idx, val)}
-                                                                placeholder="Select Yarn Lot or Item..."
-                                                                className="w-full text-sm font-semibold"
-                                                            />
-                                                        </div>
+                                            <div key={idx} className="p-3.5 bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 transition-colors space-y-2.5">
+                                                {/* Row Mode Selector: Physical Stock vs Accrual */}
+                                                <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200/70 dark:border-slate-700/60">
+                                                    <div className="flex items-center gap-1 bg-slate-200/60 dark:bg-slate-700/50 p-0.5 rounded-lg text-xs font-bold">
                                                         <button
                                                             type="button"
                                                             onClick={() => {
-                                                                setActiveYarnRowIndex(idx);
-                                                                setYarnModalSearch("");
-                                                                setYarnModalFilter("ALL");
-                                                                setIsYarnModalOpen(true);
+                                                                const next = [...yarnInputs];
+                                                                next[idx].mode = "STOCK";
+                                                                setYarnInputs(next);
                                                             }}
-                                                            className="px-3 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 shrink-0 h-[44px] whitespace-nowrap shadow-sm transition-all"
-                                                            title="Browse all available Yarn stock & lots"
+                                                            className={cn(
+                                                                "px-2.5 py-1 rounded-md transition-all",
+                                                                !isAccrual
+                                                                    ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-sm font-black"
+                                                                    : "text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                                                            )}
                                                         >
-                                                            <Search size={15} />
-                                                            <span>Browse</span>
+                                                            Physical Stock / Lots
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const next = [...yarnInputs];
+                                                                next[idx].mode = "ACCRUAL";
+                                                                if (!next[idx].quantity && yarnShortfall > 0) {
+                                                                    next[idx].quantity = yarnShortfall.toString();
+                                                                }
+                                                                setYarnInputs(next);
+                                                            }}
+                                                            className={cn(
+                                                                "px-2.5 py-1 rounded-md transition-all",
+                                                                isAccrual
+                                                                    ? "bg-amber-600 text-white shadow-sm font-black"
+                                                                    : "text-slate-500 hover:text-slate-800 dark:hover:text-white"
+                                                            )}
+                                                        >
+                                                            Accrual / Unbilled Yarn (Bill Pending)
                                                         </button>
                                                     </div>
+
+                                                    {isAccrual && (
+                                                        <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                                                            Accrual Liability (Credits Accrued Liabilities; offset via FIFO in Purchase Invoice)
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="grid grid-cols-12 gap-3 items-center">
+                                                    {/* Yarn Selection & Browse Lots or Accrual Product & Supplier */}
+                                                    {!isAccrual ? (
+                                                        <div className="col-span-12 lg:col-span-5 flex items-center gap-2">
+                                                            <div className="flex-1 min-w-0">
+                                                                <Combobox
+                                                                    options={yarnOptions}
+                                                                    value={row.purchaseInvoiceItemId ? `LOT|${row.purchaseInvoiceItemId}|${row.productId}|${row.costRate}|${row.isEFS}|${row.lotNumber}` : (row.productId ? `PROD|${row.productId}|${row.isEFS}` : "")}
+                                                                    onChange={(val) => handleYarnProductChange(idx, val)}
+                                                                    placeholder="Select Yarn Lot or Item..."
+                                                                    className="w-full text-sm font-semibold"
+                                                                />
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setActiveYarnRowIndex(idx);
+                                                                    setYarnModalSearch("");
+                                                                    setYarnModalFilter("ALL");
+                                                                    setIsYarnModalOpen(true);
+                                                                }}
+                                                                className="px-3 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 shrink-0 h-[44px] whitespace-nowrap shadow-sm transition-all"
+                                                                title="Browse all available Yarn stock & lots"
+                                                            >
+                                                                <Search size={15} />
+                                                                <span>Browse</span>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="col-span-12 sm:col-span-6 lg:col-span-3">
+                                                                <Combobox
+                                                                    options={yarnAccrualProductOptions}
+                                                                    value={row.productId}
+                                                                    onChange={(val) => handleYarnProductChange(idx, val)}
+                                                                    placeholder="Select Yarn Item / HS..."
+                                                                    className="w-full text-sm font-semibold"
+                                                                />
+                                                            </div>
+                                                            <div className="col-span-12 sm:col-span-6 lg:col-span-2">
+                                                                <Combobox
+                                                                    options={supplierOptions}
+                                                                    value={row.supplierId || ""}
+                                                                    onChange={(val) => {
+                                                                        const next = [...yarnInputs];
+                                                                        next[idx].supplierId = val;
+                                                                        setYarnInputs(next);
+                                                                    }}
+                                                                    placeholder="Yarn Supplier (Opt)..."
+                                                                    className="w-full text-sm font-semibold"
+                                                                />
+                                                            </div>
+                                                        </>
+                                                    )}
 
                                                     {/* Consumed Quantity */}
                                                     <div className="col-span-6 sm:col-span-3 lg:col-span-2">

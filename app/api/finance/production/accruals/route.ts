@@ -11,6 +11,8 @@ export async function GET(req: NextRequest) {
         const pendingOnly = searchParams.get("pendingOnly") === "true";
         const supplierId = searchParams.get("supplierId");
         const productId = searchParams.get("productId");
+        const stage = searchParams.get("stage");
+        const serviceType = searchParams.get("serviceType");
         const search = searchParams.get("search")?.toLowerCase();
 
         const where: any = { companyId };
@@ -21,6 +23,14 @@ export async function GET(req: NextRequest) {
 
         if (productId) {
             where.productId = productId;
+        }
+
+        if (stage && stage !== "ALL") {
+            where.stage = stage;
+        }
+
+        if (serviceType && serviceType !== "ALL") {
+            where.serviceType = serviceType;
         }
 
         if (pendingOnly) {
@@ -69,7 +79,7 @@ export async function GET(req: NextRequest) {
                             }
                         }
                     },
-                    orderBy: { date: "desc" }
+                    orderBy: { date: "asc" }
                 });
             } else {
                 throw new Error("prisma.productionAccrual not directly available on instance");
@@ -94,7 +104,7 @@ export async function GET(req: NextRequest) {
                     LEFT JOIN "ProductionRecord" pr ON pa."productionId" = pr.id
                     LEFT JOIN "Product" prProd ON pr."outputProductId" = prProd.id
                     WHERE pa."companyId" = ${companyId}
-                    ORDER BY pa.date DESC
+                    ORDER BY pa."date" ASC, pa."accrualNo" ASC
                 `;
 
                 accruals = (rawRows || []).map((r) => ({
@@ -161,7 +171,11 @@ export async function GET(req: NextRequest) {
                 };
             })
             .filter((item) => {
-                if (pendingOnly && item.remainingQty <= 0) return false;
+                if (pendingOnly && (item.remainingQty <= 0 || item.status === "BILLED")) return false;
+                if (stage && stage !== "ALL" && item.stage !== stage) return false;
+                if (serviceType && serviceType !== "ALL" && item.serviceType !== serviceType) return false;
+                if (supplierId && item.supplierId !== supplierId) return false;
+                if (productId && item.productId !== productId) return false;
                 if (!search) return true;
                 return (
                     item.accrualNo.toLowerCase().includes(search) ||

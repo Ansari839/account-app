@@ -3,7 +3,7 @@
 import React, { useEffect, useState, use } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { authenticatedFetch } from '@/lib/api-client';
-import { Hammer, Package, AlertCircle, ArrowLeft, Loader2, DollarSign, Scissors, Layers } from 'lucide-react';
+import { Hammer, Package, AlertCircle, ArrowLeft, Loader2, DollarSign, Scissors, Layers, FileText, CheckCircle2, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function ViewProductionExecutionPage({ params }: { params: Promise<{ id: string }> }) {
@@ -91,6 +91,12 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
                                 <Package size={16} />
                                 {record.outputProduct?.category?.name || 'Uncategorized'} | {record.warehouse?.name || 'Main Warehouse'}
                             </div>
+                            {record.batchNo && (
+                                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs font-mono font-semibold text-indigo-700 dark:text-indigo-300">
+                                    <FileText size={13} className="text-indigo-500" />
+                                    <span>Batch #{record.batchNo}</span>
+                                </div>
+                            )}
                         </div>
                         <div>
                             <h3 className="text-xs font-bold text-indigo-400/80 uppercase tracking-widest mb-2">Quantity Produced</h3>
@@ -255,6 +261,87 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
                                 </div>
                             )}
                         </div>
+
+                        {/* Production Accruals & Unbilled Liabilities (PAC) */}
+                        {record.accruals && record.accruals.length > 0 && (
+                            <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-amber-500/20 dark:border-amber-500/30 p-8 shadow-sm">
+                                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-6">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                            <Clock className="text-amber-500" />
+                                            Accrued Liabilities & Unbilled Purchases (PAC)
+                                        </h3>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            Pending liabilities booked to GL (Accrued Expenses). Ready for FIFO Purchase Invoice settlement.
+                                        </p>
+                                    </div>
+                                    <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 w-fit">
+                                        {record.accruals.length} Accrual(s) Booked
+                                    </span>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm text-slate-500 dark:text-slate-400">
+                                        <thead className="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-800 dark:text-slate-300">
+                                            <tr>
+                                                <th className="px-4 py-3 rounded-tl-xl">Accrual #</th>
+                                                <th className="px-4 py-3">Stage / Service</th>
+                                                <th className="px-4 py-3">Product / Supplier</th>
+                                                <th className="px-4 py-3 text-right">Quantity</th>
+                                                <th className="px-4 py-3 text-right">Est. Rate</th>
+                                                <th className="px-4 py-3 text-right">Accrued Amount</th>
+                                                <th className="px-4 py-3 text-center rounded-tr-xl">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {record.accruals.map((acc: any) => {
+                                                let stageBadge = "🎨 FINISH";
+                                                if (acc.stage === "RAW" || acc.serviceType === "RAW_YARN") stageBadge = "🧶 RAW YARN";
+                                                else if (acc.stage === "GREY" || acc.serviceType === "WEAVING" || acc.serviceType === "KNITTING") stageBadge = `🧵 ${acc.serviceType || 'WEAVING'}`;
+
+                                                const isPending = acc.status === "PENDING";
+                                                return (
+                                                    <tr key={acc.id} className="border-b dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                        <td className="px-4 py-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                                            {acc.accrualNo}
+                                                        </td>
+                                                        <td className="px-4 py-4 font-bold text-xs text-slate-700 dark:text-slate-300">
+                                                            <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                                                {stageBadge}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-4">
+                                                            <div className="font-semibold text-slate-900 dark:text-slate-100">{acc.Product?.name || 'Raw Material / Service'}</div>
+                                                            <div className="text-xs text-slate-400">{acc.Supplier?.name || 'Pending Vendor Assignment'}</div>
+                                                        </td>
+                                                        <td className="px-4 py-4 text-right font-medium">
+                                                            {Number(acc.qty).toLocaleString()} {acc.Unit?.code || 'KG'}
+                                                        </td>
+                                                        <td className="px-4 py-4 text-right text-slate-500 font-medium">
+                                                            Rs. {Number(acc.rate).toFixed(2)}
+                                                        </td>
+                                                        <td className="px-4 py-4 text-right text-amber-600 dark:text-amber-400 font-bold">
+                                                            Rs. {Number(acc.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                        </td>
+                                                        <td className="px-4 py-4 text-center">
+                                                            {isPending ? (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                                                    <Clock size={11} /> PENDING BILL
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                                                    <CheckCircle2 size={11} /> BILLED
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Right Column: Financial Summary */}

@@ -56,6 +56,8 @@ export default function NewPurchaseInvoicePage() {
         taxes: [],
     });
 
+    const [accrualStageFilter, setAccrualStageFilter] = useState<"ALL" | "RAW" | "GREY" | "FINISH">("ALL");
+
     useEffect(() => {
         fetchSettings();
         fetchDropdowns();
@@ -190,8 +192,11 @@ export default function NewPurchaseInvoicePage() {
                 total: item.qtyReceived * (item.poItem?.rate || 0),
             }));
         } else {
-            // PRODUCTION ACCRUAL (allows partial or full billing)
-            items = [{
+            // PRODUCTION ACCRUAL (allows multi-accrual and partial billing)
+            const alreadyExists = formData.items.some((it: any) => it.productionAccrualId === source.id);
+            if (alreadyExists) return;
+
+            const newItem = {
                 id: Date.now().toString() + Math.random(),
                 productId: source.productId,
                 productName: `${source.productName} [Accrual: ${source.accrualNo}]`,
@@ -201,7 +206,10 @@ export default function NewPurchaseInvoicePage() {
                 qty: source.remainingQty,
                 rate: source.rate || 0,
                 total: source.remainingQty * (source.rate || 0),
-            }];
+            };
+
+            const existingAccrualItems = formData.items.filter((it: any) => it.productionAccrualId);
+            items = [...existingAccrualItems, newItem];
         }
 
         setFormData({
@@ -404,24 +412,39 @@ export default function NewPurchaseInvoicePage() {
         label: w.name
     }));
 
-    const sourceOptions = sources.map(s => {
-        if (formData.sourceType === "PO") {
-            return {
-                value: s.id,
-                label: `${s.poNo} - ${s.supplier?.name || "Unknown"} (Rs. ${Number(s.totalAmount).toLocaleString()})`
-            };
-        } else if (formData.sourceType === "GRN") {
-            return {
-                value: s.id,
-                label: `${s.grnNo} - ${s.supplier?.name || "Unknown"}`
-            };
-        } else {
-            return {
-                value: s.id,
-                label: `${s.accrualNo} | ${s.productName} | ${s.supplierName} | Avail: ${Number(s.remainingQty).toLocaleString()} ${s.unitCode} @ Rs. ${s.rate}`
-            };
-        }
-    });
+    const sourceOptions = sources
+        .filter(s => {
+            if (formData.sourceType !== "PRODUCTION") return true;
+            if (accrualStageFilter === "ALL") return true;
+            if (accrualStageFilter === "RAW") return s.stage === "RAW" || s.serviceType === "RAW_YARN";
+            if (accrualStageFilter === "GREY") return s.stage === "GREY" || s.serviceType === "WEAVING" || s.serviceType === "KNITTING";
+            if (accrualStageFilter === "FINISH") return s.stage === "FINISH" || s.serviceType === "DYEING" || s.serviceType === "PRINTING";
+            return true;
+        })
+        .map(s => {
+            if (formData.sourceType === "PO") {
+                return {
+                    value: s.id,
+                    label: `${s.poNo} - ${s.supplier?.name || "Unknown"} (Rs. ${Number(s.totalAmount).toLocaleString()})`
+                };
+            } else if (formData.sourceType === "GRN") {
+                return {
+                    value: s.id,
+                    label: `${s.grnNo} - ${s.supplier?.name || "Unknown"}`
+                };
+            } else {
+                let badge = "📦";
+                if (s.stage === "RAW" || s.serviceType === "RAW_YARN") badge = "🧶 [RAW YARN]";
+                else if (s.stage === "GREY" || s.serviceType === "WEAVING" || s.serviceType === "KNITTING") badge = `🧵 [${s.serviceType || 'WEAVING'}]`;
+                else badge = `🎨 [${s.serviceType || 'FINISH'}]`;
+
+                const dateStr = s.date ? new Date(s.date).toLocaleDateString('en-GB') : '';
+                return {
+                    value: s.id,
+                    label: `${badge} ${s.accrualNo} (${dateStr}) | ${s.productName} | ${s.supplierName} | Avail: ${Number(s.remainingQty).toLocaleString()} ${s.unitCode} @ Rs. ${Number(s.rate).toFixed(2)}`
+                };
+            }
+        });
 
     return (
         <MainLayout>
@@ -503,10 +526,44 @@ export default function NewPurchaseInvoicePage() {
                         
                         <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
                             {formData.sourceType !== "DIRECT" ? (
-                                <div className="md:col-span-2 space-y-2">
-                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                        <FileText size={14} /> Link {formData.sourceType === "PRODUCTION" ? "Production Accrual" : formData.sourceType}
-                                    </label>
+                                <div className="md:col-span-2 space-y-2.5">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                            <FileText size={14} /> Link {formData.sourceType === "PRODUCTION" ? "Production Accrual (FIFO Date-wise)" : formData.sourceType}
+                                        </label>
+                                        {formData.sourceType === "PRODUCTION" && (
+                                            <div className="flex bg-slate-800 p-0.5 rounded-lg border border-slate-700 text-xs font-bold">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAccrualStageFilter("ALL")}
+                                                    className={cn("px-2.5 py-1 rounded-md transition-all", accrualStageFilter === "ALL" ? "bg-amber-600 text-white shadow-sm font-black" : "text-slate-400 hover:text-white")}
+                                                >
+                                                    All
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAccrualStageFilter("RAW")}
+                                                    className={cn("px-2.5 py-1 rounded-md transition-all", accrualStageFilter === "RAW" ? "bg-emerald-600 text-white shadow-sm font-black" : "text-slate-400 hover:text-white")}
+                                                >
+                                                    🧶 Raw Yarn
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAccrualStageFilter("GREY")}
+                                                    className={cn("px-2.5 py-1 rounded-md transition-all", accrualStageFilter === "GREY" ? "bg-blue-600 text-white shadow-sm font-black" : "text-slate-400 hover:text-white")}
+                                                >
+                                                    🧵 Weaving/Knit
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAccrualStageFilter("FINISH")}
+                                                    className={cn("px-2.5 py-1 rounded-md transition-all", accrualStageFilter === "FINISH" ? "bg-indigo-600 text-white shadow-sm font-black" : "text-slate-400 hover:text-white")}
+                                                >
+                                                    🎨 Dyeing/Print
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                     <Combobox
                                         options={sourceOptions}
                                         value={formData.sourceId}
@@ -515,6 +572,11 @@ export default function NewPurchaseInvoicePage() {
                                         searchPlaceholder={formData.sourceType === "PRODUCTION" ? "Search accrual #, service, supplier, HS code..." : undefined}
                                         className="w-full bg-slate-900/50 border-slate-700 text-white"
                                     />
+                                    {formData.sourceType === "PRODUCTION" && formData.items.length > 0 && (
+                                        <div className="flex items-center justify-between text-xs font-semibold text-slate-400 px-1 pt-1">
+                                            <span>Linked Accrual Items: <b className="text-white font-mono">{formData.items.length} line(s)</b> (You can add more accruals from the dropdown above)</span>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <>
