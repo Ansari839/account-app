@@ -74,6 +74,13 @@ export default function NewPurchaseInvoicePage() {
     // Map of accrual id -> { selected: boolean, allocatedQty: number, rate: number }
     const [bulkAllocations, setBulkAllocations] = useState<Record<string, { selected: boolean; allocatedQty: number; rate: number }>>({});
 
+    // Stock Settlement Modal State (Settle Accruals directly from Physical Warehouse Stock)
+    const [isStockSettleModalOpen, setIsStockSettleModalOpen] = useState(false);
+    const [stockSettleWarehouseId, setStockSettleWarehouseId] = useState("");
+    const [stockSettleDate, setStockSettleDate] = useState(new Date().toISOString().split("T")[0]);
+    const [stockSettleRemarks, setStockSettleRemarks] = useState("");
+    const [isStockSettling, setIsStockSettling] = useState(false);
+
     useEffect(() => {
         fetchSettings();
         fetchDropdowns();
@@ -170,6 +177,26 @@ export default function NewPurchaseInvoicePage() {
             setFormData((prev: any) => ({ ...prev, sourceId: '', items: [] }));
         }
     }, [formData.sourceType]);
+
+    // Handle incoming URL parameters (e.g. ?sourceType=PRODUCTION&accrualId=...)
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            const pSourceType = params.get("sourceType");
+            const pAccrualId = params.get("accrualId");
+            if (pSourceType === "PRODUCTION") {
+                if (formData.sourceType !== "PRODUCTION") {
+                    setFormData((prev: any) => ({ ...prev, sourceType: "PRODUCTION" }));
+                }
+                if (pAccrualId && sources.length > 0) {
+                    const match = sources.find((s: any) => s.id === pAccrualId);
+                    if (match && formData.sourceId !== pAccrualId) {
+                        handleSelectSource(pAccrualId);
+                    }
+                }
+            }
+        }
+    }, [sources]);
 
     const handleSelectSource = (id: string) => {
         const source = sources.find((s) => s.id === id);
@@ -348,6 +375,47 @@ export default function NewPurchaseInvoicePage() {
         showNotification('success', `Added ${newItems.length} accrual batch(es) to purchase invoice.`);
     };
 
+    const handleStockSettleConfirm = async () => {
+        const selectedEntries = Object.entries(bulkAllocations).filter(([_, alloc]) => alloc.selected && alloc.allocatedQty > 0);
+        if (selectedEntries.length === 0) {
+            showNotification('error', 'Please select at least one accrual batch to settle from stock.');
+            return;
+        }
+        if (!stockSettleWarehouseId) {
+            showNotification('error', 'Please select a target warehouse to deduct physical stock from.');
+            return;
+        }
+
+        try {
+            setIsStockSettling(true);
+            const accrualIds = selectedEntries.map(([id]) => id);
+            const res = await authenticatedFetch('/api/finance/production/accruals/settle-stock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    accrualIds,
+                    warehouseId: stockSettleWarehouseId,
+                    date: stockSettleDate,
+                    remarks: stockSettleRemarks || 'Settled against physical warehouse stock'
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showNotification('success', data.message || `Successfully settled ${accrualIds.length} batch(es) against physical warehouse stock.`);
+                setIsStockSettleModalOpen(false);
+                setIsBulkAccrualModalOpen(false);
+                setBulkAllocations({});
+                fetchSources("PRODUCTION");
+            } else {
+                showNotification('error', data.error || 'Failed to settle against stock.');
+            }
+        } catch (e: any) {
+            showNotification('error', e.message || 'Error occurred while settling stock.');
+        } finally {
+            setIsStockSettling(false);
+        }
+    };
+
     const handleAddItem = () => {
         setFormData((prev: any) => ({
             ...prev,
@@ -492,10 +560,8 @@ export default function NewPurchaseInvoicePage() {
             const overFullfilled = formData.items.some((it: any) => it.qty > it.qtyAvailable);
             if (overFullfilled) {
                 if (formData.sourceType === "PRODUCTION") {
-                    showNotification('error', 'Billed quantity cannot exceed the remaining pending accrual quantity.');
-                    return;
-                }
-                if (!confirm("One or more items exceed the remaining PO/GRN quantity. An 'Addendum PO' will be automatically created for the excess. Proceed?")) {
+                    // Allowed: Billed quantity above pending accrual automatically enters physical warehouse stock
+                } else if (!confirm("One or more items exceed the remaining PO/GRN quantity. An 'Addendum PO' will be automatically created for the excess. Proceed?")) {
                     return;
                 }
             }
@@ -823,7 +889,23 @@ export default function NewPurchaseInvoicePage() {
                                 {formData.items.map((item: any, index: number) => (
                                     <div key={item.id} className="grid grid-cols-12 gap-4 items-center bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 transition-all hover:border-indigo-200 dark:hover:border-indigo-500/30">
                                         <div className="col-span-3">
-                                            {formData.sourceType !== "DIRECT" ? (
+                                            {formData.sourceType === "PRODUCTION" || item.productionAccrualId ? (
+                                                <div className="space-y-1">
+                                                    <Combobox
+                                                        options={products.map(p => ({ value: p.id, label: `${p.name} (${p.code})` }))}
+                                                        value={item.productId}
+                                                        onChange={(val) => updateItem(item.id, 'productId', val)}
+                                                        placeholder="Select product..."
+                                                        searchPlaceholder="Search products..."
+                                                        className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold"
+                                                    />
+                                                    {item.notes && (
+                                                        <div className="text-[10px] text-amber-600 dark:text-amber-400 font-mono truncate px-1" title={item.notes}>
+                                                            {item.notes}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : formData.sourceType !== "DIRECT" ? (
                                                 <div className="px-2 font-bold text-slate-800 dark:text-slate-200">
                                                     {item.productName}
                                                 </div>
@@ -861,9 +943,14 @@ export default function NewPurchaseInvoicePage() {
                                                 onChange={e => updateItem(item.id, 'qty', parseFloat(e.target.value))}
                                                 placeholder="0"
                                                 min="0"
-                                                max={formData.sourceType !== "DIRECT" ? item.qtyAvailable : undefined}
+                                                max={(formData.sourceType !== "DIRECT" && formData.sourceType !== "PRODUCTION") ? item.qtyAvailable : undefined}
                                                 className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-400 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-right"
                                             />
+                                            {item.productionAccrualId && item.qty > item.qtyAvailable && (
+                                                <div className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 text-right mt-0.5">
+                                                    +{(item.qty - item.qtyAvailable).toFixed(2)} to Stock
+                                                </div>
+                                            )}
                                         </div>
                                         
                                         <div className="col-span-2">
@@ -1484,6 +1571,24 @@ export default function NewPurchaseInvoicePage() {
                                 </button>
                                 <button
                                     type="button"
+                                    onClick={() => {
+                                        const selectedCount = Object.values(bulkAllocations).filter(v => v.selected && v.allocatedQty > 0).length;
+                                        if (selectedCount === 0) {
+                                            showNotification('error', 'Please tick at least one accrual batch to settle from stock.');
+                                            return;
+                                        }
+                                        if (warehouses.length > 0 && !stockSettleWarehouseId) {
+                                            setStockSettleWarehouseId(warehouses[0].id);
+                                        }
+                                        setIsStockSettleModalOpen(true);
+                                    }}
+                                    className="px-6 py-3 rounded-2xl font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-xl shadow-emerald-600/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2"
+                                >
+                                    <Package size={16} />
+                                    <span>Settle Selected from Stock</span>
+                                </button>
+                                <button
+                                    type="button"
                                     onClick={handleApplyBulkAccruals}
                                     className="px-6 py-3 rounded-2xl font-black text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-xl shadow-amber-500/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2"
                                 >
@@ -1491,6 +1596,158 @@ export default function NewPurchaseInvoicePage() {
                                     <span>Apply Selected Accruals to Bill</span>
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Settle from Warehouse Stock Confirmation Modal */}
+            {isStockSettleModalOpen && (
+                <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+                    <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-black">
+                                    <Package size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                                        Settle Accruals Against Stock
+                                    </h3>
+                                    <p className="text-xs text-slate-400">
+                                        Deduct physical warehouse inventory and clear unbilled accrual liabilities.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsStockSettleModalOpen(false)}
+                                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+                            {/* Summary Metrics */}
+                            <div className="grid grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/50">
+                                <div>
+                                    <span className="text-[10px] font-black uppercase text-slate-400">Selected Batches</span>
+                                    <p className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                                        {Object.values(bulkAllocations).filter(v => v.selected && v.allocatedQty > 0).length} Batches
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-black uppercase text-slate-400">Total Quantity</span>
+                                    <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                        {Object.values(bulkAllocations)
+                                            .filter(v => v.selected)
+                                            .reduce((sum, v) => sum + (Number(v.allocatedQty) || 0), 0)
+                                            .toLocaleString()} Units
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-black uppercase text-slate-400">Total Booked Value</span>
+                                    <p className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                                        Rs. {Object.values(bulkAllocations)
+                                            .filter(v => v.selected)
+                                            .reduce((sum, v) => sum + ((Number(v.allocatedQty) || 0) * (Number(v.rate) || 0)), 0)
+                                            .toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Form Fields */}
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Target Warehouse (Stock Deduction) *
+                                    </label>
+                                    <select
+                                        value={stockSettleWarehouseId}
+                                        onChange={(e) => setStockSettleWarehouseId(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                        <option value="">Choose Warehouse...</option>
+                                        {warehouses.map((w: any) => (
+                                            <option key={w.id} value={w.id}>{w.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Settlement Date *
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={stockSettleDate}
+                                        onChange={(e) => setStockSettleDate(e.target.value)}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Settlement Remarks (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={stockSettleRemarks}
+                                        onChange={(e) => setStockSettleRemarks(e.target.value)}
+                                        placeholder="e.g. Cleared accruals from Main Warehouse stock..."
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Accounting & Inventory Information Note */}
+                            <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
+                                <p className="font-bold flex items-center gap-1.5">
+                                    <CheckCircle2 size={14} className="shrink-0" />
+                                    <span>Automated Accounting & Inventory Flow:</span>
+                                </p>
+                                <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-emerald-700 dark:text-emerald-400">
+                                    <li><strong>Stock Ledger:</strong> Issues physical inventory (<code className="font-mono">qtyOut</code>) from the selected warehouse.</li>
+                                    <li><strong>GL Entry:</strong> Debits <code className="font-mono">Accrued Liabilities (2130)</code> to clear unbilled expenses and credits <code className="font-mono">Raw Material Inventory (1310)</code>.</li>
+                                    <li><strong>Accrual Status:</strong> Marked as <code className="font-mono">BILLED / SETTLED</code>. Zero vendor payable created.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-5 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+                            <button
+                                type="button"
+                                disabled={isStockSettling}
+                                onClick={() => setIsStockSettleModalOpen(false)}
+                                className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs uppercase tracking-wider"
+                            >
+                                Back
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isStockSettling || !stockSettleWarehouseId}
+                                onClick={handleStockSettleConfirm}
+                                className={cn(
+                                    "px-6 py-2.5 rounded-xl font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-600/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2",
+                                    (isStockSettling || !stockSettleWarehouseId) && "opacity-50 cursor-not-allowed"
+                                )}
+                            >
+                                {isStockSettling ? (
+                                    <>
+                                        <Sparkles size={16} className="animate-spin" />
+                                        <span>Settling Stock...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 size={16} />
+                                        <span>Confirm Stock Settlement</span>
+                                    </>
+                                )}
+                            </button>
                         </div>
                     </div>
                 </div>

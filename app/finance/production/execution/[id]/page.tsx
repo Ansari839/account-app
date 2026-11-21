@@ -3,7 +3,7 @@
 import React, { useEffect, useState, use } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { authenticatedFetch } from '@/lib/api-client';
-import { Hammer, Package, AlertCircle, ArrowLeft, Loader2, DollarSign, Scissors, Layers, FileText, CheckCircle2, Clock } from 'lucide-react';
+import { Hammer, Package, AlertCircle, ArrowLeft, Loader2, DollarSign, Scissors, Layers, FileText, CheckCircle2, Clock, X, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function ViewProductionExecutionPage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,9 +12,60 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
     const [record, setRecord] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
+    // Stock settlement modal state
+    const [warehouses, setWarehouses] = useState<any[]>([]);
+    const [selectedAccrualForStock, setSelectedAccrualForStock] = useState<any>(null);
+    const [stockSettleWarehouseId, setStockSettleWarehouseId] = useState("");
+    const [stockSettleDate, setStockSettleDate] = useState(new Date().toISOString().split("T")[0]);
+    const [stockSettleRemarks, setStockSettleRemarks] = useState("");
+    const [isStockSettling, setIsStockSettling] = useState(false);
+
     useEffect(() => {
         fetchRecord();
+        authenticatedFetch("/api/inventory/warehouses")
+            .then(r => r.json())
+            .then(j => {
+                if (j.success && j.data) {
+                    setWarehouses(j.data);
+                    if (j.data.length > 0) setStockSettleWarehouseId(j.data[0].id);
+                }
+            })
+            .catch(console.error);
     }, [id]);
+
+    const handleSingleStockSettle = async () => {
+        if (!selectedAccrualForStock) return;
+        if (!stockSettleWarehouseId) {
+            alert("Please select a target warehouse to deduct physical stock from.");
+            return;
+        }
+
+        try {
+            setIsStockSettling(true);
+            const res = await authenticatedFetch("/api/finance/production/accruals/settle-stock", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    accrualIds: [selectedAccrualForStock.id],
+                    warehouseId: stockSettleWarehouseId,
+                    date: stockSettleDate,
+                    remarks: stockSettleRemarks || `Settled from stock for ${selectedAccrualForStock.accrualNo}`
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(data.message || "Accrual settled successfully against stock!");
+                setSelectedAccrualForStock(null);
+                fetchRecord();
+            } else {
+                alert(data.error || "Failed to settle accrual against stock.");
+            }
+        } catch (e: any) {
+            alert(e.message || "Error occurred while settling stock.");
+        } finally {
+            setIsStockSettling(false);
+        }
+    };
 
     const fetchRecord = async () => {
         try {
@@ -290,7 +341,8 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
                                                 <th className="px-4 py-3 text-right">Quantity</th>
                                                 <th className="px-4 py-3 text-right">Est. Rate</th>
                                                 <th className="px-4 py-3 text-right">Accrued Amount</th>
-                                                <th className="px-4 py-3 text-center rounded-tr-xl">Status</th>
+                                                <th className="px-4 py-3 text-center">Status</th>
+                                                <th className="px-4 py-3 text-center rounded-tr-xl">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -332,6 +384,37 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
                                                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
                                                                     <CheckCircle2 size={11} /> BILLED
                                                                 </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-4 text-center">
+                                                            {isPending ? (
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setSelectedAccrualForStock(acc);
+                                                                            if (warehouses.length > 0 && !stockSettleWarehouseId) {
+                                                                                setStockSettleWarehouseId(warehouses[0].id);
+                                                                            }
+                                                                        }}
+                                                                        className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 transition-all shadow-sm"
+                                                                        title="Settle against physical warehouse stock"
+                                                                    >
+                                                                        <Package size={12} />
+                                                                        <span>Settle Stock</span>
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => router.push(`/finance/purchase/invoices/new?sourceType=PRODUCTION&accrualId=${acc.id}`)}
+                                                                        className="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1 transition-all shadow-sm"
+                                                                        title="Bill in Purchase Invoice"
+                                                                    >
+                                                                        <DollarSign size={12} />
+                                                                        <span>Bill Vendor</span>
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-xs text-slate-400 font-semibold italic">Settled / Billed</span>
                                                             )}
                                                         </td>
                                                     </tr>
@@ -378,6 +461,141 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
 
                 </div>
             </div>
+
+            {/* Settle Single Accrual Against Warehouse Stock Modal */}
+            {selectedAccrualForStock && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-black">
+                                    <Package size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                                        Settle Accrual from Stock
+                                    </h3>
+                                    <p className="text-xs text-slate-400">
+                                        Accrual #{selectedAccrualForStock.accrualNo} • {selectedAccrualForStock.stage || 'STAGE'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedAccrualForStock(null)}
+                                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 space-y-4">
+                            {/* Accrual Details Card */}
+                            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/50 space-y-2">
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-400 font-bold uppercase">Product / Material:</span>
+                                    <span className="font-black text-slate-900 dark:text-white">{selectedAccrualForStock.Product?.name || 'Raw Material'}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-400 font-bold uppercase">Pending Quantity:</span>
+                                    <span className="font-black text-emerald-600 dark:text-emerald-400">{Number(selectedAccrualForStock.qty).toLocaleString()} {selectedAccrualForStock.Unit?.code || 'KG'}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-400 font-bold uppercase">Total Booked Value:</span>
+                                    <span className="font-black text-slate-900 dark:text-white">Rs. {Number(selectedAccrualForStock.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            </div>
+
+                            {/* Inputs */}
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Target Warehouse (Physical Stock Deduction) *
+                                    </label>
+                                    <select
+                                        value={stockSettleWarehouseId}
+                                        onChange={(e) => setStockSettleWarehouseId(e.target.value)}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                        <option value="">Choose Warehouse...</option>
+                                        {warehouses.map((w: any) => (
+                                            <option key={w.id} value={w.id}>{w.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Settlement Date *
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={stockSettleDate}
+                                        onChange={(e) => setStockSettleDate(e.target.value)}
+                                        className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Remarks (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={stockSettleRemarks}
+                                        onChange={(e) => setStockSettleRemarks(e.target.value)}
+                                        placeholder="e.g. Settle accrual against warehouse stock..."
+                                        className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Accounting Note */}
+                            <div className="p-3.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-xs text-emerald-800 dark:text-emerald-300">
+                                <p className="font-bold flex items-center gap-1">
+                                    <CheckCircle2 size={13} className="shrink-0" />
+                                    <span>Automatic Stock & GL Accounting:</span>
+                                </p>
+                                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1">
+                                    Stock will be issued (<code className="font-mono">StockLedger Out</code>) from the selected warehouse, and general ledger will debit <code className="font-mono">Accrued Liabilities (2130)</code> and credit <code className="font-mono">Raw Material Inventory (1310)</code>.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-5 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+                            <button
+                                type="button"
+                                disabled={isStockSettling}
+                                onClick={() => setSelectedAccrualForStock(null)}
+                                className="px-4 py-2 rounded-xl font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs uppercase tracking-wider"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isStockSettling || !stockSettleWarehouseId}
+                                onClick={handleSingleStockSettle}
+                                className="px-5 py-2.5 rounded-xl font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md shadow-emerald-600/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2"
+                            >
+                                {isStockSettling ? (
+                                    <>
+                                        <Sparkles size={14} className="animate-spin" />
+                                        <span>Settling...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 size={14} />
+                                        <span>Confirm Stock Settlement</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </MainLayout>
     );
 }

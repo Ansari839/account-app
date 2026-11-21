@@ -993,7 +993,45 @@ export class PurchaseController {
 
                     if (finalWarehouseId) {
                         for (const item of items) {
-                            if (item.productionAccrualId) continue; // Production accruals already consumed in manufacturing
+                            if (item.productionAccrualId) {
+                                // If billed qty > remaining accrual qty, the excess enters physical stock
+                                try {
+                                    const pAccrualGetter = (tx as any).productionAccrual || (prisma as any).productionAccrual;
+                                    let pAccrual: any = null;
+                                    if (pAccrualGetter?.findUnique) {
+                                        pAccrual = await pAccrualGetter.findUnique({ where: { id: item.productionAccrualId } });
+                                    } else {
+                                        const raw = await tx.$queryRaw<any[]>`SELECT * FROM "ProductionAccrual" WHERE id = ${item.productionAccrualId} LIMIT 1`;
+                                        if (raw && raw.length > 0) pAccrual = raw[0];
+                                    }
+                                    const remainingAccrual = pAccrual ? Math.max(0, Number(pAccrual.qty) - Number(pAccrual.billedQty || 0)) : 0;
+                                    const excessQty = Number(item.qty) - remainingAccrual;
+
+                                    if (excessQty > 0) {
+                                        const product = await tx.product.findUnique({ where: { id: item.productId } });
+                                        if (product && !product.isService) {
+                                            await tx.stockLedger.create({
+                                                data: {
+                                                    companyId,
+                                                    productId: item.productId,
+                                                    variantId: item.variantId || null,
+                                                    warehouseId: finalWarehouseId,
+                                                    date: new Date(date),
+                                                    qtyIn: excessQty,
+                                                    qtyOut: 0,
+                                                    costRate: Number(item.rate),
+                                                    refType: 'INVOICE',
+                                                    refId: invoice.id,
+                                                    batchNo: `EXCESS-OFFSET-[${pAccrual?.accrualNo || ''}]`
+                                                }
+                                            });
+                                        }
+                                    }
+                                } catch (err) {
+                                    console.error("[Excess Stock Ledger on Accrual Invoice error]:", err);
+                                }
+                                continue;
+                            }
                             const product = await tx.product.findUnique({ where: { id: item.productId } });
                             if (product && !product.isService) {
                                 await tx.stockLedger.create({
@@ -1153,12 +1191,40 @@ export class PurchaseController {
                             console.error('[ProductionAccrual fetch for journal error]:', fetchErr);
                         }
 
-                        lines.push({
-                            accountId: accruedAcc.id,
-                            credit: 0,
-                            debit: Number(item.qty) * Number(item.rate),
-                            narration: `Settle Accrual [${pAccrual?.accrualNo || ''}] on Invoice ${txInvoiceNo} - ${pAccrual?.Product?.name || 'Production Service'} (${item.qty} @ ${item.rate})`
-                        });
+                        const remainingAccrual = pAccrual ? Math.max(0, Number(pAccrual.qty) - Number(pAccrual.billedQty || 0)) : Number(item.qty);
+                        const settleQty = Math.min(Number(item.qty), remainingAccrual);
+                        const excessQty = Number(item.qty) - settleQty;
+
+                        if (settleQty > 0) {
+                            lines.push({
+                                accountId: accruedAcc.id,
+                                credit: 0,
+                                debit: settleQty * Number(item.rate),
+                                narration: `Settle Accrual [${pAccrual?.accrualNo || ''}] on Invoice ${txInvoiceNo} - ${pAccrual?.Product?.name || 'Production Item'} (${settleQty} @ ${item.rate})`
+                            });
+                        }
+
+                        if (excessQty > 0) {
+                            const product = await tx.product.findUnique({ 
+                                where: { id: item.productId },
+                                include: { category: true }
+                            });
+                            let purchaseAccount = product?.inventoryAccountId || product?.purchaseAccountId;
+                            if (!purchaseAccount) {
+                                const defInv = await tx.account.findFirst({
+                                    where: { companyId, name: { contains: 'Inventory', mode: 'insensitive' }, type: 'ASSET', isPosting: true }
+                                });
+                                purchaseAccount = defInv?.id;
+                            }
+                            if (purchaseAccount) {
+                                lines.push({
+                                    accountId: purchaseAccount,
+                                    credit: 0,
+                                    debit: excessQty * Number(item.rate),
+                                    narration: `Excess Qty to Inventory from Accrual [${pAccrual?.accrualNo || ''}] on Invoice ${txInvoiceNo} - ${product?.name || 'Yarn Stock'} (${excessQty} @ ${item.rate})`
+                                });
+                            }
+                        }
                     } else {
                         const product = await tx.product.findUnique({ 
                             where: { id: item.productId },
