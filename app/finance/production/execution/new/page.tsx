@@ -673,6 +673,7 @@ export default function ProductionExecutionWizard() {
         const autoQty = lot.qty ? Math.min(lot.qty, Math.max(0, reqYarnQty - totalYarnAllocated + currentQty)) : 0;
         
         next[activeYarnRowIndex] = {
+            mode: "STOCK",
             productId: lot.productId,
             isEFS: Boolean(lot.isEFS),
             quantity: autoQty > 0 ? autoQty.toString() : (lot.qty ? lot.qty.toString() : ""),
