@@ -41,8 +41,26 @@ export async function POST(req: NextRequest) {
                     else if (processStage === 'FINISH') inputStageValue = 'GREY';
                 }
 
+                // If productId is omitted / optional, resolve to default raw yarn product
+                let effectiveProductId = input.productId;
+                if (!effectiveProductId) {
+                    const defaultYarn = await tx.product.findFirst({
+                        where: {
+                            companyId,
+                            isManufactured: false,
+                            isService: false,
+                            OR: [
+                                { name: { contains: 'YARN', mode: 'insensitive' } },
+                                { code: { contains: 'YARN', mode: 'insensitive' } }
+                            ]
+                        }
+                    }) || await tx.product.findFirst({ where: { companyId, isManufactured: false, isService: false } })
+                       || await tx.product.findFirst({ where: { companyId } });
+                    effectiveProductId = defaultYarn?.id;
+                }
+
                 inputRecords.push({
-                    productId: input.productId,
+                    productId: effectiveProductId,
                     quantity: qty,
                     costValue: costValue,
                     lotNumber: input.lotNumber || (input.isAccrual ? 'ACCRUAL-UNBILLED' : null),
@@ -52,13 +70,13 @@ export async function POST(req: NextRequest) {
                 // Raw Yarn Accrual (Unbilled raw material with supplier bill pending)
                 if (input.isAccrual || input.mode === 'ACCRUAL') {
                     let yarnProd = null;
-                    if (input.productId) {
+                    if (effectiveProductId) {
                         yarnProd = await tx.product.findUnique({
-                            where: { id: input.productId },
+                            where: { id: effectiveProductId },
                             include: { Category: true, Unit: true }
                         });
                     }
-                    const yarnName = yarnProd?.name || "Raw Yarn (Unbilled)";
+                    const yarnName = yarnProd?.name || "General Raw Yarn (Unbilled)";
 
                     // Sequence for PAC-YYYY-XXXX
                     const existingCount = accrualRecordsToCreate.length;
@@ -103,7 +121,7 @@ export async function POST(req: NextRequest) {
                     accrualRecordsToCreate.push({
                         companyId,
                         accrualNo,
-                        productId: input.productId,
+                        productId: effectiveProductId,
                         supplierId: validSupplierId,
                         unitId: validUnitId,
                         date: new Date(date),
@@ -597,7 +615,7 @@ export async function POST(req: NextRequest) {
                         creditAcc = anyLiability?.id;
                     }
                     if (creditAcc) {
-                        const inProduct = await tx.product.findUnique({ where: { id: input.productId } });
+                        const inProduct = input.productId ? await tx.product.findUnique({ where: { id: input.productId } }) : null;
                         const existing = lines.find(l => l.accountId === creditAcc && l.debit === 0);
                         if (existing) {
                             existing.credit += inputCost;

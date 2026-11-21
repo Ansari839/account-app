@@ -51,6 +51,13 @@ export default function ProductionExecutionWizard() {
     const [yarnModalSearch, setYarnModalSearch] = useState("");
     const [yarnModalFilter, setYarnModalFilter] = useState<"ALL" | "LOCAL" | "IMPORT_EFS" | "IMPORT_COMMERCIAL" | "OPENING">("ALL");
 
+    // In-Modal Yarn Accrual Creation State (When lot/bill not found in ERP stock)
+    const [yarnModalShowAccrualForm, setYarnModalShowAccrualForm] = useState(false);
+    const [yarnModalAccrualProductId, setYarnModalAccrualProductId] = useState("");
+    const [yarnModalAccrualSupplierId, setYarnModalAccrualSupplierId] = useState("");
+    const [yarnModalAccrualQty, setYarnModalAccrualQty] = useState("");
+    const [yarnModalAccrualRate, setYarnModalAccrualRate] = useState("");
+
     // Modal state for Service Bill Selection Table (Weaving, Knitting, Dyeing, Printing)
     const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
     const [serviceModalTarget, setServiceModalTarget] = useState<"WEAVING_KNITTING" | "PROCESSING">("WEAVING_KNITTING");
@@ -545,10 +552,14 @@ export default function ProductionExecutionWizard() {
     }, [products]);
 
     const yarnAccrualProductOptions = useMemo(() => {
-        return yarnProductList.map(p => ({
+        const list = yarnProductList.map(p => ({
             value: p.id,
             label: `${p.code} - ${p.name}${p.hsCode ? ` [HS: ${p.hsCode}]` : ''}`
         }));
+        return [
+            { value: "", label: "✨ [Optional] General / Unspecified Raw Yarn" },
+            ...list
+        ];
     }, [yarnProductList]);
 
     const yarnOptions = useMemo(() => {
@@ -683,6 +694,52 @@ export default function ProductionExecutionWizard() {
         };
         setYarnInputs(next);
         setIsYarnModalOpen(false);
+        setActiveYarnRowIndex(null);
+    };
+
+    const openYarnModalAccrualForm = () => {
+        setYarnModalShowAccrualForm(true);
+        const shortfall = yarnShortfall > 0 ? yarnShortfall : reqYarnQty;
+        if (activeYarnRowIndex !== null && yarnInputs[activeYarnRowIndex]) {
+            const curRow = yarnInputs[activeYarnRowIndex];
+            setYarnModalAccrualProductId(curRow.productId || "");
+            setYarnModalAccrualSupplierId(curRow.supplierId || "");
+            setYarnModalAccrualQty(curRow.quantity || (shortfall > 0 ? shortfall.toString() : ""));
+            setYarnModalAccrualRate(curRow.costRate || "");
+        } else {
+            setYarnModalAccrualQty(shortfall > 0 ? shortfall.toString() : "");
+        }
+    };
+
+    const handleApplyYarnAccrualFromModal = () => {
+        const q = parseFloat(yarnModalAccrualQty) || 0;
+        if (q <= 0) {
+            alert("Please enter a valid yarn quantity.");
+            return;
+        }
+        const r = parseFloat(yarnModalAccrualRate) || 0;
+        const targetIdx = activeYarnRowIndex !== null ? activeYarnRowIndex : (yarnInputs.length > 0 ? 0 : -1);
+
+        const updatedRow = {
+            mode: "ACCRUAL" as const,
+            productId: yarnModalAccrualProductId || "",
+            supplierId: yarnModalAccrualSupplierId || undefined,
+            quantity: q.toString(),
+            costRate: r > 0 ? r.toString() : "0",
+            lotNumber: "ACCRUAL-UNBILLED",
+            isEFS: false
+        };
+
+        if (targetIdx >= 0 && targetIdx < yarnInputs.length) {
+            const next = [...yarnInputs];
+            next[targetIdx] = updatedRow;
+            setYarnInputs(next);
+        } else {
+            setYarnInputs(prev => [...prev, updatedRow]);
+        }
+
+        setIsYarnModalOpen(false);
+        setYarnModalShowAccrualForm(false);
         setActiveYarnRowIndex(null);
     };
 
@@ -1007,8 +1064,9 @@ export default function ProductionExecutionWizard() {
                 return;
             }
         } else {
-            if (yarnInputs.length === 0 || !yarnInputs[0].productId || !yarnInputs[0].quantity) {
-                alert("Please allocate at least one Yarn input material");
+            const totalAllocatedYarn = yarnInputs.reduce((sum, y) => sum + (parseFloat(y.quantity) || 0), 0);
+            if (yarnInputs.length === 0 || totalAllocatedYarn <= 0) {
+                alert("Please allocate the required Yarn quantity (Total allocated must be greater than 0)");
                 return;
             }
         }
@@ -1109,7 +1167,7 @@ export default function ProductionExecutionWizard() {
             stage: "GREY",
             isEFS: greyInputIsEFS
         }] : yarnInputs.map(y => ({
-            productId: y.productId,
+            productId: y.productId || null,
             supplierId: y.supplierId || null,
             isAccrual: y.mode === "ACCRUAL",
             quantity: parseFloat(y.quantity),
@@ -2587,7 +2645,12 @@ export default function ProductionExecutionWizard() {
             {/* 1. YARN LOT SELECTION MODAL TABLE */}
             {isYarnModalOpen && (
                 <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-                    <div className="w-full max-w-[96vw] 2xl:max-w-[1650px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                    <div className={cn(
+                        "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 transition-all",
+                        yarnModalShowAccrualForm
+                            ? "w-full max-w-4xl"
+                            : "w-full max-w-[96vw] 2xl:max-w-[1650px] max-h-[90vh]"
+                    )}>
                         {/* Modal Header */}
                         <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -2599,170 +2662,333 @@ export default function ProductionExecutionWizard() {
                                         Select Yarn Lot (Invoices, GRN & Opening Stock)
                                     </h3>
                                     <p className="text-xs sm:text-sm text-slate-400">
-                                        Strictly filtered to raw yarn materials. Click &quot;Select Lot&quot; to allocate to batch row.
+                                        Allocate physical warehouse stock lots or record unbilled accrued yarn for this batch.
                                     </p>
                                 </div>
                             </div>
                             <button
                                 type="button"
-                                onClick={() => { setIsYarnModalOpen(false); setActiveYarnRowIndex(null); }}
+                                onClick={() => { setIsYarnModalOpen(false); setYarnModalShowAccrualForm(false); setActiveYarnRowIndex(null); }}
                                 className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             >
                                 <X size={22} />
                             </button>
                         </div>
 
-                        {/* Filter and Search Bar */}
-                        <div className="p-4 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-                            <div className="relative w-full sm:w-96">
-                                <Search size={18} className="absolute left-3.5 top-3 text-slate-400" />
-                                <input
-                                    type="text"
-                                    value={yarnModalSearch}
-                                    onChange={(e) => setYarnModalSearch(e.target.value)}
-                                    placeholder="Search yarn name, count, invoice, lot, HS code..."
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
-                                />
+                        {/* Tab Switcher: Available Stock Lots vs Create Accrual */}
+                        <div className="px-5 py-3 bg-slate-100/70 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-bold w-full sm:w-auto shadow-sm">
+                                <button
+                                    type="button"
+                                    onClick={() => setYarnModalShowAccrualForm(false)}
+                                    className={cn(
+                                        "flex-1 sm:flex-initial px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2",
+                                        !yarnModalShowAccrualForm
+                                            ? "bg-indigo-600 text-white shadow-sm font-black"
+                                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                    )}
+                                >
+                                    <Package size={16} /> 
+                                    <span>Available Stock Lots ({filteredModalYarnLots.length})</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={openYarnModalAccrualForm}
+                                    className={cn(
+                                        "flex-1 sm:flex-initial px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2",
+                                        yarnModalShowAccrualForm
+                                            ? "bg-amber-600 text-white shadow-sm font-black"
+                                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                    )}
+                                >
+                                    <Plus size={16} /> 
+                                    <span>+ Create Accrual / Unbilled Yarn (No Bill in Stock)</span>
+                                </button>
                             </div>
 
-                            <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
-                                {(["ALL", "LOCAL", "IMPORT_EFS", "IMPORT_COMMERCIAL", "OPENING"] as const).map(flt => (
-                                    <button
-                                        key={flt}
-                                        type="button"
-                                        onClick={() => setYarnModalFilter(flt)}
-                                        className={cn(
-                                            "px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
-                                            yarnModalFilter === flt
-                                                ? "bg-indigo-600 text-white shadow-sm font-black"
-                                                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                        )}
-                                    >
-                                        {flt === "ALL" && "All Lots"}
-                                        {flt === "LOCAL" && "Local Stock"}
-                                        {flt === "IMPORT_EFS" && "Import EFS"}
-                                        {flt === "IMPORT_COMMERCIAL" && "Commercial Import"}
-                                        {flt === "OPENING" && "Opening Stock"}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Table Area */}
-                        <div className="overflow-y-auto flex-1 p-4">
-                            {filteredModalYarnLots.length === 0 ? (
-                                <div className="text-center py-20 space-y-2">
-                                    <Package size={42} className="mx-auto text-slate-400/50" />
-                                    <p className="text-base font-bold text-slate-500">No matching yarn lots found in stock.</p>
-                                    <p className="text-xs sm:text-sm text-slate-400">Ensure raw yarn purchases, GRNs, or opening stock have been entered.</p>
-                                </div>
-                            ) : (
-                                <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-                                    <table className="w-full text-left border-collapse text-sm">
-                                        <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black uppercase tracking-wider text-xs">
-                                            <tr>
-                                                <th className="py-3.5 px-4">Yarn Product</th>
-                                                <th className="py-3.5 px-3">Origin / Scheme</th>
-                                                <th className="py-3.5 px-3">Reference / Source</th>
-                                                <th className="py-3.5 px-3">Date</th>
-                                                <th className="py-3.5 px-3 text-right">Available Qty</th>
-                                                <th className="py-3.5 px-3 text-right">Rate (PKR)</th>
-                                                <th className="py-3.5 px-3 text-right">Total Value</th>
-                                                <th className="py-3.5 px-4 text-center">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-sm">
-                                            {filteredModalYarnLots.map((lot, idx) => {
-                                                const prod = products.find(p => p.id === lot.productId);
-                                                const isEfs = Boolean(lot.isEFS || (lot.invoiceNo && lot.invoiceNo.includes("[EFS]")));
-                                                const isImport = lot.origin === "IMPORT" || isEfs || (lot.invoiceNo && lot.invoiceNo.includes("[IMPORT]"));
-                                                const totalVal = (Number(lot.qty) || 0) * (Number(lot.rate) || 0);
-
-                                                return (
-                                                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                                                        <td className="py-3.5 px-4">
-                                                            <div className="font-bold text-slate-900 dark:text-white text-sm">
-                                                                {prod?.name || lot.productName || 'Yarn'}
-                                                            </div>
-                                                            <div className="flex items-center gap-2 mt-1 font-mono text-xs text-slate-400">
-                                                                <span>{prod?.code || lot.productCode}</span>
-                                                                {(lot.hsCode || prod?.hsCode) && (
-                                                                    <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 font-bold border border-indigo-500/20">
-                                                                        HS: {lot.hsCode || prod?.hsCode}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </td>
-
-                                                        <td className="py-3.5 px-3">
-                                                            {isEfs ? (
-                                                                <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                                                                    IMPORT EFS
-                                                                </span>
-                                                            ) : isImport ? (
-                                                                <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                                                                    COMMERCIAL IMPORT
-                                                                </span>
-                                                            ) : lot.isOpening ? (
-                                                                <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                                                    OPENING STOCK
-                                                                </span>
-                                                            ) : (
-                                                                <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                                    LOCAL STOCK
-                                                                </span>
-                                                            )}
-                                                        </td>
-
-                                                        <td className="py-3.5 px-3 font-mono font-bold text-slate-700 dark:text-slate-300">
-                                                            <div className="text-sm">{lot.invoiceNo}</div>
-                                                            <div className="text-xs text-slate-400 font-normal">{lot.supplierName}</div>
-                                                        </td>
-
-                                                        <td className="py-3.5 px-3 font-mono text-xs text-slate-500">
-                                                            {lot.date || '-'}
-                                                        </td>
-
-                                                        <td className="py-3.5 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">
-                                                            {Number(lot.qty).toLocaleString()} <span className="text-xs text-slate-400">{lot.unitName || 'KG'}</span>
-                                                        </td>
-
-                                                        <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-900 dark:text-white text-sm">
-                                                            Rs. {Number(lot.rate).toFixed(2)}
-                                                        </td>
-
-                                                        <td className="py-3.5 px-3 text-right font-mono font-black text-indigo-600 dark:text-indigo-400 text-sm">
-                                                            Rs. {totalVal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                                                        </td>
-
-                                                        <td className="py-3.5 px-4 text-center">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleSelectYarnLotFromModal(lot)}
-                                                                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm active:scale-95 transition-all"
-                                                            >
-                                                                Select Lot
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                            {!yarnModalShowAccrualForm && (
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">
+                                    If yarn bill/lot is not in stock, click &quot;+ Create Accrual&quot; to continue production without blocking.
+                                </span>
                             )}
                         </div>
 
+                        {yarnModalShowAccrualForm ? (
+                            /* IN-MODAL YARN ACCRUAL FORM (MATCHING DYEING / FINISHING STYLE) */
+                            <div className="p-6 sm:p-8 space-y-6">
+                                <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-4 shadow-sm">
+                                    <div className="w-11 h-11 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                                        <FileText size={22} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">Unbilled Raw Yarn Accrual Entry</h4>
+                                            <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-[11px] font-black uppercase tracking-wider border border-amber-500/30">
+                                                Cr. Account 2130 (Accrued Expenses)
+                                            </span>
+                                        </div>
+                                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                                            Record unbilled raw yarn when yarn has been consumed in production before receiving the supplier invoice. Physical warehouse stock will not be deducted, avoiding negative inventory. The liability is offset via FIFO upon entering the Purchase Invoice.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                                            <span>Yarn Product / HS Code</span>
+                                            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Optional</span>
+                                        </label>
+                                        <Combobox
+                                            options={yarnAccrualProductOptions}
+                                            value={yarnModalAccrualProductId}
+                                            onChange={(val) => setYarnModalAccrualProductId(val)}
+                                            placeholder="[Optional] General / Unspecified Raw Yarn..."
+                                            searchPlaceholder="Search yarn name, count or HS code..."
+                                            className="w-full text-sm font-semibold"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                                            <span>Yarn Supplier / Vendor</span>
+                                            <span className="text-xs text-slate-400 font-medium">Optional</span>
+                                        </label>
+                                        <Combobox
+                                            options={supplierOptions}
+                                            value={yarnModalAccrualSupplierId}
+                                            onChange={(val) => setYarnModalAccrualSupplierId(val)}
+                                            placeholder="Select Supplier (Optional)..."
+                                            searchPlaceholder="Search supplier name or code..."
+                                            className="w-full text-sm font-semibold"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                                            <span>Consumed Quantity (KG) <span className="text-rose-500 font-black">*</span></span>
+                                            <span className="text-xs text-slate-400 font-bold">Must complete target weight</span>
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                value={yarnModalAccrualQty}
+                                                onChange={(e) => setYarnModalAccrualQty(e.target.value)}
+                                                placeholder="0.00"
+                                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm sm:text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 pr-12 h-[44px]"
+                                            />
+                                            <span className="absolute right-3.5 top-3 text-xs font-bold text-slate-400">KG</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                                            <span>Estimated Cost Rate (PKR / KG)</span>
+                                            <span className="text-xs text-slate-400 font-medium">Optional</span>
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-3.5 top-3 text-xs font-bold text-slate-400">Rs.</span>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                value={yarnModalAccrualRate}
+                                                onChange={(e) => setYarnModalAccrualRate(e.target.value)}
+                                                placeholder="0.00"
+                                                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm sm:text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Filter and Search Bar */}
+                                <div className="p-4 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                    <div className="relative w-full sm:w-96">
+                                        <Search size={18} className="absolute left-3.5 top-3 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            value={yarnModalSearch}
+                                            onChange={(e) => setYarnModalSearch(e.target.value)}
+                                            placeholder="Search yarn name, count, invoice, lot, HS code..."
+                                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
+                                        />
+                                    </div>
+
+                                    <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
+                                        {(["ALL", "LOCAL", "IMPORT_EFS", "IMPORT_COMMERCIAL", "OPENING"] as const).map(flt => (
+                                            <button
+                                                key={flt}
+                                                type="button"
+                                                onClick={() => setYarnModalFilter(flt)}
+                                                className={cn(
+                                                    "px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
+                                                    yarnModalFilter === flt
+                                                        ? "bg-indigo-600 text-white shadow-sm font-black"
+                                                        : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                )}
+                                            >
+                                                {flt === "ALL" && "All Lots"}
+                                                {flt === "LOCAL" && "Local Stock"}
+                                                {flt === "IMPORT_EFS" && "Import EFS"}
+                                                {flt === "IMPORT_COMMERCIAL" && "Commercial Import"}
+                                                {flt === "OPENING" && "Opening Stock"}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Table Area */}
+                                <div className="overflow-y-auto flex-1 p-4">
+                                    {filteredModalYarnLots.length === 0 ? (
+                                        <div className="text-center py-20 space-y-2">
+                                            <Package size={42} className="mx-auto text-slate-400/50" />
+                                            <p className="text-base font-bold text-slate-500">No matching yarn lots found in stock.</p>
+                                            <p className="text-xs sm:text-sm text-slate-400">Click &quot;+ Create Accrual&quot; above to record an unbilled yarn consumption.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                                            <table className="w-full text-left border-collapse text-sm">
+                                                <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black uppercase tracking-wider text-xs">
+                                                    <tr>
+                                                        <th className="py-3.5 px-4">Yarn Product</th>
+                                                        <th className="py-3.5 px-3">Origin / Scheme</th>
+                                                        <th className="py-3.5 px-3">Reference / Source</th>
+                                                        <th className="py-3.5 px-3">Date</th>
+                                                        <th className="py-3.5 px-3 text-right">Available Qty</th>
+                                                        <th className="py-3.5 px-3 text-right">Rate (PKR)</th>
+                                                        <th className="py-3.5 px-3 text-right">Total Value</th>
+                                                        <th className="py-3.5 px-4 text-center">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-sm">
+                                                    {filteredModalYarnLots.map((lot, idx) => {
+                                                        const prod = products.find(p => p.id === lot.productId);
+                                                        const isEfs = Boolean(lot.isEFS || (lot.invoiceNo && lot.invoiceNo.includes("[EFS]")));
+                                                        const isImport = lot.origin === "IMPORT" || isEfs || (lot.invoiceNo && lot.invoiceNo.includes("[IMPORT]"));
+                                                        const totalVal = (Number(lot.qty) || 0) * (Number(lot.rate) || 0);
+
+                                                        return (
+                                                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                                                                <td className="py-3.5 px-4">
+                                                                    <div className="font-bold text-slate-900 dark:text-white text-sm">
+                                                                        {prod?.name || lot.productName || 'Yarn'}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 mt-1 font-mono text-xs text-slate-400">
+                                                                        <span>{prod?.code || lot.productCode}</span>
+                                                                        {(lot.hsCode || prod?.hsCode) && (
+                                                                            <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 font-bold border border-indigo-500/20">
+                                                                                HS: {lot.hsCode || prod?.hsCode}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+
+                                                                <td className="py-3.5 px-3">
+                                                                    {isEfs ? (
+                                                                        <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                                                                            IMPORT EFS
+                                                                        </span>
+                                                                    ) : isImport ? (
+                                                                        <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                                                            COMMERCIAL IMPORT
+                                                                        </span>
+                                                                    ) : lot.isOpening ? (
+                                                                        <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                                                            OPENING STOCK
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                                            LOCAL STOCK
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+
+                                                                <td className="py-3.5 px-3 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                                                    <div className="text-sm">{lot.invoiceNo}</div>
+                                                                    <div className="text-xs text-slate-400 font-normal">{lot.supplierName}</div>
+                                                                </td>
+
+                                                                <td className="py-3.5 px-3 font-mono text-xs text-slate-500">
+                                                                    {lot.date || '-'}
+                                                                </td>
+
+                                                                <td className="py-3.5 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                                                                    {Number(lot.qty).toLocaleString()} <span className="text-xs text-slate-400">{lot.unitName || 'KG'}</span>
+                                                                </td>
+
+                                                                <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-900 dark:text-white text-sm">
+                                                                    Rs. {Number(lot.rate).toFixed(2)}
+                                                                </td>
+
+                                                                <td className="py-3.5 px-3 text-right font-mono font-black text-indigo-600 dark:text-indigo-400 text-sm">
+                                                                    Rs. {totalVal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                                                </td>
+
+                                                                <td className="py-3.5 px-4 text-center">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleSelectYarnLotFromModal(lot)}
+                                                                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm active:scale-95 transition-all"
+                                                                    >
+                                                                        Select Lot
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
+
                         {/* Modal Footer */}
                         <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between text-xs sm:text-sm text-slate-400">
-                            <span>Showing {filteredModalYarnLots.length} lot(s)</span>
-                            <button
-                                type="button"
-                                onClick={() => { setIsYarnModalOpen(false); setActiveYarnRowIndex(null); }}
-                                className="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all text-xs sm:text-sm"
-                            >
-                                Close
-                            </button>
+                            {yarnModalShowAccrualForm ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => setYarnModalShowAccrualForm(false)}
+                                        className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold transition-all text-xs sm:text-sm"
+                                    >
+                                        ← Back to Available Lots
+                                    </button>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setIsYarnModalOpen(false); setYarnModalShowAccrualForm(false); setActiveYarnRowIndex(null); }}
+                                            className="px-5 py-2.5 rounded-xl text-slate-500 hover:text-slate-700 dark:hover:text-white font-bold text-xs sm:text-sm transition-all"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleApplyYarnAccrualFromModal}
+                                            disabled={!yarnModalAccrualQty || parseFloat(yarnModalAccrualQty) <= 0}
+                                            className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                                        >
+                                            <CheckCircle2 size={16} /> Apply Accrual to Batch
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <span>Showing {filteredModalYarnLots.length} lot(s)</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setIsYarnModalOpen(false); setActiveYarnRowIndex(null); }}
+                                        className="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition-all text-xs sm:text-sm"
+                                    >
+                                        Close
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
