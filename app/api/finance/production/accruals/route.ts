@@ -143,6 +143,8 @@ export async function GET(req: NextRequest) {
                 const totalAmount = Number(item.amount);
                 const remainingAmount = remainingQty * rate;
 
+                const isUnspecifiedYarn = Boolean(item.remarks && item.remarks.includes('[UNSPECIFIED_YARN]'));
+
                 return {
                     id: item.id,
                     accrualNo: item.accrualNo,
@@ -150,9 +152,9 @@ export async function GET(req: NextRequest) {
                     productionId: item.productionId,
                     productionOutput: item.ProductionRecord?.Product?.name || "-",
                     productId: item.productId,
-                    productName: item.Product?.name || "Service / Item",
-                    productCode: item.Product?.code || "",
-                    hsCode: item.Product?.hsCode || "",
+                    productName: isUnspecifiedYarn ? "Raw Yarn (Unspecified / Pending Settle)" : (item.Product?.name || "Service / Item"),
+                    productCode: isUnspecifiedYarn ? "YARN-UNSPECIFIED" : (item.Product?.code || ""),
+                    hsCode: isUnspecifiedYarn ? "-" : (item.Product?.hsCode || ""),
                     supplierId: item.supplierId,
                     supplierName: item.Supplier?.name || "Unassigned / General Vendor",
                     supplierCode: item.Supplier?.code || "",

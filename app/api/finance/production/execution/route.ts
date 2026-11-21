@@ -43,6 +43,8 @@ export async function POST(req: NextRequest) {
 
                 // If productId is omitted / optional, resolve to default raw yarn product
                 let effectiveProductId = input.productId;
+                const isExplicitYarn = Boolean(input.productId);
+
                 if (!effectiveProductId) {
                     const defaultYarn = await tx.product.findFirst({
                         where: {
@@ -70,13 +72,13 @@ export async function POST(req: NextRequest) {
                 // Raw Yarn Accrual (Unbilled raw material with supplier bill pending)
                 if (input.isAccrual || input.mode === 'ACCRUAL') {
                     let yarnProd = null;
-                    if (effectiveProductId) {
+                    if (isExplicitYarn && effectiveProductId) {
                         yarnProd = await tx.product.findUnique({
                             where: { id: effectiveProductId },
                             include: { Category: true, Unit: true }
                         });
                     }
-                    const yarnName = yarnProd?.name || "General Raw Yarn (Unbilled)";
+                    const yarnName = isExplicitYarn ? (yarnProd?.name || "Raw Yarn") : "Raw Yarn (Unspecified / Settle Later)";
 
                     // Sequence for PAC-YYYY-XXXX
                     const existingCount = accrualRecordsToCreate.length;
@@ -132,7 +134,9 @@ export async function POST(req: NextRequest) {
                         amount: costValue,
                         billedQty: 0,
                         status: 'PENDING',
-                        remarks: input.remarks || `Accrued Unbilled Yarn [${yarnName}] for Production Batch`
+                        remarks: isExplicitYarn 
+                            ? (input.remarks || `Accrued Unbilled Yarn [${yarnName}] for Production Batch`)
+                            : `[UNSPECIFIED_YARN] ${input.remarks || 'Accrued Unbilled Raw Yarn (Physical lot will be selected upon stock or invoice settlement)'}`
                     });
                 }
             }

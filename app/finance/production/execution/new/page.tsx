@@ -557,7 +557,7 @@ export default function ProductionExecutionWizard() {
             label: `${p.code} - ${p.name}${p.hsCode ? ` [HS: ${p.hsCode}]` : ''}`
         }));
         return [
-            { value: "", label: "✨ [Optional] General / Unspecified Raw Yarn" },
+            { value: "", label: "✨ [Optional] Unspecified Yarn (Settle Later from Stock / Bill)" },
             ...list
         ];
     }, [yarnProductList]);
@@ -702,12 +702,15 @@ export default function ProductionExecutionWizard() {
         const shortfall = yarnShortfall > 0 ? yarnShortfall : reqYarnQty;
         if (activeYarnRowIndex !== null && yarnInputs[activeYarnRowIndex]) {
             const curRow = yarnInputs[activeYarnRowIndex];
-            setYarnModalAccrualProductId(curRow.productId || "");
+            setYarnModalAccrualProductId(curRow.mode === "ACCRUAL" ? (curRow.productId || "") : "");
             setYarnModalAccrualSupplierId(curRow.supplierId || "");
             setYarnModalAccrualQty(curRow.quantity || (shortfall > 0 ? shortfall.toString() : ""));
             setYarnModalAccrualRate(curRow.costRate || "");
         } else {
+            setYarnModalAccrualProductId("");
+            setYarnModalAccrualSupplierId("");
             setYarnModalAccrualQty(shortfall > 0 ? shortfall.toString() : "");
+            setYarnModalAccrualRate("");
         }
     };
 
@@ -938,7 +941,13 @@ export default function ProductionExecutionWizard() {
     const handleYarnProductChange = (index: number, val: string) => {
         const next = [...yarnInputs];
         if (!val) {
-            next[index] = { ...next[index], productId: "", isEFS: false, quantity: "", costRate: "0", lotNumber: "", purchaseInvoiceItemId: undefined };
+            next[index] = { 
+                ...next[index], 
+                productId: "", 
+                isEFS: false, 
+                purchaseInvoiceItemId: undefined,
+                lotNumber: next[index].mode === "ACCRUAL" ? "ACCRUAL-UNBILLED" : ""
+            };
             setYarnInputs(next);
             return;
         }
@@ -950,7 +959,7 @@ export default function ProductionExecutionWizard() {
                 ...next[index],
                 productId: val,
                 isEFS: false,
-                costRate: matched?.rate ? matched.rate.toFixed(2) : (next[index].costRate || "0"),
+                costRate: (next[index].costRate && Number(next[index].costRate) > 0) ? next[index].costRate : (matched?.rate ? matched.rate.toFixed(2) : "0"),
                 lotNumber: "ACCRUAL-UNBILLED",
                 purchaseInvoiceItemId: undefined
             };
@@ -2284,6 +2293,9 @@ export default function ProductionExecutionWizard() {
                                                             onClick={() => {
                                                                 const next = [...yarnInputs];
                                                                 next[idx].mode = "STOCK";
+                                                                if (next[idx].lotNumber === "ACCRUAL-UNBILLED") {
+                                                                    next[idx].lotNumber = "";
+                                                                }
                                                                 setYarnInputs(next);
                                                             }}
                                                             className={cn(
@@ -2299,7 +2311,14 @@ export default function ProductionExecutionWizard() {
                                                             type="button"
                                                             onClick={() => {
                                                                 const next = [...yarnInputs];
+                                                                const wasStock = next[idx].mode === "STOCK";
                                                                 next[idx].mode = "ACCRUAL";
+                                                                if (wasStock) {
+                                                                    next[idx].productId = "";
+                                                                    next[idx].purchaseInvoiceItemId = undefined;
+                                                                    next[idx].lotNumber = "ACCRUAL-UNBILLED";
+                                                                    next[idx].isEFS = false;
+                                                                }
                                                                 if (!next[idx].quantity && yarnShortfall > 0) {
                                                                     next[idx].quantity = yarnShortfall.toString();
                                                                 }
@@ -2345,7 +2364,7 @@ export default function ProductionExecutionWizard() {
                                                                 }}
                                                                 className="px-3 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 shrink-0 h-[44px] whitespace-nowrap shadow-sm transition-all"
                                                                 title="Browse all available Yarn stock & lots"
-                                                            >
+                                                             >
                                                                 <Search size={15} />
                                                                 <span>Browse</span>
                                                             </button>
@@ -2357,7 +2376,9 @@ export default function ProductionExecutionWizard() {
                                                                     options={yarnAccrualProductOptions}
                                                                     value={row.productId}
                                                                     onChange={(val) => handleYarnProductChange(idx, val)}
-                                                                    placeholder="Select Yarn Item / HS..."
+                                                                    placeholder="Yarn Product (Optional - Settle Later)..."
+                                                                    searchPlaceholder="Search yarn or leave blank..."
+                                                                    clearable={true}
                                                                     className="w-full text-sm font-semibold"
                                                                 />
                                                             </div>
@@ -2370,7 +2391,9 @@ export default function ProductionExecutionWizard() {
                                                                         next[idx].supplierId = val;
                                                                         setYarnInputs(next);
                                                                     }}
-                                                                    placeholder="Yarn Supplier (Opt)..."
+                                                                    placeholder="Yarn Supplier (Optional)..."
+                                                                    searchPlaceholder="Search supplier or leave blank..."
+                                                                    clearable={true}
                                                                     className="w-full text-sm font-semibold"
                                                                 />
                                                             </div>

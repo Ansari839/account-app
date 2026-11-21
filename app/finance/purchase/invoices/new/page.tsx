@@ -670,7 +670,8 @@ export default function NewPurchaseInvoicePage() {
                         qty: Number(lItem.qty),
                         rate: Number(lItem.lot.rate || ask.rate || 0),
                         lotNo: lItem.lot.invoiceNo,
-                        warehouseId: targetWh
+                        warehouseId: targetWh,
+                        purchaseInvoiceItemId: (lItem.lot.isOpening || lItem.lot.isGRN) ? null : lItem.lot.id
                     });
                 }
             }
@@ -1897,9 +1898,49 @@ export default function NewPurchaseInvoicePage() {
                                         });
 
                                         setStockSettleAsks(asks);
-                                        setStockLotAllocations({});
                                         setLotTableSearch("");
                                         setLotTableFilter("ALL");
+
+                                        // Auto-allocate FIFO immediately across available stock lots!
+                                        const isYarnActive = asks.some(a => 
+                                            a.stage === "RAW" || 
+                                            a.serviceType === "RAW_YARN" || 
+                                            (a.productName || '').toUpperCase().includes("YARN")
+                                        );
+                                        const isWeavingActive = asks.some(a => 
+                                            a.stage === "GREY" || 
+                                            a.serviceType === "WEAVING" || 
+                                            a.serviceType === "KNITTING"
+                                        );
+
+                                        const validLots = availableLots.filter(lot => {
+                                            if (isYarnActive) return isYarnProduct(lot);
+                                            if (isWeavingActive) {
+                                                const name = (lot.productName || '').toUpperCase();
+                                                const stage = (lot.stage || '').toUpperCase();
+                                                return stage === 'GREY' || name.includes('FABRIC') || name.includes('GREY');
+                                            }
+                                            return true;
+                                        }).sort((a, b) => b.qty - a.qty);
+
+                                        let needed = asks.reduce((sum, a) => sum + (Number(a.requiredQty) || 0), 0);
+                                        const initialAlloc: Record<string, { selected: boolean; allocatedQty: number; targetAccrualId: string }> = {};
+
+                                        for (const lot of validLots) {
+                                            if (needed <= 0.001) break;
+                                            const avail = Number(lot.qty || 0);
+                                            if (avail <= 0) continue;
+
+                                            const toTake = Math.min(avail, needed);
+                                            initialAlloc[lot.id] = {
+                                                selected: true,
+                                                allocatedQty: Math.round(toTake * 100) / 100,
+                                                targetAccrualId: 'AUTO'
+                                            };
+                                            needed -= toTake;
+                                        }
+
+                                        setStockLotAllocations(initialAlloc);
                                         setIsStockSettleModalOpen(true);
                                     }}
                                     className="px-6 py-3 rounded-2xl font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-xl shadow-emerald-600/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2"
@@ -2394,11 +2435,21 @@ export default function NewPurchaseInvoicePage() {
                                 </button>
                                 <button
                                     type="button"
-                                    disabled={isStockSettling || !stockSettleWarehouseId || totalStockAllocatedQty <= 0}
-                                    onClick={handleStockSettleConfirm}
+                                    disabled={isStockSettling}
+                                    onClick={() => {
+                                        if (!stockSettleWarehouseId) {
+                                            showNotification('error', 'Please select a target warehouse.');
+                                            return;
+                                        }
+                                        if (totalStockAllocatedQty <= 0) {
+                                            showNotification('error', 'Please tick and allocate at least one warehouse stock lot.');
+                                            return;
+                                        }
+                                        handleStockSettleConfirm();
+                                    }}
                                     className={cn(
-                                        "px-6 py-2.5 rounded-xl font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-600/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2",
-                                        (isStockSettling || !stockSettleWarehouseId || totalStockAllocatedQty <= 0) && "opacity-50 cursor-not-allowed"
+                                        "px-6 py-2.5 rounded-xl font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-600/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer",
+                                        (isStockSettling || !stockSettleWarehouseId || totalStockAllocatedQty <= 0) && "opacity-60"
                                     )}
                                 >
                                     {isStockSettling ? (

@@ -63,6 +63,11 @@ export async function POST(req: NextRequest) {
                 }
             });
 
+            // Find Active Financial Year if available
+            const activeFy = await tx.financialYear.findFirst({
+                where: { companyId, isClosed: false }
+            });
+
             for (const item of settlementItems) {
                 const accId = item.accrualId;
                 if (!accId) continue;
@@ -111,8 +116,8 @@ export async function POST(req: NextRequest) {
                     throw new Error(`Target warehouse is required to deduct stock for ${pAccrual.accrualNo}.`);
                 }
 
-                const totalAccrualValue = qtyToSettle * originalRate;
-                const totalStockDeductValue = qtyToSettle * stockRate;
+                const totalAccrualValue = Math.round((qtyToSettle * originalRate) * 100) / 100;
+                const totalStockDeductValue = Math.round((qtyToSettle * stockRate) * 100) / 100;
                 const lotRef = item.lotNo ? `-[${item.lotNo}]` : '';
 
                 // 1. Deduct Physical Stock from Warehouse (StockLedger Out)
@@ -132,6 +137,14 @@ export async function POST(req: NextRequest) {
                     }
                 });
 
+                // 1.1 If this was an unconsumed purchase invoice item, increment consumedQty
+                if (item.purchaseInvoiceItemId && !item.purchaseInvoiceItemId.startsWith('OPENING-') && !item.purchaseInvoiceItemId.startsWith('GRN-')) {
+                    await tx.purchaseInvoiceItem.update({
+                        where: { id: item.purchaseInvoiceItemId },
+                        data: { consumedQty: { increment: qtyToSettle } }
+                    }).catch((e) => console.warn("Could not increment consumedQty on purchase invoice lot:", e));
+                }
+
                 // 2. Identify Product's Physical Inventory Asset Account (Credit side)
                 const inProduct = await tx.product.findUnique({
                     where: { id: productIdToDeduct },
@@ -140,7 +153,18 @@ export async function POST(req: NextRequest) {
                 let inventoryAccount = inProduct?.inventoryAccountId || inProduct?.Category?.wipAccountId;
                 if (!inventoryAccount) {
                     const defInv = await tx.account.findFirst({
-                        where: { companyId, name: { contains: 'Inventory', mode: 'insensitive' }, type: 'ASSET', isPosting: true }
+                        where: { 
+                            companyId, 
+                            OR: [
+                                { name: { contains: 'Inventory', mode: 'insensitive' } },
+                                { name: { contains: 'Stock', mode: 'insensitive' } },
+                                { code: '1310' }
+                            ],
+                            type: 'ASSET', 
+                            isPosting: true 
+                        }
+                    }) || await tx.account.findFirst({
+                        where: { companyId, type: 'ASSET', isPosting: true }
                     });
                     inventoryAccount = defInv?.id;
                 }
@@ -150,8 +174,8 @@ export async function POST(req: NextRequest) {
                 // Credit: Raw Material Inventory (1310) -> reduces the physical inventory asset
                 // Any difference between original accrual rate and stock rate balances to Variance / COGS
                 if (accruedLiabilityAcc && inventoryAccount) {
-                    const jvNo = `JV-SETTLE-${Date.now().toString().slice(-6)}`;
-                    const rateVariance = totalAccrualValue - totalStockDeductValue;
+                    const jvNo = `JV-SETTLE-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+                    const rateVariance = Math.round((totalAccrualValue - totalStockDeductValue) * 100) / 100;
 
                     const glLines: any[] = [
                         {
@@ -164,7 +188,7 @@ export async function POST(req: NextRequest) {
                             accountId: inventoryAccount,
                             debit: 0,
                             credit: totalStockDeductValue,
-                            narration: `Physical Stock Out from Warehouse: ${inProduct?.name || 'Raw Material'} (${qtyToSettle} @ Rs. ${stockRate})`
+                            narration: `Physical Stock Out: ${inProduct?.name || 'Raw Material'} (${qtyToSettle} @ Rs. ${stockRate})`
                         }
                     ];
 
@@ -191,9 +215,10 @@ export async function POST(req: NextRequest) {
                     await tx.journalEntry.create({
                         data: {
                             companyId,
-                            voucherNo: jvNo,
+                            number: jvNo,
                             date: settlementDate,
                             type: 'JOURNAL',
+                            financialYearId: activeFy?.id || null,
                             reference: pAccrual.accrualNo,
                             narration: `Settle Accrual [${pAccrual.accrualNo}] against Physical Stock: ${inProduct?.name || 'Raw Material'} (${qtyToSettle} @ Rs. ${stockRate})`,
                             lines: { create: glLines }
@@ -206,17 +231,25 @@ export async function POST(req: NextRequest) {
                 const settledNote = `[Settled from Stock: ${inProduct?.name || 'Physical Stock'} - ${qtyToSettle} @ Rs. ${stockRate}]`;
                 const finalRemarks = `${pAccrual.remarks || ''} ${settledNote}`.trim();
 
-                if (pAccrualGetter?.update) {
-                    await pAccrualGetter.update({
-                        where: { id: pAccrual.id },
-                        data: {
-                            productId: productIdToDeduct, // Update to the actual yarn/product settled
-                            billedQty: newBilledQty,
-                            status: newStatus,
-                            remarks: finalRemarks
-                        }
-                    });
-                } else {
+                let updatedInDb = false;
+                try {
+                    if (pAccrualGetter?.update) {
+                        await pAccrualGetter.update({
+                            where: { id: pAccrual.id },
+                            data: {
+                                productId: productIdToDeduct, // Update to the actual yarn/product settled
+                                billedQty: newBilledQty,
+                                status: newStatus,
+                                remarks: finalRemarks
+                            }
+                        });
+                        updatedInDb = true;
+                    }
+                } catch (updErr) {
+                    console.warn("ProductionAccrual prisma update fallback to raw SQL:", updErr);
+                }
+
+                if (!updatedInDb) {
                     await tx.$executeRaw`
                         UPDATE "ProductionAccrual"
                         SET "productId" = ${productIdToDeduct},
