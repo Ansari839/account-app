@@ -80,6 +80,8 @@ export default function NewPurchaseInvoicePage() {
     const [stockSettleDate, setStockSettleDate] = useState(new Date().toISOString().split("T")[0]);
     const [stockSettleRemarks, setStockSettleRemarks] = useState("");
     const [isStockSettling, setIsStockSettling] = useState(false);
+    const [stockSettleRows, setStockSettleRows] = useState<any[]>([]);
+    const [availableLots, setAvailableLots] = useState<any[]>([]);
 
     useEffect(() => {
         fetchSettings();
@@ -145,6 +147,16 @@ export default function NewPurchaseInvoicePage() {
                     if (base) setCurrency({ symbol: base.symbol });
                 }
             }
+
+            // Fetch lots for yarn / stock settlement
+            authenticatedFetch("/api/finance/production/execution/meta")
+                .then(r => r.json())
+                .then(j => {
+                    if (j.success && j.data?.availableLots) {
+                        setAvailableLots(j.data.availableLots);
+                    }
+                })
+                .catch(console.error);
         } catch (error) {
             console.error("Error fetching dropdowns:", error);
         }
@@ -375,36 +387,76 @@ export default function NewPurchaseInvoicePage() {
         showNotification('success', `Added ${newItems.length} accrual batch(es) to purchase invoice.`);
     };
 
+    const updateStockSettleRow = (index: number, field: string, value: any) => {
+        setStockSettleRows(prev => {
+            const next = [...prev];
+            next[index] = { ...next[index], [field]: value };
+            if (field === 'productId') {
+                const foundLot = availableLots.find(l => l.productId === value);
+                if (foundLot) {
+                    next[index].rate = foundLot.rate || next[index].rate;
+                    next[index].lotNo = foundLot.invoiceNo || '';
+                } else {
+                    const foundProd = products.find(p => p.id === value);
+                    if (foundProd && (foundProd.purchasePrice || foundProd.standardCost)) {
+                        next[index].rate = foundProd.purchasePrice || foundProd.standardCost || next[index].rate;
+                    }
+                }
+            }
+            return next;
+        });
+    };
+
     const handleStockSettleConfirm = async () => {
-        const selectedEntries = Object.entries(bulkAllocations).filter(([_, alloc]) => alloc.selected && alloc.allocatedQty > 0);
-        if (selectedEntries.length === 0) {
+        if (stockSettleRows.length === 0) {
             showNotification('error', 'Please select at least one accrual batch to settle from stock.');
             return;
         }
-        if (!stockSettleWarehouseId) {
+        const targetWh = stockSettleWarehouseId || (warehouses.length > 0 ? warehouses[0].id : "");
+        if (!targetWh) {
             showNotification('error', 'Please select a target warehouse to deduct physical stock from.');
             return;
         }
 
+        for (const r of stockSettleRows) {
+            if (!r.productId) {
+                showNotification('error', `Please select a product/yarn from stock for ${r.accrualNo}.`);
+                return;
+            }
+            if (!r.qty || r.qty <= 0) {
+                showNotification('error', `Invalid quantity for ${r.accrualNo}.`);
+                return;
+            }
+        }
+
         try {
             setIsStockSettling(true);
-            const accrualIds = selectedEntries.map(([id]) => id);
+            const payload = {
+                warehouseId: targetWh,
+                date: stockSettleDate,
+                remarks: stockSettleRemarks || 'Settled against physical warehouse stock',
+                items: stockSettleRows.map(r => ({
+                    accrualId: r.accrualId,
+                    productId: r.productId,
+                    qty: Number(r.qty),
+                    rate: Number(r.rate),
+                    lotNo: r.lotNo,
+                    warehouseId: r.warehouseId || targetWh
+                }))
+            };
+
             const res = await authenticatedFetch('/api/finance/production/accruals/settle-stock', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    accrualIds,
-                    warehouseId: stockSettleWarehouseId,
-                    date: stockSettleDate,
-                    remarks: stockSettleRemarks || 'Settled against physical warehouse stock'
-                })
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
             if (data.success) {
-                showNotification('success', data.message || `Successfully settled ${accrualIds.length} batch(es) against physical warehouse stock.`);
+                showNotification('success', data.message || `Successfully settled ${stockSettleRows.length} batch(es) against physical warehouse stock.`);
                 setIsStockSettleModalOpen(false);
                 setIsBulkAccrualModalOpen(false);
                 setBulkAllocations({});
+                setStockSettleRows([]);
                 fetchSources("PRODUCTION");
             } else {
                 showNotification('error', data.error || 'Failed to settle against stock.');
@@ -1572,14 +1624,35 @@ export default function NewPurchaseInvoicePage() {
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        const selectedCount = Object.values(bulkAllocations).filter(v => v.selected && v.allocatedQty > 0).length;
-                                        if (selectedCount === 0) {
+                                        const selectedEntries = Object.entries(bulkAllocations).filter(([_, alloc]) => alloc.selected && alloc.allocatedQty > 0);
+                                        if (selectedEntries.length === 0) {
                                             showNotification('error', 'Please tick at least one accrual batch to settle from stock.');
                                             return;
                                         }
-                                        if (warehouses.length > 0 && !stockSettleWarehouseId) {
-                                            setStockSettleWarehouseId(warehouses[0].id);
+                                        const defaultWhId = stockSettleWarehouseId || (warehouses.length > 0 ? warehouses[0].id : "");
+                                        if (!stockSettleWarehouseId && defaultWhId) {
+                                            setStockSettleWarehouseId(defaultWhId);
                                         }
+
+                                        const initialRows = selectedEntries.map(([accrualId, alloc]) => {
+                                            const s = sources.find(src => src.id === accrualId);
+                                            return {
+                                                accrualId: s?.id || accrualId,
+                                                accrualNo: s?.accrualNo || '',
+                                                stage: s?.stage || 'RAW',
+                                                serviceType: s?.serviceType || 'RAW_YARN',
+                                                originalProductName: s?.productName || 'Raw Material',
+                                                originalProductCode: s?.productCode || '',
+                                                originalRate: s?.rate || 0,
+                                                productId: s?.productId || '',
+                                                qty: alloc.allocatedQty || s?.remainingQty || 0,
+                                                unitCode: s?.unitCode || 'KG',
+                                                rate: alloc.rate || s?.rate || 0,
+                                                lotNo: '',
+                                                warehouseId: defaultWhId
+                                            };
+                                        });
+                                        setStockSettleRows(initialRows);
                                         setIsStockSettleModalOpen(true);
                                     }}
                                     className="px-6 py-3 rounded-2xl font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-xl shadow-emerald-600/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2"
@@ -1603,20 +1676,20 @@ export default function NewPurchaseInvoicePage() {
 
             {/* Settle from Warehouse Stock Confirmation Modal */}
             {isStockSettleModalOpen && (
-                <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
-                    <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
+                    <div className="w-full max-w-6xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
                         {/* Modal Header */}
-                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-black">
                                     <Package size={24} />
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                                        Settle Accruals Against Stock
+                                        Settle Accruals Against Physical Stock
                                     </h3>
-                                    <p className="text-xs text-slate-400">
-                                        Deduct physical warehouse inventory and clear unbilled accrual liabilities.
+                                    <p className="text-xs sm:text-sm text-slate-400">
+                                        Select and change which Yarn or Material from your warehouse stock will be deducted to clear each unbilled accrual liability.
                                     </p>
                                 </div>
                             </div>
@@ -1630,45 +1703,42 @@ export default function NewPurchaseInvoicePage() {
                         </div>
 
                         {/* Modal Body */}
-                        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+                        <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
                             {/* Summary Metrics */}
-                            <div className="grid grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/50">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/50">
                                 <div>
                                     <span className="text-[10px] font-black uppercase text-slate-400">Selected Batches</span>
                                     <p className="text-base font-black text-slate-900 dark:text-white mt-0.5">
-                                        {Object.values(bulkAllocations).filter(v => v.selected && v.allocatedQty > 0).length} Batches
+                                        {stockSettleRows.length} Batches
                                     </p>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] font-black uppercase text-slate-400">Total Quantity</span>
+                                    <span className="text-[10px] font-black uppercase text-slate-400">Total Quantity to Deduct</span>
                                     <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
-                                        {Object.values(bulkAllocations)
-                                            .filter(v => v.selected)
-                                            .reduce((sum, v) => sum + (Number(v.allocatedQty) || 0), 0)
-                                            .toLocaleString()} Units
+                                        {stockSettleRows.reduce((sum, r) => sum + (Number(r.qty) || 0), 0).toLocaleString()} Units
                                     </p>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] font-black uppercase text-slate-400">Total Booked Value</span>
+                                    <span className="text-[10px] font-black uppercase text-slate-400">Total Settlement Value</span>
                                     <p className="text-base font-black text-slate-900 dark:text-white mt-0.5">
-                                        Rs. {Object.values(bulkAllocations)
-                                            .filter(v => v.selected)
-                                            .reduce((sum, v) => sum + ((Number(v.allocatedQty) || 0) * (Number(v.rate) || 0)), 0)
-                                            .toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        Rs. {stockSettleRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.rate) || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                     </p>
                                 </div>
                             </div>
 
-                            {/* Form Fields */}
-                            <div className="space-y-4">
+                            {/* Global Form Settings */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                                         Target Warehouse (Stock Deduction) *
                                     </label>
                                     <select
                                         value={stockSettleWarehouseId}
-                                        onChange={(e) => setStockSettleWarehouseId(e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                        onChange={(e) => {
+                                            setStockSettleWarehouseId(e.target.value);
+                                            setStockSettleRows(prev => prev.map(r => ({ ...r, warehouseId: e.target.value })));
+                                        }}
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
                                     >
                                         <option value="">Choose Warehouse...</option>
                                         {warehouses.map((w: any) => (
@@ -1685,7 +1755,7 @@ export default function NewPurchaseInvoicePage() {
                                         type="date"
                                         value={stockSettleDate}
                                         onChange={(e) => setStockSettleDate(e.target.value)}
-                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
                                     />
                                 </div>
 
@@ -1697,9 +1767,157 @@ export default function NewPurchaseInvoicePage() {
                                         type="text"
                                         value={stockSettleRemarks}
                                         onChange={(e) => setStockSettleRemarks(e.target.value)}
-                                        placeholder="e.g. Cleared accruals from Main Warehouse stock..."
-                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                        placeholder="e.g. Settle against warehouse stock..."
+                                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
                                     />
+                                </div>
+                            </div>
+
+                            {/* Accruals Stock Allocation Table */}
+                            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                                <div className="bg-slate-100 dark:bg-slate-800/80 px-4 py-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60">
+                                    <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                                        Deduct from Physical Stock (Select / Change Yarn or Material)
+                                    </span>
+                                    <span className="text-xs text-slate-400 font-semibold">
+                                        {stockSettleRows.length} Batch(es)
+                                    </span>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-xs sm:text-sm">
+                                        <thead className="bg-slate-50 dark:bg-slate-800/40 uppercase tracking-wider text-[11px] font-black text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700/40">
+                                            <tr>
+                                                <th className="p-3 w-40">Accrual # / Stage</th>
+                                                <th className="p-3 min-w-[280px]">Physical Stock Item to Deduct</th>
+                                                <th className="p-3 min-w-[180px]">Warehouse Lot (Optional)</th>
+                                                <th className="p-3 text-right w-28">Settle Qty</th>
+                                                <th className="p-3 text-right w-28">Stock Rate (PKR)</th>
+                                                <th className="p-3 text-right w-32">Total Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                            {stockSettleRows.map((r, idx) => {
+                                                const isYarnStage = r.stage === "RAW" || r.serviceType === "RAW_YARN";
+                                                const isWeavingStage = r.stage === "GREY" || r.serviceType === "WEAVING" || r.serviceType === "KNITTING";
+                                                const productLots = availableLots.filter(l => l.productId === r.productId);
+
+                                                return (
+                                                    <tr key={r.accrualId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                                                        {/* Accrual Info */}
+                                                        <td className="p-3 align-top">
+                                                            <div className="font-mono font-black text-indigo-600 dark:text-indigo-400">
+                                                                {r.accrualNo}
+                                                            </div>
+                                                            <span className={cn(
+                                                                "inline-block px-1.5 py-0.5 rounded text-[9px] font-black uppercase mt-1",
+                                                                isYarnStage ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" :
+                                                                isWeavingStage ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" :
+                                                                "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300"
+                                                            )}>
+                                                                {isYarnStage ? "🧶 RAW YARN" : isWeavingStage ? "🧵 WEAVING" : "🎨 DYEING"}
+                                                            </span>
+                                                            <div className="text-[10px] text-slate-400 mt-1 line-clamp-1" title={r.originalProductName}>
+                                                                Orig: {r.originalProductName}
+                                                            </div>
+                                                        </td>
+
+                                                        {/* Product Selector (Editable Yarn / Material from stock) */}
+                                                        <td className="p-3 align-top">
+                                                            <select
+                                                                value={r.productId}
+                                                                onChange={(e) => updateStockSettleRow(idx, 'productId', e.target.value)}
+                                                                className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                                            >
+                                                                <option value="">Select Yarn / Stock Product...</option>
+                                                                {products
+                                                                    .slice()
+                                                                    .sort((a, b) => {
+                                                                        if (isYarnStage) {
+                                                                            const aY = a.name.includes('YARN') || a.name.includes('DTY') || a.name.includes('FDY');
+                                                                            const bY = b.name.includes('YARN') || b.name.includes('DTY') || b.name.includes('FDY');
+                                                                            if (aY && !bY) return -1;
+                                                                            if (!aY && bY) return 1;
+                                                                        }
+                                                                        return a.name.localeCompare(b.name);
+                                                                    })
+                                                                    .map((p: any) => (
+                                                                        <option key={p.id} value={p.id}>
+                                                                            {p.name} ({p.code}){p.hsCode ? ` • HS: ${p.hsCode}` : ''}
+                                                                        </option>
+                                                                    ))
+                                                                }
+                                                            </select>
+                                                            {r.productId && (
+                                                                <div className="flex items-center gap-2 mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                                                    <span>✓ Stock will be deducted for this product</span>
+                                                                </div>
+                                                            )}
+                                                        </td>
+
+                                                        {/* Lot / Batch Selection */}
+                                                        <td className="p-3 align-top">
+                                                            {productLots.length > 0 ? (
+                                                                <select
+                                                                    value={r.lotNo || ""}
+                                                                    onChange={(e) => {
+                                                                        const chosenLot = productLots.find(l => l.invoiceNo === e.target.value);
+                                                                        updateStockSettleRow(idx, 'lotNo', e.target.value);
+                                                                        if (chosenLot?.rate) {
+                                                                            updateStockSettleRow(idx, 'rate', chosenLot.rate);
+                                                                        }
+                                                                    }}
+                                                                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                >
+                                                                    <option value="">General Stock Lot</option>
+                                                                    {productLots.map((lot: any) => (
+                                                                        <option key={lot.id} value={lot.invoiceNo}>
+                                                                            {lot.invoiceNo} (Avail: {Number(lot.qty).toLocaleString()} {lot.unitName} @ Rs. {lot.rate})
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            ) : (
+                                                                <input
+                                                                    type="text"
+                                                                    value={r.lotNo || ""}
+                                                                    onChange={(e) => updateStockSettleRow(idx, 'lotNo', e.target.value)}
+                                                                    placeholder="Lot ref (Optional)..."
+                                                                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                />
+                                                            )}
+                                                        </td>
+
+                                                        {/* Settle Qty */}
+                                                        <td className="p-3 align-top text-right">
+                                                            <div className="flex items-center gap-1 justify-end">
+                                                                <input
+                                                                    type="number"
+                                                                    value={r.qty}
+                                                                    onChange={(e) => updateStockSettleRow(idx, 'qty', parseFloat(e.target.value) || 0)}
+                                                                    className="w-24 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-right text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                />
+                                                                <span className="text-xs font-semibold text-slate-400">{r.unitCode}</span>
+                                                            </div>
+                                                        </td>
+
+                                                        {/* Stock Rate */}
+                                                        <td className="p-3 align-top text-right">
+                                                            <input
+                                                                type="number"
+                                                                value={r.rate}
+                                                                onChange={(e) => updateStockSettleRow(idx, 'rate', parseFloat(e.target.value) || 0)}
+                                                                className="w-24 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-right text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                                            />
+                                                        </td>
+
+                                                        {/* Line Total */}
+                                                        <td className="p-3 align-top text-right font-black text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm whitespace-nowrap">
+                                                            Rs. {(Number(r.qty || 0) * Number(r.rate || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 
@@ -1710,44 +1928,49 @@ export default function NewPurchaseInvoicePage() {
                                     <span>Automated Accounting & Inventory Flow:</span>
                                 </p>
                                 <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-emerald-700 dark:text-emerald-400">
-                                    <li><strong>Stock Ledger:</strong> Issues physical inventory (<code className="font-mono">qtyOut</code>) from the selected warehouse.</li>
-                                    <li><strong>GL Entry:</strong> Debits <code className="font-mono">Accrued Liabilities (2130)</code> to clear unbilled expenses and credits <code className="font-mono">Raw Material Inventory (1310)</code>.</li>
+                                    <li><strong>Physical Stock Ledger:</strong> Deducts stock (<code className="font-mono">StockLedger Out</code>) for the selected Yarn/Material product from warehouse.</li>
+                                    <li><strong>GL Entry:</strong> Debits <code className="font-mono">Accrued Liabilities (2130)</code> to clear unbilled accruals and credits <code className="font-mono">Raw Material Inventory (1310)</code>. Any rate difference automatically balances to Variance/COGS.</li>
                                     <li><strong>Accrual Status:</strong> Marked as <code className="font-mono">BILLED / SETTLED</code>. Zero vendor payable created.</li>
                                 </ul>
                             </div>
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="p-5 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
-                            <button
-                                type="button"
-                                disabled={isStockSettling}
-                                onClick={() => setIsStockSettleModalOpen(false)}
-                                className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs uppercase tracking-wider"
-                            >
-                                Back
-                            </button>
-                            <button
-                                type="button"
-                                disabled={isStockSettling || !stockSettleWarehouseId}
-                                onClick={handleStockSettleConfirm}
-                                className={cn(
-                                    "px-6 py-2.5 rounded-xl font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-600/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2",
-                                    (isStockSettling || !stockSettleWarehouseId) && "opacity-50 cursor-not-allowed"
-                                )}
-                            >
-                                {isStockSettling ? (
-                                    <>
-                                        <Sparkles size={16} className="animate-spin" />
-                                        <span>Settling Stock...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <CheckCircle2 size={16} />
-                                        <span>Confirm Stock Settlement</span>
-                                    </>
-                                )}
-                            </button>
+                        <div className="p-5 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+                            <div className="text-xs font-bold text-slate-500">
+                                Total Settled: <span className="font-black text-emerald-600 dark:text-emerald-400">Rs. {stockSettleRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.rate) || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    disabled={isStockSettling}
+                                    onClick={() => setIsStockSettleModalOpen(false)}
+                                    className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs uppercase tracking-wider"
+                                >
+                                    Back
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={isStockSettling || !stockSettleWarehouseId || stockSettleRows.some(r => !r.productId || !r.qty)}
+                                    onClick={handleStockSettleConfirm}
+                                    className={cn(
+                                        "px-6 py-2.5 rounded-xl font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-600/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2",
+                                        (isStockSettling || !stockSettleWarehouseId || stockSettleRows.some(r => !r.productId || !r.qty)) && "opacity-50 cursor-not-allowed"
+                                    )}
+                                >
+                                    {isStockSettling ? (
+                                        <>
+                                            <Sparkles size={16} className="animate-spin" />
+                                            <span>Settling Stock...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle2 size={16} />
+                                            <span>Confirm Stock Settlement</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

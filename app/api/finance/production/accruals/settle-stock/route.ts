@@ -8,14 +8,20 @@ export async function POST(req: NextRequest) {
         if (error) return error;
 
         const body = await req.json();
-        const { accrualIds, warehouseId, date, remarks } = body;
+        const { accrualIds, items, warehouseId, date, remarks } = body;
 
-        if (!accrualIds || !Array.isArray(accrualIds) || accrualIds.length === 0) {
-            return NextResponse.json({ success: false, error: "Please select at least one accrual to settle." }, { status: 400 });
+        // Support both structured items array or plain accrualIds
+        const settlementItems: any[] = [];
+        if (items && Array.isArray(items) && items.length > 0) {
+            settlementItems.push(...items);
+        } else if (accrualIds && Array.isArray(accrualIds) && accrualIds.length > 0) {
+            accrualIds.forEach((id: string) => {
+                settlementItems.push({ accrualId: id });
+            });
         }
 
-        if (!warehouseId) {
-            return NextResponse.json({ success: false, error: "Please select a warehouse to deduct physical stock from." }, { status: 400 });
+        if (settlementItems.length === 0) {
+            return NextResponse.json({ success: false, error: "Please select at least one accrual to settle." }, { status: 400 });
         }
 
         const settlementDate = date ? new Date(date) : new Date();
@@ -42,7 +48,23 @@ export async function POST(req: NextRequest) {
                 });
             }
 
-            for (const accId of accrualIds) {
+            // Find Variance / Expense account if rate difference occurs
+            let varianceAccount = await tx.account.findFirst({
+                where: {
+                    companyId,
+                    OR: [
+                        { name: { contains: 'Variance', mode: 'insensitive' } },
+                        { name: { contains: 'Cost of Goods Sold', mode: 'insensitive' } },
+                        { code: '5000' },
+                        { type: 'EXPENSE', isPosting: true }
+                    ]
+                }
+            });
+
+            for (const item of settlementItems) {
+                const accId = item.accrualId;
+                if (!accId) continue;
+
                 let pAccrual: any = null;
                 if (pAccrualGetter?.findUnique) {
                     pAccrual = await pAccrualGetter.findUnique({
@@ -71,29 +93,44 @@ export async function POST(req: NextRequest) {
                 const remainingQty = Math.max(0, totalQty - billedQty);
                 if (remainingQty <= 0) continue;
 
-                const rate = Number(pAccrual.rate || 0);
-                const totalSettlementValue = remainingQty * rate;
+                // Determine effective settlement values
+                const qtyToSettle = (Number(item.qty) > 0) ? Math.min(Number(item.qty), remainingQty) : remainingQty;
+                const originalRate = Number(pAccrual.rate || 0);
+                const stockRate = (Number(item.rate) > 0) ? Number(item.rate) : originalRate;
+                
+                // Which Product is actually being deducted from stock?
+                // User can select a different yarn / product from their physical stock!
+                const productIdToDeduct = item.productId || pAccrual.productId;
+                const whToUse = item.warehouseId || warehouseId;
+
+                if (!whToUse) {
+                    throw new Error(`Target warehouse is required to deduct stock for ${pAccrual.accrualNo}.`);
+                }
+
+                const totalAccrualValue = qtyToSettle * originalRate;
+                const totalStockDeductValue = qtyToSettle * stockRate;
+                const lotRef = item.lotNo ? `-[${item.lotNo}]` : '';
 
                 // 1. Deduct Physical Stock from Warehouse (StockLedger Out)
                 await tx.stockLedger.create({
                     data: {
                         companyId,
-                        productId: pAccrual.productId,
-                        warehouseId: warehouseId,
+                        productId: productIdToDeduct,
+                        warehouseId: whToUse,
                         date: settlementDate,
                         qtyIn: 0,
-                        qtyOut: remainingQty,
-                        costRate: rate,
+                        qtyOut: qtyToSettle,
+                        costRate: stockRate,
                         refType: 'PRODUCTION',
                         refId: pAccrual.productionId || pAccrual.id,
                         stage: pAccrual.stage || 'RAW',
-                        batchNo: `STOCK-SETTLE-[${pAccrual.accrualNo}]`
+                        batchNo: `STOCK-SETTLE-[${pAccrual.accrualNo}]${lotRef}`
                     }
                 });
 
                 // 2. Identify Product's Physical Inventory Asset Account (Credit side)
                 const inProduct = await tx.product.findUnique({
-                    where: { id: pAccrual.productId },
+                    where: { id: productIdToDeduct },
                     include: { Category: true }
                 });
                 let inventoryAccount = inProduct?.inventoryAccountId || inProduct?.Category?.wipAccountId;
@@ -105,10 +142,48 @@ export async function POST(req: NextRequest) {
                 }
 
                 // 3. Post General Ledger Entry
-                // Debit: Accrued Liabilities (2130) -> clears the pending unbilled liability
+                // Debit: Accrued Liabilities (2130) -> clears the booked unbilled liability
                 // Credit: Raw Material Inventory (1310) -> reduces the physical inventory asset
+                // Any difference between original accrual rate and stock rate balances to Variance / COGS
                 if (accruedLiabilityAcc && inventoryAccount) {
                     const jvNo = `JV-SETTLE-${Date.now().toString().slice(-6)}`;
+                    const rateVariance = totalAccrualValue - totalStockDeductValue;
+
+                    const glLines: any[] = [
+                        {
+                            accountId: accruedLiabilityAcc.id,
+                            debit: totalAccrualValue,
+                            credit: 0,
+                            narration: `Clear Unbilled Accrual [${pAccrual.accrualNo}] (${qtyToSettle} @ Rs. ${originalRate})`
+                        },
+                        {
+                            accountId: inventoryAccount,
+                            debit: 0,
+                            credit: totalStockDeductValue,
+                            narration: `Physical Stock Out from Warehouse: ${inProduct?.name || 'Raw Material'} (${qtyToSettle} @ Rs. ${stockRate})`
+                        }
+                    ];
+
+                    if (Math.abs(rateVariance) > 0.01 && varianceAccount) {
+                        if (rateVariance > 0) {
+                            // Accrued liability was higher than actual stock cost -> favorable variance (Credit)
+                            glLines.push({
+                                accountId: varianceAccount.id,
+                                debit: 0,
+                                credit: rateVariance,
+                                narration: `Accrual vs Physical Stock Rate Variance [${pAccrual.accrualNo}]`
+                            });
+                        } else {
+                            // Stock cost was higher than accrued liability -> unfavorable variance (Debit)
+                            glLines.push({
+                                accountId: varianceAccount.id,
+                                debit: Math.abs(rateVariance),
+                                credit: 0,
+                                narration: `Accrual vs Physical Stock Rate Variance [${pAccrual.accrualNo}]`
+                            });
+                        }
+                    }
+
                     await tx.journalEntry.create({
                         data: {
                             companyId,
@@ -116,44 +191,35 @@ export async function POST(req: NextRequest) {
                             date: settlementDate,
                             type: 'JOURNAL',
                             reference: pAccrual.accrualNo,
-                            narration: `Settle Accrual [${pAccrual.accrualNo}] against Physical Warehouse Stock - ${inProduct?.name || 'Raw Material'} (${remainingQty} @ Rs. ${rate})`,
-                            lines: {
-                                create: [
-                                    {
-                                        accountId: accruedLiabilityAcc.id,
-                                        debit: totalSettlementValue,
-                                        credit: 0,
-                                        narration: `Clear Unbilled Accrual [${pAccrual.accrualNo}]`
-                                    },
-                                    {
-                                        accountId: inventoryAccount,
-                                        debit: 0,
-                                        credit: totalSettlementValue,
-                                        narration: `Physical Stock Out from Warehouse for [${pAccrual.accrualNo}]`
-                                    }
-                                ]
-                            }
+                            narration: `Settle Accrual [${pAccrual.accrualNo}] against Physical Stock: ${inProduct?.name || 'Raw Material'} (${qtyToSettle} @ Rs. ${stockRate})`,
+                            lines: { create: glLines }
                         }
                     });
                 }
 
-                // 4. Update ProductionAccrual status to BILLED / SETTLED
-                const newBilledQty = billedQty + remainingQty;
+                // 4. Update ProductionAccrual status & settled details
+                const newBilledQty = billedQty + qtyToSettle;
+                const newStatus = newBilledQty >= (totalQty - 0.001) ? 'BILLED' : 'PARTIALLY_BILLED';
+                const settledNote = `[Settled from Stock: ${inProduct?.name || 'Physical Stock'} - ${qtyToSettle} @ Rs. ${stockRate}]`;
+                const finalRemarks = `${pAccrual.remarks || ''} ${settledNote}`.trim();
+
                 if (pAccrualGetter?.update) {
                     await pAccrualGetter.update({
                         where: { id: pAccrual.id },
                         data: {
+                            productId: productIdToDeduct, // Update to the actual yarn/product settled
                             billedQty: newBilledQty,
-                            status: 'BILLED',
-                            remarks: `${pAccrual.remarks || ''} [Settled from Warehouse Stock]`.trim()
+                            status: newStatus,
+                            remarks: finalRemarks
                         }
                     });
                 } else {
                     await tx.$executeRaw`
                         UPDATE "ProductionAccrual"
-                        SET "billedQty" = ${newBilledQty},
-                            "status" = 'BILLED',
-                            "remarks" = ${`${pAccrual.remarks || ''} [Settled from Warehouse Stock]`.trim()},
+                        SET "productId" = ${productIdToDeduct},
+                            "billedQty" = ${newBilledQty},
+                            "status" = ${newStatus},
+                            "remarks" = ${finalRemarks},
                             "updatedAt" = NOW()
                         WHERE "id" = ${pAccrual.id}
                     `;
@@ -161,8 +227,9 @@ export async function POST(req: NextRequest) {
 
                 settledList.push({
                     accrualNo: pAccrual.accrualNo,
-                    qty: remainingQty,
-                    amount: totalSettlementValue
+                    productName: inProduct?.name || pAccrual.productName,
+                    qty: qtyToSettle,
+                    amount: totalStockDeductValue
                 });
             }
 

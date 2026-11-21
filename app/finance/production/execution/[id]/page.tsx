@@ -14,7 +14,11 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
 
     // Stock settlement modal state
     const [warehouses, setWarehouses] = useState<any[]>([]);
+    const [products, setProducts] = useState<any[]>([]);
     const [selectedAccrualForStock, setSelectedAccrualForStock] = useState<any>(null);
+    const [stockSettleProductId, setStockSettleProductId] = useState("");
+    const [stockSettleQty, setStockSettleQty] = useState<number | string>("");
+    const [stockSettleRate, setStockSettleRate] = useState<number | string>("");
     const [stockSettleWarehouseId, setStockSettleWarehouseId] = useState("");
     const [stockSettleDate, setStockSettleDate] = useState(new Date().toISOString().split("T")[0]);
     const [stockSettleRemarks, setStockSettleRemarks] = useState("");
@@ -31,12 +35,25 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
                 }
             })
             .catch(console.error);
+
+        authenticatedFetch("/api/inventory/products")
+            .then(r => r.json())
+            .then(j => {
+                if (j.success && j.data) {
+                    setProducts(j.data);
+                }
+            })
+            .catch(console.error);
     }, [id]);
 
     const handleSingleStockSettle = async () => {
         if (!selectedAccrualForStock) return;
         if (!stockSettleWarehouseId) {
             alert("Please select a target warehouse to deduct physical stock from.");
+            return;
+        }
+        if (!stockSettleProductId) {
+            alert("Please select a product/yarn from stock to deduct.");
             return;
         }
 
@@ -46,10 +63,18 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    accrualIds: [selectedAccrualForStock.id],
                     warehouseId: stockSettleWarehouseId,
                     date: stockSettleDate,
-                    remarks: stockSettleRemarks || `Settled from stock for ${selectedAccrualForStock.accrualNo}`
+                    remarks: stockSettleRemarks || `Settled from stock for ${selectedAccrualForStock.accrualNo}`,
+                    items: [
+                        {
+                            accrualId: selectedAccrualForStock.id,
+                            productId: stockSettleProductId,
+                            qty: Number(stockSettleQty) || Number(selectedAccrualForStock.qty),
+                            rate: Number(stockSettleRate) || Number(selectedAccrualForStock.rate),
+                            warehouseId: stockSettleWarehouseId
+                        }
+                    ]
                 })
             });
             const data = await res.json();
@@ -393,6 +418,9 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
                                                                         type="button"
                                                                         onClick={() => {
                                                                             setSelectedAccrualForStock(acc);
+                                                                            setStockSettleProductId(acc.productId || (products[0]?.id || ""));
+                                                                            setStockSettleQty(acc.qty || "");
+                                                                            setStockSettleRate(acc.rate || "");
                                                                             if (warehouses.length > 0 && !stockSettleWarehouseId) {
                                                                                 setStockSettleWarehouseId(warehouses[0].id);
                                                                             }
@@ -510,6 +538,71 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
 
                             {/* Inputs */}
                             <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Physical Stock Item to Deduct (Change Yarn / Material) *
+                                    </label>
+                                    <select
+                                        value={stockSettleProductId}
+                                        onChange={(e) => {
+                                            setStockSettleProductId(e.target.value);
+                                            const p = products.find(prod => prod.id === e.target.value);
+                                            if (p && (p.purchasePrice || p.standardCost)) {
+                                                setStockSettleRate(p.purchasePrice || p.standardCost);
+                                            }
+                                        }}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                        <option value="">Select Yarn / Material from Stock...</option>
+                                        {products
+                                            .slice()
+                                            .sort((a, b) => {
+                                                const isYarn = selectedAccrualForStock.stage === "RAW" || selectedAccrualForStock.serviceType === "RAW_YARN";
+                                                if (isYarn) {
+                                                    const aY = a.name.includes('YARN') || a.name.includes('DTY') || a.name.includes('FDY');
+                                                    const bY = b.name.includes('YARN') || b.name.includes('DTY') || b.name.includes('FDY');
+                                                    if (aY && !bY) return -1;
+                                                    if (!aY && bY) return 1;
+                                                }
+                                                return a.name.localeCompare(b.name);
+                                            })
+                                            .map((p: any) => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.name} ({p.code}){p.hsCode ? ` • HS: ${p.hsCode}` : ''}
+                                                </option>
+                                            ))
+                                        }
+                                    </select>
+                                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">
+                                        ✓ Physical stock of this selected product will be deducted from your warehouse.
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                            Settle Quantity ({selectedAccrualForStock.Unit?.code || 'KG'}) *
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={stockSettleQty}
+                                            onChange={(e) => setStockSettleQty(e.target.value)}
+                                            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-black text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                            Stock Cost Rate (PKR) *
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={stockSettleRate}
+                                            onChange={(e) => setStockSettleRate(e.target.value)}
+                                            className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                        />
+                                    </div>
+                                </div>
+
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                                         Target Warehouse (Physical Stock Deduction) *
