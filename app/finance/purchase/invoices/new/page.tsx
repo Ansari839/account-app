@@ -407,9 +407,76 @@ export default function NewPurchaseInvoicePage() {
         return map;
     }, [availableLots]);
 
-    // Filtered lots for the lot browser modal
+    // Helper to determine if an item/lot is strictly Yarn (excluding printing, dyeing, finishing, fabrics, etc.)
+    const isYarnProduct = (p: any) => {
+        if (!p) return false;
+        if (p.isService) return false;
+        const name = (p.name || p.productName || '').toUpperCase();
+        const unit = (p.Unit?.code || p.unitName || p.unitCode || '').toUpperCase();
+        const stage = (p.stage || '').toUpperCase();
+
+        // Disqualify known non-yarn categories (meters, fabrics, processing)
+        if (
+            name.includes('PRINTING') ||
+            name.includes('DYEING') ||
+            name.includes('FINISHING') ||
+            name.includes('WEAVING') ||
+            name.includes('STITCHING') ||
+            name.includes('PACKING') ||
+            name.includes('CARTON') ||
+            unit === 'MTR' ||
+            unit === 'METER' ||
+            unit === 'METERS' ||
+            unit === 'YDS' ||
+            unit === 'PCS'
+        ) {
+            return false;
+        }
+
+        // Qualify Yarn
+        if (
+            name.includes('YARN') ||
+            name.includes('DTY') ||
+            name.includes('FDY') ||
+            name.includes('MVS') ||
+            name.includes('SPUN') ||
+            name.includes('FILAMENT') ||
+            stage === 'RAW'
+        ) {
+            return true;
+        }
+
+        return false;
+    };
+
+    // Filtered lots for the lot browser modal (Strictly filters to Yarn when settling Yarn accruals)
     const filteredStockLots = useMemo(() => {
+        const activeGroup = activeAccrualGroupIndex !== null ? stockSettleRows[activeAccrualGroupIndex] : null;
+        const isYarnStage = activeGroup ? (
+            activeGroup.stage === "RAW" || 
+            activeGroup.serviceType === "RAW_YARN" || 
+            activeGroup.originalProductName?.toUpperCase().includes("YARN")
+        ) : false;
+        const isWeavingStage = activeGroup ? (
+            activeGroup.stage === "GREY" || 
+            activeGroup.serviceType === "WEAVING" || 
+            activeGroup.serviceType === "KNITTING"
+        ) : false;
+
         return availableLots
+            .filter(lot => {
+                // If settling a Yarn accrual, strictly show ONLY Yarn lots!
+                if (isYarnStage) {
+                    return isYarnProduct(lot);
+                }
+                // If settling a Weaving/Grey accrual, strictly show fabric/grey lots
+                if (isWeavingStage) {
+                    const name = (lot.productName || '').toUpperCase();
+                    const stage = (lot.stage || '').toUpperCase();
+                    return stage === 'GREY' || name.includes('FABRIC') || name.includes('GREY');
+                }
+                return true;
+            })
             .filter(lot => {
                 if (lotModalFilter === "ALL") return true;
                 const isEfs = Boolean(lot.isEFS || (lot.invoiceNo && lot.invoiceNo.includes("[EFS]")));
@@ -432,7 +499,7 @@ export default function NewPurchaseInvoicePage() {
                 );
             })
             .sort((a, b) => b.qty - a.qty);
-    }, [availableLots, lotModalFilter, lotModalSearch]);
+    }, [availableLots, lotModalFilter, lotModalSearch, activeAccrualGroupIndex, stockSettleRows]);
 
     // Helpers to manage multi-lot deduction lines per accrual group
     const handleAddDeductionLine = (groupIndex: number) => {
@@ -869,6 +936,13 @@ export default function NewPurchaseInvoicePage() {
                 };
             }
         });
+
+    const activeAccrualBatch = activeAccrualGroupIndex !== null ? stockSettleRows[activeAccrualGroupIndex] : null;
+    const isYarnActiveModal = activeAccrualBatch ? (
+        activeAccrualBatch.stage === "RAW" ||
+        activeAccrualBatch.serviceType === "RAW_YARN" ||
+        activeAccrualBatch.originalProductName?.toUpperCase().includes("YARN")
+    ) : false;
 
     return (
         <MainLayout>
@@ -1815,16 +1889,28 @@ export default function NewPurchaseInvoicePage() {
                                         const initialGroups = selectedEntries.map(([accrualId, alloc]) => {
                                             const s = sources.find(src => src.id === accrualId);
                                             const targetQty = alloc.allocatedQty || s?.remainingQty || 0;
-                                            const matchingProdId = s?.productId || '';
+                                            const isYarn = s?.stage === 'RAW' || s?.serviceType === 'RAW_YARN' || s?.productName?.toUpperCase().includes('YARN');
+                                            let matchingProdId = s?.productId || '';
+
+                                            // If matchingProdId is missing or not a yarn (and this is a yarn accrual), auto-match first yarn with stock
+                                            if (isYarn && (!matchingProdId || !isYarnProduct(products.find(p => p.id === matchingProdId)))) {
+                                                const firstYarnWithStock = products.find(p => isYarnProduct(p) && (productStockMap[p.id]?.totalQty || 0) > 0);
+                                                const firstYarn = firstYarnWithStock || products.find(p => isYarnProduct(p));
+                                                if (firstYarn) {
+                                                    matchingProdId = firstYarn.id;
+                                                }
+                                            }
+
                                             const matchingLots = matchingProdId ? (productStockMap[matchingProdId]?.lots || []) : [];
                                             const firstLot = matchingLots[0];
+                                            const pickedProduct = products.find(p => p.id === matchingProdId);
 
                                             const defaultDeduction = {
                                                 id: Date.now().toString() + Math.random(),
                                                 productId: matchingProdId,
-                                                productName: s?.productName || 'Raw Material',
-                                                productCode: s?.productCode || '',
-                                                hsCode: s?.hsCode || '',
+                                                productName: pickedProduct?.name || s?.productName || 'Raw Material',
+                                                productCode: pickedProduct?.code || s?.productCode || '',
+                                                hsCode: pickedProduct?.hsCode || s?.hsCode || '',
                                                 lotNo: firstLot ? firstLot.invoiceNo : '',
                                                 isEFS: firstLot ? Boolean(firstLot.isEFS || (firstLot.invoiceNo && firstLot.invoiceNo.includes('[EFS]'))) : false,
                                                 qty: targetQty,
@@ -1870,7 +1956,7 @@ export default function NewPurchaseInvoicePage() {
             {/* Settle from Warehouse Stock Confirmation Modal */}
             {isStockSettleModalOpen && (
                 <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
-                    <div className="w-full max-w-6xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+                    <div className="w-full max-w-[1550px] sm:w-[96vw] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh] animate-in fade-in zoom-in-95 duration-200">
                         {/* Modal Header */}
                         <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -2067,6 +2153,17 @@ export default function NewPurchaseInvoicePage() {
                                                         {group.deductions.map((d: any, dIdx: number) => {
                                                             const productLots = d.productId ? (productStockMap[d.productId]?.lots || []) : [];
                                                             const isEfs = Boolean(d.isEFS || (d.lotNo && d.lotNo.includes("[EFS]")));
+                                                            const selectableProducts = products
+                                                                .filter(p => {
+                                                                    if (isYarnStage) return isYarnProduct(p);
+                                                                    if (isWeavingStage) {
+                                                                        const name = (p.name || '').toUpperCase();
+                                                                        const stage = (p.stage || '').toUpperCase();
+                                                                        return !p.isService && (stage === 'GREY' || name.includes('FABRIC') || name.includes('GREY'));
+                                                                    }
+                                                                    return true;
+                                                                })
+                                                                .sort((a, b) => a.name.localeCompare(b.name));
 
                                                             return (
                                                                 <tr key={d.id || dIdx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
@@ -2077,33 +2174,21 @@ export default function NewPurchaseInvoicePage() {
                                                                             onChange={(e) => handleUpdateDeduction(gIdx, dIdx, 'productId', e.target.value)}
                                                                             className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
                                                                         >
-                                                                            <option value="">Select Yarn / Material from stock...</option>
-                                                                            {products
-                                                                                .slice()
-                                                                                .sort((a, b) => {
-                                                                                    if (isYarnStage) {
-                                                                                        const aY = a.name.includes('YARN') || a.name.includes('DTY') || a.name.includes('FDY');
-                                                                                        const bY = b.name.includes('YARN') || b.name.includes('DTY') || b.name.includes('FDY');
-                                                                                        if (aY && !bY) return -1;
-                                                                                        if (!aY && bY) return 1;
-                                                                                    }
-                                                                                    return a.name.localeCompare(b.name);
-                                                                                })
-                                                                                .map((p: any) => {
-                                                                                    const stockInfo = productStockMap[p.id];
-                                                                                    const availKg = stockInfo?.totalQty || 0;
-                                                                                    const availLots = stockInfo?.lots || [];
-                                                                                    const avgRate = availLots.length > 0 && availKg > 0
-                                                                                        ? (availLots.reduce((acc: number, l: any) => acc + (Number(l.qty) * Number(l.rate)), 0) / availKg).toFixed(2)
-                                                                                        : (p.standardCost || p.purchasePrice || 0);
+                                                                            <option value="">{isYarnStage ? "Select Yarn from warehouse stock..." : "Select Stock Product..."}</option>
+                                                                            {selectableProducts.map((p: any) => {
+                                                                                const stockInfo = productStockMap[p.id];
+                                                                                const availKg = stockInfo?.totalQty || 0;
+                                                                                const availLots = stockInfo?.lots || [];
+                                                                                const avgRate = availLots.length > 0 && availKg > 0
+                                                                                    ? (availLots.reduce((acc: number, l: any) => acc + (Number(l.qty) * Number(l.rate)), 0) / availKg).toFixed(2)
+                                                                                    : (p.standardCost || p.purchasePrice || 0);
 
-                                                                                    return (
-                                                                                        <option key={p.id} value={p.id}>
-                                                                                            {p.name} {p.code ? `(${p.code})` : ''} • HS: {p.hsCode || 'N/A'} • [Stock Avail: {availKg.toLocaleString()} KG @ Rs. {avgRate}]
-                                                                                        </option>
-                                                                                    );
-                                                                                })
-                                                                            }
+                                                                                return (
+                                                                                    <option key={p.id} value={p.id}>
+                                                                                        {p.name} {p.code ? `(${p.code})` : ''} • HS: {p.hsCode || 'N/A'} • [Stock Avail: {availKg.toLocaleString()} KG @ Rs. {avgRate}]
+                                                                                    </option>
+                                                                                );
+                                                                            })}
                                                                         </select>
                                                                         {d.productId && (
                                                                             <div className="flex items-center gap-2 mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
@@ -2261,7 +2346,7 @@ export default function NewPurchaseInvoicePage() {
             {/* Dedicated Stock Lot Browser Modal (Matching User's Execution Lot Browser) */}
             {isLotBrowserModalOpen && activeAccrualGroupIndex !== null && (
                 <div className="fixed inset-0 z-[70] bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
-                    <div className="w-full max-w-5xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+                    <div className="w-full max-w-[1550px] sm:w-[96vw] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh]">
                         {/* Modal Header */}
                         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -2270,10 +2355,13 @@ export default function NewPurchaseInvoicePage() {
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                                        Select Stock Lot (Invoices, GRN & Opening Stock)
+                                        {isYarnActiveModal ? "Select Yarn Lot (Invoices, GRN & Opening Stock)" : "Select Stock Lot (Invoices, GRN & Opening Stock)"}
                                     </h3>
                                     <p className="text-xs text-slate-400">
-                                        Strictly filtered to warehouse raw material lots. Click &quot;Allocate&quot; to assign lot quantity to Accrual #{stockSettleRows[activeAccrualGroupIndex]?.accrualNo}.
+                                        {isYarnActiveModal
+                                            ? `Strictly filtered to Raw Yarn warehouse lots only (non-yarn items filtered out). Click "Allocate" to assign lot quantity to Accrual #${activeAccrualBatch?.accrualNo}.`
+                                            : `Strictly filtered to warehouse raw material lots. Click "Allocate" to assign lot quantity to Accrual #${activeAccrualBatch?.accrualNo}.`
+                                        }
                                     </p>
                                 </div>
                             </div>
