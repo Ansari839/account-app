@@ -29,6 +29,8 @@ export async function POST(req: NextRequest) {
         const result = await prisma.$transaction(async (tx) => {
             const settledList = [];
             const pAccrualGetter = (tx as any).productionAccrual || (prisma as any).productionAccrual;
+            // Track cumulative billed qty per accrual in case multiple lots settle the same accrual
+            const accrualCumulativeBilled: Record<string, number> = {};
 
             // Find Accrued Liability account (Debit side)
             let accruedLiabilityAcc = await tx.account.findFirst({
@@ -89,12 +91,14 @@ export async function POST(req: NextRequest) {
                 if (!pAccrual) continue;
 
                 const totalQty = Number(pAccrual.qty);
-                const billedQty = Number(pAccrual.billedQty || 0);
-                const remainingQty = Math.max(0, totalQty - billedQty);
+                const currentBilled = (accrualCumulativeBilled[accId] !== undefined) ? accrualCumulativeBilled[accId] : Number(pAccrual.billedQty || 0);
+                const remainingQty = Math.max(0, totalQty - currentBilled);
                 if (remainingQty <= 0) continue;
 
                 // Determine effective settlement values
                 const qtyToSettle = (Number(item.qty) > 0) ? Math.min(Number(item.qty), remainingQty) : remainingQty;
+                const newBilledQty = currentBilled + qtyToSettle;
+                accrualCumulativeBilled[accId] = newBilledQty;
                 const originalRate = Number(pAccrual.rate || 0);
                 const stockRate = (Number(item.rate) > 0) ? Number(item.rate) : originalRate;
                 
@@ -198,7 +202,6 @@ export async function POST(req: NextRequest) {
                 }
 
                 // 4. Update ProductionAccrual status & settled details
-                const newBilledQty = billedQty + qtyToSettle;
                 const newStatus = newBilledQty >= (totalQty - 0.001) ? 'BILLED' : 'PARTIALLY_BILLED';
                 const settledNote = `[Settled from Stock: ${inProduct?.name || 'Physical Stock'} - ${qtyToSettle} @ Rs. ${stockRate}]`;
                 const finalRemarks = `${pAccrual.remarks || ''} ${settledNote}`.trim();

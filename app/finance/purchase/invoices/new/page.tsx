@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import MainLayout from "@/components/MainLayout";
 import { authenticatedFetch } from "@/lib/api-client";
 import Combobox from "@/components/Combobox";
@@ -82,6 +82,13 @@ export default function NewPurchaseInvoicePage() {
     const [isStockSettling, setIsStockSettling] = useState(false);
     const [stockSettleRows, setStockSettleRows] = useState<any[]>([]);
     const [availableLots, setAvailableLots] = useState<any[]>([]);
+
+    // Dedicated Stock Lot Browser Modal State (With EFS GD #, Origin, HS Code & Live Stock)
+    const [isLotBrowserModalOpen, setIsLotBrowserModalOpen] = useState(false);
+    const [activeAccrualGroupIndex, setActiveAccrualGroupIndex] = useState<number | null>(null);
+    const [lotModalSearch, setLotModalSearch] = useState("");
+    const [lotModalFilter, setLotModalFilter] = useState<"ALL" | "LOCAL" | "IMPORT_EFS" | "IMPORT_COMMERCIAL" | "OPENING">("ALL");
+    const [lotModalAllocQtys, setLotModalAllocQtys] = useState<Record<string, number | string>>({});
 
     useEffect(() => {
         fetchSettings();
@@ -387,24 +394,187 @@ export default function NewPurchaseInvoicePage() {
         showNotification('success', `Added ${newItems.length} accrual batch(es) to purchase invoice.`);
     };
 
-    const updateStockSettleRow = (index: number, field: string, value: any) => {
+    // Map of product ID -> total stock qty, rate, and lots
+    const productStockMap = useMemo(() => {
+        const map: Record<string, { totalQty: number; avgRate: number; lots: any[] }> = {};
+        availableLots.forEach(lot => {
+            if (!map[lot.productId]) {
+                map[lot.productId] = { totalQty: 0, avgRate: 0, lots: [] };
+            }
+            map[lot.productId].totalQty += Number(lot.qty || 0);
+            map[lot.productId].lots.push(lot);
+        });
+        return map;
+    }, [availableLots]);
+
+    // Filtered lots for the lot browser modal
+    const filteredStockLots = useMemo(() => {
+        return availableLots
+            .filter(lot => {
+                if (lotModalFilter === "ALL") return true;
+                const isEfs = Boolean(lot.isEFS || (lot.invoiceNo && lot.invoiceNo.includes("[EFS]")));
+                const isImport = lot.origin === "IMPORT" || isEfs || (lot.invoiceNo && lot.invoiceNo.includes("[IMPORT]"));
+                if (lotModalFilter === "LOCAL") return !isImport;
+                if (lotModalFilter === "IMPORT_EFS") return isEfs;
+                if (lotModalFilter === "IMPORT_COMMERCIAL") return isImport && !isEfs;
+                if (lotModalFilter === "OPENING") return Boolean(lot.isOpening);
+                return true;
+            })
+            .filter(lot => {
+                if (!lotModalSearch) return true;
+                const q = lotModalSearch.toLowerCase();
+                return (
+                    lot.productName?.toLowerCase().includes(q) ||
+                    lot.productCode?.toLowerCase().includes(q) ||
+                    lot.hsCode?.toLowerCase().includes(q) ||
+                    lot.invoiceNo?.toLowerCase().includes(q) ||
+                    lot.supplierName?.toLowerCase().includes(q)
+                );
+            })
+            .sort((a, b) => b.qty - a.qty);
+    }, [availableLots, lotModalFilter, lotModalSearch]);
+
+    // Helpers to manage multi-lot deduction lines per accrual group
+    const handleAddDeductionLine = (groupIndex: number) => {
         setStockSettleRows(prev => {
             const next = [...prev];
-            next[index] = { ...next[index], [field]: value };
-            if (field === 'productId') {
-                const foundLot = availableLots.find(l => l.productId === value);
-                if (foundLot) {
-                    next[index].rate = foundLot.rate || next[index].rate;
-                    next[index].lotNo = foundLot.invoiceNo || '';
-                } else {
-                    const foundProd = products.find(p => p.id === value);
-                    if (foundProd && (foundProd.purchasePrice || foundProd.standardCost)) {
-                        next[index].rate = foundProd.purchasePrice || foundProd.standardCost || next[index].rate;
-                    }
-                }
+            const group = next[groupIndex];
+            const currentAllocated = group.deductions.reduce((s: number, d: any) => s + (Number(d.qty) || 0), 0);
+            const remainingToAllocate = Math.max(0, group.targetQty - currentAllocated);
+
+            group.deductions.push({
+                id: Date.now().toString() + Math.random(),
+                productId: "",
+                productName: "",
+                productCode: "",
+                hsCode: "",
+                lotNo: "",
+                isEFS: false,
+                qty: remainingToAllocate > 0 ? remainingToAllocate : 0,
+                rate: group.originalRate || 0
+            });
+            return next;
+        });
+    };
+
+    const handleRemoveDeductionLine = (groupIndex: number, deductionIndex: number) => {
+        setStockSettleRows(prev => {
+            const next = [...prev];
+            next[groupIndex].deductions.splice(deductionIndex, 1);
+            if (next[groupIndex].deductions.length === 0) {
+                // Keep at least one line
+                next[groupIndex].deductions.push({
+                    id: Date.now().toString() + Math.random(),
+                    productId: "",
+                    productName: "",
+                    productCode: "",
+                    hsCode: "",
+                    lotNo: "",
+                    isEFS: false,
+                    qty: next[groupIndex].targetQty,
+                    rate: next[groupIndex].originalRate || 0
+                });
             }
             return next;
         });
+    };
+
+    const handleUpdateDeduction = (groupIndex: number, deductionIndex: number, field: string, value: any) => {
+        setStockSettleRows(prev => {
+            const next = [...prev];
+            const d = next[groupIndex].deductions[deductionIndex];
+            d[field] = value;
+
+            if (field === 'productId') {
+                const foundProd = products.find(p => p.id === value);
+                if (foundProd) {
+                    d.productName = foundProd.name;
+                    d.productCode = foundProd.code;
+                    d.hsCode = foundProd.hsCode || '';
+                }
+                const foundLots = productStockMap[value]?.lots || [];
+                if (foundLots.length > 0) {
+                    d.lotNo = foundLots[0].invoiceNo || '';
+                    d.rate = foundLots[0].rate || d.rate;
+                    d.isEFS = Boolean(foundLots[0].isEFS || (foundLots[0].invoiceNo && foundLots[0].invoiceNo.includes('[EFS]')));
+                } else if (foundProd && (foundProd.purchasePrice || foundProd.standardCost)) {
+                    d.rate = foundProd.purchasePrice || foundProd.standardCost || d.rate;
+                    d.lotNo = '';
+                    d.isEFS = false;
+                }
+            }
+
+            if (field === 'lotNo') {
+                const foundLot = availableLots.find(l => l.invoiceNo === value);
+                if (foundLot) {
+                    d.rate = foundLot.rate || d.rate;
+                    d.isEFS = Boolean(foundLot.isEFS || (foundLot.invoiceNo && foundLot.invoiceNo.includes('[EFS]')));
+                }
+            }
+
+            return next;
+        });
+    };
+
+    const handleOpenLotBrowserModal = (groupIndex: number) => {
+        setActiveAccrualGroupIndex(groupIndex);
+        setLotModalSearch("");
+        setLotModalFilter("ALL");
+
+        const group = stockSettleRows[groupIndex];
+        const currentAllocated = group.deductions.reduce((s: number, d: any) => s + (Number(d.qty) || 0), 0);
+        const remainingToAllocate = Math.max(0, group.targetQty - currentAllocated);
+
+        const initQtys: Record<string, number> = {};
+        availableLots.forEach(lot => {
+            initQtys[lot.id] = Math.min(Number(lot.qty || 0), remainingToAllocate > 0 ? remainingToAllocate : Number(lot.qty || 0));
+        });
+        setLotModalAllocQtys(initQtys);
+        setIsLotBrowserModalOpen(true);
+    };
+
+    const handleAllocateLotToActiveGroup = (lot: any, customQty?: number) => {
+        if (activeAccrualGroupIndex === null) return;
+        const groupIndex = activeAccrualGroupIndex;
+        const allocQty = customQty !== undefined ? customQty : Number(lotModalAllocQtys[lot.id] || lot.qty || 0);
+
+        if (isNaN(allocQty) || allocQty <= 0) {
+            showNotification('error', 'Please enter a valid allocation quantity.');
+            return;
+        }
+
+        setStockSettleRows(prev => {
+            const next = [...prev];
+            const group = next[groupIndex];
+
+            // If the group only had 1 empty deduction line, replace it
+            if (group.deductions.length === 1 && !group.deductions[0].productId) {
+                group.deductions = [];
+            }
+
+            // Check if lot already exists in deductions
+            const existing = group.deductions.find((d: any) => d.lotNo === lot.invoiceNo && d.productId === lot.productId);
+            if (existing) {
+                existing.qty = Math.round((Number(existing.qty) + allocQty) * 100) / 100;
+                existing.rate = lot.rate || existing.rate;
+            } else {
+                group.deductions.push({
+                    id: Date.now().toString() + Math.random(),
+                    productId: lot.productId,
+                    productName: lot.productName,
+                    productCode: lot.productCode,
+                    hsCode: lot.hsCode,
+                    lotNo: lot.invoiceNo,
+                    isEFS: Boolean(lot.isEFS || (lot.invoiceNo && lot.invoiceNo.includes('[EFS]'))),
+                    qty: allocQty,
+                    rate: Number(lot.rate || 0)
+                });
+            }
+
+            return next;
+        });
+
+        showNotification('success', `Allocated ${allocQty} KG from ${lot.invoiceNo} to ${stockSettleRows[groupIndex]?.accrualNo}.`);
     };
 
     const handleStockSettleConfirm = async () => {
@@ -418,14 +588,29 @@ export default function NewPurchaseInvoicePage() {
             return;
         }
 
-        for (const r of stockSettleRows) {
-            if (!r.productId) {
-                showNotification('error', `Please select a product/yarn from stock for ${r.accrualNo}.`);
+        const flatItems: any[] = [];
+        for (const group of stockSettleRows) {
+            if (!group.deductions || group.deductions.length === 0) {
+                showNotification('error', `Please allocate stock for accrual ${group.accrualNo}.`);
                 return;
             }
-            if (!r.qty || r.qty <= 0) {
-                showNotification('error', `Invalid quantity for ${r.accrualNo}.`);
-                return;
+            for (const d of group.deductions) {
+                if (!d.productId) {
+                    showNotification('error', `Please select a product/yarn from stock for ${group.accrualNo}.`);
+                    return;
+                }
+                if (!d.qty || Number(d.qty) <= 0) {
+                    showNotification('error', `Invalid deduction quantity for ${group.accrualNo}.`);
+                    return;
+                }
+                flatItems.push({
+                    accrualId: group.accrualId,
+                    productId: d.productId,
+                    qty: Number(d.qty),
+                    rate: Number(d.rate),
+                    lotNo: d.lotNo,
+                    warehouseId: group.warehouseId || targetWh
+                });
             }
         }
 
@@ -435,14 +620,7 @@ export default function NewPurchaseInvoicePage() {
                 warehouseId: targetWh,
                 date: stockSettleDate,
                 remarks: stockSettleRemarks || 'Settled against physical warehouse stock',
-                items: stockSettleRows.map(r => ({
-                    accrualId: r.accrualId,
-                    productId: r.productId,
-                    qty: Number(r.qty),
-                    rate: Number(r.rate),
-                    lotNo: r.lotNo,
-                    warehouseId: r.warehouseId || targetWh
-                }))
+                items: flatItems
             };
 
             const res = await authenticatedFetch('/api/finance/production/accruals/settle-stock', {
@@ -1634,8 +1812,25 @@ export default function NewPurchaseInvoicePage() {
                                             setStockSettleWarehouseId(defaultWhId);
                                         }
 
-                                        const initialRows = selectedEntries.map(([accrualId, alloc]) => {
+                                        const initialGroups = selectedEntries.map(([accrualId, alloc]) => {
                                             const s = sources.find(src => src.id === accrualId);
+                                            const targetQty = alloc.allocatedQty || s?.remainingQty || 0;
+                                            const matchingProdId = s?.productId || '';
+                                            const matchingLots = matchingProdId ? (productStockMap[matchingProdId]?.lots || []) : [];
+                                            const firstLot = matchingLots[0];
+
+                                            const defaultDeduction = {
+                                                id: Date.now().toString() + Math.random(),
+                                                productId: matchingProdId,
+                                                productName: s?.productName || 'Raw Material',
+                                                productCode: s?.productCode || '',
+                                                hsCode: s?.hsCode || '',
+                                                lotNo: firstLot ? firstLot.invoiceNo : '',
+                                                isEFS: firstLot ? Boolean(firstLot.isEFS || (firstLot.invoiceNo && firstLot.invoiceNo.includes('[EFS]'))) : false,
+                                                qty: targetQty,
+                                                rate: firstLot ? (Number(firstLot.rate) || Number(s?.rate || 0)) : (Number(alloc.rate) || Number(s?.rate || 0))
+                                            };
+
                                             return {
                                                 accrualId: s?.id || accrualId,
                                                 accrualNo: s?.accrualNo || '',
@@ -1643,16 +1838,14 @@ export default function NewPurchaseInvoicePage() {
                                                 serviceType: s?.serviceType || 'RAW_YARN',
                                                 originalProductName: s?.productName || 'Raw Material',
                                                 originalProductCode: s?.productCode || '',
+                                                targetQty: targetQty,
                                                 originalRate: s?.rate || 0,
-                                                productId: s?.productId || '',
-                                                qty: alloc.allocatedQty || s?.remainingQty || 0,
                                                 unitCode: s?.unitCode || 'KG',
-                                                rate: alloc.rate || s?.rate || 0,
-                                                lotNo: '',
-                                                warehouseId: defaultWhId
+                                                warehouseId: defaultWhId,
+                                                deductions: [defaultDeduction]
                                             };
                                         });
-                                        setStockSettleRows(initialRows);
+                                        setStockSettleRows(initialGroups);
                                         setIsStockSettleModalOpen(true);
                                     }}
                                     className="px-6 py-3 rounded-2xl font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-xl shadow-emerald-600/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2"
@@ -1705,7 +1898,7 @@ export default function NewPurchaseInvoicePage() {
                         {/* Modal Body */}
                         <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
                             {/* Summary Metrics */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/50">
+                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/50">
                                 <div>
                                     <span className="text-[10px] font-black uppercase text-slate-400">Selected Batches</span>
                                     <p className="text-base font-black text-slate-900 dark:text-white mt-0.5">
@@ -1713,15 +1906,21 @@ export default function NewPurchaseInvoicePage() {
                                     </p>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] font-black uppercase text-slate-400">Total Quantity to Deduct</span>
+                                    <span className="text-[10px] font-black uppercase text-slate-400">Total Required Qty</span>
+                                    <p className="text-base font-black text-slate-700 dark:text-slate-300 mt-0.5">
+                                        {stockSettleRows.reduce((sum, g) => sum + (Number(g.targetQty) || 0), 0).toLocaleString()} Units
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-black uppercase text-slate-400">Total Allocated Qty</span>
                                     <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
-                                        {stockSettleRows.reduce((sum, r) => sum + (Number(r.qty) || 0), 0).toLocaleString()} Units
+                                        {stockSettleRows.reduce((sum, g) => sum + (g.deductions || []).reduce((dSum: number, d: any) => dSum + (Number(d.qty) || 0), 0), 0).toLocaleString()} Units
                                     </p>
                                 </div>
                                 <div>
                                     <span className="text-[10px] font-black uppercase text-slate-400">Total Settlement Value</span>
                                     <p className="text-base font-black text-slate-900 dark:text-white mt-0.5">
-                                        Rs. {stockSettleRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.rate) || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        Rs. {stockSettleRows.reduce((sum, g) => sum + (g.deductions || []).reduce((dSum: number, d: any) => dSum + ((Number(d.qty) || 0) * (Number(d.rate) || 0)), 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                     </p>
                                 </div>
                             </div>
@@ -1773,152 +1972,235 @@ export default function NewPurchaseInvoicePage() {
                                 </div>
                             </div>
 
-                            {/* Accruals Stock Allocation Table */}
-                            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-                                <div className="bg-slate-100 dark:bg-slate-800/80 px-4 py-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60">
-                                    <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                                        Deduct from Physical Stock (Select / Change Yarn or Material)
-                                    </span>
-                                    <span className="text-xs text-slate-400 font-semibold">
-                                        {stockSettleRows.length} Batch(es)
-                                    </span>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-xs sm:text-sm">
-                                        <thead className="bg-slate-50 dark:bg-slate-800/40 uppercase tracking-wider text-[11px] font-black text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700/40">
-                                            <tr>
-                                                <th className="p-3 w-40">Accrual # / Stage</th>
-                                                <th className="p-3 min-w-[280px]">Physical Stock Item to Deduct</th>
-                                                <th className="p-3 min-w-[180px]">Warehouse Lot (Optional)</th>
-                                                <th className="p-3 text-right w-28">Settle Qty</th>
-                                                <th className="p-3 text-right w-28">Stock Rate (PKR)</th>
-                                                <th className="p-3 text-right w-32">Total Value</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                            {stockSettleRows.map((r, idx) => {
-                                                const isYarnStage = r.stage === "RAW" || r.serviceType === "RAW_YARN";
-                                                const isWeavingStage = r.stage === "GREY" || r.serviceType === "WEAVING" || r.serviceType === "KNITTING";
-                                                const productLots = availableLots.filter(l => l.productId === r.productId);
+                            {/* Accruals Stock Allocation Table (Grouped with Multi-Deduction Split & Live Stock) */}
+                            <div className="space-y-4">
+                                {stockSettleRows.map((group, gIdx) => {
+                                    const isYarnStage = group.stage === "RAW" || group.serviceType === "RAW_YARN";
+                                    const isWeavingStage = group.stage === "GREY" || group.serviceType === "WEAVING" || group.serviceType === "KNITTING";
+                                    const allocatedQty = (group.deductions || []).reduce((acc: number, d: any) => acc + (Number(d.qty) || 0), 0);
+                                    const shortfall = group.targetQty - allocatedQty;
+                                    const isCovered = allocatedQty >= group.targetQty && group.targetQty > 0;
+                                    const isPartial = allocatedQty > 0 && allocatedQty < group.targetQty;
 
-                                                return (
-                                                    <tr key={r.accrualId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                                                        {/* Accrual Info */}
-                                                        <td className="p-3 align-top">
-                                                            <div className="font-mono font-black text-indigo-600 dark:text-indigo-400">
-                                                                {r.accrualNo}
-                                                            </div>
-                                                            <span className={cn(
-                                                                "inline-block px-1.5 py-0.5 rounded text-[9px] font-black uppercase mt-1",
-                                                                isYarnStage ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" :
-                                                                isWeavingStage ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" :
-                                                                "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300"
-                                                            )}>
-                                                                {isYarnStage ? "🧶 RAW YARN" : isWeavingStage ? "🧵 WEAVING" : "🎨 DYEING"}
-                                                            </span>
-                                                            <div className="text-[10px] text-slate-400 mt-1 line-clamp-1" title={r.originalProductName}>
-                                                                Orig: {r.originalProductName}
-                                                            </div>
-                                                        </td>
+                                    return (
+                                        <div key={group.accrualId || gIdx} className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+                                            {/* Batch Header Bar */}
+                                            <div className="bg-slate-100/80 dark:bg-slate-800/70 p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="font-mono font-black text-sm text-indigo-600 dark:text-indigo-400">
+                                                        {group.accrualNo}
+                                                    </div>
+                                                    <span className={cn(
+                                                        "inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase",
+                                                        isYarnStage ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" :
+                                                        isWeavingStage ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" :
+                                                        "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300"
+                                                    )}>
+                                                        {isYarnStage ? "🧶 RAW YARN" : isWeavingStage ? "🧵 WEAVING" : "🎨 DYEING"}
+                                                    </span>
+                                                    <div className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                                                        Original: <span className="text-slate-900 dark:text-white font-black">{group.originalProductName}</span>
+                                                    </div>
+                                                </div>
 
-                                                        {/* Product Selector (Editable Yarn / Material from stock) */}
-                                                        <td className="p-3 align-top">
-                                                            <select
-                                                                value={r.productId}
-                                                                onChange={(e) => updateStockSettleRow(idx, 'productId', e.target.value)}
-                                                                className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
-                                                            >
-                                                                <option value="">Select Yarn / Stock Product...</option>
-                                                                {products
-                                                                    .slice()
-                                                                    .sort((a, b) => {
-                                                                        if (isYarnStage) {
-                                                                            const aY = a.name.includes('YARN') || a.name.includes('DTY') || a.name.includes('FDY');
-                                                                            const bY = b.name.includes('YARN') || b.name.includes('DTY') || b.name.includes('FDY');
-                                                                            if (aY && !bY) return -1;
-                                                                            if (!aY && bY) return 1;
-                                                                        }
-                                                                        return a.name.localeCompare(b.name);
-                                                                    })
-                                                                    .map((p: any) => (
-                                                                        <option key={p.id} value={p.id}>
-                                                                            {p.name} ({p.code}){p.hsCode ? ` • HS: ${p.hsCode}` : ''}
-                                                                        </option>
-                                                                    ))
-                                                                }
-                                                            </select>
-                                                            {r.productId && (
-                                                                <div className="flex items-center gap-2 mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                                                                    <span>✓ Stock will be deducted for this product</span>
-                                                                </div>
-                                                            )}
-                                                        </td>
+                                                <div className="flex items-center gap-4">
+                                                    {/* Requirement & Allocation Coverage */}
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-slate-400 font-semibold">Target:</span>
+                                                        <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                                                            {Number(group.targetQty).toLocaleString()} {group.unitCode}
+                                                        </span>
+                                                        <span className="text-xs text-slate-400 font-semibold">• Allocated:</span>
+                                                        <span className={cn(
+                                                            "text-xs font-black",
+                                                            isCovered ? "text-emerald-600 dark:text-emerald-400" :
+                                                            isPartial ? "text-amber-500" : "text-rose-500"
+                                                        )}>
+                                                            {allocatedQty.toLocaleString()} {group.unitCode}
+                                                        </span>
+                                                        <span className={cn(
+                                                            "px-2 py-0.5 rounded text-[10px] font-black uppercase ml-1",
+                                                            isCovered ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400" :
+                                                            isPartial ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400" :
+                                                            "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-400"
+                                                        )}>
+                                                            {isCovered ? "✓ 100% Covered" : isPartial ? `⚠ Short: ${shortfall.toLocaleString()} ${group.unitCode}` : "0% Allocated"}
+                                                        </span>
+                                                    </div>
 
-                                                        {/* Lot / Batch Selection */}
-                                                        <td className="p-3 align-top">
-                                                            {productLots.length > 0 ? (
-                                                                <select
-                                                                    value={r.lotNo || ""}
-                                                                    onChange={(e) => {
-                                                                        const chosenLot = productLots.find(l => l.invoiceNo === e.target.value);
-                                                                        updateStockSettleRow(idx, 'lotNo', e.target.value);
-                                                                        if (chosenLot?.rate) {
-                                                                            updateStockSettleRow(idx, 'rate', chosenLot.rate);
-                                                                        }
-                                                                    }}
-                                                                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
-                                                                >
-                                                                    <option value="">General Stock Lot</option>
-                                                                    {productLots.map((lot: any) => (
-                                                                        <option key={lot.id} value={lot.invoiceNo}>
-                                                                            {lot.invoiceNo} (Avail: {Number(lot.qty).toLocaleString()} {lot.unitName} @ Rs. {lot.rate})
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            ) : (
-                                                                <input
-                                                                    type="text"
-                                                                    value={r.lotNo || ""}
-                                                                    onChange={(e) => updateStockSettleRow(idx, 'lotNo', e.target.value)}
-                                                                    placeholder="Lot ref (Optional)..."
-                                                                    className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
-                                                                />
-                                                            )}
-                                                        </td>
+                                                    {/* Quick Action Buttons */}
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleOpenLotBrowserModal(gIdx)}
+                                                            className="px-3 py-1.5 rounded-xl font-black text-[11px] uppercase tracking-wider text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 border border-indigo-200 dark:border-indigo-800 transition-colors flex items-center gap-1.5"
+                                                        >
+                                                            <Zap size={13} className="text-amber-500 fill-amber-500" />
+                                                            <span>Browse Stock Lots</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleAddDeductionLine(gIdx)}
+                                                            className="px-3 py-1.5 rounded-xl font-black text-[11px] uppercase tracking-wider text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 border border-emerald-200 dark:border-emerald-800 transition-colors flex items-center gap-1.5"
+                                                        >
+                                                            <Plus size={13} />
+                                                            <span>Add Yarn / Lot Line</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                                                        {/* Settle Qty */}
-                                                        <td className="p-3 align-top text-right">
-                                                            <div className="flex items-center gap-1 justify-end">
-                                                                <input
-                                                                    type="number"
-                                                                    value={r.qty}
-                                                                    onChange={(e) => updateStockSettleRow(idx, 'qty', parseFloat(e.target.value) || 0)}
-                                                                    className="w-24 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-right text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
-                                                                />
-                                                                <span className="text-xs font-semibold text-slate-400">{r.unitCode}</span>
-                                                            </div>
-                                                        </td>
+                                            {/* Deductions Table */}
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left text-xs sm:text-sm">
+                                                    <thead className="bg-slate-50 dark:bg-slate-800/40 uppercase tracking-wider text-[11px] font-black text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                                                        <tr>
+                                                            <th className="p-3 min-w-[340px]">Physical Stock Yarn / Material</th>
+                                                            <th className="p-3 min-w-[200px]">Warehouse Lot / GD Ref</th>
+                                                            <th className="p-3 text-right w-28">Deduct Qty</th>
+                                                            <th className="p-3 text-right w-28">Cost Rate (PKR)</th>
+                                                            <th className="p-3 text-right w-32">Total Value</th>
+                                                            <th className="p-3 text-center w-12">Action</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                                        {group.deductions.map((d: any, dIdx: number) => {
+                                                            const productLots = d.productId ? (productStockMap[d.productId]?.lots || []) : [];
+                                                            const isEfs = Boolean(d.isEFS || (d.lotNo && d.lotNo.includes("[EFS]")));
 
-                                                        {/* Stock Rate */}
-                                                        <td className="p-3 align-top text-right">
-                                                            <input
-                                                                type="number"
-                                                                value={r.rate}
-                                                                onChange={(e) => updateStockSettleRow(idx, 'rate', parseFloat(e.target.value) || 0)}
-                                                                className="w-24 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-right text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
-                                                            />
-                                                        </td>
+                                                            return (
+                                                                <tr key={d.id || dIdx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                                                                    {/* Product Selector with Live Stock & HS Code */}
+                                                                    <td className="p-3 align-top">
+                                                                        <select
+                                                                            value={d.productId || ""}
+                                                                            onChange={(e) => handleUpdateDeduction(gIdx, dIdx, 'productId', e.target.value)}
+                                                                            className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                        >
+                                                                            <option value="">Select Yarn / Material from stock...</option>
+                                                                            {products
+                                                                                .slice()
+                                                                                .sort((a, b) => {
+                                                                                    if (isYarnStage) {
+                                                                                        const aY = a.name.includes('YARN') || a.name.includes('DTY') || a.name.includes('FDY');
+                                                                                        const bY = b.name.includes('YARN') || b.name.includes('DTY') || b.name.includes('FDY');
+                                                                                        if (aY && !bY) return -1;
+                                                                                        if (!aY && bY) return 1;
+                                                                                    }
+                                                                                    return a.name.localeCompare(b.name);
+                                                                                })
+                                                                                .map((p: any) => {
+                                                                                    const stockInfo = productStockMap[p.id];
+                                                                                    const availKg = stockInfo?.totalQty || 0;
+                                                                                    const availLots = stockInfo?.lots || [];
+                                                                                    const avgRate = availLots.length > 0 && availKg > 0
+                                                                                        ? (availLots.reduce((acc: number, l: any) => acc + (Number(l.qty) * Number(l.rate)), 0) / availKg).toFixed(2)
+                                                                                        : (p.standardCost || p.purchasePrice || 0);
 
-                                                        {/* Line Total */}
-                                                        <td className="p-3 align-top text-right font-black text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm whitespace-nowrap">
-                                                            Rs. {(Number(r.qty || 0) * Number(r.rate || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                                                    return (
+                                                                                        <option key={p.id} value={p.id}>
+                                                                                            {p.name} {p.code ? `(${p.code})` : ''} • HS: {p.hsCode || 'N/A'} • [Stock Avail: {availKg.toLocaleString()} KG @ Rs. {avgRate}]
+                                                                                        </option>
+                                                                                    );
+                                                                                })
+                                                                            }
+                                                                        </select>
+                                                                        {d.productId && (
+                                                                            <div className="flex items-center gap-2 mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                                                                                <span>Stock Avail: {Number(productStockMap[d.productId]?.totalQty || 0).toLocaleString()} KG</span>
+                                                                                {d.hsCode && <span className="text-slate-400 font-mono">• HS: {d.hsCode}</span>}
+                                                                            </div>
+                                                                        )}
+                                                                    </td>
+
+                                                                    {/* Lot Selector / EFS Reference */}
+                                                                    <td className="p-3 align-top">
+                                                                        {productLots.length > 0 ? (
+                                                                            <select
+                                                                                value={d.lotNo || ""}
+                                                                                onChange={(e) => handleUpdateDeduction(gIdx, dIdx, 'lotNo', e.target.value)}
+                                                                                className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                            >
+                                                                                <option value="">General Stock Lot</option>
+                                                                                {productLots.map((lot: any) => {
+                                                                                    const lotEfs = Boolean(lot.isEFS || (lot.invoiceNo && lot.invoiceNo.includes('[EFS]')));
+                                                                                    return (
+                                                                                        <option key={lot.id} value={lot.invoiceNo}>
+                                                                                            {lot.invoiceNo} {lotEfs ? ' [EFS]' : ''} (Avail: {Number(lot.qty).toLocaleString()} {lot.unitName || 'KG'} @ Rs. {lot.rate})
+                                                                                        </option>
+                                                                                    );
+                                                                                })}
+                                                                            </select>
+                                                                        ) : (
+                                                                            <input
+                                                                                type="text"
+                                                                                value={d.lotNo || ""}
+                                                                                onChange={(e) => handleUpdateDeduction(gIdx, dIdx, 'lotNo', e.target.value)}
+                                                                                placeholder="Lot / GD ref (Optional)..."
+                                                                                className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                            />
+                                                                        )}
+                                                                        {isEfs && (
+                                                                            <div className="mt-1.5">
+                                                                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950 dark:text-fuchsia-300">
+                                                                                    ⚡ Import EFS Scheme Lot
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                    </td>
+
+                                                                    {/* Deduct Qty */}
+                                                                    <td className="p-3 align-top text-right">
+                                                                        <div className="flex items-center gap-1 justify-end">
+                                                                            <input
+                                                                                type="number"
+                                                                                value={d.qty}
+                                                                                onChange={(e) => handleUpdateDeduction(gIdx, dIdx, 'qty', parseFloat(e.target.value) || 0)}
+                                                                                className="w-24 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-right text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                            />
+                                                                            <span className="text-xs font-semibold text-slate-400">{group.unitCode}</span>
+                                                                        </div>
+                                                                    </td>
+
+                                                                    {/* Stock Rate */}
+                                                                    <td className="p-3 align-top text-right">
+                                                                        <input
+                                                                            type="number"
+                                                                            value={d.rate}
+                                                                            onChange={(e) => handleUpdateDeduction(gIdx, dIdx, 'rate', parseFloat(e.target.value) || 0)}
+                                                                            className="w-24 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-right text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                                                                        />
+                                                                    </td>
+
+                                                                    {/* Line Total */}
+                                                                    <td className="p-3 align-top text-right font-black text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm whitespace-nowrap">
+                                                                        Rs. {(Number(d.qty || 0) * Number(d.rate || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                                    </td>
+
+                                                                    {/* Delete Action */}
+                                                                    <td className="p-3 align-top text-center">
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={group.deductions.length <= 1}
+                                                                            onClick={() => handleRemoveDeductionLine(gIdx, dIdx)}
+                                                                            className={cn(
+                                                                                "p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors",
+                                                                                group.deductions.length <= 1 && "opacity-30 cursor-not-allowed hover:text-slate-400 hover:bg-transparent"
+                                                                            )}
+                                                                            title="Remove deduction line"
+                                                                        >
+                                                                            <Trash2 size={16} />
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
                             {/* Accounting & Inventory Information Note */}
@@ -1938,7 +2220,7 @@ export default function NewPurchaseInvoicePage() {
                         {/* Modal Footer */}
                         <div className="p-5 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
                             <div className="text-xs font-bold text-slate-500">
-                                Total Settled: <span className="font-black text-emerald-600 dark:text-emerald-400">Rs. {stockSettleRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.rate) || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                Total Settled Value: <span className="font-black text-emerald-600 dark:text-emerald-400">Rs. {stockSettleRows.reduce((sum, g) => sum + (g.deductions || []).reduce((dSum: number, d: any) => dSum + ((Number(d.qty) || 0) * (Number(d.rate) || 0)), 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <button
@@ -1951,11 +2233,11 @@ export default function NewPurchaseInvoicePage() {
                                 </button>
                                 <button
                                     type="button"
-                                    disabled={isStockSettling || !stockSettleWarehouseId || stockSettleRows.some(r => !r.productId || !r.qty)}
+                                    disabled={isStockSettling || !stockSettleWarehouseId || stockSettleRows.some(g => (g.deductions || []).some((d: any) => !d.productId || !d.qty))}
                                     onClick={handleStockSettleConfirm}
                                     className={cn(
                                         "px-6 py-2.5 rounded-xl font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg shadow-emerald-600/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2",
-                                        (isStockSettling || !stockSettleWarehouseId || stockSettleRows.some(r => !r.productId || !r.qty)) && "opacity-50 cursor-not-allowed"
+                                        (isStockSettling || !stockSettleWarehouseId || stockSettleRows.some(g => (g.deductions || []).some((d: any) => !d.productId || !d.qty))) && "opacity-50 cursor-not-allowed"
                                     )}
                                 >
                                     {isStockSettling ? (
@@ -1971,6 +2253,186 @@ export default function NewPurchaseInvoicePage() {
                                     )}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Dedicated Stock Lot Browser Modal (Matching User's Execution Lot Browser) */}
+            {isLotBrowserModalOpen && activeAccrualGroupIndex !== null && (
+                <div className="fixed inset-0 z-[70] bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
+                    <div className="w-full max-w-5xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+                        {/* Modal Header */}
+                        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-black">
+                                    <Package size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                                        Select Stock Lot (Invoices, GRN & Opening Stock)
+                                    </h3>
+                                    <p className="text-xs text-slate-400">
+                                        Strictly filtered to warehouse raw material lots. Click &quot;Allocate&quot; to assign lot quantity to Accrual #{stockSettleRows[activeAccrualGroupIndex]?.accrualNo}.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsLotBrowserModalOpen(false)}
+                                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Modal Toolbar: Search & Filter Tabs */}
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <div className="relative w-full sm:w-96">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <input
+                                    type="text"
+                                    value={lotModalSearch}
+                                    onChange={(e) => setLotModalSearch(e.target.value)}
+                                    placeholder="Search yarn name, count, invoice, lot, HS code, GD #..."
+                                    className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                                {[
+                                    { id: "ALL", label: "All Lots" },
+                                    { id: "LOCAL", label: "Local Stock" },
+                                    { id: "IMPORT_EFS", label: "Import EFS" },
+                                    { id: "IMPORT_COMMERCIAL", label: "Commercial Import" },
+                                    { id: "OPENING", label: "Opening Stock" },
+                                ].map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        onClick={() => setLotModalFilter(tab.id as any)}
+                                        className={cn(
+                                            "px-3 py-1.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all whitespace-nowrap",
+                                            lotModalFilter === tab.id
+                                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                                                : "bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700"
+                                        )}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Modal Lots Table */}
+                        <div className="overflow-y-auto flex-1">
+                            <table className="w-full text-left text-xs sm:text-sm">
+                                <thead className="bg-slate-100 dark:bg-slate-800/80 uppercase tracking-wider text-[11px] font-black text-slate-500 dark:text-slate-400 sticky top-0 border-b border-slate-200 dark:border-slate-700/80 z-10">
+                                    <tr>
+                                        <th className="p-3">Yarn Product</th>
+                                        <th className="p-3">Origin / Scheme</th>
+                                        <th className="p-3">Reference / Source (GD #)</th>
+                                        <th className="p-3">Date</th>
+                                        <th className="p-3 text-right">Available Qty</th>
+                                        <th className="p-3 text-right">Rate (PKR)</th>
+                                        <th className="p-3 text-right">Total Value</th>
+                                        <th className="p-3 text-right w-28">Alloc Qty</th>
+                                        <th className="p-3 text-center w-28">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                    {filteredStockLots.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={9} className="p-8 text-center text-slate-400 font-semibold">
+                                                No warehouse lots found matching the filter criteria.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredStockLots.map(lot => {
+                                            const isEfs = Boolean(lot.isEFS || (lot.invoiceNo && lot.invoiceNo.includes("[EFS]")));
+                                            const isImport = lot.origin === "IMPORT" || isEfs || (lot.invoiceNo && lot.invoiceNo.includes("[IMPORT]"));
+                                            const isOpening = Boolean(lot.isOpening);
+                                            const allocVal = lotModalAllocQtys[lot.id] !== undefined ? lotModalAllocQtys[lot.id] : lot.qty;
+
+                                            return (
+                                                <tr key={lot.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                                                    <td className="p-3">
+                                                        <div className="font-bold text-slate-900 dark:text-white">
+                                                            {lot.productName}
+                                                        </div>
+                                                        <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                                            {lot.productCode} {lot.hsCode ? `• HS: ${lot.hsCode}` : ''}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <span className={cn(
+                                                            "inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase",
+                                                            isEfs ? "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-950 dark:text-fuchsia-300" :
+                                                            isOpening ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" :
+                                                            isImport ? "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300" :
+                                                            "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                                        )}>
+                                                            {isEfs ? "Import EFS" : isOpening ? "Opening Stock" : isImport ? "Commercial Import" : "Local Stock"}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <div className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                                                            {lot.invoiceNo}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400">
+                                                            {lot.supplierName}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-3 text-slate-500 font-mono text-xs whitespace-nowrap">
+                                                        {lot.date ? new Date(lot.date).toISOString().split('T')[0] : 'N/A'}
+                                                    </td>
+                                                    <td className="p-3 text-right font-black text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                                                        {Number(lot.qty).toLocaleString()} {lot.unitName || 'KG'}
+                                                    </td>
+                                                    <td className="p-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                                                        Rs. {Number(lot.rate).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                    </td>
+                                                    <td className="p-3 text-right font-black text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                                        Rs. {(Number(lot.qty) * Number(lot.rate)).toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                                                    </td>
+                                                    <td className="p-3 text-right">
+                                                        <input
+                                                            type="number"
+                                                            value={allocVal}
+                                                            max={lot.qty}
+                                                            onChange={(e) => setLotModalAllocQtys(prev => ({ ...prev, [lot.id]: parseFloat(e.target.value) || 0 }))}
+                                                            className="w-20 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-right text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        />
+                                                    </td>
+                                                    <td className="p-3 text-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleAllocateLotToActiveGroup(lot, Number(allocVal))}
+                                                            className="px-3 py-1.5 rounded-xl font-black text-[11px] uppercase tracking-wider text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all"
+                                                        >
+                                                            Allocate
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <span className="text-xs text-slate-400 font-semibold">
+                                Showing {filteredStockLots.length} lot(s)
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setIsLotBrowserModalOpen(false)}
+                                className="px-6 py-2 rounded-xl font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs uppercase tracking-wider"
+                            >
+                                Done / Close
+                            </button>
                         </div>
                     </div>
                 </div>
