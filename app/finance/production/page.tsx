@@ -8,7 +8,7 @@ import {
     CheckCircle2, Clock, AlertCircle, FileText, ExternalLink, 
     ChevronDown, ChevronUp, Search, Filter, Warehouse as WarehouseIcon, 
     Tag, Coins, Check, ArrowUpRight, Scissors, Sparkles, AlertTriangle,
-    X, Eye, ArrowRightCircle
+    X, Eye, ArrowRightCircle, LayoutGrid, List
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -35,6 +35,7 @@ export default function ProductionDashboard() {
     // Filters for Tab 2 (Unsettled Accruals)
     const [accrualSearch, setAccrualSearch] = useState("");
     const [stageFilter, setStageFilter] = useState<"ALL" | "PENDING" | "YARN" | "WEAVING" | "DYEING" | "SETTLED">("ALL");
+    const [viewMode, setViewMode] = useState<"TABLE" | "CARDS">("TABLE");
 
     // Drill-Down Modal State (Requirement: "TABLE LIST ME SHOW OR CLICK PER DRILL DOWN ME YE DETAIL AY")
     const [selectedBatchForDrillDown, setSelectedBatchForDrillDown] = useState<any | null>(null);
@@ -647,49 +648,78 @@ export default function ProductionDashboard() {
                         </div>
 
                         {/* ========================================================================= */}
-                        {/* HIGH-DENSITY ERP TABLE LIST (Requirement: "TABLE LIST ME SHOW")          */}
+                        {/* SPACIOUS ERP BATCH ACCRUAL LIST & CARD VIEW TOGGLE                        */}
                         {/* ========================================================================= */}
                         <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                            <div className="p-5 md:px-6 md:py-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50 dark:bg-slate-800/30">
                                 <div>
                                     <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
                                         <Layers className="w-5 h-5 text-indigo-500" />
                                         <span>Production Execution Batches &amp; Accrual Demands</span>
                                     </h3>
                                     <p className="text-xs text-slate-500 mt-0.5">
-                                        Click on any batch row to drill down into stage lot allocations and accrual ledger vouchers.
+                                        Click on any batch row or card to drill down into stage lot allocations and accrual ledger vouchers.
                                     </p>
                                 </div>
-                                <span className="text-xs font-bold text-slate-400">
-                                    Showing {filteredBatches.length} of {unsettledBatches.length} Batch(es)
-                                </span>
+                                <div className="flex items-center gap-3 self-end sm:self-auto">
+                                    <span className="text-xs font-bold text-slate-400">
+                                        Showing {filteredBatches.length} of {unsettledBatches.length} Batch(es)
+                                    </span>
+                                    <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
+                                        <button
+                                            type="button"
+                                            onClick={() => setViewMode("TABLE")}
+                                            className={cn(
+                                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                                                viewMode === "TABLE"
+                                                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                                                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            )}
+                                        >
+                                            <List size={14} />
+                                            <span>Table View</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setViewMode("CARDS")}
+                                            className={cn(
+                                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                                                viewMode === "CARDS"
+                                                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                                                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                            )}
+                                        >
+                                            <LayoutGrid size={14} />
+                                            <span>Card View</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs">
-                                    <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 uppercase tracking-wider font-bold border-b border-slate-200 dark:border-slate-800">
-                                        <tr>
-                                            <th className="px-5 py-3.5">Batch / Lot #</th>
-                                            <th className="px-5 py-3.5">Output Product</th>
-                                            <th className="px-5 py-3.5">🧶 Stage 1: Yarn</th>
-                                            <th className="px-5 py-3.5">🧵 Stage 2: Weaving</th>
-                                            <th className="px-5 py-3.5">🎨 Stage 3: Dyeing / Finish</th>
-                                            <th className="px-5 py-3.5 text-right">Remaining Liability</th>
-                                            <th className="px-5 py-3.5 text-center">Batch Status</th>
-                                            <th className="px-5 py-3.5 text-right">Drill Down</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                                        {filteredBatches.length === 0 ? (
+                            {filteredBatches.length === 0 ? (
+                                <div className="px-6 py-16 text-center text-slate-500">
+                                    <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-80" />
+                                    <span className="font-bold text-sm block text-slate-700 dark:text-slate-300">No Batches Matching Filter</span>
+                                    <span className="text-xs text-slate-400">All matching production demands are settled or no records found.</span>
+                                </div>
+                            ) : viewMode === "TABLE" ? (
+                                /* Airy, Spacious ERP Table View (No Congestion) */
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-xs min-w-[1300px]">
+                                        <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 uppercase tracking-wider font-bold border-b border-slate-200 dark:border-slate-800 text-[11px]">
                                             <tr>
-                                                <td colSpan={8} className="px-6 py-16 text-center text-slate-500">
-                                                    <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-80" />
-                                                    <span className="font-bold text-sm block text-slate-700 dark:text-slate-300">No Batches Matching Filter</span>
-                                                    <span className="text-xs text-slate-400">All matching production demands are settled or no records found.</span>
-                                                </td>
+                                                <th className="px-6 py-4 w-[16%]">Batch / Lot #</th>
+                                                <th className="px-6 py-4 w-[17%]">Output Product</th>
+                                                <th className="px-6 py-4 w-[19%]">🧶 Stage 1: Yarn</th>
+                                                <th className="px-6 py-4 w-[12%]">🧵 Stage 2: Weaving</th>
+                                                <th className="px-6 py-4 w-[19%]">🎨 Stage 3: Dyeing / Finish</th>
+                                                <th className="px-6 py-4 w-[15%] text-right">Remaining Liability</th>
+                                                <th className="px-6 py-4 w-[10%] text-center">Batch Status</th>
+                                                <th className="px-6 py-4 w-[8%] text-right">Drill Down</th>
                                             </tr>
-                                        ) : (
-                                            filteredBatches.map((batch: any) => {
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                                            {filteredBatches.map((batch: any) => {
                                                 const yarnStage = batch.stages?.yarn;
                                                 const weavingStage = batch.stages?.weaving;
                                                 const dyeingStage = batch.stages?.dyeingFinish;
@@ -697,7 +727,6 @@ export default function ProductionDashboard() {
                                                 const isFullySettled = batch.overallStatus === "FULLY_SETTLED";
                                                 const isPartiallySettled = batch.overallStatus === "PARTIALLY_SETTLED";
 
-                                                // Extract first yarn item name if present
                                                 const firstYarnAcc = yarnStage?.accruals?.[0];
                                                 const firstDyeingAcc = dyeingStage?.accruals?.[0];
 
@@ -708,11 +737,11 @@ export default function ProductionDashboard() {
                                                         className="hover:bg-indigo-50/40 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group"
                                                     >
                                                         {/* Batch # */}
-                                                        <td className="px-5 py-4">
-                                                            <div className="font-mono font-black text-indigo-600 dark:text-indigo-400 group-hover:underline">
+                                                        <td className="px-6 py-4.5 whitespace-nowrap">
+                                                            <div className="font-mono font-black text-sm text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-500 transition-colors">
                                                                 {batch.batchNo}
                                                             </div>
-                                                            <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                                                            <div className="text-xs text-slate-400 flex items-center gap-1.5 mt-1 font-medium">
                                                                 <span>{new Date(batch.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                                                                 <span>•</span>
                                                                 <span>{batch.warehouseName}</span>
@@ -720,162 +749,180 @@ export default function ProductionDashboard() {
                                                         </td>
 
                                                         {/* Output Product */}
-                                                        <td className="px-5 py-4">
-                                                            <div className="font-bold text-slate-900 dark:text-white text-sm">
+                                                        <td className="px-6 py-4.5">
+                                                            <div className="font-black text-slate-900 dark:text-white text-sm">
                                                                 {batch.outputProductName}
                                                             </div>
-                                                            <div className="text-[11px] font-medium text-slate-500 mt-0.5">
-                                                                {batch.outputQuantity.toLocaleString()} {batch.outputUnit} Produced
+                                                            <div className="text-xs font-semibold text-slate-500 mt-1 flex items-center gap-1.5">
+                                                                <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                                                                    {batch.outputQuantity.toLocaleString()} {batch.outputUnit}
+                                                                </span>
+                                                                <span className="text-slate-400 font-normal">Produced</span>
                                                             </div>
-                                                            {batch.specNotes && (
-                                                                <div className="text-[10px] font-mono text-slate-400 truncate max-w-[200px] mt-0.5">
-                                                                    {batch.specNotes}
-                                                                </div>
-                                                            )}
                                                         </td>
 
                                                         {/* Stage 1: Yarn */}
-                                                        <td className="px-5 py-4">
+                                                        <td className="px-6 py-4.5">
                                                             {yarnStage?.status === "SETTLED" ? (
-                                                                <div>
-                                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
-                                                                        <CheckCircle2 size={11} />
-                                                                        Settled (100%)
-                                                                    </span>
-                                                                    <div className="font-bold text-slate-800 dark:text-slate-200 text-[11px] mt-1 truncate max-w-[170px]" title={firstYarnAcc?.productName}>
-                                                                        {firstYarnAcc?.productName || "Physical Yarn"}
+                                                                <div className="space-y-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                                                            <CheckCircle2 size={11} />
+                                                                            Settled
+                                                                        </span>
+                                                                        <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                                                                            {yarnStage.totalSettled.toLocaleString()} KG
+                                                                        </span>
                                                                     </div>
-                                                                    <div className="text-[10px] text-slate-400">
-                                                                        {yarnStage.totalSettled.toLocaleString()} KG
+                                                                    <div className="font-semibold text-slate-700 dark:text-slate-300 text-xs truncate max-w-[220px]" title={firstYarnAcc?.productName}>
+                                                                        {firstYarnAcc?.productName || "Physical Yarn"}
                                                                     </div>
                                                                 </div>
                                                             ) : yarnStage?.status === "STOCK_ALLOCATED" ? (
-                                                                <div>
-                                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
-                                                                        <Check size={11} />
-                                                                        From Stock Lot
-                                                                    </span>
-                                                                    <div className="text-[10px] text-slate-400 mt-0.5">Warehouse Direct</div>
+                                                                <div className="space-y-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
+                                                                            <Check size={11} />
+                                                                            Stock Lot
+                                                                        </span>
+                                                                        <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
+                                                                            {yarnStage.totalSettled.toLocaleString()} KG
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-400 font-medium">Warehouse Direct</div>
                                                                 </div>
                                                             ) : yarnStage?.status === "PARTIALLY_SETTLED" ? (
-                                                                <div>
-                                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
-                                                                        <AlertTriangle size={11} />
-                                                                        Partial
-                                                                    </span>
-                                                                    <div className="text-[11px] text-rose-600 dark:text-rose-400 font-bold mt-1">
-                                                                        Rem: {yarnStage.remainingQty.toLocaleString()} KG
+                                                                <div className="space-y-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
+                                                                            <AlertTriangle size={11} />
+                                                                            Partial
+                                                                        </span>
+                                                                        <span className="text-xs font-mono font-bold text-amber-700 dark:text-amber-400">
+                                                                            Rem: {yarnStage.remainingQty.toLocaleString()} KG
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="font-semibold text-slate-600 dark:text-slate-400 text-xs truncate max-w-[220px]">
+                                                                        {firstYarnAcc?.productName || "Physical Yarn"}
                                                                     </div>
                                                                 </div>
                                                             ) : yarnStage?.status === "PENDING" ? (
-                                                                <div>
-                                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
-                                                                        <Clock size={11} />
-                                                                        Pending Settle
-                                                                    </span>
-                                                                    <div className="text-[11px] text-slate-700 dark:text-slate-300 font-bold mt-1">
-                                                                        {yarnStage.totalDemanded.toLocaleString()} KG
+                                                                <div className="space-y-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
+                                                                            <Clock size={11} />
+                                                                            Pending Settle
+                                                                        </span>
+                                                                        <span className="text-xs font-mono font-bold text-rose-700 dark:text-rose-400">
+                                                                            {yarnStage.totalDemanded.toLocaleString()} KG
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="font-semibold text-slate-600 dark:text-slate-400 text-xs truncate max-w-[220px]">
+                                                                        {firstYarnAcc?.productName || "Physical Yarn"}
                                                                     </div>
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-[11px] text-slate-400 font-medium">-</span>
+                                                                <span className="text-xs text-slate-400 font-medium">-</span>
                                                             )}
                                                         </td>
 
                                                         {/* Stage 2: Weaving */}
-                                                        <td className="px-5 py-4">
+                                                        <td className="px-6 py-4.5 whitespace-nowrap">
                                                             {weavingStage?.status === "SETTLED" ? (
-                                                                <div>
+                                                                <div className="flex items-center gap-2">
                                                                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
                                                                         <CheckCircle2 size={11} />
                                                                         Settled
                                                                     </span>
-                                                                    <div className="text-[10px] text-slate-400 mt-0.5">{weavingStage.totalSettled.toLocaleString()} Units</div>
+                                                                    <span className="text-xs font-mono font-bold text-slate-600 dark:text-slate-300">{weavingStage.totalSettled.toLocaleString()} Units</span>
                                                                 </div>
                                                             ) : weavingStage?.status === "IN_HOUSE" ? (
-                                                                <div>
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                                                                        In-House
-                                                                    </span>
-                                                                </div>
+                                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                                                    🏢 In-House
+                                                                </span>
                                                             ) : weavingStage?.status === "PENDING" ? (
-                                                                <div>
+                                                                <div className="flex items-center gap-2">
                                                                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
                                                                         <Clock size={11} />
                                                                         Pending
                                                                     </span>
-                                                                    <div className="text-[11px] text-slate-700 dark:text-slate-300 font-bold mt-1">
-                                                                        {weavingStage.totalDemanded.toLocaleString()} Units
-                                                                    </div>
+                                                                    <span className="text-xs font-mono font-bold text-rose-700 dark:text-rose-400">{weavingStage.totalDemanded.toLocaleString()} Units</span>
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-[11px] text-slate-400 font-medium">-</span>
+                                                                <span className="text-xs text-slate-400 font-medium">-</span>
                                                             )}
                                                         </td>
 
                                                         {/* Stage 3: Dyeing / Finish */}
-                                                        <td className="px-5 py-4">
+                                                        <td className="px-6 py-4.5">
                                                             {dyeingStage?.status === "SETTLED" ? (
-                                                                <div>
-                                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
-                                                                        <CheckCircle2 size={11} />
-                                                                        Settled
-                                                                    </span>
-                                                                    <div className="text-[10px] text-slate-400 mt-0.5">{dyeingStage.totalSettled.toLocaleString()} KG</div>
+                                                                <div className="space-y-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                                                            <CheckCircle2 size={11} />
+                                                                            Settled
+                                                                        </span>
+                                                                        <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                                                                            {dyeingStage.totalSettled.toLocaleString()} KG
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="font-semibold text-slate-600 dark:text-slate-400 text-xs truncate max-w-[220px]">
+                                                                        {firstDyeingAcc?.productName || "Wet Processing"}
+                                                                    </div>
                                                                 </div>
                                                             ) : dyeingStage?.status === "IN_HOUSE" ? (
-                                                                <div>
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                                                                        In-House
-                                                                    </span>
-                                                                </div>
+                                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                                                    🏢 In-House
+                                                                </span>
                                                             ) : dyeingStage?.status === "PENDING" ? (
-                                                                <div>
-                                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
-                                                                        <Clock size={11} />
-                                                                        Pending Settle
-                                                                    </span>
-                                                                    <div className="font-bold text-slate-800 dark:text-slate-200 text-[11px] mt-1 truncate max-w-[170px]" title={firstDyeingAcc?.supplierName}>
-                                                                        {firstDyeingAcc?.supplierName || "Processing Vendor"}
+                                                                <div className="space-y-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
+                                                                            <Clock size={11} />
+                                                                            Pending Settle
+                                                                        </span>
+                                                                        <span className="text-xs font-mono font-bold text-rose-700 dark:text-rose-400">
+                                                                            {dyeingStage.totalDemanded.toLocaleString()} KG
+                                                                        </span>
                                                                     </div>
-                                                                    <div className="text-[10px] text-slate-400">
-                                                                        {dyeingStage.totalDemanded.toLocaleString()} KG
+                                                                    <div className="font-semibold text-slate-600 dark:text-slate-400 text-xs truncate max-w-[220px]" title={firstDyeingAcc?.supplierName}>
+                                                                        {firstDyeingAcc?.supplierName || "Processing Vendor"}
                                                                     </div>
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-[11px] text-slate-400 font-medium">-</span>
+                                                                <span className="text-xs text-slate-400 font-medium">-</span>
                                                             )}
                                                         </td>
 
                                                         {/* Remaining Liability */}
-                                                        <td className="px-5 py-4 text-right">
+                                                        <td className="px-6 py-4.5 text-right whitespace-nowrap">
                                                             <div className={cn(
-                                                                "text-sm font-black",
+                                                                "text-sm font-mono font-black",
                                                                 batch.remainingLiability > 0 
                                                                     ? "text-rose-600 dark:text-rose-400" 
                                                                     : "text-emerald-600 dark:text-emerald-400"
                                                             )}>
                                                                 Rs. {batch.remainingLiability.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                             </div>
-                                                            <div className="text-[10px] text-slate-400 mt-0.5">
+                                                            <div className="text-xs text-slate-400 font-medium mt-1">
                                                                 Booked: Rs. {batch.totalAccrualValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                             </div>
                                                         </td>
 
                                                         {/* Batch Status */}
-                                                        <td className="px-5 py-4 text-center">
+                                                        <td className="px-6 py-4.5 text-center whitespace-nowrap">
                                                             {isFullySettled ? (
-                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                                                     <CheckCircle2 size={12} />
                                                                     All Cleared
                                                                 </span>
                                                             ) : isPartiallySettled ? (
-                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
+                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                                                                     <AlertTriangle size={12} />
                                                                     Partial Settle
                                                                 </span>
                                                             ) : (
-                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
+                                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
                                                                     <Clock size={12} />
                                                                     Demands Open
                                                                 </span>
@@ -883,13 +930,14 @@ export default function ProductionDashboard() {
                                                         </td>
 
                                                         {/* Action Drill Down Button */}
-                                                        <td className="px-5 py-4 text-right">
+                                                        <td className="px-6 py-4.5 text-right whitespace-nowrap">
                                                             <button
+                                                                type="button"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     setSelectedBatchForDrillDown(batch);
                                                                 }}
-                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-600 hover:text-white transition-all shadow-xs group-hover:bg-indigo-600 group-hover:text-white"
                                                             >
                                                                 <Eye size={13} />
                                                                 <span>Drill Down</span>
@@ -897,11 +945,141 @@ export default function ProductionDashboard() {
                                                         </td>
                                                     </tr>
                                                 );
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                /* Spacious Horizontal Card View */
+                                <div className="p-5 md:p-6 space-y-4">
+                                    {filteredBatches.map((batch: any) => {
+                                        const yarnStage = batch.stages?.yarn;
+                                        const weavingStage = batch.stages?.weaving;
+                                        const dyeingStage = batch.stages?.dyeingFinish;
+                                        const firstYarnAcc = yarnStage?.accruals?.[0];
+                                        const firstDyeingAcc = dyeingStage?.accruals?.[0];
+                                        const isFullySettled = batch.overallStatus === "FULLY_SETTLED";
+                                        const isPartiallySettled = batch.overallStatus === "PARTIALLY_SETTLED";
+
+                                        return (
+                                            <div
+                                                key={batch.batchId}
+                                                onClick={() => setSelectedBatchForDrillDown(batch)}
+                                                className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-400 dark:hover:border-indigo-600 transition-all cursor-pointer shadow-xs space-y-4"
+                                            >
+                                                {/* Card Header Bar */}
+                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                                                    <div className="flex items-center gap-3 flex-wrap">
+                                                        <span className="font-mono text-sm font-black px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                                            {batch.batchNo}
+                                                        </span>
+                                                        <span className="text-xs text-slate-400 font-medium">
+                                                            {new Date(batch.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} • {batch.warehouseName}
+                                                        </span>
+                                                        {isFullySettled ? (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                                                <CheckCircle2 size={12} /> All Cleared
+                                                            </span>
+                                                        ) : isPartiallySettled ? (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
+                                                                <AlertTriangle size={12} /> Partially Settled
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
+                                                                <Clock size={12} /> Demands Open
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="text-right">
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Remaining Liability</span>
+                                                            <span className={cn(
+                                                                "text-sm font-mono font-black",
+                                                                batch.remainingLiability > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                                                            )}>
+                                                                Rs. {batch.remainingLiability.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedBatchForDrillDown(batch);
+                                                            }}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white transition-all"
+                                                        >
+                                                            <Eye size={13} />
+                                                            <span>Drill Down</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Output & Stages 4-Column Grid */}
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                                    {/* Output Product */}
+                                                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                                                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Output Product</span>
+                                                        <div className="font-black text-slate-900 dark:text-white text-sm mt-0.5">{batch.outputProductName}</div>
+                                                        <div className="text-xs font-bold text-slate-600 dark:text-slate-400 mt-1 font-mono">
+                                                            {batch.outputQuantity.toLocaleString()} {batch.outputUnit} Produced
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Stage 1: Yarn */}
+                                                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400">🧶 Stage 1: Yarn</span>
+                                                            {yarnStage?.status === "SETTLED" ? (
+                                                                <span className="text-[10px] font-black text-emerald-600">✓ Settled</span>
+                                                            ) : yarnStage?.status === "STOCK_ALLOCATED" ? (
+                                                                <span className="text-[10px] font-black text-slate-600">✓ Stock Lot</span>
+                                                            ) : (
+                                                                <span className="text-[10px] font-black text-rose-600">⏳ Pending</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate" title={firstYarnAcc?.productName}>
+                                                            {firstYarnAcc?.productName || "Physical Yarn"}
+                                                        </div>
+                                                        <div className="text-xs text-slate-500 font-mono mt-1">
+                                                            {yarnStage?.totalDemanded?.toLocaleString()} KG
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Stage 2: Weaving */}
+                                                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400">🧵 Stage 2: Weaving</span>
+                                                            <span className="text-[10px] font-bold text-slate-500">In-House</span>
+                                                        </div>
+                                                        <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                                                            In-House / Direct
+                                                        </div>
+                                                        <div className="text-xs text-slate-400 mt-1">No vendor accrual</div>
+                                                    </div>
+
+                                                    {/* Stage 3: Dyeing / Finish */}
+                                                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400">🎨 Stage 3: Dyeing</span>
+                                                            {dyeingStage?.status === "SETTLED" ? (
+                                                                <span className="text-[10px] font-black text-emerald-600">✓ Settled</span>
+                                                            ) : (
+                                                                <span className="text-[10px] font-black text-rose-600">⏳ Pending</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate" title={firstDyeingAcc?.supplierName}>
+                                                            {firstDyeingAcc?.supplierName || "Processing Vendor"}
+                                                        </div>
+                                                        <div className="text-xs text-slate-500 font-mono mt-1">
+                                                            {dyeingStage?.totalDemanded?.toLocaleString()} KG
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
