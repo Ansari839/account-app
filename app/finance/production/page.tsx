@@ -881,11 +881,16 @@ export default function ProductionDashboard() {
                                                             <div className="font-black text-slate-900 dark:text-white text-sm">
                                                                 {batch.outputProductName}
                                                             </div>
-                                                            <div className="text-xs font-semibold text-slate-500 mt-1 flex items-center gap-1.5">
+                                                            <div className="text-xs font-semibold text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
                                                                 <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
                                                                     {batch.outputQuantity.toLocaleString()} {batch.outputUnit}
                                                                 </span>
                                                                 <span className="text-slate-400 font-normal">Produced</span>
+                                                                {batch.outputNetWeightKg && batch.outputUnit !== "KG" && (
+                                                                    <span className="text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                                                        • {batch.outputNetWeightKg.toLocaleString()} KG Net
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </td>
 
@@ -1150,6 +1155,11 @@ export default function ProductionDashboard() {
                                                         <div className="font-black text-slate-900 dark:text-white text-sm mt-0.5">{batch.outputProductName}</div>
                                                         <div className="text-xs font-bold text-slate-600 dark:text-slate-400 mt-1 font-mono">
                                                             {batch.outputQuantity.toLocaleString()} {batch.outputUnit} Produced
+                                                            {batch.outputNetWeightKg && batch.outputUnit !== "KG" && (
+                                                                <span className="text-emerald-600 dark:text-emerald-400 ml-1">
+                                                                    ({batch.outputNetWeightKg.toLocaleString()} KG Net)
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </div>
 
@@ -1260,6 +1270,7 @@ export default function ProductionDashboard() {
                                     </h2>
                                     <span className="text-base font-bold text-slate-500">
                                         • {selectedBatchForDrillDown.outputQuantity.toLocaleString()} {selectedBatchForDrillDown.outputUnit} Produced
+                                        {selectedBatchForDrillDown.outputNetWeightKg && selectedBatchForDrillDown.outputUnit !== "KG" && ` (${selectedBatchForDrillDown.outputNetWeightKg.toLocaleString()} KG Net)`}
                                     </span>
                                 </div>
                                 {selectedBatchForDrillDown.specNotes && (

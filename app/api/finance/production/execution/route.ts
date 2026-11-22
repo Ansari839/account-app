@@ -447,10 +447,10 @@ export async function POST(req: NextRequest) {
             const isOutputEFS = inputs.some((input: any) => input.isEFS === true);
             
             // Output dimensions & dynamic piece specs
-            const { cutSize, pieceWeightKg, totalFabricMeters, outputUom, outputNetWeightKg } = body;
+            const { cutSize, cutSizeUnit, pieceWeightKg, totalFabricMeters, totalFabricYards, outputUom, outputNetWeightKg } = body;
             const specNotes: string[] = [];
             if (outputUom) specNotes.push(`${outputQuantity} ${outputUom}`);
-            if (cutSize) specNotes.push(`Cut: ${cutSize} MTR/PC`);
+            if (cutSize) specNotes.push(`Cut: ${cutSize} ${cutSizeUnit || 'MTR'}/PC`);
             if (pieceWeightKg) specNotes.push(`Unit: ${pieceWeightKg} KG/PC`);
             if (outputNetWeightKg) specNotes.push(`Net: ${outputNetWeightKg} KG`);
             const specSummary = specNotes.length > 0 ? ` [${specNotes.join(' | ')}]` : '';

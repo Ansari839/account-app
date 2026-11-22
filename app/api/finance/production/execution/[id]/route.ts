@@ -106,6 +106,45 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         });
         record.batchNo = outLedger?.batchNo || null;
 
+        // Parse batch specifications
+        let cleanBatchNo = record.batchNo || '';
+        let outputUom = record.outputProduct?.baseUnit?.code || 'Units';
+        let cutSize: number | null = null;
+        let cutUnit: string = 'MTR';
+        let pieceWeightKg: number | null = null;
+        let netWeightKg: number | null = null;
+
+        if (record.batchNo) {
+            const bNo = record.batchNo;
+            if (bNo.includes(' [')) {
+                cleanBatchNo = bNo.split(' [')[0];
+            }
+            const uomMatch = bNo.match(/\[(\d+(?:\.\d+)?)\s*([A-Za-z]+)/i);
+            if (uomMatch && uomMatch[2]) {
+                outputUom = uomMatch[2].toUpperCase();
+            }
+            const cutMatch = bNo.match(/Cut:\s*([\d.]+)\s*([A-Za-z]+)(?:\/pc)?/i);
+            if (cutMatch) {
+                cutSize = parseFloat(cutMatch[1]);
+                cutUnit = cutMatch[2].toUpperCase();
+            }
+            const unitMatch = bNo.match(/Unit:\s*([\d.]+)\s*KG/i);
+            if (unitMatch) {
+                pieceWeightKg = parseFloat(unitMatch[1]);
+            }
+            const netMatch = bNo.match(/Net:\s*([\d.]+)\s*KG/i);
+            if (netMatch) {
+                netWeightKg = parseFloat(netMatch[1]);
+            }
+        }
+
+        record.cleanBatchNo = cleanBatchNo;
+        record.outputUom = outputUom;
+        record.cutSize = cutSize;
+        record.cutUnit = cutUnit;
+        record.pieceWeightKg = pieceWeightKg;
+        record.netWeightKg = netWeightKg;
+
         // Fetch ProductionAccruals created for this batch (Yarn, Weaving, Dyeing)
         let accruals: any[] = [];
         try {

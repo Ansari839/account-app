@@ -477,6 +477,20 @@ export async function GET(request: NextRequest) {
             if (allSettled) overallStatus = 'FULLY_SETTLED';
             else if (!noneSettled) overallStatus = 'PARTIALLY_SETTLED';
 
+            // Parse actual output UOM and net weight from specNotes if available
+            let parsedOutputUnit = batch.Product?.Unit?.code || 'Units';
+            let parsedNetWeightKg: number | null = null;
+            if (specNotes) {
+                const uomMatch = specNotes.match(/\[(\d+(?:\.\d+)?)\s*([A-Za-z]+)/i);
+                if (uomMatch && uomMatch[2]) {
+                    parsedOutputUnit = uomMatch[2].toUpperCase();
+                }
+                const netMatch = specNotes.match(/Net:\s*([\d.]+)\s*KG/i);
+                if (netMatch && netMatch[1]) {
+                    parsedNetWeightKg = parseFloat(netMatch[1]);
+                }
+            }
+
             return {
                 batchId: batch.id,
                 batchNo: batchNoClean,
@@ -486,7 +500,8 @@ export async function GET(request: NextRequest) {
                 outputProductName: batch.Product?.name || 'Output Product',
                 outputProductCode: batch.Product?.code || '',
                 outputQuantity: Number(batch.outputQuantity),
-                outputUnit: batch.Product?.Unit?.code || 'Units',
+                outputUnit: parsedOutputUnit,
+                outputNetWeightKg: parsedNetWeightKg,
                 outputStage: batch.outputStage || 'FINISH',
                 warehouseId: batch.warehouseId,
                 warehouseName: batch.Warehouse?.name || 'Main Warehouse',

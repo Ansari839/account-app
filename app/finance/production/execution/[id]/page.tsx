@@ -37,6 +37,56 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
     const [isSavingEdit, setIsSavingEdit] = useState(false);
     const [isReverting, setIsReverting] = useState(false);
 
+    const parsedSpecs = React.useMemo(() => {
+        if (!record) return null;
+        const rawBatchNo = record.batchNo || '';
+        const bracketIdx = rawBatchNo.indexOf('[');
+        const cleanBatchNo = record.cleanBatchNo || (bracketIdx !== -1 ? rawBatchNo.substring(0, bracketIdx).trim() : rawBatchNo.trim());
+        const rawSpecs = bracketIdx !== -1 ? rawBatchNo.substring(bracketIdx) : '';
+        const content = rawSpecs.replace(/^\[+|\]+$/g, '').trim();
+        const parts = content ? content.split('|').map((p: string) => p.trim()) : [];
+
+        let outputUnit = record.outputUom || record.outputProduct?.baseUnit?.code || 'Units';
+        let cutSize: string | null = record.cutSize ? String(record.cutSize) : null;
+        let cutUnit: string = record.cutUnit || 'MTR';
+        let pieceWeightKg: string | null = record.pieceWeightKg ? String(record.pieceWeightKg) : null;
+        let netWeightKg: number | null = record.netWeightKg || null;
+
+        for (const part of parts) {
+            const uomMatch = part.match(/^(\d+(?:\.\d+)?)\s*([A-Za-z]+)$/i);
+            if (uomMatch && !part.toLowerCase().includes('cut') && !part.toLowerCase().includes('unit') && !part.toLowerCase().includes('net')) {
+                outputUnit = uomMatch[2].toUpperCase();
+            }
+            const cutMatch = part.match(/cut:\s*([\d.]+)\s*([A-Za-z]+)(?:\/pc)?/i);
+            if (cutMatch) {
+                cutSize = cutMatch[1];
+                cutUnit = cutMatch[2].toUpperCase();
+            }
+            const unitMatch = part.match(/unit:\s*([\d.]+)\s*([A-Za-z]+)(?:\/pc)?/i);
+            if (unitMatch) {
+                pieceWeightKg = unitMatch[1];
+            }
+            const netMatch = part.match(/net:\s*([\d.]+)\s*KG/i);
+            if (netMatch) {
+                netWeightKg = parseFloat(netMatch[1]);
+            }
+        }
+
+        if (content.toUpperCase().includes('PCS')) {
+            outputUnit = 'PCS';
+        }
+
+        return {
+            cleanBatchNo,
+            rawSpecs,
+            outputUnit,
+            cutSize,
+            cutUnit,
+            pieceWeightKg,
+            netWeightKg
+        };
+    }, [record]);
+
     useEffect(() => {
         fetchRecord();
         fetchSettlements();
@@ -260,34 +310,67 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
                 </div>
 
                 {/* Output Summary Card */}
-                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-3xl p-8 shadow-inner shadow-indigo-500/5 relative overflow-hidden">
+                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-3xl p-6 sm:p-8 shadow-inner shadow-indigo-500/5 relative overflow-hidden">
                     <div className="absolute bottom-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-                    <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-8">
-                        <div className="md:col-span-2">
-                            <h3 className="text-xs font-bold text-indigo-400/80 uppercase tracking-widest mb-2">Output Product</h3>
-                            <div className="text-3xl font-bold text-indigo-950 dark:text-indigo-50">{record.outputProduct?.name}</div>
-                            <div className="text-sm text-indigo-800 dark:text-indigo-300 mt-2 font-medium flex items-center gap-2">
+                    <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-6 sm:gap-8 items-start">
+                        <div className="md:col-span-2 space-y-2">
+                            <h3 className="text-xs font-bold text-indigo-400/80 uppercase tracking-widest">Output Product</h3>
+                            <div className="text-3xl font-black text-indigo-950 dark:text-indigo-50">{record.outputProduct?.name}</div>
+                            <div className="text-sm text-indigo-800 dark:text-indigo-300 font-medium flex items-center gap-2">
                                 <Package size={16} />
-                                {record.outputProduct?.category?.name || 'Uncategorized'} | {record.warehouse?.name || 'Main Warehouse'}
+                                <span>{record.outputProduct?.category?.name || 'Uncategorized'}</span>
+                                <span>•</span>
+                                <span>{record.warehouse?.name || 'Main Warehouse'}</span>
                             </div>
-                            {record.batchNo && (
-                                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs font-mono font-semibold text-indigo-700 dark:text-indigo-300">
-                                    <FileText size={13} className="text-indigo-500" />
-                                    <span>Batch #{record.batchNo}</span>
+                            {parsedSpecs && (
+                                <div className="pt-2 flex flex-wrap items-center gap-2">
+                                    {parsedSpecs.cleanBatchNo && (
+                                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/15 border border-indigo-500/25 text-xs font-mono font-bold text-indigo-700 dark:text-indigo-300">
+                                            <FileText size={13} className="text-indigo-500" />
+                                            <span>Batch #{parsedSpecs.cleanBatchNo}</span>
+                                        </div>
+                                    )}
+                                    {parsedSpecs.cutSize && (
+                                        <span className="px-2.5 py-1 rounded-xl bg-white/70 dark:bg-slate-800/80 text-xs font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shadow-xs">
+                                            Cut: {parsedSpecs.cutSize} {parsedSpecs.cutUnit}/PC
+                                        </span>
+                                    )}
+                                    {parsedSpecs.pieceWeightKg && (
+                                        <span className="px-2.5 py-1 rounded-xl bg-white/70 dark:bg-slate-800/80 text-xs font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shadow-xs">
+                                            Piece Wt: {parseFloat(parsedSpecs.pieceWeightKg).toFixed(4)} KG
+                                        </span>
+                                    )}
                                 </div>
                             )}
                         </div>
                         <div>
                             <h3 className="text-xs font-bold text-indigo-400/80 uppercase tracking-widest mb-2">Quantity Produced</h3>
-                            <div className="text-4xl font-light text-emerald-600 dark:text-emerald-400">
-                                {record.outputQuantity} <span className="text-lg font-medium text-emerald-600/50 dark:text-emerald-400/50">{record.outputProduct?.baseUnit?.code}</span>
+                            <div className="text-4xl font-black text-emerald-600 dark:text-emerald-400 flex items-baseline gap-2">
+                                <span>{Number(record.outputQuantity).toLocaleString()}</span>
+                                <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{parsedSpecs?.outputUnit || record.outputProduct?.baseUnit?.code || 'Units'}</span>
                             </div>
+                            {parsedSpecs?.netWeightKg && parsedSpecs.outputUnit !== "KG" && (
+                                <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300">
+                                    <span>Export Fabric Weight:</span>
+                                    <span className="font-extrabold text-emerald-800 dark:text-emerald-200">{parsedSpecs.netWeightKg.toLocaleString()} KG</span>
+                                </div>
+                            )}
                         </div>
                         <div>
                             <h3 className="text-xs font-bold text-indigo-400/80 uppercase tracking-widest mb-2">Cost Per Unit</h3>
-                            <div className="text-4xl font-light text-amber-600 dark:text-amber-400">
-                                {(Number(record.totalCost) / Number(record.outputQuantity)).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                            <div className="text-4xl font-black text-amber-600 dark:text-amber-400 flex items-baseline gap-1.5">
+                                <span className="text-xl font-normal text-amber-600/70 dark:text-amber-400/70">Rs.</span>
+                                <span>{(Number(record.totalCost) / Number(record.outputQuantity)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 3})}</span>
+                                <span className="text-sm font-bold text-amber-600/80 dark:text-amber-400/80">/{parsedSpecs?.outputUnit || 'Unit'}</span>
                             </div>
+                            {parsedSpecs?.netWeightKg && parsedSpecs.netWeightKg > 0 && parsedSpecs.outputUnit !== "KG" && (
+                                <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-mono font-bold text-amber-700 dark:text-amber-300">
+                                    <span>Cost / KG:</span>
+                                    <span className="font-extrabold text-amber-800 dark:text-amber-200">
+                                        Rs. {(Number(record.totalCost) / parsedSpecs.netWeightKg).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} / KG
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -622,6 +705,22 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
                                 <div className="flex justify-between items-center py-4 bg-slate-900/50 -mx-4 px-4 rounded-xl">
                                     <span className="text-slate-300 font-bold">Total Batch Cost</span>
                                     <span className="text-2xl font-black text-emerald-400">{Number(record.totalCost).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                </div>
+                                <div className="pt-2 border-t border-slate-800/80 space-y-2 text-xs font-mono">
+                                    <div className="flex justify-between items-center text-slate-400">
+                                        <span>Unit Cost ({parsedSpecs?.outputUnit || 'Unit'}):</span>
+                                        <span className="font-bold text-amber-400">
+                                            Rs. {(Number(record.totalCost) / Number(record.outputQuantity)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 3})}
+                                        </span>
+                                    </div>
+                                    {parsedSpecs?.netWeightKg && parsedSpecs.outputUnit !== "KG" && (
+                                        <div className="flex justify-between items-center text-slate-400">
+                                            <span>Fabric Weight Cost:</span>
+                                            <span className="font-bold text-emerald-400">
+                                                Rs. {(Number(record.totalCost) / parsedSpecs.netWeightKg).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} / KG
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
