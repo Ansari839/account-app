@@ -3,7 +3,7 @@
 import React, { useEffect, useState, use } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { authenticatedFetch } from '@/lib/api-client';
-import { Hammer, Package, AlertCircle, ArrowLeft, Loader2, DollarSign, Scissors, Layers, FileText, CheckCircle2, Clock, X, Sparkles } from 'lucide-react';
+import { Hammer, Package, AlertCircle, ArrowLeft, Loader2, DollarSign, Scissors, Layers, FileText, CheckCircle2, Clock, X, Sparkles, Eye, Edit2, Trash2, History } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function ViewProductionExecutionPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,8 +24,22 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
     const [stockSettleRemarks, setStockSettleRemarks] = useState("");
     const [isStockSettling, setIsStockSettling] = useState(false);
 
+    // Settlements CRUD state (View / Edit / Delete)
+    const [settlements, setSettlements] = useState<any[]>([]);
+    const [viewingSettlement, setViewingSettlement] = useState<any>(null);
+    const [editingSettlement, setEditingSettlement] = useState<any>(null);
+    const [editQty, setEditQty] = useState<number | string>("");
+    const [editRate, setEditRate] = useState<number | string>("");
+    const [editWarehouseId, setEditWarehouseId] = useState("");
+    const [editProductId, setEditProductId] = useState("");
+    const [editDate, setEditDate] = useState("");
+    const [editRemarks, setEditRemarks] = useState("");
+    const [isSavingEdit, setIsSavingEdit] = useState(false);
+    const [isReverting, setIsReverting] = useState(false);
+
     useEffect(() => {
         fetchRecord();
+        fetchSettlements();
         authenticatedFetch("/api/inventory/warehouses")
             .then(r => r.json())
             .then(j => {
@@ -45,6 +59,95 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
             })
             .catch(console.error);
     }, [id]);
+
+    const fetchSettlements = async () => {
+        try {
+            const res = await authenticatedFetch(`/api/finance/production/accruals/settlements?productionId=${id}`);
+            const json = await res.json();
+            if (json.success) {
+                setSettlements(json.data || []);
+            }
+        } catch (e) {
+            console.error("Failed to fetch settlements", e);
+        }
+    };
+
+    const handleRevertSettlement = async (settlement: any) => {
+        const sId = settlement.settlementId || settlement.id;
+        const accNo = settlement.accrualNo || "accrual";
+        if (!confirm(`Are you sure you want to revert/delete settlement for ${accNo}?\n\nThis will:\n• Restore the deducted physical stock to the warehouse\n• Delete the General Ledger Journal Entry\n• Revert the accrual status back to PENDING BILL`)) {
+            return;
+        }
+
+        try {
+            setIsReverting(true);
+            const res = await authenticatedFetch(`/api/finance/production/accruals/settlements/${sId}`, {
+                method: "DELETE"
+            });
+            const json = await res.json();
+            if (json.success) {
+                alert(json.message || "Settlement reverted successfully.");
+                fetchRecord();
+                fetchSettlements();
+            } else {
+                alert(json.error || "Failed to revert settlement.");
+            }
+        } catch (e: any) {
+            alert(e.message || "Error occurred while reverting settlement.");
+        } finally {
+            setIsReverting(false);
+        }
+    };
+
+    const openEditSettlementModal = (settlement: any) => {
+        setEditingSettlement(settlement);
+        setEditQty(settlement.qty || "");
+        setEditRate(settlement.rate || "");
+        setEditWarehouseId(settlement.warehouseId || (warehouses[0]?.id || ""));
+        setEditProductId(settlement.productId || "");
+        setEditDate(settlement.settlementDate || new Date().toISOString().split("T")[0]);
+        setEditRemarks(settlement.remarks || "");
+    };
+
+    const handleSaveEditSettlement = async () => {
+        if (!editingSettlement) return;
+        const q = Number(editQty);
+        const r = Number(editRate);
+        if (q <= 0) {
+            alert("Please enter a valid quantity greater than zero.");
+            return;
+        }
+
+        try {
+            setIsSavingEdit(true);
+            const sId = editingSettlement.settlementId || editingSettlement.id;
+            const res = await authenticatedFetch(`/api/finance/production/accruals/settlements/${sId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    qty: q,
+                    rate: r,
+                    productId: editProductId,
+                    warehouseId: editWarehouseId,
+                    settlementDate: editDate,
+                    remarks: editRemarks
+                })
+            });
+            const json = await res.json();
+            if (json.success) {
+                alert("Settlement updated successfully!");
+                setEditingSettlement(null);
+                fetchRecord();
+                fetchSettlements();
+            } else {
+                alert(json.error || "Failed to update settlement.");
+            }
+        } catch (e: any) {
+            alert(e.message || "Error saving settlement.");
+        } finally {
+            setIsSavingEdit(false);
+        }
+    };
 
     const handleSingleStockSettle = async () => {
         if (!selectedAccrualForStock) return;
@@ -412,38 +515,82 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
                                                             )}
                                                         </td>
                                                         <td className="px-4 py-4 text-center">
-                                                            {isPending ? (
-                                                                <div className="flex items-center justify-center gap-2">
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            setSelectedAccrualForStock(acc);
-                                                                            setStockSettleProductId(acc.productId || (products[0]?.id || ""));
-                                                                            setStockSettleQty(acc.qty || "");
-                                                                            setStockSettleRate(acc.rate || "");
-                                                                            if (warehouses.length > 0 && !stockSettleWarehouseId) {
-                                                                                setStockSettleWarehouseId(warehouses[0].id);
-                                                                            }
-                                                                        }}
-                                                                        className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 transition-all shadow-sm"
-                                                                        title="Settle against physical warehouse stock"
-                                                                    >
-                                                                        <Package size={12} />
-                                                                        <span>Settle Stock</span>
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => router.push(`/finance/purchase/invoices/new?sourceType=PRODUCTION&accrualId=${acc.id}`)}
-                                                                        className="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1 transition-all shadow-sm"
-                                                                        title="Bill in Purchase Invoice"
-                                                                    >
-                                                                        <DollarSign size={12} />
-                                                                        <span>Bill Vendor</span>
-                                                                    </button>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-xs text-slate-400 font-semibold italic">Settled / Billed</span>
-                                                            )}
+                                                            {(() => {
+                                                                const linkedSettlement = settlements.find(s => s.accrualId === acc.id || s.accrualNo === acc.accrualNo);
+                                                                return (
+                                                                    <div className="flex flex-wrap items-center justify-center gap-1.5">
+                                                                        {/* If Pending or Partial, allow settling remaining */}
+                                                                        {(isPending || acc.status === "PARTIALLY_BILLED") && (
+                                                                            <>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        setSelectedAccrualForStock(acc);
+                                                                                        setStockSettleProductId(acc.productId || (products[0]?.id || ""));
+                                                                                        const rem = Math.max(0, Number(acc.qty) - Number(acc.billedQty || 0));
+                                                                                        setStockSettleQty(rem > 0 ? rem : acc.qty);
+                                                                                        setStockSettleRate(acc.rate || "");
+                                                                                        if (warehouses.length > 0 && !stockSettleWarehouseId) {
+                                                                                            setStockSettleWarehouseId(warehouses[0].id);
+                                                                                        }
+                                                                                    }}
+                                                                                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 transition-all shadow-sm"
+                                                                                    title="Settle against physical warehouse stock"
+                                                                                >
+                                                                                    <Package size={12} />
+                                                                                    <span>Settle Stock</span>
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => router.push(`/finance/purchase/invoices/new?sourceType=PRODUCTION&accrualId=${acc.id}`)}
+                                                                                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1 transition-all shadow-sm"
+                                                                                    title="Bill in Purchase Invoice"
+                                                                                >
+                                                                                    <DollarSign size={12} />
+                                                                                    <span>Bill Vendor</span>
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+
+                                                                        {/* If Settled (Billed or Partially Billed), allow CRUD: View, Edit, Revert */}
+                                                                        {linkedSettlement && (
+                                                                            <>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => setViewingSettlement(linkedSettlement)}
+                                                                                    className="px-2 py-1 text-xs font-bold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 transition-all shadow-sm"
+                                                                                    title="View Settlement & GL Voucher"
+                                                                                >
+                                                                                    <Eye size={12} />
+                                                                                    <span>View</span>
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => openEditSettlementModal(linkedSettlement)}
+                                                                                    className="px-2 py-1 text-xs font-bold rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1 transition-all shadow-sm"
+                                                                                    title="Edit Settlement (Qty / Rate / Warehouse)"
+                                                                                >
+                                                                                    <Edit2 size={12} />
+                                                                                    <span>Edit</span>
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    disabled={isReverting}
+                                                                                    onClick={() => handleRevertSettlement(linkedSettlement)}
+                                                                                    className="px-2 py-1 text-xs font-bold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1 transition-all shadow-sm disabled:opacity-50"
+                                                                                    title="Revert / Delete Settlement (Restores stock to warehouse & returns to Pending)"
+                                                                                >
+                                                                                    <Trash2 size={12} />
+                                                                                    <span>Revert</span>
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                        {!isPending && !linkedSettlement && (
+                                                                            <span className="text-xs text-slate-400 font-semibold italic">Settled in Invoice</span>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                         </td>
                                                     </tr>
                                                 );
@@ -682,6 +829,300 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
                                     <>
                                         <CheckCircle2 size={14} />
                                         <span>Confirm Stock Settlement</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* View Settlement Modal */}
+            {viewingSettlement && (
+                <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-black">
+                                    <Eye size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                        Settlement Details
+                                    </h3>
+                                    <p className="text-xs text-slate-400">
+                                        Accrual #{viewingSettlement.accrualNo} • {viewingSettlement.settlementType === 'STOCK' ? 'Warehouse Stock Deduction' : 'Vendor Bill'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setViewingSettlement(null)}
+                                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                            {/* Summary Card */}
+                            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/50 space-y-2.5">
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-400 font-bold uppercase">Product / Material:</span>
+                                    <span className="font-black text-slate-900 dark:text-white">{viewingSettlement.productName}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-400 font-bold uppercase">Deduction Warehouse:</span>
+                                    <span className="font-black text-slate-900 dark:text-white">{viewingSettlement.warehouseName}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-400 font-bold uppercase">Settled Quantity:</span>
+                                    <span className="font-black text-emerald-600 dark:text-emerald-400">{Number(viewingSettlement.qty).toLocaleString()} KG</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-400 font-bold uppercase">Settlement Cost Rate:</span>
+                                    <span className="font-black text-slate-900 dark:text-white">Rs. {Number(viewingSettlement.rate).toFixed(2)} / KG</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-200 dark:border-slate-700">
+                                    <span className="text-slate-500 font-black uppercase">Total Settlement Value:</span>
+                                    <span className="font-black text-indigo-600 dark:text-indigo-400 text-sm">Rs. {Number(viewingSettlement.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-slate-400 font-bold uppercase">Settlement Date:</span>
+                                    <span className="font-mono text-slate-700 dark:text-slate-300">{viewingSettlement.settlementDate}</span>
+                                </div>
+                                {viewingSettlement.remarks && (
+                                    <div className="text-xs pt-1 border-t border-slate-200 dark:border-slate-700 text-slate-500">
+                                        <span className="font-bold">Remarks:</span> {viewingSettlement.remarks}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Accounting Journal Entry (GL) */}
+                            {viewingSettlement.journalEntry ? (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                            <FileText size={14} className="text-indigo-500" />
+                                            General Ledger Voucher
+                                        </span>
+                                        <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800">
+                                            {viewingSettlement.journalEntry.number}
+                                        </span>
+                                    </div>
+
+                                    <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
+                                        <table className="w-full text-xs text-left">
+                                            <thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 uppercase font-black text-[10px]">
+                                                <tr>
+                                                    <th className="p-2.5">Account</th>
+                                                    <th className="p-2.5 text-right">Debit (PKR)</th>
+                                                    <th className="p-2.5 text-right">Credit (PKR)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                                {viewingSettlement.journalEntry.lines.map((l: any, idx: number) => (
+                                                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                                                        <td className="p-2.5 font-bold text-slate-800 dark:text-slate-200">
+                                                            <div>{l.accountName}</div>
+                                                            <div className="text-[10px] text-slate-400 font-mono">{l.accountCode}</div>
+                                                        </td>
+                                                        <td className="p-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">
+                                                            {l.debit > 0 ? Number(l.debit).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                                                        </td>
+                                                        <td className="p-2.5 text-right font-mono font-bold text-slate-900 dark:text-white">
+                                                            {l.credit > 0 ? Number(l.credit).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-xs text-slate-400 italic text-center py-2">
+                                    No direct GL journal entry (Cleared via Purchase Invoice).
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-5 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <button
+                                type="button"
+                                disabled={isReverting}
+                                onClick={() => {
+                                    setViewingSettlement(null);
+                                    handleRevertSettlement(viewingSettlement);
+                                }}
+                                className="px-4 py-2 rounded-xl font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-800 transition-colors text-xs uppercase tracking-wider flex items-center gap-1.5"
+                            >
+                                <Trash2 size={14} />
+                                <span>Revert Settlement</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setViewingSettlement(null)}
+                                className="px-5 py-2.5 rounded-xl font-black text-white bg-slate-800 hover:bg-slate-700 transition-all text-xs uppercase tracking-wider"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Settlement Modal */}
+            {editingSettlement && (
+                <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-black">
+                                    <Edit2 size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                        Edit Settlement
+                                    </h3>
+                                    <p className="text-xs text-slate-400">
+                                        Accrual #{editingSettlement.accrualNo} • Modify quantity, rate or warehouse
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setEditingSettlement(null)}
+                                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                    Physical Product / Material *
+                                </label>
+                                <select
+                                    value={editProductId}
+                                    onChange={(e) => setEditProductId(e.target.value)}
+                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
+                                >
+                                    {products.map((p: any) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.name} ({p.code}){p.hsCode ? ` • HS: ${p.hsCode}` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Settled Quantity (KG) *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={editQty}
+                                        onChange={(e) => setEditQty(e.target.value)}
+                                        className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-black text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Stock Cost Rate (PKR) *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={editRate}
+                                        onChange={(e) => setEditRate(e.target.value)}
+                                        className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Deduction Warehouse *
+                                    </label>
+                                    <select
+                                        value={editWarehouseId}
+                                        onChange={(e) => setEditWarehouseId(e.target.value)}
+                                        className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
+                                    >
+                                        {warehouses.map((w: any) => (
+                                            <option key={w.id} value={w.id}>{w.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Settlement Date *
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={editDate}
+                                        onChange={(e) => setEditDate(e.target.value)}
+                                        className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                    Remarks / Notes
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editRemarks}
+                                    onChange={(e) => setEditRemarks(e.target.value)}
+                                    placeholder="Optional settlement note..."
+                                    className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
+                                />
+                            </div>
+
+                            <div className="p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 text-xs text-amber-800 dark:text-amber-300">
+                                <p className="font-bold flex items-center gap-1">
+                                    <Sparkles size={13} className="shrink-0" />
+                                    <span>Syncs Warehouse & Accounting:</span>
+                                </p>
+                                <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
+                                    Updating will adjust the physical inventory deduction (<code className="font-mono">StockLedger</code>), recalibrate the General Ledger entry, and recalculate unbilled accrual balances.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-5 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+                            <button
+                                type="button"
+                                disabled={isSavingEdit}
+                                onClick={() => setEditingSettlement(null)}
+                                className="px-4 py-2 rounded-xl font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs uppercase tracking-wider"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isSavingEdit}
+                                onClick={handleSaveEditSettlement}
+                                className="px-5 py-2.5 rounded-xl font-black text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-md shadow-amber-500/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2"
+                            >
+                                {isSavingEdit ? (
+                                    <>
+                                        <Sparkles size={14} className="animate-spin" />
+                                        <span>Saving...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 size={14} />
+                                        <span>Save Changes</span>
                                     </>
                                 )}
                             </button>

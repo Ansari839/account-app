@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
             // Find Active Financial Year if available
             const activeFy = await tx.financialYear.findFirst({
-                where: { companyId, isClosed: false }
+                where: { companyId, isOpen: true }
             });
 
             for (const item of settlementItems) {
