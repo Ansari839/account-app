@@ -143,7 +143,19 @@ export async function GET(req: NextRequest) {
                 const totalAmount = Number(item.amount);
                 const remainingAmount = remainingQty * rate;
 
-                const isUnspecifiedYarn = Boolean(item.remarks && item.remarks.includes('[UNSPECIFIED_YARN]'));
+                const isStillUnspecified = (item.status === 'PENDING' && billedQty <= 0.001) &&
+                    Boolean(item.remarks && item.remarks.includes('[UNSPECIFIED_YARN]'));
+
+                let effectiveProductName = item.Product?.name || "Service / Item";
+                if (item.remarks && item.remarks.includes('[Settled from Stock:')) {
+                    const match = item.remarks.match(/\[Settled from Stock:\s*([^-\]]+)/i);
+                    if (match && match[1]) {
+                        effectiveProductName = match[1].trim();
+                    }
+                }
+                if (isStillUnspecified) {
+                    effectiveProductName = "Raw Yarn (Unspecified / Pending Settle)";
+                }
 
                 return {
                     id: item.id,
@@ -152,9 +164,9 @@ export async function GET(req: NextRequest) {
                     productionId: item.productionId,
                     productionOutput: item.ProductionRecord?.Product?.name || "-",
                     productId: item.productId,
-                    productName: isUnspecifiedYarn ? "Raw Yarn (Unspecified / Pending Settle)" : (item.Product?.name || "Service / Item"),
-                    productCode: isUnspecifiedYarn ? "YARN-UNSPECIFIED" : (item.Product?.code || ""),
-                    hsCode: isUnspecifiedYarn ? "-" : (item.Product?.hsCode || ""),
+                    productName: effectiveProductName,
+                    productCode: isStillUnspecified ? "YARN-UNSPECIFIED" : (item.Product?.code || ""),
+                    hsCode: isStillUnspecified ? "-" : (item.Product?.hsCode || ""),
                     supplierId: item.supplierId,
                     supplierName: item.Supplier?.name || "Unassigned / General Vendor",
                     supplierCode: item.Supplier?.code || "",

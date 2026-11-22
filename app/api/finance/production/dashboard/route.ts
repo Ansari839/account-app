@@ -399,8 +399,19 @@ export async function GET(request: NextRequest) {
                 const amount = Number(a.amount || 0);
                 const remainingAmount = remainingQty * rate;
 
-                const isUnspecified = Boolean(a.remarks && a.remarks.includes('[UNSPECIFIED_YARN]'));
-                const pName = isUnspecified ? 'Raw Yarn (Unspecified - Settle Pending)' : (a.Product?.name || 'Raw Material / Service');
+                // If settled, use the actual settled yarn/product name!
+                let pName = a.Product?.name || 'Raw Material / Service';
+                if (a.remarks && a.remarks.includes('[Settled from Stock:')) {
+                    const match = a.remarks.match(/\[Settled from Stock:\s*([^-\]]+)/i);
+                    if (match && match[1]) {
+                        pName = match[1].trim();
+                    }
+                }
+                const isStillUnspecified = (a.status === 'PENDING' && billedQty <= 0.001) &&
+                    Boolean(a.remarks && a.remarks.includes('[UNSPECIFIED_YARN]'));
+                if (isStillUnspecified) {
+                    pName = 'Raw Yarn (Unspecified - Pending Settle)';
+                }
 
                 const itemData = {
                     id: a.id,
