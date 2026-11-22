@@ -3,19 +3,43 @@
 import { useEffect, useState } from "react";
 import MainLayout from "@/components/MainLayout";
 import { authenticatedFetch } from "@/lib/api-client";
-import { Download, RefreshCw, Printer, Calendar, Scale, ArrowLeft } from "lucide-react";
+import { Download, RefreshCw, Printer, Calendar, Scale, ArrowLeft, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useCompany } from "@/context/CompanyContext";
+import ReportPrintHeader from "@/components/reports/ReportPrintHeader";
+import ReportPrintFooter from "@/components/reports/ReportPrintFooter";
+import ReportPrintPreviewModal from "@/components/reports/ReportPrintPreviewModal";
 
 export default function TradingAccountPage() {
     const router = useRouter();
+    const { activeCompany } = useCompany();
+    const [companyDetails, setCompanyDetails] = useState<any>(null);
+    const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
+
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any>(null);
     const [dateRange, setDateRange] = useState({
         startDate: format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), "yyyy-MM-dd"),
         endDate: format(new Date(), "yyyy-MM-dd")
     });
+
+    useEffect(() => {
+        authenticatedFetch('/api/admin/company')
+            .then(res => res.json())
+            .then(json => {
+                if (json.success && json.data) {
+                    setCompanyDetails(json.data);
+                }
+            })
+            .catch(() => {});
+    }, [activeCompany?.id]);
+
+    const effectiveCompanyName = activeCompany?.name || companyDetails?.name || 'Ismail Hamed & Sons';
+    const effectiveCompanyAddress = activeCompany?.address || companyDetails?.address;
+    const effectiveCompanyPhone = activeCompany?.phone || companyDetails?.phone;
+    const effectiveCompanyEmail = activeCompany?.email || companyDetails?.email;
 
     const fetchData = async () => {
         setLoading(true);
@@ -37,8 +61,101 @@ export default function TradingAccountPage() {
         fetchData();
     }, []);
 
-    const handlePrint = () => {
-        window.print();
+    const periodString = `For the period: ${format(new Date(dateRange.startDate), "dd MMM yyyy")} to ${format(new Date(dateRange.endDate), "dd MMM yyyy")}`;
+
+    const renderTradingContent = () => {
+        if (loading) {
+            return (
+                <div className="p-32 flex flex-col items-center justify-center print:hidden">
+                    <div className="relative w-16 h-16 mb-6">
+                        <div className="absolute inset-0 border-4 border-indigo-200 dark:border-indigo-900 rounded-full"></div>
+                        <div className="absolute inset-0 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                    <p className="text-slate-500 font-black uppercase tracking-widest text-sm animate-pulse">Calculating Trading Profit...</p>
+                </div>
+            );
+        }
+
+        if (!data) {
+            return (
+                <div className="p-32 text-center border border-dashed border-slate-300 dark:border-slate-700 rounded-[2rem] bg-slate-50 dark:bg-slate-900/50 print:hidden">
+                    <Scale size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+                    <h2 className="text-xl font-bold text-slate-500">No trading data available for this period.</h2>
+                </div>
+            );
+        }
+
+        return (
+            <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden print:shadow-none print:border-2 print:border-black print:rounded-none">
+                {/* T-Account Header */}
+                <div className="bg-slate-100 dark:bg-slate-800 p-4 text-center border-b border-slate-200 dark:border-slate-700 flex justify-center items-center gap-3 print:bg-slate-200">
+                    <Scale size={20} className="text-slate-400" />
+                    <h2 className="text-xl font-black uppercase tracking-widest text-slate-800 dark:text-white print:text-black">Trading Account</h2>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-700 print:grid-cols-2 print:divide-x print:divide-y-0 print:divide-black">
+                    {/* DEBIT SIDE (Dr) */}
+                    <div className="flex flex-col">
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 flex justify-between items-center border-b border-slate-200 dark:border-slate-700 print:border-black">
+                            <span className="font-black uppercase tracking-widest text-xs text-slate-500 dark:text-slate-400">Particulars (Dr)</span>
+                            <span className="font-black uppercase tracking-widest text-xs text-slate-500 dark:text-slate-400">Amount</span>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800/50 flex-1">
+                            {data.debitSide.map((item: any, i: number) => (
+                                <div key={i} className="p-4 flex justify-between text-sm group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                    <span className="font-bold text-slate-700 dark:text-slate-300">{item.name}</span>
+                                    <span className="font-mono font-bold text-slate-900 dark:text-white">{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            ))}
+                            {/* Gross Profit Balance c/d (if profit) */}
+                            {data.grossProfit > 0 && (
+                                <div className="p-4 flex justify-between text-sm font-black bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-t border-emerald-200 dark:border-emerald-800">
+                                    <span>Gross Profit c/d</span>
+                                    <span className="font-mono text-lg">{data.grossProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            )}
+                        </div>
+                        {/* Total Row */}
+                        <div className="bg-slate-100 dark:bg-slate-800 p-4 flex justify-between items-center border-t border-slate-200 dark:border-slate-700 print:border-t-2 print:border-black print:bg-slate-100">
+                            <span className="font-black uppercase tracking-widest text-slate-700 dark:text-white">Total</span>
+                            <span className="font-mono font-black text-xl text-indigo-600 dark:text-indigo-400 border-double border-b-4 border-indigo-600 dark:border-indigo-400 print:border-black print:text-black">
+                                {data.totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* CREDIT SIDE (Cr) */}
+                    <div className="flex flex-col">
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 flex justify-between items-center border-b border-slate-200 dark:border-slate-700 print:border-black">
+                            <span className="font-black uppercase tracking-widest text-xs text-slate-500 dark:text-slate-400">Particulars (Cr)</span>
+                            <span className="font-black uppercase tracking-widest text-xs text-slate-500 dark:text-slate-400">Amount</span>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800/50 flex-1">
+                            {data.creditSide.map((item: any, i: number) => (
+                                <div key={i} className="p-4 flex justify-between text-sm group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                    <span className="font-bold text-slate-700 dark:text-slate-300">{item.name}</span>
+                                    <span className="font-mono font-bold text-slate-900 dark:text-white">{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            ))}
+                            {/* Gross Loss Balance c/d (if loss) */}
+                            {data.grossProfit < 0 && (
+                                <div className="p-4 flex justify-between text-sm font-black bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border-t border-rose-200 dark:border-rose-800">
+                                    <span>Gross Loss c/d</span>
+                                    <span className="font-mono text-lg">{Math.abs(data.grossProfit).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            )}
+                        </div>
+                        {/* Total Row */}
+                        <div className="bg-slate-100 dark:bg-slate-800 p-4 flex justify-between items-center border-t border-slate-200 dark:border-slate-700 print:border-t-2 print:border-black print:bg-slate-100">
+                            <span className="font-black uppercase tracking-widest text-slate-700 dark:text-white">Total</span>
+                            <span className="font-mono font-black text-xl text-indigo-600 dark:text-indigo-400 border-double border-b-4 border-indigo-600 dark:border-indigo-400 print:border-black print:text-black">
+                                {data.totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -69,10 +186,18 @@ export default function TradingAccountPage() {
                             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh Data
                         </button>
                         <button
-                            onClick={handlePrint}
+                            type="button"
+                            onClick={() => setIsPrintPreviewOpen(true)}
+                            className="flex items-center gap-2 px-6 py-3 bg-slate-800/80 hover:bg-slate-700 border border-indigo-500/40 text-indigo-300 font-bold rounded-xl shadow-lg transition-all"
+                        >
+                            <Eye size={16} /> A4 Print Preview
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => window.print()}
                             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-black rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-105 transition-transform"
                         >
-                            <Printer size={16} /> Print / PDF
+                            <Printer size={16} /> Print / PDF (A4)
                         </button>
                     </div>
                 </div>
@@ -110,113 +235,42 @@ export default function TradingAccountPage() {
                 </div>
 
                 {/* REPORT CONTENT */}
-                <div className="min-h-[400px]">
-                    <div className="print:fixed print:inset-0 print:bg-white print:z-[9999] print:p-12 print:overflow-auto">
-                        
-                        {/* PRINT HEADER */}
-                        <div className="hidden print:block mb-10 text-center border-b-2 border-slate-800 pb-6">
-                            <h1 className="text-4xl font-black uppercase tracking-widest text-slate-900 mb-2">Ansari Traders</h1>
-                            <h2 className="text-2xl font-bold uppercase text-slate-600 mb-4">Trading Account</h2>
-                            <div className="flex justify-center items-center gap-4 text-sm font-medium text-slate-500">
-                                <span className="bg-slate-100 px-4 py-1 rounded-full">For the period: {format(new Date(dateRange.startDate), "dd MMM yyyy")} to {format(new Date(dateRange.endDate), "dd MMM yyyy")}</span>
-                            </div>
+                <div className={cn("min-h-[400px]", isPrintPreviewOpen && "print:hidden")}>
+                    <div className="print:block print:w-full">
+                        {/* PRINT ONLY LETTERHEAD HEADER */}
+                        <div className="hidden print:block">
+                            <ReportPrintHeader
+                                companyName={effectiveCompanyName}
+                                companyAddress={effectiveCompanyAddress}
+                                companyPhone={effectiveCompanyPhone}
+                                companyEmail={effectiveCompanyEmail}
+                                reportTitle="Trading Account"
+                                period={periodString}
+                            />
                         </div>
 
-                        {loading ? (
-                            <div className="p-32 flex flex-col items-center justify-center print:hidden">
-                                <div className="relative w-16 h-16 mb-6">
-                                    <div className="absolute inset-0 border-4 border-indigo-200 dark:border-indigo-900 rounded-full"></div>
-                                    <div className="absolute inset-0 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                                </div>
-                                <p className="text-slate-500 font-black uppercase tracking-widest text-sm animate-pulse">Calculating Trading Profit...</p>
-                            </div>
-                        ) : data ? (
-                            <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden print:shadow-none print:border-2 print:border-black print:rounded-none">
-                                {/* T-Account Header */}
-                                <div className="bg-slate-100 dark:bg-slate-800 p-4 text-center border-b border-slate-200 dark:border-slate-700 flex justify-center items-center gap-3 print:bg-slate-200">
-                                    <Scale size={20} className="text-slate-400" />
-                                    <h2 className="text-xl font-black uppercase tracking-widest text-slate-800 dark:text-white print:text-black">Trading Account</h2>
-                                </div>
+                        {renderTradingContent()}
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-700 print:grid-cols-2 print:divide-x print:divide-y-0 print:divide-black">
-                                    
-                                    {/* DEBIT SIDE (Dr) */}
-                                    <div className="flex flex-col">
-                                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 flex justify-between items-center border-b border-slate-200 dark:border-slate-700 print:border-black">
-                                            <span className="font-black uppercase tracking-widest text-xs text-slate-500 dark:text-slate-400">Particulars (Dr)</span>
-                                            <span className="font-black uppercase tracking-widest text-xs text-slate-500 dark:text-slate-400">Amount</span>
-                                        </div>
-                                        <div className="divide-y divide-slate-100 dark:divide-slate-800/50 flex-1">
-                                            {data.debitSide.map((item: any, i: number) => (
-                                                <div key={i} className="p-4 flex justify-between text-sm group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                                    <span className="font-bold text-slate-700 dark:text-slate-300">{item.name}</span>
-                                                    <span className="font-mono font-bold text-slate-900 dark:text-white">{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                                </div>
-                                            ))}
-                                            {/* Gross Profit Balance c/d (if profit) */}
-                                            {data.grossProfit > 0 && (
-                                                <div className="p-4 flex justify-between text-sm font-black bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-t border-emerald-200 dark:border-emerald-800">
-                                                    <span>Gross Profit c/d</span>
-                                                    <span className="font-mono text-lg">{data.grossProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {/* Total Row */}
-                                        <div className="bg-slate-100 dark:bg-slate-800 p-4 flex justify-between items-center border-t border-slate-200 dark:border-slate-700 print:border-t-2 print:border-black print:bg-slate-100">
-                                            <span className="font-black uppercase tracking-widest text-slate-700 dark:text-white">Total</span>
-                                            <span className="font-mono font-black text-xl text-indigo-600 dark:text-indigo-400 border-double border-b-4 border-indigo-600 dark:border-indigo-400 print:border-black print:text-black">
-                                                {data.totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* CREDIT SIDE (Cr) */}
-                                    <div className="flex flex-col">
-                                        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 flex justify-between items-center border-b border-slate-200 dark:border-slate-700 print:border-black">
-                                            <span className="font-black uppercase tracking-widest text-xs text-slate-500 dark:text-slate-400">Particulars (Cr)</span>
-                                            <span className="font-black uppercase tracking-widest text-xs text-slate-500 dark:text-slate-400">Amount</span>
-                                        </div>
-                                        <div className="divide-y divide-slate-100 dark:divide-slate-800/50 flex-1">
-                                            {data.creditSide.map((item: any, i: number) => (
-                                                <div key={i} className="p-4 flex justify-between text-sm group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                                    <span className="font-bold text-slate-700 dark:text-slate-300">{item.name}</span>
-                                                    <span className="font-mono font-bold text-slate-900 dark:text-white">{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                                </div>
-                                            ))}
-                                            {/* Gross Loss Balance c/d (if loss) */}
-                                            {data.grossProfit < 0 && (
-                                                <div className="p-4 flex justify-between text-sm font-black bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border-t border-rose-200 dark:border-rose-800">
-                                                    <span>Gross Loss c/d</span>
-                                                    <span className="font-mono text-lg">{Math.abs(data.grossProfit).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {/* Total Row */}
-                                        <div className="bg-slate-100 dark:bg-slate-800 p-4 flex justify-between items-center border-t border-slate-200 dark:border-slate-700 print:border-t-2 print:border-black print:bg-slate-100">
-                                            <span className="font-black uppercase tracking-widest text-slate-700 dark:text-white">Total</span>
-                                            <span className="font-mono font-black text-xl text-indigo-600 dark:text-indigo-400 border-double border-b-4 border-indigo-600 dark:border-indigo-400 print:border-black print:text-black">
-                                                {data.totalCredits.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="p-32 text-center border border-dashed border-slate-300 dark:border-slate-700 rounded-[2rem] bg-slate-50 dark:bg-slate-900/50 print:hidden">
-                                <Scale size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-                                <h2 className="text-xl font-bold text-slate-500">No trading data available for this period.</h2>
-                            </div>
-                        )}
-
-                        {/* PRINT FOOTER */}
-                        <div className="hidden print:flex justify-between mt-16 text-xs font-bold text-slate-400 py-4 border-t-2 border-slate-200">
-                            <p>Generated on {new Date().toLocaleString()} by Premium Accounting System</p>
-                            <p>Page 1 of 1</p>
+                        {/* PRINT ONLY SIGNATURE FOOTER */}
+                        <div className="hidden print:block">
+                            <ReportPrintFooter />
                         </div>
-
                     </div>
                 </div>
+
+                {/* REALISTIC ON-SCREEN A4 PRINT PREVIEW MODAL */}
+                <ReportPrintPreviewModal
+                    isOpen={isPrintPreviewOpen}
+                    onClose={() => setIsPrintPreviewOpen(false)}
+                    companyName={effectiveCompanyName}
+                    companyAddress={effectiveCompanyAddress}
+                    companyPhone={effectiveCompanyPhone}
+                    companyEmail={effectiveCompanyEmail}
+                    reportTitle="Trading Account"
+                    period={periodString}
+                >
+                    {renderTradingContent()}
+                </ReportPrintPreviewModal>
             </div>
         </MainLayout>
     );

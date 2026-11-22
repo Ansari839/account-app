@@ -146,3 +146,99 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ─── A4 Printing & PDF Generation ────────────────────────────────────── */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 12mm 12mm;
+  }
+
+  @page landscape {
+    size: A4 landscape;
+    margin: 10mm 12mm 12mm 12mm;
+  }
+
+  /* Universal reset for clean white paper printing */
+  html, body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-size: 10.5pt !important;
+    line-height: 1.35 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app navigation and interactive controls */
+  aside,
+  header,
+  footer:not(.report-print-footer),
+  nav,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Main container un-constrain */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Avoid cutting table rows mid-page */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tfoot {
+    display: table-footer-group !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 8px !important;
+    font-size: 9pt !important;
+  }
+
+  td {
+    border: 1px solid #e2e8f0 !important;
+    color: #1e293b !important;
+    padding: 5px 8px !important;
+    font-size: 9.5pt !important;
+  }
+
+  /* Force background removal for dark cards in print */
+  .dark {
+    --background: #ffffff !important;
+    --foreground: #000000 !important;
+  }
+
+  /* Prevent text clipping */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}

@@ -4,9 +4,13 @@ import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { authenticatedFetch } from '@/lib/api-client';
 import { useNotifications } from '@/context/NotificationContext';
-import { Globe2, ArrowLeft, RefreshCw, Printer, Calendar } from 'lucide-react';
+import { useCompany } from '@/context/CompanyContext';
+import { Globe2, ArrowLeft, RefreshCw, Printer, Calendar, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import ReportPrintHeader from '@/components/reports/ReportPrintHeader';
+import ReportPrintFooter from '@/components/reports/ReportPrintFooter';
+import ReportPrintPreviewModal from '@/components/reports/ReportPrintPreviewModal';
 
 interface ConsolidatedLine {
     code: string;
@@ -31,8 +35,10 @@ interface ReportData {
 export default function ConsolidatedProfitLossPage() {
     const { showNotification } = useNotifications();
     const router = useRouter();
+    const { activeCompany } = useCompany();
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<ReportData | null>(null);
+    const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
@@ -135,6 +141,82 @@ export default function ConsolidatedProfitLossPage() {
         return income - expense;
     };
 
+    const periodString = `Period: ${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`;
+    const effectiveCompanyName = activeCompany?.name ? `${activeCompany.name} (Group)` : "Group Financial Consolidation";
+
+    const renderContentBody = () => {
+        if (loading) {
+            return (
+                <div className="p-32 flex flex-col items-center justify-center print:hidden">
+                    <div className="relative w-16 h-16 mb-6">
+                        <div className="absolute inset-0 border-4 border-violet-200 dark:border-violet-900 rounded-full"></div>
+                        <div className="absolute inset-0 border-4 border-violet-600 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                    <p className="text-slate-500 font-black uppercase tracking-widest text-sm animate-pulse">Consolidating Financials...</p>
+                </div>
+            );
+        }
+
+        if (!data) {
+            return (
+                <div className="text-center py-24 bg-white dark:bg-slate-900 rounded-[2rem] border border-dashed border-slate-300 dark:border-slate-700 print:hidden">
+                    <Globe2 size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+                    <p className="text-slate-500 font-bold text-lg">Select date range to view consolidated report.</p>
+                </div>
+            );
+        }
+
+        return (
+            <div className="space-y-12">
+                {renderSection('Operating Income', data.income, data.companies)}
+                {renderSection('Operating Expenses', data.expense, data.companies)}
+
+                {/* Net Profit Section */}
+                <div className="bg-slate-950 rounded-[2rem] border border-slate-800 overflow-hidden shadow-2xl relative print:border-2 print:border-black print:rounded-none print:shadow-none print:bg-white">
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 pointer-events-none print:hidden"></div>
+                    <div className="p-6 border-b border-slate-800 relative z-10 print:border-black print:bg-slate-200">
+                        <h3 className="text-2xl font-black text-white uppercase tracking-widest print:text-black">Net Profit / (Loss)</h3>
+                    </div>
+                    <div className="overflow-x-auto relative z-10">
+                        <table className="w-full text-right text-sm whitespace-nowrap">
+                            <thead>
+                                <tr className="bg-slate-900/50 print:bg-slate-100">
+                                    <th className="py-4 px-6 text-sm uppercase font-black tracking-widest text-slate-500 print:text-black">Company</th>
+                                    {data.companies.map(c => (
+                                        <th key={c.id} className="py-4 px-6 text-sm uppercase font-black text-violet-400 border-l border-slate-800 print:border-black print:text-black">{c.name}</th>
+                                    ))}
+                                    <th className="py-4 px-6 text-sm uppercase font-black text-white border-l border-slate-800 bg-slate-900 print:border-black print:text-black print:bg-slate-300">Grand Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td className="py-6 px-6 font-black uppercase tracking-widest text-slate-400 print:text-black text-left">Consolidated Net</td>
+                                    {data.companies.map(c => {
+                                        const np = calculateNetProfit(c.id);
+                                        return (
+                                            <td key={c.id} className={cn(
+                                                "py-6 px-6 text-2xl font-mono font-black border-l border-slate-800 print:border-black print:text-black",
+                                                np >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                                            )}>
+                                                {formatCurrency(np)}
+                                            </td>
+                                        );
+                                    })}
+                                    <td className={cn(
+                                        "py-6 px-6 text-3xl font-mono font-black border-l border-slate-800 bg-slate-900 print:border-black print:text-black print:bg-slate-300",
+                                        calculateNetProfit() >= 0 ? 'text-emerald-400 print:text-emerald-700' : 'text-rose-400 print:text-rose-700'
+                                    )}>
+                                        {formatCurrency(calculateNetProfit())}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <MainLayout>
             <div className="max-w-[90rem] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-32">
@@ -166,10 +248,18 @@ export default function ConsolidatedProfitLossPage() {
                             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh Data
                         </button>
                         <button
+                            type="button"
+                            onClick={() => setIsPrintPreviewOpen(true)}
+                            className="flex items-center gap-2 px-6 py-3 bg-slate-800/80 hover:bg-slate-700 border border-violet-500/40 text-violet-300 font-bold rounded-xl shadow-lg transition-all"
+                        >
+                            <Eye size={16} /> A4 Print Preview
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => window.print()}
                             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-fuchsia-600 text-white font-black rounded-xl shadow-lg shadow-violet-500/20 hover:scale-105 transition-transform"
                         >
-                            <Printer size={16} /> Print / PDF
+                            <Printer size={16} /> Print / PDF (A4)
                         </button>
                     </div>
                 </div>
@@ -207,88 +297,37 @@ export default function ConsolidatedProfitLossPage() {
                 </div>
 
                 {/* REPORT CONTENT */}
-                <div className="min-h-[400px]">
-                    <div className="print:fixed print:inset-0 print:bg-white print:z-[9999] print:p-8 print:overflow-auto">
-                        
+                <div className={cn("min-h-[400px]", isPrintPreviewOpen && "print:hidden")}>
+                    <div className="print:block print:w-full">
                         {/* PRINT ONLY HEADER */}
-                        <div className="hidden print:block mb-10 text-center border-b-4 border-double border-slate-800 pb-6">
-                            <h1 className="text-4xl font-black uppercase tracking-widest text-slate-900 mb-2">Group Consolidation</h1>
-                            <h2 className="text-2xl font-bold uppercase text-slate-600 mb-4">Consolidated Profit & Loss</h2>
-                            <div className="flex justify-center items-center gap-4 text-sm font-medium text-slate-500">
-                                <span className="bg-slate-100 px-4 py-1 rounded-full border border-slate-300">Period: {new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}</span>
-                            </div>
+                        <div className="hidden print:block">
+                            <ReportPrintHeader
+                                companyName={effectiveCompanyName}
+                                reportTitle="Consolidated Profit & Loss"
+                                period={periodString}
+                            />
                         </div>
 
-                        {loading ? (
-                            <div className="p-32 flex flex-col items-center justify-center print:hidden">
-                                <div className="relative w-16 h-16 mb-6">
-                                    <div className="absolute inset-0 border-4 border-violet-200 dark:border-violet-900 rounded-full"></div>
-                                    <div className="absolute inset-0 border-4 border-violet-600 border-t-transparent rounded-full animate-spin"></div>
-                                </div>
-                                <p className="text-slate-500 font-black uppercase tracking-widest text-sm animate-pulse">Consolidating Financials...</p>
-                            </div>
-                        ) : data ? (
-                            <div className="space-y-12">
-                                {renderSection('Operating Income', data.income, data.companies)}
-                                {renderSection('Operating Expenses', data.expense, data.companies)}
+                        {renderContentBody()}
 
-                                {/* Net Profit Section */}
-                                <div className="bg-slate-950 rounded-[2rem] border border-slate-800 overflow-hidden shadow-2xl relative print:border-2 print:border-black print:rounded-none print:shadow-none print:bg-white">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 pointer-events-none print:hidden"></div>
-                                    <div className="p-6 border-b border-slate-800 relative z-10 print:border-black print:bg-slate-200">
-                                        <h3 className="text-2xl font-black text-white uppercase tracking-widest print:text-black">Net Profit / (Loss)</h3>
-                                    </div>
-                                    <div className="overflow-x-auto relative z-10">
-                                        <table className="w-full text-right text-sm whitespace-nowrap">
-                                            <thead>
-                                                <tr className="bg-slate-900/50 print:bg-slate-100">
-                                                    <th className="py-4 px-6 text-sm uppercase font-black tracking-widest text-slate-500 print:text-black">Company</th>
-                                                    {data.companies.map(c => (
-                                                        <th key={c.id} className="py-4 px-6 text-sm uppercase font-black text-violet-400 border-l border-slate-800 print:border-black print:text-black">{c.name}</th>
-                                                    ))}
-                                                    <th className="py-4 px-6 text-sm uppercase font-black text-white border-l border-slate-800 bg-slate-900 print:border-black print:text-black print:bg-slate-300">Grand Total</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td className="py-6 px-6 font-black uppercase tracking-widest text-slate-400 print:text-black text-left">Consolidated Net</td>
-                                                    {data.companies.map(c => {
-                                                        const np = calculateNetProfit(c.id);
-                                                        return (
-                                                            <td key={c.id} className={cn(
-                                                                "py-6 px-6 text-2xl font-mono font-black border-l border-slate-800 print:border-black print:text-black",
-                                                                np >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                                                            )}>
-                                                                {formatCurrency(np)}
-                                                            </td>
-                                                        );
-                                                    })}
-                                                    <td className={cn(
-                                                        "py-6 px-6 text-3xl font-mono font-black border-l border-slate-800 bg-slate-900 print:border-black print:text-black print:bg-slate-300",
-                                                        calculateNetProfit() >= 0 ? 'text-emerald-400 print:text-emerald-700' : 'text-rose-400 print:text-rose-700'
-                                                    )}>
-                                                        {formatCurrency(calculateNetProfit())}
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="text-center py-24 bg-white dark:bg-slate-900 rounded-[2rem] border border-dashed border-slate-300 dark:border-slate-700 print:hidden">
-                                <Globe2 size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-                                <p className="text-slate-500 font-bold text-lg">Select date range to view consolidated report.</p>
-                            </div>
-                        )}
-
-                        {/* PRINT FOOTER */}
-                        <div className="hidden print:flex justify-between mt-16 text-xs font-bold text-slate-400 py-4 border-t-2 border-slate-200">
-                            <p>Generated on {new Date().toLocaleString()} by Premium Accounting System</p>
-                            <p>Page 1 of 1</p>
+                        {/* PRINT ONLY FOOTER */}
+                        <div className="hidden print:block">
+                            <ReportPrintFooter />
                         </div>
                     </div>
                 </div>
+
+                {/* REALISTIC A4 PREVIEW MODAL */}
+                <ReportPrintPreviewModal
+                    isOpen={isPrintPreviewOpen}
+                    onClose={() => setIsPrintPreviewOpen(false)}
+                    companyName={effectiveCompanyName}
+                    reportTitle="Consolidated Profit & Loss"
+                    period={periodString}
+                    orientation="landscape"
+                >
+                    {renderContentBody()}
+                </ReportPrintPreviewModal>
             </div>
         </MainLayout>
     );

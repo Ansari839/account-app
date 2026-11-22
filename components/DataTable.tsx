@@ -42,7 +42,7 @@ export default function DataTable<T extends { id: string | number }>({
     return (
         <div className="space-y-4 animate-in fade-in duration-500">
             {/* Search & Actions Bar */}
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4 print:hidden">
                 <div className="relative group flex-1 max-w-sm">
                     <Search
                         size={18}
@@ -59,7 +59,7 @@ export default function DataTable<T extends { id: string | number }>({
             </div>
 
             {/* Table Container */}
-            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm print:shadow-none print:border print:border-slate-400 print:rounded-none">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
@@ -124,7 +124,7 @@ export default function DataTable<T extends { id: string | number }>({
 
             {/* Pagination */}
             {pagination && pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between px-2 py-4">
+                <div className="flex items-center justify-between px-2 py-4 print:hidden">
                     <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                         Page <span className="text-foreground">{pagination.currentPage}</span> of <span className="text-foreground">{pagination.totalPages}</span>
                     </div>

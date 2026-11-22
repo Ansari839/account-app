@@ -37,6 +37,7 @@ export class AuthService {
                         email: true,
                         phone: true,
                         logo: true,
+                        address: true,
                     }
                 }
             },
@@ -50,6 +51,7 @@ export class AuthService {
             email: uc.Company.email,
             phone: uc.Company.phone,
             logo: uc.Company.logo,
+            address: uc.Company.address,
             role: uc.role,
             isDefault: uc.isDefault,
         }));
@@ -58,7 +60,7 @@ export class AuthService {
         if (companies.length === 0 && user.companyId) {
             const fallbackCompany = await prisma.company.findUnique({
                 where: { id: user.companyId },
-                select: { id: true, name: true, email: true, phone: true, logo: true }
+                select: { id: true, name: true, email: true, phone: true, logo: true, address: true }
             });
             if (fallbackCompany) {
                 companies = [{

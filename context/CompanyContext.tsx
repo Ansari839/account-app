@@ -31,6 +31,7 @@ export interface CompanyInfo {
     name: string;
     email?: string | null;
     phone?: string | null;
+    address?: string | null;
     logo?: string | null;
     role: CompanyRole;
     isDefault: boolean;

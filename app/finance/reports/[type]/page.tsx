@@ -1,11 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { authenticatedFetch } from '@/lib/api-client';
 import DataTable, { Column } from '@/components/DataTable';
 import Combobox from '@/components/Combobox';
+import { useCompany } from '@/context/CompanyContext';
+import ReportPrintHeader, { ReportPrintFilter } from '@/components/reports/ReportPrintHeader';
+import ReportPrintFooter from '@/components/reports/ReportPrintFooter';
+import ReportPrintPreviewModal from '@/components/reports/ReportPrintPreviewModal';
 import { 
     Printer, 
     RefreshCw, 
@@ -24,7 +28,8 @@ import {
     Warehouse as WarehouseIcon,
     RotateCcw,
     Grid,
-    ListFilter
+    ListFilter,
+    Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +39,10 @@ export default function ReportViewer() {
     const searchParams = useSearchParams();
     const reportPath = type as string;
     const reportType = reportPath?.replace(/-/g, ' ').toUpperCase() || 'REPORT';
+
+    const { activeCompany } = useCompany();
+    const [companyDetails, setCompanyDetails] = useState<any>(null);
+    const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
@@ -113,6 +122,53 @@ export default function ReportViewer() {
         if (reportPath === 'stock-ledger' && !selectedProduct) return;
         fetchData();
     }, [reportPath, selectedAccount, selectedProduct]);
+
+    // Fetch full active company details for official address/phone/email
+    useEffect(() => {
+        authenticatedFetch('/api/admin/company')
+            .then(res => res.json())
+            .then(json => {
+                if (json.success && json.data) {
+                    setCompanyDetails(json.data);
+                }
+            })
+            .catch(() => {});
+    }, [activeCompany?.id]);
+
+    const effectiveCompanyName = activeCompany?.name || companyDetails?.name || 'Ismail Hamed & Sons';
+    const effectiveCompanyAddress = activeCompany?.address || companyDetails?.address;
+    const effectiveCompanyPhone = activeCompany?.phone || companyDetails?.phone;
+    const effectiveCompanyEmail = activeCompany?.email || companyDetails?.email;
+
+    const currentPrintFilters = useMemo<ReportPrintFilter[]>(() => {
+        const filters: ReportPrintFilter[] = [];
+        if (reportPath === 'ledger' && selectedAccount) {
+            const acc = accounts.find(a => a.value === selectedAccount);
+            if (acc) filters.push({ label: 'Account', value: acc.label });
+        }
+        if (reportPath === 'stock-ledger' && selectedProduct) {
+            const p = products.find(prod => prod.value === selectedProduct);
+            if (p) filters.push({ label: 'Product', value: p.label });
+        }
+        if (reportPath === 'stock-summary' || reportPath === 'stock-item-wise') {
+            if (stockCategoryFilter !== 'ALL') {
+                filters.push({ label: 'Category', value: stockCategoryFilter });
+            }
+            if (stockWarehouseFilter !== 'ALL') {
+                filters.push({ label: 'Warehouse', value: stockWarehouseFilter });
+            }
+            if (stockStageFilter !== 'ALL') {
+                filters.push({ label: 'Stage', value: stockStageFilter });
+            }
+            if (stockOriginFilter !== 'ALL') {
+                filters.push({ label: 'Origin', value: stockOriginFilter });
+            }
+            if (stockStatusFilter !== 'ALL') {
+                filters.push({ label: 'Stock Status', value: stockStatusFilter });
+            }
+        }
+        return filters;
+    }, [reportPath, selectedAccount, accounts, selectedProduct, products, stockCategoryFilter, stockWarehouseFilter, stockStageFilter, stockOriginFilter, stockStatusFilter]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -245,11 +301,11 @@ export default function ReportViewer() {
                             <span className="font-mono">{outflows.reduce((s: number, x: any) => s + Number(x.amount), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
                     </div>
-                    <div className="md:col-span-2 p-8 bg-slate-950 rounded-3xl flex justify-between items-center shadow-2xl relative overflow-hidden border border-slate-800">
-                        <div className="absolute inset-0 bg-indigo-500/10 rounded-full blur-3xl scale-150 pointer-events-none"></div>
-                        <span className="text-2xl font-bold text-slate-300 relative z-10">Net Cash Flow</span>
+                    <div className="md:col-span-2 p-6 sm:p-8 bg-slate-950 dark:bg-slate-950 print:bg-slate-100 print:text-black rounded-3xl flex justify-between items-center shadow-2xl print:shadow-none relative overflow-hidden border border-slate-800 print:border-slate-300">
+                        <div className="absolute inset-0 bg-indigo-500/10 rounded-full blur-3xl scale-150 pointer-events-none print:hidden"></div>
+                        <span className="text-2xl font-bold text-slate-300 print:text-slate-700 relative z-10">Net Cash Flow</span>
                         <span className={cn(
-                            "text-5xl font-black relative z-10 font-mono tracking-tight",
+                            "text-4xl sm:text-5xl font-black relative z-10 font-mono tracking-tight print:text-slate-950",
                             Number(data.netCashFlow) >= 0 ? "text-emerald-400" : "text-rose-400"
                         )}>
                             {Number(data.netCashFlow || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -305,11 +361,11 @@ export default function ReportViewer() {
                             <span className="font-mono">{Number(data.totalExpense || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
                     </div>
-                    <div className="md:col-span-2 p-8 bg-slate-950 rounded-3xl flex justify-between items-center shadow-2xl relative overflow-hidden border border-slate-800">
-                        <div className="absolute inset-0 bg-indigo-500/10 rounded-full blur-3xl scale-150 pointer-events-none"></div>
-                        <span className="text-2xl font-bold text-slate-300 relative z-10">Net Profit / (Loss)</span>
+                    <div className="md:col-span-2 p-6 sm:p-8 bg-slate-950 dark:bg-slate-950 print:bg-slate-100 print:text-black rounded-3xl flex justify-between items-center shadow-2xl print:shadow-none relative overflow-hidden border border-slate-800 print:border-slate-300">
+                        <div className="absolute inset-0 bg-indigo-500/10 rounded-full blur-3xl scale-150 pointer-events-none print:hidden"></div>
+                        <span className="text-2xl font-bold text-slate-300 print:text-slate-700 relative z-10">Net Profit / (Loss)</span>
                         <span className={cn(
-                            "text-5xl font-black relative z-10 font-mono tracking-tight",
+                            "text-4xl sm:text-5xl font-black relative z-10 font-mono tracking-tight print:text-slate-950",
                             Number(data.netProfit) >= 0 ? "text-emerald-400" : "text-rose-400"
                         )}>
                             {Number(data.netProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -360,9 +416,9 @@ export default function ReportViewer() {
 
                         {assetGroups.map((g: any, i: number) => renderGroup(g, i, 'ast'))}
 
-                        <div className="flex justify-between items-center text-xl font-black bg-indigo-600 text-white p-6 rounded-2xl shadow-xl shadow-indigo-500/30 border border-indigo-500">
+                        <div className="flex justify-between items-center text-xl font-black bg-indigo-600 text-white p-6 rounded-2xl shadow-xl shadow-indigo-500/30 border border-indigo-500 print:bg-slate-100 print:text-black print:border-slate-400 print:shadow-none">
                             <span>TOTAL ASSETS</span>
-                            <span className="font-mono text-2xl">{totalAssets.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            <span className="font-mono text-2xl print:text-black">{totalAssets.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
                     </div>
 
@@ -399,9 +455,9 @@ export default function ReportViewer() {
                             </div>
                         </div>
 
-                        <div className="flex justify-between items-center text-xl font-black bg-slate-950 text-white p-6 rounded-2xl shadow-xl shadow-slate-900/50 border border-slate-800">
+                        <div className="flex justify-between items-center text-xl font-black bg-slate-950 text-white p-6 rounded-2xl shadow-xl shadow-slate-900/50 border border-slate-800 print:bg-slate-100 print:text-black print:border-slate-400 print:shadow-none">
                             <span>TOTAL LIAB. & EQUITY</span>
-                            <span className="font-mono text-2xl">{(totalLiabilities + totalEquity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            <span className="font-mono text-2xl print:text-black">{(totalLiabilities + totalEquity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
                     </div>
                 </div>
@@ -657,7 +713,7 @@ export default function ReportViewer() {
 
                     {/* Category Fast-Filter Pills */}
                     {uniqueCategories.length > 0 && (
-                        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none print:hidden">
                             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
                                 <FolderTree size={14}/> Categories:
                             </span>
@@ -694,7 +750,7 @@ export default function ReportViewer() {
                     )}
 
                     {/* Filter Controls Bar */}
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 print:hidden">
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                             {/* Search Box */}
                             <div className="relative flex-1 min-w-[260px]">
@@ -965,15 +1021,15 @@ export default function ReportViewer() {
 
             return (
                 <div className="space-y-6">
-                    <div className="flex flex-col md:flex-row gap-4 p-6 bg-slate-950 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                    <div className="flex flex-col md:flex-row gap-4 p-6 bg-slate-950 dark:bg-slate-950 print:bg-slate-100 print:text-black rounded-3xl border border-slate-800 print:border-slate-300 shadow-xl print:shadow-none relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none print:hidden"></div>
                         <div className="flex-1 relative z-10">
-                            <p className="text-xs uppercase font-black tracking-widest text-slate-500">Opening Balance</p>
-                            <p className="text-2xl font-black text-slate-300 font-mono mt-1">{Number(data.openingBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                            <p className="text-xs uppercase font-black tracking-widest text-slate-500 print:text-slate-600">Opening Balance</p>
+                            <p className="text-2xl font-black text-slate-300 print:text-slate-900 font-mono mt-1">{Number(data.openingBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                         </div>
                         <div className="flex-1 md:text-right relative z-10">
-                            <p className="text-xs uppercase font-black tracking-widest text-slate-500">Closing Balance</p>
-                            <p className="text-4xl font-black text-indigo-400 font-mono tracking-tight mt-1">{balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                            <p className="text-xs uppercase font-black tracking-widest text-slate-500 print:text-slate-600">Closing Balance</p>
+                            <p className="text-4xl font-black text-indigo-400 print:text-indigo-800 font-mono tracking-tight mt-1">{balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                         </div>
                     </div>
                     <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -1066,7 +1122,7 @@ export default function ReportViewer() {
             return (
                 <div className="space-y-6">
                     {/* KPI Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:grid-cols-3">
                         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Total Inward (Receipts)</span>
                             <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1">
@@ -1088,7 +1144,7 @@ export default function ReportViewer() {
                     </div>
 
                     {/* Stock Ledger Filter Controls */}
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 print:hidden">
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                             <div className="relative flex-1 min-w-[260px]">
                                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -1217,10 +1273,18 @@ export default function ReportViewer() {
                             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh Data
                         </button>
                         <button
+                            type="button"
+                            onClick={() => setIsPrintPreviewOpen(true)}
+                            className="flex items-center gap-2 px-6 py-3 bg-slate-800/80 hover:bg-slate-700 border border-indigo-500/40 text-indigo-300 font-bold rounded-xl shadow-lg transition-all"
+                        >
+                            <Eye size={16} /> A4 Print Preview
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => window.print()}
                             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-black rounded-xl shadow-lg shadow-indigo-500/20 hover:scale-105 transition-transform"
                         >
-                            <Printer size={16} /> Print / PDF
+                            <Printer size={16} /> Print / PDF (A4)
                         </button>
                     </div>
                 </div>
@@ -1297,29 +1361,44 @@ export default function ReportViewer() {
                 </div>
 
                 {/* REPORT CONTENT AREA */}
-                <div className="min-h-[400px]">
-                    <div className="print:fixed print:inset-0 print:bg-white print:z-[9999] print:p-12 print:overflow-auto">
-                        
-                        {/* PRINT ONLY HEADER */}
-                        <div className="hidden print:block mb-10 text-center border-b-2 border-slate-800 pb-6">
-                            <h1 className="text-4xl font-black uppercase tracking-widest text-slate-900 mb-2">Ansari Traders</h1>
-                            <h2 className="text-2xl font-bold uppercase text-slate-600 mb-4">{reportType}</h2>
-                            <div className="flex justify-center items-center gap-4 text-sm font-medium text-slate-500">
-                                <span className="bg-slate-100 px-4 py-1 rounded-full">Period: {new Date(dateRange.start).toLocaleDateString()} - {new Date(dateRange.end).toLocaleDateString()}</span>
-                                {selectedAccount && reportPath === 'ledger' && (
-                                    <span className="bg-slate-100 px-4 py-1 rounded-full font-bold text-slate-800">Account: {accounts.find(a => a.value === selectedAccount)?.label}</span>
-                                )}
-                            </div>
+                <div className={cn("min-h-[400px]", isPrintPreviewOpen && "print:hidden")}>
+                    <div className="print:block print:w-full">
+                        {/* PRINT ONLY LETTERHEAD HEADER */}
+                        <div className="hidden print:block">
+                            <ReportPrintHeader
+                                companyName={effectiveCompanyName}
+                                companyAddress={effectiveCompanyAddress}
+                                companyPhone={effectiveCompanyPhone}
+                                companyEmail={effectiveCompanyEmail}
+                                reportTitle={reportType}
+                                period={dateRange.start && dateRange.end ? `Period: ${new Date(dateRange.start).toLocaleDateString()} - ${new Date(dateRange.end).toLocaleDateString()}` : undefined}
+                                filters={currentPrintFilters}
+                            />
                         </div>
 
                         {renderReportContent()}
 
-                        <div className="hidden print:flex justify-between mt-16 text-xs font-bold text-slate-400 py-4 border-t-2 border-slate-200">
-                            <p suppressHydrationWarning>Generated on {new Date().toLocaleString()} by Premium Accounting System</p>
-                            <p>Page 1 of 1</p>
+                        {/* PRINT ONLY SIGNATURE FOOTER */}
+                        <div className="hidden print:block">
+                            <ReportPrintFooter />
                         </div>
                     </div>
                 </div>
+
+                {/* REALISTIC ON-SCREEN A4 PRINT PREVIEW MODAL */}
+                <ReportPrintPreviewModal
+                    isOpen={isPrintPreviewOpen}
+                    onClose={() => setIsPrintPreviewOpen(false)}
+                    companyName={effectiveCompanyName}
+                    companyAddress={effectiveCompanyAddress}
+                    companyPhone={effectiveCompanyPhone}
+                    companyEmail={effectiveCompanyEmail}
+                    reportTitle={reportType}
+                    period={dateRange.start && dateRange.end ? `Period: ${new Date(dateRange.start).toLocaleDateString()} - ${new Date(dateRange.end).toLocaleDateString()}` : undefined}
+                    filters={currentPrintFilters}
+                >
+                    {renderReportContent()}
+                </ReportPrintPreviewModal>
             </div>
         </MainLayout>
     );

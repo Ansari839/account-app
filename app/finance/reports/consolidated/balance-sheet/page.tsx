@@ -4,9 +4,13 @@ import React, { useEffect, useState } from 'react';
 import MainLayout from '@/components/MainLayout';
 import { authenticatedFetch } from '@/lib/api-client';
 import { useNotifications } from '@/context/NotificationContext';
-import { Globe2, ArrowLeft, RefreshCw, Printer, Calendar } from 'lucide-react';
+import { useCompany } from '@/context/CompanyContext';
+import { Globe2, ArrowLeft, RefreshCw, Printer, Calendar, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import ReportPrintHeader from '@/components/reports/ReportPrintHeader';
+import ReportPrintFooter from '@/components/reports/ReportPrintFooter';
+import ReportPrintPreviewModal from '@/components/reports/ReportPrintPreviewModal';
 
 interface ConsolidatedLine {
     code: string;
@@ -32,9 +36,11 @@ interface ReportData {
 export default function ConsolidatedBalanceSheetPage() {
     const { showNotification } = useNotifications();
     const router = useRouter();
+    const { activeCompany } = useCompany();
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<ReportData | null>(null);
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+    const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -127,6 +133,60 @@ export default function ConsolidatedBalanceSheetPage() {
         return section.reduce((sum, line) => sum + (compId ? (line.companies[compId] || 0) : line.total), 0);
     }
 
+    const periodString = `As of: ${new Date(endDate).toLocaleDateString()}`;
+    const effectiveCompanyName = activeCompany?.name ? `${activeCompany.name} (Group)` : "Group Financial Consolidation";
+
+    const renderContentBody = () => {
+        if (loading) {
+            return (
+                <div className="p-32 flex flex-col items-center justify-center print:hidden">
+                    <div className="relative w-16 h-16 mb-6">
+                        <div className="absolute inset-0 border-4 border-teal-200 dark:border-teal-900 rounded-full"></div>
+                        <div className="absolute inset-0 border-4 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                    <p className="text-slate-500 font-black uppercase tracking-widest text-sm animate-pulse">Consolidating Financials...</p>
+                </div>
+            );
+        }
+
+        if (!data) {
+            return (
+                <div className="text-center py-24 bg-white dark:bg-slate-900 rounded-[2rem] border border-dashed border-slate-300 dark:border-slate-700 print:hidden">
+                    <Globe2 size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+                    <p className="text-slate-500 font-bold text-lg">Select date to view consolidated balance sheet.</p>
+                </div>
+            );
+        }
+
+        return (
+            <div className="space-y-12">
+                {renderSection('Assets', data.assets, data.companies)}
+                {renderSection('Liabilities', data.liabilities, data.companies)}
+                {renderSection('Equity', data.equity, data.companies)}
+
+                {/* Totals Check */}
+                <div className="bg-slate-950 rounded-[2rem] border border-slate-800 overflow-hidden shadow-2xl relative print:border-2 print:border-black print:rounded-none print:shadow-none print:bg-white p-8">
+                    <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-emerald-500/10 pointer-events-none print:hidden"></div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+                        <div className="bg-slate-900/80 print:bg-slate-100 p-6 rounded-2xl border border-slate-800 print:border-black">
+                            <h4 className="text-sm font-black text-slate-400 print:text-slate-600 uppercase tracking-widest mb-2">Total Assets</h4>
+                            <div className="text-4xl font-mono font-black text-teal-400 print:text-teal-700">
+                                {formatCurrency(getTotal(data.assets))}
+                            </div>
+                        </div>
+                        <div className="bg-slate-900/80 print:bg-slate-100 p-6 rounded-2xl border border-slate-800 print:border-black">
+                            <h4 className="text-sm font-black text-slate-400 print:text-slate-600 uppercase tracking-widest mb-2">Total Liab + Equity</h4>
+                            <div className="text-4xl font-mono font-black text-emerald-400 print:text-emerald-700">
+                                {formatCurrency(getTotal(data.liabilities) + getTotal(data.equity))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <MainLayout>
             <div className="max-w-[90rem] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-32">
@@ -158,10 +218,18 @@ export default function ConsolidatedBalanceSheetPage() {
                             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh Data
                         </button>
                         <button
+                            type="button"
+                            onClick={() => setIsPrintPreviewOpen(true)}
+                            className="flex items-center gap-2 px-6 py-3 bg-slate-800/80 hover:bg-slate-700 border border-teal-500/40 text-teal-300 font-bold rounded-xl shadow-lg transition-all"
+                        >
+                            <Eye size={16} /> A4 Print Preview
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => window.print()}
                             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-600 text-white font-black rounded-xl shadow-lg shadow-teal-500/20 hover:scale-105 transition-transform"
                         >
-                            <Printer size={16} /> Print / PDF
+                            <Printer size={16} /> Print / PDF (A4)
                         </button>
                     </div>
                 </div>
@@ -188,67 +256,37 @@ export default function ConsolidatedBalanceSheetPage() {
                 </div>
 
                 {/* REPORT CONTENT */}
-                <div className="min-h-[400px]">
-                    <div className="print:fixed print:inset-0 print:bg-white print:z-[9999] print:p-8 print:overflow-auto">
-                        
+                <div className={cn("min-h-[400px]", isPrintPreviewOpen && "print:hidden")}>
+                    <div className="print:block print:w-full">
                         {/* PRINT ONLY HEADER */}
-                        <div className="hidden print:block mb-10 text-center border-b-4 border-double border-slate-800 pb-6">
-                            <h1 className="text-4xl font-black uppercase tracking-widest text-slate-900 mb-2">Group Consolidation</h1>
-                            <h2 className="text-2xl font-bold uppercase text-slate-600 mb-4">Consolidated Balance Sheet</h2>
-                            <div className="flex justify-center items-center gap-4 text-sm font-medium text-slate-500">
-                                <span className="bg-slate-100 px-4 py-1 rounded-full border border-slate-300">As of: {new Date(endDate).toLocaleDateString()}</span>
-                            </div>
+                        <div className="hidden print:block">
+                            <ReportPrintHeader
+                                companyName={effectiveCompanyName}
+                                reportTitle="Consolidated Balance Sheet"
+                                period={periodString}
+                            />
                         </div>
 
-                        {loading ? (
-                            <div className="p-32 flex flex-col items-center justify-center print:hidden">
-                                <div className="relative w-16 h-16 mb-6">
-                                    <div className="absolute inset-0 border-4 border-teal-200 dark:border-teal-900 rounded-full"></div>
-                                    <div className="absolute inset-0 border-4 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
-                                </div>
-                                <p className="text-slate-500 font-black uppercase tracking-widest text-sm animate-pulse">Consolidating Financials...</p>
-                            </div>
-                        ) : data ? (
-                            <div className="space-y-12">
-                                {renderSection('Assets', data.assets, data.companies)}
+                        {renderContentBody()}
 
-                                {renderSection('Liabilities', data.liabilities, data.companies)}
-                                {renderSection('Equity', data.equity, data.companies)}
-
-                                {/* Totals Check */}
-                                <div className="bg-slate-950 rounded-[2rem] border border-slate-800 overflow-hidden shadow-2xl relative print:border-2 print:border-black print:rounded-none print:shadow-none print:bg-white p-8">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-emerald-500/10 pointer-events-none print:hidden"></div>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
-                                        <div className="bg-slate-900/80 print:bg-slate-100 p-6 rounded-2xl border border-slate-800 print:border-black">
-                                            <h4 className="text-sm font-black text-slate-400 print:text-slate-600 uppercase tracking-widest mb-2">Total Assets</h4>
-                                            <div className="text-4xl font-mono font-black text-teal-400 print:text-teal-700">
-                                                {formatCurrency(getTotal(data.assets))}
-                                            </div>
-                                        </div>
-                                        <div className="bg-slate-900/80 print:bg-slate-100 p-6 rounded-2xl border border-slate-800 print:border-black">
-                                            <h4 className="text-sm font-black text-slate-400 print:text-slate-600 uppercase tracking-widest mb-2">Total Liab + Equity</h4>
-                                            <div className="text-4xl font-mono font-black text-emerald-400 print:text-emerald-700">
-                                                {formatCurrency(getTotal(data.liabilities) + getTotal(data.equity))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="text-center py-24 bg-white dark:bg-slate-900 rounded-[2rem] border border-dashed border-slate-300 dark:border-slate-700 print:hidden">
-                                <Globe2 size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
-                                <p className="text-slate-500 font-bold text-lg">Select date to view consolidated balance sheet.</p>
-                            </div>
-                        )}
-
-                        {/* PRINT FOOTER */}
-                        <div className="hidden print:flex justify-between mt-16 text-xs font-bold text-slate-400 py-4 border-t-2 border-slate-200">
-                            <p>Generated on {new Date().toLocaleString()} by Premium Accounting System</p>
-                            <p>Page 1 of 1</p>
+                        {/* PRINT ONLY FOOTER */}
+                        <div className="hidden print:block">
+                            <ReportPrintFooter />
                         </div>
                     </div>
                 </div>
+
+                {/* REALISTIC A4 PREVIEW MODAL */}
+                <ReportPrintPreviewModal
+                    isOpen={isPrintPreviewOpen}
+                    onClose={() => setIsPrintPreviewOpen(false)}
+                    companyName={effectiveCompanyName}
+                    reportTitle="Consolidated Balance Sheet"
+                    period={periodString}
+                    orientation="landscape"
+                >
+                    {renderContentBody()}
+                </ReportPrintPreviewModal>
             </div>
         </MainLayout>
     );
