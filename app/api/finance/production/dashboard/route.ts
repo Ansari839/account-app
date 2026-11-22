@@ -170,29 +170,19 @@ export async function GET(request: NextRequest) {
         const productBalances: any[] = [];
         
         products.forEach(product => {
-            const productStocks = Array.from(stockMap.values()).filter(s => s.productId === product.id);
+            // Strictly only include products that currently have physical stock > 0
+            const productStocks = Array.from(stockMap.values()).filter(s => s.productId === product.id && s.stockBalance > 0.0001);
             
-            // If no stock exists, maybe show it as RAW by default or just show it once
-            if (productStocks.length === 0) {
+            productStocks.forEach(stock => {
                 productBalances.push({
                     ...product,
-                    stockBalance: 0,
-                    stage: "RAW",
-                    origin: "LOCAL",
-                    isEFS: false
+                    stockBalance: stock.stockBalance,
+                    stage: stock.stage || "RAW",
+                    origin: stock.origin,
+                    isEFS: stock.isEFS
                 });
-            } else {
-                productStocks.forEach(stock => {
-                    productBalances.push({
-                        ...product,
-                        stockBalance: stock.stockBalance,
-                        stage: stock.stage || "RAW",
-                        origin: stock.origin,
-                        isEFS: stock.isEFS
-                    });
-                });
-            }
-        }); // Show all products regardless of stock balance
+            });
+        });
 
         // Group by Category
         const groupedData: Record<string, any> = {};
@@ -306,12 +296,338 @@ export async function GET(request: NextRequest) {
             });
         });
 
-        // Convert grouped object to array and filter out completely empty tabs
+        // Convert grouped object to array and strictly filter out categories with 0 stock/services
         const categoriesArray = Object.values(groupedData)
-            .filter(cat => cat.products.length > 0 || cat.services.length > 0 || categories.find(c => c.id === cat.id)) // keep seeded cats
+            .filter(cat => {
+                const hasProductsInStock = cat.products && cat.products.some((p: any) => Number(p.stockBalance) > 0.0001);
+                const hasServicesInStock = cat.services && cat.services.some((s: any) => Number(s.unconsumedQty) > 0.0001);
+                return hasProductsInStock || hasServicesInStock;
+            })
             .sort((a, b) => a.name.localeCompare(b.name));
 
-        return NextResponse.json({ success: true, data: categoriesArray });
+        // -------------------------------------------------------------------------------------------------
+        // REQUIREMENT 2: Unsettled Accruals Production & Stage-Wise Tracking
+        // -------------------------------------------------------------------------------------------------
+        const productionRecordsWithAccruals = await prisma.productionRecord.findMany({
+            where: {
+                companyId,
+                ProductionAccrual: { some: {} }
+            },
+            include: {
+                Product: {
+                    select: {
+                        id: true,
+                        name: true,
+                        code: true,
+                        hsCode: true,
+                        Unit: { select: { code: true, name: true } }
+                    }
+                },
+                Warehouse: { select: { id: true, name: true } },
+                ProductionAccrual: {
+                    include: {
+                        Product: { select: { id: true, name: true, code: true, hsCode: true, Unit: { select: { code: true } } } },
+                        Supplier: { select: { id: true, name: true, code: true } },
+                        Unit: { select: { id: true, code: true } }
+                    },
+                    orderBy: { accrualNo: 'asc' }
+                },
+                ProductionInput: {
+                    include: {
+                        Product: { select: { id: true, name: true, code: true, Unit: { select: { code: true } } } }
+                    }
+                }
+            },
+            orderBy: { date: 'desc' }
+        });
+
+        const batchIds = productionRecordsWithAccruals.map(p => p.id);
+        const stockLedgerOutputs = await prisma.stockLedger.findMany({
+            where: {
+                companyId,
+                refType: 'PRODUCTION',
+                refId: { in: batchIds },
+                qtyIn: { gt: 0 }
+            },
+            select: {
+                refId: true,
+                batchNo: true,
+                stage: true,
+                isEFS: true
+            }
+        });
+        const outputLedgerMap = new Map<string, any>();
+        stockLedgerOutputs.forEach(sl => {
+            if (sl.refId && !outputLedgerMap.has(sl.refId)) {
+                outputLedgerMap.set(sl.refId, sl);
+            }
+        });
+
+        // Also check if any standalone accruals exist without a productionId
+        const unlinkedAccruals = await prisma.productionAccrual.findMany({
+            where: {
+                companyId,
+                OR: [
+                    { productionId: null },
+                    { productionId: { notIn: batchIds } }
+                ]
+            },
+            include: {
+                Product: { select: { id: true, name: true, code: true, hsCode: true, Unit: { select: { code: true } } } },
+                Supplier: { select: { id: true, name: true, code: true } },
+                Unit: { select: { id: true, code: true } }
+            },
+            orderBy: { accrualNo: 'asc' }
+        });
+
+        const unsettledBatches = productionRecordsWithAccruals.map(batch => {
+            const outLedger = outputLedgerMap.get(batch.id);
+            const rawBatchNo = outLedger?.batchNo || '';
+            const batchNoClean = rawBatchNo ? rawBatchNo.split(' [')[0] : `BATCH-${batch.id.slice(-6).toUpperCase()}`;
+            const specNotes = rawBatchNo && rawBatchNo.includes('[') ? rawBatchNo.slice(rawBatchNo.indexOf('[')) : '';
+
+            const yarnAccruals: any[] = [];
+            const weavingAccruals: any[] = [];
+            const dyeingAccruals: any[] = [];
+            const otherAccruals: any[] = [];
+
+            batch.ProductionAccrual.forEach((a: any) => {
+                const totalQty = Number(a.qty);
+                const billedQty = Number(a.billedQty || 0);
+                const remainingQty = Math.max(0, totalQty - billedQty);
+                const rate = Number(a.rate || 0);
+                const amount = Number(a.amount || 0);
+                const remainingAmount = remainingQty * rate;
+
+                const isUnspecified = Boolean(a.remarks && a.remarks.includes('[UNSPECIFIED_YARN]'));
+                const pName = isUnspecified ? 'Raw Yarn (Unspecified - Settle Pending)' : (a.Product?.name || 'Raw Material / Service');
+
+                const itemData = {
+                    id: a.id,
+                    accrualNo: a.accrualNo,
+                    date: a.date,
+                    productId: a.productId,
+                    productName: pName,
+                    productCode: a.Product?.code || '',
+                    hsCode: a.Product?.hsCode || '',
+                    supplierId: a.supplierId,
+                    supplierName: a.Supplier?.name || 'General / Unassigned',
+                    unit: a.Unit?.code || a.Product?.Unit?.code || 'KG',
+                    stage: a.stage,
+                    serviceType: a.serviceType,
+                    qty: totalQty,
+                    billedQty,
+                    remainingQty,
+                    rate,
+                    amount,
+                    remainingAmount,
+                    status: a.status,
+                    isSettled: a.status === 'BILLED' || remainingQty <= 0.001,
+                    remarks: a.remarks || ''
+                };
+
+                const svcType = (a.serviceType || '').toUpperCase();
+                const stg = (a.stage || '').toUpperCase();
+
+                if (svcType === 'RAW_YARN' || stg === 'RAW' || (!a.serviceType && stg.includes('YARN'))) {
+                    yarnAccruals.push(itemData);
+                } else if (svcType === 'WEAVING' || svcType === 'KNITTING' || stg === 'GREY') {
+                    weavingAccruals.push(itemData);
+                } else if (svcType === 'DYEING' || svcType === 'FINISHING' || svcType === 'PRINTING' || stg === 'FINISH') {
+                    dyeingAccruals.push(itemData);
+                } else {
+                    otherAccruals.push(itemData);
+                }
+            });
+
+            const calcStageStatus = (accList: any[], defaultIfNotPresent = 'NONE') => {
+                if (accList.length === 0) return defaultIfNotPresent;
+                const allSettled = accList.every(a => a.isSettled);
+                if (allSettled) return 'SETTLED';
+                const someSettled = accList.some(a => a.billedQty > 0.001);
+                if (someSettled) return 'PARTIALLY_SETTLED';
+                return 'PENDING';
+            };
+
+            const yarnStageStatus = calcStageStatus(yarnAccruals, batch.ProductionInput.length > 0 ? 'STOCK_ALLOCATED' : 'NONE');
+            const weavingStageStatus = calcStageStatus(weavingAccruals, 'IN_HOUSE');
+            const dyeingStageStatus = calcStageStatus(dyeingAccruals, 'IN_HOUSE');
+
+            const allBatchAccruals = [...yarnAccruals, ...weavingAccruals, ...dyeingAccruals, ...otherAccruals];
+            const totalDemanded = allBatchAccruals.reduce((sum, a) => sum + a.qty, 0);
+            const totalSettledQty = allBatchAccruals.reduce((sum, a) => sum + a.billedQty, 0);
+            const totalAccrualValue = allBatchAccruals.reduce((sum, a) => sum + a.amount, 0);
+            const remainingLiability = allBatchAccruals.reduce((sum, a) => sum + a.remainingAmount, 0);
+
+            const allSettled = allBatchAccruals.length > 0 && allBatchAccruals.every(a => a.isSettled);
+            const noneSettled = allBatchAccruals.every(a => a.billedQty <= 0.001);
+
+            let overallStatus = 'PENDING';
+            if (allSettled) overallStatus = 'FULLY_SETTLED';
+            else if (!noneSettled) overallStatus = 'PARTIALLY_SETTLED';
+
+            return {
+                batchId: batch.id,
+                batchNo: batchNoClean,
+                specNotes,
+                date: batch.date,
+                outputProductId: batch.outputProductId,
+                outputProductName: batch.Product?.name || 'Output Product',
+                outputProductCode: batch.Product?.code || '',
+                outputQuantity: Number(batch.outputQuantity),
+                outputUnit: batch.Product?.Unit?.code || 'Units',
+                outputStage: batch.outputStage || 'FINISH',
+                warehouseId: batch.warehouseId,
+                warehouseName: batch.Warehouse?.name || 'Main Warehouse',
+                totalCost: Number(batch.totalCost || 0),
+                overallStatus,
+                totalAccrualValue,
+                remainingLiability,
+                totalDemanded,
+                totalSettledQty,
+                stages: {
+                    yarn: {
+                        title: 'Raw Yarn',
+                        icon: 'yarn',
+                        status: yarnStageStatus,
+                        accruals: yarnAccruals,
+                        totalDemanded: yarnAccruals.reduce((s, a) => s + a.qty, 0),
+                        totalSettled: yarnAccruals.reduce((s, a) => s + a.billedQty, 0),
+                        remainingQty: yarnAccruals.reduce((s, a) => s + a.remainingQty, 0),
+                        remainingAmount: yarnAccruals.reduce((s, a) => s + a.remainingAmount, 0)
+                    },
+                    weaving: {
+                        title: 'Weaving / Knitting',
+                        icon: 'weaving',
+                        status: weavingStageStatus,
+                        accruals: weavingAccruals,
+                        totalDemanded: weavingAccruals.reduce((s, a) => s + a.qty, 0),
+                        totalSettled: weavingAccruals.reduce((s, a) => s + a.billedQty, 0),
+                        remainingQty: weavingAccruals.reduce((s, a) => s + a.remainingQty, 0),
+                        remainingAmount: weavingAccruals.reduce((s, a) => s + a.remainingAmount, 0)
+                    },
+                    dyeingFinish: {
+                        title: 'Dyeing / Finishing',
+                        icon: 'dyeing',
+                        status: dyeingStageStatus,
+                        accruals: dyeingAccruals,
+                        totalDemanded: dyeingAccruals.reduce((s, a) => s + a.qty, 0),
+                        totalSettled: dyeingAccruals.reduce((s, a) => s + a.billedQty, 0),
+                        remainingQty: dyeingAccruals.reduce((s, a) => s + a.remainingQty, 0),
+                        remainingAmount: dyeingAccruals.reduce((s, a) => s + a.remainingAmount, 0)
+                    },
+                    other: otherAccruals
+                }
+            };
+        });
+
+        // If any unlinked accruals exist, add as standalone batch
+        if (unlinkedAccruals.length > 0) {
+            const unlinkedItems = unlinkedAccruals.map((a: any) => {
+                const totalQty = Number(a.qty);
+                const billedQty = Number(a.billedQty || 0);
+                const remainingQty = Math.max(0, totalQty - billedQty);
+                const rate = Number(a.rate || 0);
+                const amount = Number(a.amount || 0);
+                const remainingAmount = remainingQty * rate;
+
+                return {
+                    id: a.id,
+                    accrualNo: a.accrualNo,
+                    date: a.date,
+                    productId: a.productId,
+                    productName: a.Product?.name || 'Raw Material / Service',
+                    productCode: a.Product?.code || '',
+                    hsCode: a.Product?.hsCode || '',
+                    supplierId: a.supplierId,
+                    supplierName: a.Supplier?.name || 'General / Unassigned',
+                    unit: a.Unit?.code || a.Product?.Unit?.code || 'KG',
+                    stage: a.stage,
+                    serviceType: a.serviceType,
+                    qty: totalQty,
+                    billedQty,
+                    remainingQty,
+                    rate,
+                    amount,
+                    remainingAmount,
+                    status: a.status,
+                    isSettled: a.status === 'BILLED' || remainingQty <= 0.001,
+                    remarks: a.remarks || ''
+                };
+            });
+
+            unsettledBatches.push({
+                batchId: 'standalone-accruals',
+                batchNo: 'STANDALONE / MANUAL ACCRUALS',
+                specNotes: 'Directly booked or unlinked production demands',
+                date: unlinkedItems[0]?.date || new Date(),
+                outputProductId: '',
+                outputProductName: 'Manual / Direct Accruals',
+                outputProductCode: '',
+                outputQuantity: 0,
+                outputUnit: 'Items',
+                outputStage: 'RAW',
+                warehouseId: '',
+                warehouseName: 'Direct',
+                totalCost: 0,
+                overallStatus: unlinkedItems.every(i => i.isSettled) ? 'FULLY_SETTLED' : unlinkedItems.some(i => i.billedQty > 0) ? 'PARTIALLY_SETTLED' : 'PENDING',
+                totalAccrualValue: unlinkedItems.reduce((s, i) => s + i.amount, 0),
+                remainingLiability: unlinkedItems.reduce((s, i) => s + i.remainingAmount, 0),
+                totalDemanded: unlinkedItems.reduce((s, i) => s + i.qty, 0),
+                totalSettledQty: unlinkedItems.reduce((s, i) => s + i.billedQty, 0),
+                stages: {
+                    yarn: {
+                        title: 'Raw Yarn',
+                        icon: 'yarn',
+                        status: unlinkedItems.filter(i => (i.serviceType || '').toUpperCase() === 'RAW_YARN').every(i => i.isSettled) ? 'SETTLED' : 'PENDING',
+                        accruals: unlinkedItems.filter(i => (i.serviceType || '').toUpperCase() === 'RAW_YARN'),
+                        totalDemanded: unlinkedItems.filter(i => (i.serviceType || '').toUpperCase() === 'RAW_YARN').reduce((s, a) => s + a.qty, 0),
+                        totalSettled: unlinkedItems.filter(i => (i.serviceType || '').toUpperCase() === 'RAW_YARN').reduce((s, a) => s + a.billedQty, 0),
+                        remainingQty: unlinkedItems.filter(i => (i.serviceType || '').toUpperCase() === 'RAW_YARN').reduce((s, a) => s + a.remainingQty, 0),
+                        remainingAmount: unlinkedItems.filter(i => (i.serviceType || '').toUpperCase() === 'RAW_YARN').reduce((s, a) => s + a.remainingAmount, 0)
+                    },
+                    weaving: {
+                        title: 'Weaving / Knitting',
+                        icon: 'weaving',
+                        status: 'NONE',
+                        accruals: [],
+                        totalDemanded: 0,
+                        totalSettled: 0,
+                        remainingQty: 0,
+                        remainingAmount: 0
+                    },
+                    dyeingFinish: {
+                        title: 'Dyeing / Finishing',
+                        icon: 'dyeing',
+                        status: unlinkedItems.filter(i => (i.serviceType || '').toUpperCase() !== 'RAW_YARN').every(i => i.isSettled) ? 'SETTLED' : 'PENDING',
+                        accruals: unlinkedItems.filter(i => (i.serviceType || '').toUpperCase() !== 'RAW_YARN'),
+                        totalDemanded: unlinkedItems.filter(i => (i.serviceType || '').toUpperCase() !== 'RAW_YARN').reduce((s, a) => s + a.qty, 0),
+                        totalSettled: unlinkedItems.filter(i => (i.serviceType || '').toUpperCase() !== 'RAW_YARN').reduce((s, a) => s + a.billedQty, 0),
+                        remainingQty: unlinkedItems.filter(i => (i.serviceType || '').toUpperCase() !== 'RAW_YARN').reduce((s, a) => s + a.remainingQty, 0),
+                        remainingAmount: unlinkedItems.filter(i => (i.serviceType || '').toUpperCase() !== 'RAW_YARN').reduce((s, a) => s + a.remainingAmount, 0)
+                    },
+                    other: []
+                }
+            });
+        }
+
+        const accrualsSummary = {
+            totalBatches: unsettledBatches.length,
+            unsettledBatchesCount: unsettledBatches.filter(b => b.overallStatus !== 'FULLY_SETTLED').length,
+            fullySettledBatchesCount: unsettledBatches.filter(b => b.overallStatus === 'FULLY_SETTLED').length,
+            totalRemainingLiability: unsettledBatches.reduce((s, b) => s + b.remainingLiability, 0),
+            yarnPendingCount: unsettledBatches.filter(b => b.stages.yarn.status === 'PENDING' || b.stages.yarn.status === 'PARTIALLY_SETTLED').length,
+            weavingPendingCount: unsettledBatches.filter(b => b.stages.weaving.status === 'PENDING' || b.stages.weaving.status === 'PARTIALLY_SETTLED').length,
+            dyeingPendingCount: unsettledBatches.filter(b => b.stages.dyeingFinish.status === 'PENDING' || b.stages.dyeingFinish.status === 'PARTIALLY_SETTLED').length
+        };
+
+        return NextResponse.json({
+            success: true,
+            data: categoriesArray,
+            categories: categoriesArray,
+            unsettledBatches,
+            accrualsSummary
+        });
     } catch (e: any) {
         return NextResponse.json({ success: false, error: e.message }, { status: 500 });
     }
