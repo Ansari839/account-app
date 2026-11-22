@@ -908,56 +908,56 @@ export default function ProductionDashboard() {
             </div>
 
             {/* ========================================================================= */}
-            {/* DRILL-DOWN MODAL: Requirement: "CLICK PER DRILL DOWN ME YE DETAIL AY"     */}
+            {/* DRILL-DOWN MODAL: Full-Width Expansive Dialog (No Screen Waste)           */}
             {/* ========================================================================= */}
             {selectedBatchForDrillDown && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
                     <div 
-                        className="bg-white dark:bg-slate-900 w-full max-w-5xl rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200"
+                        className="bg-white dark:bg-slate-900 w-full max-w-[97vw] 2xl:max-w-[95rem] rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[96vh] h-[92vh] overflow-hidden animate-in zoom-in-95 duration-200"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Modal Header */}
-                        <div className="p-6 md:p-8 border-b border-slate-200 dark:border-slate-800 flex justify-between items-start bg-slate-50/60 dark:bg-slate-800/40">
+                        <div className="p-6 md:px-8 md:py-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-start bg-slate-50/80 dark:bg-slate-800/40">
                             <div>
                                 <div className="flex items-center gap-3 flex-wrap">
-                                    <span className="font-mono text-sm font-black px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                    <span className="font-mono text-sm font-black px-3.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shadow-xs">
                                         {selectedBatchForDrillDown.batchNo}
                                     </span>
-                                    <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
-                                        <Clock size={13} />
+                                    <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+                                        <Clock size={14} className="text-slate-400" />
                                         {new Date(selectedBatchForDrillDown.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                                     </span>
-                                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                                        {selectedBatchForDrillDown.warehouseName}
+                                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                        Warehouse: {selectedBatchForDrillDown.warehouseName}
                                     </span>
                                     {selectedBatchForDrillDown.overallStatus === "FULLY_SETTLED" ? (
-                                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
-                                            <CheckCircle2 size={13} />
+                                        <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                            <CheckCircle2 size={14} />
                                             All Stages Settled
                                         </span>
                                     ) : selectedBatchForDrillDown.overallStatus === "PARTIALLY_SETTLED" ? (
-                                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
-                                            <AlertTriangle size={13} />
+                                        <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
+                                            <AlertTriangle size={14} />
                                             Partially Settled (Some Stages Remaining)
                                         </span>
                                     ) : (
-                                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
-                                            <Clock size={13} />
+                                        <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
+                                            <Clock size={14} />
                                             Demands Open
                                         </span>
                                     )}
                                 </div>
 
-                                <div className="flex items-center gap-3 pt-2">
-                                    <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+                                <div className="flex items-center gap-3 pt-2.5 flex-wrap">
+                                    <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white">
                                         {selectedBatchForDrillDown.outputProductName}
                                     </h2>
                                     <span className="text-base font-bold text-slate-500">
-                                        • {selectedBatchForDrillDown.outputQuantity.toLocaleString()} {selectedBatchForDrillDown.outputUnit}
+                                        • {selectedBatchForDrillDown.outputQuantity.toLocaleString()} {selectedBatchForDrillDown.outputUnit} Produced
                                     </span>
                                 </div>
                                 {selectedBatchForDrillDown.specNotes && (
-                                    <div className="text-xs font-mono text-slate-400 mt-1">
+                                    <div className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-1 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-md inline-block">
                                         {selectedBatchForDrillDown.specNotes}
                                     </div>
                                 )}
@@ -966,286 +966,300 @@ export default function ProductionDashboard() {
                             <button
                                 onClick={() => setSelectedBatchForDrillDown(null)}
                                 className="p-2.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                title="Close (Esc)"
                             >
-                                <X size={20} />
+                                <X size={24} />
                             </button>
                         </div>
 
-                        {/* Modal Body: Scrollable */}
-                        <div className="p-6 md:p-8 overflow-y-auto space-y-6">
-                            {/* Summary Metrics Bar */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs">
-                                <div>
-                                    <span className="text-slate-400 uppercase font-bold tracking-wider text-[10px]">Total Demanded</span>
-                                    <div className="text-base font-black text-slate-800 dark:text-slate-200 mt-0.5">
+                        {/* Modal Body: Generously Spacious Scrollable Area */}
+                        <div className="p-6 md:p-8 overflow-y-auto space-y-8 flex-1">
+                            {/* Summary Metrics Bar: Wide 4 Columns */}
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
+                                <div className="space-y-1">
+                                    <span className="text-slate-400 uppercase font-black tracking-wider text-[10px]">Total Demanded Qty</span>
+                                    <div className="text-xl font-black text-slate-800 dark:text-slate-100">
                                         {selectedBatchForDrillDown.totalDemanded.toLocaleString()} Units
                                     </div>
+                                    <div className="text-xs text-slate-400 font-medium">Across all production stages</div>
                                 </div>
-                                <div>
-                                    <span className="text-slate-400 uppercase font-bold tracking-wider text-[10px]">Total Settled</span>
-                                    <div className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                <div className="space-y-1">
+                                    <span className="text-slate-400 uppercase font-black tracking-wider text-[10px]">Total Settled Qty</span>
+                                    <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
                                         {selectedBatchForDrillDown.totalSettledQty.toLocaleString()} Units
                                     </div>
-                                </div>
-                                <div>
-                                    <span className="text-slate-400 uppercase font-bold tracking-wider text-[10px]">Total Booked Cost</span>
-                                    <div className="text-base font-black text-slate-800 dark:text-slate-200 mt-0.5">
-                                        Rs. {selectedBatchForDrillDown.totalAccrualValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    <div className="text-xs text-emerald-600/80 font-medium">
+                                        {selectedBatchForDrillDown.totalDemanded > 0 ? ((selectedBatchForDrillDown.totalSettledQty / selectedBatchForDrillDown.totalDemanded) * 100).toFixed(1) : 0}% cleared
                                     </div>
                                 </div>
-                                <div>
-                                    <span className="text-slate-400 uppercase font-bold tracking-wider text-[10px]">Remaining Liability</span>
-                                    <div className="text-base font-black text-rose-600 dark:text-rose-400 mt-0.5">
-                                        Rs. {selectedBatchForDrillDown.remainingLiability.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                <div className="space-y-1">
+                                    <span className="text-slate-400 uppercase font-black tracking-wider text-[10px]">Total Booked Cost</span>
+                                    <div className="text-xl font-black text-slate-800 dark:text-slate-100">
+                                        Rs. {selectedBatchForDrillDown.totalAccrualValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
+                                    <div className="text-xs text-slate-400 font-medium">Initial booked liabilities</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-slate-400 uppercase font-black tracking-wider text-[10px]">Remaining Unsettled Liability</span>
+                                    <div className="text-xl font-black text-rose-600 dark:text-rose-400">
+                                        Rs. {selectedBatchForDrillDown.remainingLiability.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
+                                    <div className="text-xs text-rose-600/80 font-medium">Awaiting stock/invoice offset</div>
                                 </div>
                             </div>
 
-                            {/* Stage-wise Detailed Cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {/* Stage 1: Yarn */}
-                                <div className={cn(
-                                    "p-5 rounded-2xl border transition-all flex flex-col justify-between",
-                                    selectedBatchForDrillDown.stages?.yarn?.status === "SETTLED"
-                                        ? "bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-800/40"
-                                        : selectedBatchForDrillDown.stages?.yarn?.status === "STOCK_ALLOCATED"
-                                        ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800"
-                                        : selectedBatchForDrillDown.stages?.yarn?.status === "PARTIALLY_SETTLED"
-                                        ? "bg-amber-50/50 dark:bg-amber-500/5 border-amber-200 dark:border-amber-800/40"
-                                        : selectedBatchForDrillDown.stages?.yarn?.status === "PENDING"
-                                        ? "bg-rose-50/50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-800/40"
-                                        : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-800 opacity-60"
-                                )}>
-                                    <div>
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                                                <span>🧶</span>
-                                                <span>Stage 1: Raw Yarn</span>
-                                            </span>
-
-                                            {selectedBatchForDrillDown.stages?.yarn?.status === "SETTLED" ? (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
-                                                    <CheckCircle2 size={12} />
-                                                    Settled (100%)
-                                                </span>
-                                            ) : selectedBatchForDrillDown.stages?.yarn?.status === "STOCK_ALLOCATED" ? (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
-                                                    From Stock Lot
-                                                </span>
-                                            ) : selectedBatchForDrillDown.stages?.yarn?.status === "PENDING" ? (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
-                                                    Pending Settle
-                                                </span>
-                                            ) : (
-                                                <span className="text-[11px] font-bold text-slate-400">None</span>
-                                            )}
-                                        </div>
-
-                                        {selectedBatchForDrillDown.stages?.yarn?.accruals && selectedBatchForDrillDown.stages.yarn.accruals.length > 0 ? (
-                                            <div className="space-y-3">
-                                                {selectedBatchForDrillDown.stages.yarn.accruals.map((acc: any) => (
-                                                    <div key={acc.id} className="text-xs p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
-                                                        <div className="font-black text-slate-900 dark:text-white">
-                                                            {acc.productName}
-                                                        </div>
-                                                        <div className="text-slate-500 flex justify-between mt-1 font-medium">
-                                                            <span>Demanded: {acc.qty.toLocaleString()} {acc.unit}</span>
-                                                            <span className="font-mono text-indigo-500 font-bold">{acc.accrualNo}</span>
-                                                        </div>
-                                                        <div className="flex justify-between mt-1 text-[11px]">
-                                                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                                                                Settled: {acc.billedQty.toLocaleString()} {acc.unit}
-                                                            </span>
-                                                            <span className="text-rose-600 dark:text-rose-400 font-bold">
-                                                                Rem: {acc.remainingQty.toLocaleString()} {acc.unit}
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 mt-1">
-                                                            Rate: Rs. {acc.rate.toFixed(2)} | Rem. Amount: Rs. {acc.remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                                        </div>
-                                                        {acc.remarks && (
-                                                            <div className="text-[10px] text-slate-400 mt-1 italic break-words">
-                                                                {acc.remarks}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : selectedBatchForDrillDown.stages?.yarn?.status === "STOCK_ALLOCATED" ? (
-                                            <div className="text-xs text-slate-500">
-                                                Raw yarn was allocated directly from warehouse physical inventory at execution time.
-                                            </div>
-                                        ) : (
-                                            <div className="text-xs text-slate-400">
-                                                No unbilled raw yarn demand booked for this batch.
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Stage 2: Weaving */}
-                                <div className={cn(
-                                    "p-5 rounded-2xl border transition-all flex flex-col justify-between",
-                                    selectedBatchForDrillDown.stages?.weaving?.status === "SETTLED"
-                                        ? "bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-800/40"
-                                        : selectedBatchForDrillDown.stages?.weaving?.status === "IN_HOUSE"
-                                        ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800"
-                                        : selectedBatchForDrillDown.stages?.weaving?.status === "PENDING"
-                                        ? "bg-rose-50/50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-800/40"
-                                        : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-800 opacity-60"
-                                )}>
-                                    <div>
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                                                <span>🧵</span>
-                                                <span>Stage 2: Weaving / Knit</span>
-                                            </span>
-
-                                            {selectedBatchForDrillDown.stages?.weaving?.status === "SETTLED" ? (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
-                                                    <CheckCircle2 size={12} />
-                                                    Settled (100%)
-                                                </span>
-                                            ) : selectedBatchForDrillDown.stages?.weaving?.status === "IN_HOUSE" ? (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
-                                                    In-House
-                                                </span>
-                                            ) : selectedBatchForDrillDown.stages?.weaving?.status === "PENDING" ? (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
-                                                    Pending Settle
-                                                </span>
-                                            ) : (
-                                                <span className="text-[11px] font-bold text-slate-400">None</span>
-                                            )}
-                                        </div>
-
-                                        {selectedBatchForDrillDown.stages?.weaving?.accruals && selectedBatchForDrillDown.stages.weaving.accruals.length > 0 ? (
-                                            <div className="space-y-3">
-                                                {selectedBatchForDrillDown.stages.weaving.accruals.map((acc: any) => (
-                                                    <div key={acc.id} className="text-xs p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
-                                                        <div className="font-black text-slate-900 dark:text-white">
-                                                            {acc.productName}
-                                                        </div>
-                                                        <div className="text-slate-500 flex justify-between mt-1 font-medium">
-                                                            <span>Demanded: {acc.qty.toLocaleString()} {acc.unit}</span>
-                                                            <span className="font-mono text-indigo-500 font-bold">{acc.accrualNo}</span>
-                                                        </div>
-                                                        <div className="text-[11px] text-slate-400 mt-0.5 truncate">
-                                                            Vendor: {acc.supplierName}
-                                                        </div>
-                                                        <div className="flex justify-between mt-1 text-[11px]">
-                                                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                                                                Settled: {acc.billedQty.toLocaleString()} {acc.unit}
-                                                            </span>
-                                                            <span className="text-rose-600 dark:text-rose-400 font-bold">
-                                                                Rem: {acc.remainingQty.toLocaleString()} {acc.unit}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="text-xs text-slate-400">
-                                                In-house weaving or no third-party outsourced knitting accrual booked.
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Stage 3: Dyeing / Finishing */}
-                                <div className={cn(
-                                    "p-5 rounded-2xl border transition-all flex flex-col justify-between",
-                                    selectedBatchForDrillDown.stages?.dyeingFinish?.status === "SETTLED"
-                                        ? "bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-800/40"
-                                        : selectedBatchForDrillDown.stages?.dyeingFinish?.status === "IN_HOUSE"
-                                        ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800"
-                                        : selectedBatchForDrillDown.stages?.dyeingFinish?.status === "PENDING"
-                                        ? "bg-rose-50/50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-800/40"
-                                        : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-800 opacity-60"
-                                )}>
-                                    <div>
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                                                <span>🎨</span>
-                                                <span>Stage 3: Dyeing / Finish</span>
-                                            </span>
-
-                                            {selectedBatchForDrillDown.stages?.dyeingFinish?.status === "SETTLED" ? (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
-                                                    <CheckCircle2 size={12} />
-                                                    Settled (100%)
-                                                </span>
-                                            ) : selectedBatchForDrillDown.stages?.dyeingFinish?.status === "IN_HOUSE" ? (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
-                                                    In-House
-                                                </span>
-                                            ) : selectedBatchForDrillDown.stages?.dyeingFinish?.status === "PENDING" ? (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
-                                                    Pending Settle
-                                                </span>
-                                            ) : (
-                                                <span className="text-[11px] font-bold text-slate-400">None</span>
-                                            )}
-                                        </div>
-
-                                        {selectedBatchForDrillDown.stages?.dyeingFinish?.accruals && selectedBatchForDrillDown.stages.dyeingFinish.accruals.length > 0 ? (
-                                            <div className="space-y-3">
-                                                {selectedBatchForDrillDown.stages.dyeingFinish.accruals.map((acc: any) => (
-                                                    <div key={acc.id} className="text-xs p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
-                                                        <div className="font-black text-slate-900 dark:text-white">
-                                                            {acc.productName}
-                                                        </div>
-                                                        <div className="text-slate-500 flex justify-between mt-1 font-medium">
-                                                            <span>Demanded: {acc.qty.toLocaleString()} {acc.unit}</span>
-                                                            <span className="font-mono text-indigo-500 font-bold">{acc.accrualNo}</span>
-                                                        </div>
-                                                        <div className="text-[11px] text-slate-400 mt-0.5 truncate">
-                                                            Vendor: {acc.supplierName}
-                                                        </div>
-                                                        <div className="flex justify-between mt-1 text-[11px]">
-                                                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                                                                Settled: {acc.billedQty.toLocaleString()} {acc.unit}
-                                                            </span>
-                                                            <span className="text-rose-600 dark:text-rose-400 font-bold">
-                                                                Rem: {acc.remainingQty.toLocaleString()} {acc.unit}
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 mt-1">
-                                                            Rate: Rs. {acc.rate.toFixed(2)} | Rem. Amount: Rs. {acc.remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="text-xs text-slate-400">
-                                                No third-party dyeing or finishing service accrual attached to this batch.
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Complete Accrual Lines Table */}
+                            {/* Stage-wise Detailed Cards: Wide 3 Columns */}
                             <div className="space-y-3">
-                                <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                    <FileText size={16} className="text-indigo-500" />
-                                    <span>Detailed Accrual Ledger Lines</span>
-                                </h4>
+                                <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                    <Layers size={18} className="text-indigo-500" />
+                                    <span>Stage Allocation &amp; Settlement Breakdown</span>
+                                </h3>
 
-                                <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    {/* Stage 1: Yarn */}
+                                    <div className={cn(
+                                        "p-6 rounded-2xl border transition-all flex flex-col justify-between shadow-xs",
+                                        selectedBatchForDrillDown.stages?.yarn?.status === "SETTLED"
+                                            ? "bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-800/40"
+                                            : selectedBatchForDrillDown.stages?.yarn?.status === "STOCK_ALLOCATED"
+                                            ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800"
+                                            : selectedBatchForDrillDown.stages?.yarn?.status === "PARTIALLY_SETTLED"
+                                            ? "bg-amber-50/50 dark:bg-amber-500/5 border-amber-200 dark:border-amber-800/40"
+                                            : selectedBatchForDrillDown.stages?.yarn?.status === "PENDING"
+                                            ? "bg-rose-50/50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-800/40"
+                                            : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-800 opacity-60"
+                                    )}>
+                                        <div>
+                                            <div className="flex items-center justify-between mb-4">
+                                                <span className="text-sm font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                                    <span className="text-base">🧶</span>
+                                                    <span>Stage 1: Raw Yarn</span>
+                                                </span>
+
+                                                {selectedBatchForDrillDown.stages?.yarn?.status === "SETTLED" ? (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                                        <CheckCircle2 size={13} />
+                                                        Settled (100%)
+                                                    </span>
+                                                ) : selectedBatchForDrillDown.stages?.yarn?.status === "STOCK_ALLOCATED" ? (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
+                                                        From Stock Lot
+                                                    </span>
+                                                ) : selectedBatchForDrillDown.stages?.yarn?.status === "PENDING" ? (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
+                                                        Pending Settle
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs font-bold text-slate-400">None</span>
+                                                )}
+                                            </div>
+
+                                            {selectedBatchForDrillDown.stages?.yarn?.accruals && selectedBatchForDrillDown.stages.yarn.accruals.length > 0 ? (
+                                                <div className="space-y-3">
+                                                    {selectedBatchForDrillDown.stages.yarn.accruals.map((acc: any) => (
+                                                        <div key={acc.id} className="text-xs p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/80 shadow-xs space-y-2">
+                                                            <div className="font-black text-sm text-slate-900 dark:text-white">
+                                                                {acc.productName}
+                                                            </div>
+                                                            <div className="text-slate-500 flex justify-between font-medium">
+                                                                <span>Demanded: <strong>{acc.qty.toLocaleString()} {acc.unit}</strong></span>
+                                                                <span className="font-mono text-indigo-500 font-bold bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded">{acc.accrualNo}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                                                                <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                                                    Settled: {acc.billedQty.toLocaleString()} {acc.unit}
+                                                                </span>
+                                                                <span className="text-rose-600 dark:text-rose-400 font-bold">
+                                                                    Rem: {acc.remainingQty.toLocaleString()} {acc.unit}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                                                Rate: Rs. {acc.rate.toFixed(2)} | Rem. Amount: Rs. {acc.remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </div>
+                                                            {acc.remarks && (
+                                                                <div className="text-[11px] text-slate-400 italic break-words pt-1 bg-slate-50 dark:bg-slate-800/80 p-2 rounded-lg">
+                                                                    {acc.remarks}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : selectedBatchForDrillDown.stages?.yarn?.status === "STOCK_ALLOCATED" ? (
+                                                <div className="text-xs text-slate-500 p-3 bg-white dark:bg-slate-800 rounded-xl">
+                                                    Raw yarn was allocated directly from warehouse physical inventory at execution time.
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-slate-400 p-3 bg-white dark:bg-slate-800 rounded-xl">
+                                                    No unbilled raw yarn demand booked for this batch.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Stage 2: Weaving */}
+                                    <div className={cn(
+                                        "p-6 rounded-2xl border transition-all flex flex-col justify-between shadow-xs",
+                                        selectedBatchForDrillDown.stages?.weaving?.status === "SETTLED"
+                                            ? "bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-800/40"
+                                            : selectedBatchForDrillDown.stages?.weaving?.status === "IN_HOUSE"
+                                            ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800"
+                                            : selectedBatchForDrillDown.stages?.weaving?.status === "PENDING"
+                                            ? "bg-rose-50/50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-800/40"
+                                            : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-800 opacity-60"
+                                    )}>
+                                        <div>
+                                            <div className="flex items-center justify-between mb-4">
+                                                <span className="text-sm font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                                    <span className="text-base">🧵</span>
+                                                    <span>Stage 2: Weaving / Knit</span>
+                                                </span>
+
+                                                {selectedBatchForDrillDown.stages?.weaving?.status === "SETTLED" ? (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                                        <CheckCircle2 size={13} />
+                                                        Settled (100%)
+                                                    </span>
+                                                ) : selectedBatchForDrillDown.stages?.weaving?.status === "IN_HOUSE" ? (
+                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
+                                                        In-House
+                                                    </span>
+                                                ) : selectedBatchForDrillDown.stages?.weaving?.status === "PENDING" ? (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
+                                                        Pending Settle
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs font-bold text-slate-400">None</span>
+                                                )}
+                                            </div>
+
+                                            {selectedBatchForDrillDown.stages?.weaving?.accruals && selectedBatchForDrillDown.stages.weaving.accruals.length > 0 ? (
+                                                <div className="space-y-3">
+                                                    {selectedBatchForDrillDown.stages.weaving.accruals.map((acc: any) => (
+                                                        <div key={acc.id} className="text-xs p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/80 shadow-xs space-y-2">
+                                                            <div className="font-black text-sm text-slate-900 dark:text-white">
+                                                                {acc.productName}
+                                                            </div>
+                                                            <div className="text-slate-500 flex justify-between font-medium">
+                                                                <span>Demanded: <strong>{acc.qty.toLocaleString()} {acc.unit}</strong></span>
+                                                                <span className="font-mono text-indigo-500 font-bold bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded">{acc.accrualNo}</span>
+                                                            </div>
+                                                            <div className="text-xs text-slate-400 truncate">
+                                                                Vendor: <strong>{acc.supplierName}</strong>
+                                                            </div>
+                                                            <div className="flex justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                                                                <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                                                    Settled: {acc.billedQty.toLocaleString()} {acc.unit}
+                                                                </span>
+                                                                <span className="text-rose-600 dark:text-rose-400 font-bold">
+                                                                    Rem: {acc.remainingQty.toLocaleString()} {acc.unit}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-slate-400 p-4 bg-white dark:bg-slate-800 rounded-xl">
+                                                    In-house weaving or no third-party outsourced knitting accrual booked.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Stage 3: Dyeing / Finishing */}
+                                    <div className={cn(
+                                        "p-6 rounded-2xl border transition-all flex flex-col justify-between shadow-xs",
+                                        selectedBatchForDrillDown.stages?.dyeingFinish?.status === "SETTLED"
+                                            ? "bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-800/40"
+                                            : selectedBatchForDrillDown.stages?.dyeingFinish?.status === "IN_HOUSE"
+                                            ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800"
+                                            : selectedBatchForDrillDown.stages?.dyeingFinish?.status === "PENDING"
+                                            ? "bg-rose-50/50 dark:bg-rose-500/5 border-rose-200 dark:border-rose-800/40"
+                                            : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-800 opacity-60"
+                                    )}>
+                                        <div>
+                                            <div className="flex items-center justify-between mb-4">
+                                                <span className="text-sm font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                                                    <span className="text-base">🎨</span>
+                                                    <span>Stage 3: Dyeing / Finish</span>
+                                                </span>
+
+                                                {selectedBatchForDrillDown.stages?.dyeingFinish?.status === "SETTLED" ? (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                                        <CheckCircle2 size={13} />
+                                                        Settled (100%)
+                                                    </span>
+                                                ) : selectedBatchForDrillDown.stages?.dyeingFinish?.status === "IN_HOUSE" ? (
+                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
+                                                        In-House
+                                                    </span>
+                                                ) : selectedBatchForDrillDown.stages?.dyeingFinish?.status === "PENDING" ? (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
+                                                        Pending Settle
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs font-bold text-slate-400">None</span>
+                                                )}
+                                            </div>
+
+                                            {selectedBatchForDrillDown.stages?.dyeingFinish?.accruals && selectedBatchForDrillDown.stages.dyeingFinish.accruals.length > 0 ? (
+                                                <div className="space-y-3">
+                                                    {selectedBatchForDrillDown.stages.dyeingFinish.accruals.map((acc: any) => (
+                                                        <div key={acc.id} className="text-xs p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/80 shadow-xs space-y-2">
+                                                            <div className="font-black text-sm text-slate-900 dark:text-white">
+                                                                {acc.productName}
+                                                            </div>
+                                                            <div className="text-slate-500 flex justify-between font-medium">
+                                                                <span>Demanded: <strong>{acc.qty.toLocaleString()} {acc.unit}</strong></span>
+                                                                <span className="font-mono text-indigo-500 font-bold bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded">{acc.accrualNo}</span>
+                                                            </div>
+                                                            <div className="text-xs text-slate-400 truncate">
+                                                                Vendor: <strong>{acc.supplierName}</strong>
+                                                            </div>
+                                                            <div className="flex justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                                                                <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                                                    Settled: {acc.billedQty.toLocaleString()} {acc.unit}
+                                                                </span>
+                                                                <span className="text-rose-600 dark:text-rose-400 font-bold">
+                                                                    Rem: {acc.remainingQty.toLocaleString()} {acc.unit}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                                                Rate: Rs. {acc.rate.toFixed(2)} | Rem. Amount: Rs. {acc.remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-slate-400 p-4 bg-white dark:bg-slate-800 rounded-xl">
+                                                    No third-party dyeing or finishing service accrual attached to this batch.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Complete Accrual Lines Table: Full Width with whitespace-nowrap */}
+                            <div className="space-y-3">
+                                <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                    <FileText size={18} className="text-indigo-500" />
+                                    <span>Detailed Accrual Ledger Lines</span>
+                                </h3>
+
+                                <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
                                     <table className="w-full text-left text-xs">
                                         <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 uppercase tracking-wider font-bold">
                                             <tr>
-                                                <th className="px-4 py-3">Accrual #</th>
-                                                <th className="px-4 py-3">Stage</th>
-                                                <th className="px-4 py-3">Item / Service</th>
-                                                <th className="px-4 py-3">Supplier</th>
-                                                <th className="px-4 py-3 text-right">Demanded</th>
-                                                <th className="px-4 py-3 text-right">Settled</th>
-                                                <th className="px-4 py-3 text-right">Remaining</th>
-                                                <th className="px-4 py-3 text-right">Rate</th>
-                                                <th className="px-4 py-3 text-right">Rem. Value</th>
-                                                <th className="px-4 py-3 text-center">Status</th>
+                                                <th className="px-5 py-3.5 whitespace-nowrap">Accrual #</th>
+                                                <th className="px-5 py-3.5 whitespace-nowrap">Stage</th>
+                                                <th className="px-5 py-3.5 whitespace-nowrap">Item / Service</th>
+                                                <th className="px-5 py-3.5 whitespace-nowrap">Supplier</th>
+                                                <th className="px-5 py-3.5 whitespace-nowrap text-right">Demanded</th>
+                                                <th className="px-5 py-3.5 whitespace-nowrap text-right">Settled</th>
+                                                <th className="px-5 py-3.5 whitespace-nowrap text-right">Remaining</th>
+                                                <th className="px-5 py-3.5 whitespace-nowrap text-right">Rate</th>
+                                                <th className="px-5 py-3.5 whitespace-nowrap text-right">Rem. Value</th>
+                                                <th className="px-5 py-3.5 whitespace-nowrap text-center">Status</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
@@ -1255,45 +1269,45 @@ export default function ProductionDashboard() {
                                                 ...(selectedBatchForDrillDown.stages?.dyeingFinish?.accruals || []),
                                                 ...(selectedBatchForDrillDown.stages?.other || [])
                                             ].map((acc: any) => (
-                                                <tr key={acc.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                                                    <td className="px-4 py-3 font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                                <tr key={acc.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                                                    <td className="px-5 py-3.5 font-mono font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
                                                         {acc.accrualNo}
                                                     </td>
-                                                    <td className="px-4 py-3 font-bold uppercase text-slate-500">
+                                                    <td className="px-5 py-3.5 font-bold uppercase text-slate-500 whitespace-nowrap">
                                                         {acc.serviceType || acc.stage}
                                                     </td>
-                                                    <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
+                                                    <td className="px-5 py-3.5 font-black text-slate-900 dark:text-white whitespace-nowrap">
                                                         {acc.productName}
                                                     </td>
-                                                    <td className="px-4 py-3 text-slate-500">
+                                                    <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap">
                                                         {acc.supplierName}
                                                     </td>
-                                                    <td className="px-4 py-3 text-right font-medium text-slate-700 dark:text-slate-300">
+                                                    <td className="px-5 py-3.5 text-right font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
                                                         {acc.qty.toLocaleString()} {acc.unit}
                                                     </td>
-                                                    <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                                                    <td className="px-5 py-3.5 text-right font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                                                         {acc.billedQty.toLocaleString()} {acc.unit}
                                                     </td>
-                                                    <td className="px-4 py-3 text-right font-bold text-rose-600 dark:text-rose-400">
+                                                    <td className="px-5 py-3.5 text-right font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">
                                                         {acc.remainingQty.toLocaleString()} {acc.unit}
                                                     </td>
-                                                    <td className="px-4 py-3 text-right text-slate-500">
+                                                    <td className="px-5 py-3.5 text-right text-slate-500 whitespace-nowrap">
                                                         Rs. {acc.rate.toFixed(2)}
                                                     </td>
-                                                    <td className="px-4 py-3 text-right font-black text-slate-900 dark:text-white">
+                                                    <td className="px-5 py-3.5 text-right font-black text-slate-900 dark:text-white whitespace-nowrap">
                                                         Rs. {acc.remainingAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </td>
-                                                    <td className="px-4 py-3 text-center">
+                                                    <td className="px-5 py-3.5 text-center whitespace-nowrap">
                                                         {acc.isSettled ? (
-                                                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                                            <span className="px-3 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
                                                                 BILLED
                                                             </span>
                                                         ) : acc.billedQty > 0 ? (
-                                                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
+                                                            <span className="px-3 py-1 rounded-full text-[11px] font-black bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
                                                                 PARTIAL
                                                             </span>
                                                         ) : (
-                                                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
+                                                            <span className="px-3 py-1 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
                                                                 PENDING
                                                             </span>
                                                         )}
@@ -1307,10 +1321,10 @@ export default function ProductionDashboard() {
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="p-6 md:p-8 border-t border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex flex-wrap justify-between items-center gap-4">
+                        <div className="p-6 md:px-8 md:py-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 flex flex-wrap justify-between items-center gap-4">
                             <button
                                 onClick={() => setSelectedBatchForDrillDown(null)}
-                                className="px-5 py-2.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50"
+                                className="px-6 py-2.5 rounded-xl text-xs font-bold border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 transition-colors"
                             >
                                 Close Drill Down
                             </button>
@@ -1319,7 +1333,7 @@ export default function ProductionDashboard() {
                                 {selectedBatchForDrillDown.batchId !== 'standalone-accruals' && (
                                     <button
                                         onClick={() => router.push(`/finance/production/execution/${selectedBatchForDrillDown.batchId}`)}
-                                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white transition-all border border-slate-700"
+                                        className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white transition-all border border-slate-700 shadow-sm"
                                     >
                                         <span>Inspect Batch Execution</span>
                                         <ArrowUpRight size={15} />
@@ -1328,7 +1342,7 @@ export default function ProductionDashboard() {
 
                                 <button
                                     onClick={() => router.push('/finance/purchase/invoices/new')}
-                                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 transition-all"
+                                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 transition-all"
                                 >
                                     <span>Settle via Invoice / Stock</span>
                                     <ArrowRight size={15} />
