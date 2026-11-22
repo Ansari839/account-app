@@ -27,7 +27,7 @@ export async function GET(
                 return NextResponse.json({ success: false, error: "Stock settlement record not found" }, { status: 404 });
             }
 
-            const match = sl.batchNo?.match(/STOCK-SETTLE-\[([^\]]+)\](?:-\[([^\]]+)\])?/);
+            const match = sl.batchNo?.match(/^STOCK-SETTLE-\[([^\]]+)\](?:-\[(.*)\])?$/);
             const accrualNo = match ? match[1] : null;
             const lotNo = match ? match[2] : null;
 
@@ -42,7 +42,7 @@ export async function GET(
                 },
                 include: {
                     Product: { select: { id: true, name: true, code: true, hsCode: true } },
-                    ProductionRecord: { select: { id: true, lotNumber: true, Product: { select: { name: true } } } }
+                    ProductionRecord: { select: { id: true, Product: { select: { name: true } } } }
                 }
             });
 
@@ -63,7 +63,7 @@ export async function GET(
                     stage: acc?.stage || sl.stage || "RAW",
                     serviceType: acc?.serviceType || "RAW_YARN",
                     productionId: acc?.productionId || sl.refId,
-                    productionBatchNo: acc?.ProductionRecord?.lotNumber || `Batch #${(acc?.productionId || sl.refId)?.slice(-6)}`,
+                    productionBatchNo: `Batch #${(acc?.productionId || sl.refId)?.slice(-6).toUpperCase()}`,
                     outputProductName: acc?.ProductionRecord?.Product?.name || "-",
                     productId: sl.productId,
                     productName: sl.Product?.name || "Raw Material",

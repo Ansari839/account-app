@@ -32,7 +32,6 @@ export async function GET(req: NextRequest) {
                     select: {
                         id: true,
                         date: true,
-                        lotNumber: true,
                         Product: { select: { name: true, code: true } }
                     }
                 },
@@ -89,7 +88,7 @@ export async function GET(req: NextRequest) {
         // Match StockLedger entries to Accruals
         for (const sl of stockLedgers) {
             // batchNo format: STOCK-SETTLE-[PAC-YYYY-XXXX]-[optional-lot]
-            const match = sl.batchNo?.match(/STOCK-SETTLE-\[([^\]]+)\](?:-\[([^\]]+)\])?/);
+            const match = sl.batchNo?.match(/^STOCK-SETTLE-\[([^\]]+)\](?:-\[(.*)\])?$/);
             const accrualNo = match ? match[1] : null;
             const lotNo = match ? match[2] : null;
 
@@ -112,7 +111,7 @@ export async function GET(req: NextRequest) {
                 stage: acc?.stage || sl.stage || "RAW",
                 serviceType: acc?.serviceType || "RAW_YARN",
                 productionId: acc?.productionId || sl.refId,
-                productionBatchNo: acc?.ProductionRecord?.lotNumber || `Batch #${(acc?.productionId || sl.refId)?.slice(-6)}`,
+                productionBatchNo: `Batch #${(acc?.productionId || sl.refId)?.slice(-6).toUpperCase()}`,
                 outputProductName: acc?.ProductionRecord?.Product?.name || "-",
                 productId: sl.productId,
                 productName: sl.Product?.name || acc?.Product?.name || "Raw Material",
@@ -157,7 +156,7 @@ export async function GET(req: NextRequest) {
                             stage: acc.stage,
                             serviceType: acc.serviceType,
                             productionId: acc.productionId,
-                            productionBatchNo: acc.ProductionRecord?.lotNumber || `Batch #${acc.productionId?.slice(-6)}`,
+                            productionBatchNo: `Batch #${acc.productionId?.slice(-6).toUpperCase()}`,
                             outputProductName: acc.ProductionRecord?.Product?.name || "-",
                             productId: piItem.productId || acc.productId,
                             productName: piItem.Product?.name || acc.Product?.name || "Item",
