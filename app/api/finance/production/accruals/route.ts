@@ -75,6 +75,8 @@ export async function GET(req: NextRequest) {
                                 id: true,
                                 date: true,
                                 outputProductId: true,
+                                outputQuantity: true,
+                                Warehouse: { select: { id: true, name: true } },
                                 Product: { select: { name: true, code: true } }
                             }
                         }
@@ -96,13 +98,17 @@ export async function GET(req: NextRequest) {
                         s.name as "supplierName",
                         s.code as "supplierCode",
                         u.code as "unitCode",
-                        prProd.name as "prProdName"
+                        prProd.name as "prProdName",
+                        prProd.code as "prProdCode",
+                        pr."outputQuantity" as "prOutputQty",
+                        w.name as "warehouseName"
                     FROM "ProductionAccrual" pa
                     LEFT JOIN "Product" p ON pa."productId" = p.id
                     LEFT JOIN "Supplier" s ON pa."supplierId" = s.id
                     LEFT JOIN "Unit" u ON pa."unitId" = u.id
                     LEFT JOIN "ProductionRecord" pr ON pa."productionId" = pr.id
                     LEFT JOIN "Product" prProd ON pr."outputProductId" = prProd.id
+                    LEFT JOIN "Warehouse" w ON pr."warehouseId" = w.id
                     WHERE pa."companyId" = ${companyId}
                     ORDER BY pa."date" ASC, pa."accrualNo" ASC
                 `;
@@ -126,11 +132,42 @@ export async function GET(req: NextRequest) {
                     Product: { name: r.productName, code: r.productCode, hsCode: r.productHsCode },
                     Supplier: { name: r.supplierName, code: r.supplierCode },
                     Unit: { code: r.unitCode },
-                    ProductionRecord: { Product: { name: r.prProdName } }
+                    ProductionRecord: {
+                        Product: { name: r.prProdName, code: r.prProdCode },
+                        outputQuantity: r.prOutputQty,
+                        Warehouse: { name: r.warehouseName }
+                    }
                 }));
             } catch (sqlErr: any) {
                 console.error("[Production Accruals SQL Error]:", sqlErr);
                 accruals = [];
+            }
+        }
+
+        // Fetch batch details from StockLedger for all linked production records
+        const prodRecordIds = Array.from(new Set(accruals.map((a: any) => a.productionId).filter(Boolean)));
+        const stockLedgerMap = new Map<string, any>();
+        if (prodRecordIds.length > 0) {
+            try {
+                const sls = await prisma.stockLedger.findMany({
+                    where: {
+                        companyId,
+                        refType: 'PRODUCTION',
+                        refId: { in: prodRecordIds },
+                        qtyIn: { gt: 0 }
+                    },
+                    select: {
+                        refId: true,
+                        batchNo: true
+                    }
+                });
+                sls.forEach(sl => {
+                    if (sl.refId && !stockLedgerMap.has(sl.refId)) {
+                        stockLedgerMap.set(sl.refId, sl);
+                    }
+                });
+            } catch (slErr) {
+                console.warn("[Production Accruals] StockLedger query note:", slErr);
             }
         }
 
@@ -146,16 +183,18 @@ export async function GET(req: NextRequest) {
                 const isStillUnspecified = (item.status === 'PENDING' && billedQty <= 0.001) &&
                     Boolean(item.remarks && item.remarks.includes('[UNSPECIFIED_YARN]'));
 
-                let effectiveProductName = item.Product?.name || "Service / Item";
+                let effectiveProductName = item.Product?.name || "Service / Raw Material";
                 if (item.remarks && item.remarks.includes('[Settled from Stock:')) {
                     const match = item.remarks.match(/\[Settled from Stock:\s*([^-\]]+)/i);
                     if (match && match[1]) {
                         effectiveProductName = match[1].trim();
                     }
                 }
-                if (isStillUnspecified) {
-                    effectiveProductName = "Raw Yarn (Unspecified / Pending Settle)";
-                }
+
+                const sl = item.productionId ? stockLedgerMap.get(item.productionId) : null;
+                const rawBatchNo = sl?.batchNo || '';
+                const batchNoClean = rawBatchNo ? rawBatchNo.split(' [')[0] : (item.productionId ? `BATCH-${item.productionId.slice(-6).toUpperCase()}` : '');
+                const batchSpecs = rawBatchNo && rawBatchNo.includes('[') ? rawBatchNo.slice(rawBatchNo.indexOf('[')) : '';
 
                 return {
                     id: item.id,
@@ -163,10 +202,17 @@ export async function GET(req: NextRequest) {
                     date: item.date,
                     productionId: item.productionId,
                     productionOutput: item.ProductionRecord?.Product?.name || "-",
+                    outputProductName: item.ProductionRecord?.Product?.name || "",
+                    outputProductCode: item.ProductionRecord?.Product?.code || "",
+                    outputQuantity: item.ProductionRecord?.outputQuantity ? Number(item.ProductionRecord.outputQuantity) : null,
+                    warehouseName: item.ProductionRecord?.Warehouse?.name || "",
+                    batchNo: batchNoClean,
+                    batchSpecs: batchSpecs,
                     productId: item.productId,
                     productName: effectiveProductName,
-                    productCode: isStillUnspecified ? "YARN-UNSPECIFIED" : (item.Product?.code || ""),
-                    hsCode: isStillUnspecified ? "-" : (item.Product?.hsCode || ""),
+                    productCode: item.Product?.code || "",
+                    hsCode: item.Product?.hsCode || "",
+                    isUnspecifiedLot: isStillUnspecified,
                     supplierId: item.supplierId,
                     supplierName: item.Supplier?.name || "Unassigned / General Vendor",
                     supplierCode: item.Supplier?.code || "",
@@ -191,13 +237,16 @@ export async function GET(req: NextRequest) {
                 if (supplierId && item.supplierId !== supplierId) return false;
                 if (productId && item.productId !== productId) return false;
                 if (!search) return true;
+                const q = search.toLowerCase();
                 return (
-                    item.accrualNo.toLowerCase().includes(search) ||
-                    item.productName.toLowerCase().includes(search) ||
-                    item.productCode.toLowerCase().includes(search) ||
-                    item.hsCode.toLowerCase().includes(search) ||
-                    item.supplierName.toLowerCase().includes(search) ||
-                    item.remarks?.toLowerCase().includes(search)
+                    item.accrualNo.toLowerCase().includes(q) ||
+                    item.productName.toLowerCase().includes(q) ||
+                    item.productCode.toLowerCase().includes(q) ||
+                    item.hsCode.toLowerCase().includes(q) ||
+                    (item.outputProductName && item.outputProductName.toLowerCase().includes(q)) ||
+                    (item.batchNo && item.batchNo.toLowerCase().includes(q)) ||
+                    item.supplierName.toLowerCase().includes(q) ||
+                    (item.remarks && item.remarks.toLowerCase().includes(q))
                 );
             });
 

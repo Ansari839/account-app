@@ -409,9 +409,6 @@ export async function GET(request: NextRequest) {
                 }
                 const isStillUnspecified = (a.status === 'PENDING' && billedQty <= 0.001) &&
                     Boolean(a.remarks && a.remarks.includes('[UNSPECIFIED_YARN]'));
-                if (isStillUnspecified) {
-                    pName = 'Raw Yarn (Unspecified - Pending Settle)';
-                }
 
                 const itemData = {
                     id: a.id,
@@ -421,6 +418,7 @@ export async function GET(request: NextRequest) {
                     productName: pName,
                     productCode: a.Product?.code || '',
                     hsCode: a.Product?.hsCode || '',
+                    isUnspecifiedLot: isStillUnspecified,
                     supplierId: a.supplierId,
                     supplierName: a.Supplier?.name || 'General / Unassigned',
                     unit: a.Unit?.code || a.Product?.Unit?.code || 'KG',

@@ -935,8 +935,15 @@ export default function ProductionDashboard() {
                                                                             Rem: {yarnStage.remainingQty.toLocaleString()} KG
                                                                         </span>
                                                                     </div>
-                                                                    <div className="font-semibold text-slate-600 dark:text-slate-400 text-xs truncate max-w-[220px]">
-                                                                        {firstYarnAcc?.productName || "Physical Yarn"}
+                                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                                        <span className="font-semibold text-slate-600 dark:text-slate-400 text-xs truncate max-w-[180px]" title={firstYarnAcc?.productName}>
+                                                                            {firstYarnAcc?.productName || "Physical Yarn"}
+                                                                        </span>
+                                                                        {firstYarnAcc?.isUnspecifiedLot && (
+                                                                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
+                                                                                Lot Unassigned
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             ) : yarnStage?.status === "PENDING" ? (
@@ -950,8 +957,15 @@ export default function ProductionDashboard() {
                                                                             {yarnStage.totalDemanded.toLocaleString()} KG
                                                                         </span>
                                                                     </div>
-                                                                    <div className="font-semibold text-slate-600 dark:text-slate-400 text-xs truncate max-w-[220px]">
-                                                                        {firstYarnAcc?.productName || "Physical Yarn"}
+                                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                                        <span className="font-semibold text-slate-600 dark:text-slate-400 text-xs truncate max-w-[180px]" title={firstYarnAcc?.productName}>
+                                                                            {firstYarnAcc?.productName || "Physical Yarn"}
+                                                                        </span>
+                                                                        {firstYarnAcc?.isUnspecifiedLot && (
+                                                                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
+                                                                                Lot Unassigned
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             ) : (
@@ -1375,8 +1389,15 @@ export default function ProductionDashboard() {
                                                 <div className="space-y-3">
                                                     {selectedBatchForDrillDown.stages.yarn.accruals.map((acc: any) => (
                                                         <div key={acc.id} className="text-xs p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/80 shadow-xs space-y-2">
-                                                            <div className="font-black text-sm text-slate-900 dark:text-white">
-                                                                {acc.productName}
+                                                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                                <div className="font-black text-sm text-slate-900 dark:text-white">
+                                                                    {acc.productName}
+                                                                </div>
+                                                                {acc.isUnspecifiedLot && (
+                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300/60 dark:border-amber-500/40">
+                                                                        Lot Unassigned
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             <div className="text-slate-500 flex justify-between font-medium">
                                                                 <span>Demanded: <strong>{acc.qty.toLocaleString()} {acc.unit}</strong></span>
@@ -1453,8 +1474,15 @@ export default function ProductionDashboard() {
                                                 <div className="space-y-3">
                                                     {selectedBatchForDrillDown.stages.weaving.accruals.map((acc: any) => (
                                                         <div key={acc.id} className="text-xs p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/80 shadow-xs space-y-2">
-                                                            <div className="font-black text-sm text-slate-900 dark:text-white">
-                                                                {acc.productName}
+                                                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                                <div className="font-black text-sm text-slate-900 dark:text-white">
+                                                                    {acc.productName}
+                                                                </div>
+                                                                {acc.isUnspecifiedLot && (
+                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300/60 dark:border-amber-500/40">
+                                                                        Lot Unassigned
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             <div className="text-slate-500 flex justify-between font-medium">
                                                                 <span>Demanded: <strong>{acc.qty.toLocaleString()} {acc.unit}</strong></span>
@@ -1522,8 +1550,15 @@ export default function ProductionDashboard() {
                                                 <div className="space-y-3">
                                                     {selectedBatchForDrillDown.stages.dyeingFinish.accruals.map((acc: any) => (
                                                         <div key={acc.id} className="text-xs p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/80 shadow-xs space-y-2">
-                                                            <div className="font-black text-sm text-slate-900 dark:text-white">
-                                                                {acc.productName}
+                                                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                                <div className="font-black text-sm text-slate-900 dark:text-white">
+                                                                    {acc.productName}
+                                                                </div>
+                                                                {acc.isUnspecifiedLot && (
+                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300/60 dark:border-amber-500/40">
+                                                                        Lot Unassigned
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             <div className="text-slate-500 flex justify-between font-medium">
                                                                 <span>Demanded: <strong>{acc.qty.toLocaleString()} {acc.unit}</strong></span>

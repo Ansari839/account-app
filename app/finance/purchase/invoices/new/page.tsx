@@ -481,7 +481,7 @@ export default function NewPurchaseInvoicePage() {
                 qty: alloc.allocatedQty,
                 rate: alloc.rate,
                 total: alloc.allocatedQty * alloc.rate,
-                notes: `FIFO Offset [${source.accrualNo}]: Produced ${source.productionOutput}`
+                notes: `FIFO Offset [${source.accrualNo}]: Target Batch ${source.outputProductName || source.productionOutput || 'Production'}${source.batchNo ? ` (${source.batchNo})` : ''}`
             });
         }
 
@@ -1824,6 +1824,8 @@ export default function NewPurchaseInvoicePage() {
                                                     s.productName?.toLowerCase().includes(q) ||
                                                     s.productCode?.toLowerCase().includes(q) ||
                                                     s.hsCode?.toLowerCase().includes(q) ||
+                                                    s.outputProductName?.toLowerCase().includes(q) ||
+                                                    s.batchNo?.toLowerCase().includes(q) ||
                                                     s.supplierName?.toLowerCase().includes(q)
                                                 );
                                             })
@@ -1887,12 +1889,44 @@ export default function NewPurchaseInvoicePage() {
                                                                 {stageBadge}
                                                             </span>
                                                         </td>
-                                                        {/* Product & HS Code */}
-                                                        <td className="p-3">
-                                                            <div className="font-bold text-slate-900 dark:text-white">{source.productName}</div>
-                                                            <div className="text-[11px] text-slate-400 font-mono">
-                                                                {source.productCode} {source.hsCode ? `• HS: ${source.hsCode}` : ''}
+                                                        {/* Product, Target Batch & HS Code */}
+                                                        <td className="p-3 min-w-[240px]">
+                                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                                <span className="font-bold text-slate-900 dark:text-white">
+                                                                    {source.productName}
+                                                                </span>
+                                                                {source.isUnspecifiedLot && (
+                                                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300/60 dark:border-amber-500/40">
+                                                                        Lot Unassigned
+                                                                    </span>
+                                                                )}
                                                             </div>
+                                                            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                                                {source.productCode || '-'} {source.hsCode ? `• HS: ${source.hsCode}` : ''}
+                                                            </div>
+                                                            {(source.outputProductName || source.batchNo) && (
+                                                                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80">
+                                                                        <span className="opacity-70 font-normal">🎯 Target:</span>
+                                                                        <strong>{source.outputProductName || 'Batch'}</strong>
+                                                                        {source.outputQuantity ? (
+                                                                            <span className="text-indigo-600 dark:text-indigo-400 font-mono">
+                                                                                ({Number(source.outputQuantity).toLocaleString()} Units)
+                                                                            </span>
+                                                                        ) : null}
+                                                                    </span>
+                                                                    {source.batchNo && (
+                                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                                                            {source.batchNo}
+                                                                        </span>
+                                                                    )}
+                                                                    {source.warehouseName && (
+                                                                        <span className="text-[10px] text-slate-400 font-medium">
+                                                                            📍 {source.warehouseName}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         {/* Supplier */}
                                                         <td className="p-3 text-slate-600 dark:text-slate-300 font-medium">
@@ -2040,6 +2074,11 @@ export default function NewPurchaseInvoicePage() {
                                                 productName: s?.productName || 'Raw Material',
                                                 productCode: s?.productCode || '',
                                                 hsCode: s?.hsCode || '',
+                                                outputProductName: s?.outputProductName || '',
+                                                outputQuantity: s?.outputQuantity || null,
+                                                batchNo: s?.batchNo || '',
+                                                warehouseName: s?.warehouseName || '',
+                                                isUnspecifiedLot: s?.isUnspecifiedLot || false,
                                                 requiredQty: Number(alloc.allocatedQty || s?.remainingQty || 0),
                                                 rate: Number(s?.rate || alloc.rate || 0),
                                                 unitCode: s?.unitCode || 'KG'
@@ -2375,8 +2414,26 @@ export default function NewPurchaseInvoicePage() {
                                                     </span>
                                                 </div>
 
-                                                <div className="text-xs font-bold text-slate-800 dark:text-slate-200 line-clamp-1 mb-2">
-                                                    {ask.productName}
+                                                <div className="mb-2 space-y-1">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                                            {ask.productName}
+                                                        </span>
+                                                        {ask.isUnspecifiedLot && (
+                                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300/60 dark:border-amber-500/40">
+                                                                Lot Unassigned
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-[10px] text-slate-400 font-mono">
+                                                        {ask.productCode ? `${ask.productCode} ` : ''}{ask.hsCode ? `• HS: ${ask.hsCode}` : ''}
+                                                    </div>
+                                                    {(ask.outputProductName || ask.batchNo) && (
+                                                        <div className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-1 flex-wrap">
+                                                            <span>🎯 Target: <strong>{ask.outputProductName || 'Batch'}</strong> {ask.outputQuantity ? `(${Number(ask.outputQuantity).toLocaleString()} Units)` : ''}</span>
+                                                            {ask.batchNo && <span className="font-mono text-slate-500 dark:text-slate-400">• {ask.batchNo}</span>}
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 {/* Progress Bar */}
