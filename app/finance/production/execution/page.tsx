@@ -98,20 +98,33 @@ export default function ProductionExecutionPage() {
                                                     {record.status}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-center flex items-center justify-center gap-3">
-                                                <button onClick={() => router.push(`/finance/production/execution/${record.id}`)} className="text-blue-500 hover:text-blue-700 font-medium">View</button>
-                                                <button 
-                                                    onClick={async () => {
-                                                        if(confirm('Are you sure you want to delete this production record? This will revert stock and accounts.')) {
-                                                            const res = await authenticatedFetch(`/api/finance/production/execution/${record.id}`, { method: 'DELETE' });
-                                                            if (res.ok) fetchRecords();
-                                                            else alert('Failed to delete.');
-                                                        }
-                                                    }}
-                                                    className="text-red-500 hover:text-red-700 font-medium"
-                                                >
-                                                    Delete
-                                                </button>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex items-center justify-center gap-3">
+                                                    <button 
+                                                        onClick={() => router.push(`/finance/production/execution/${record.id}`)} 
+                                                        className="text-blue-500 hover:text-blue-700 font-semibold text-xs uppercase tracking-wider"
+                                                    >
+                                                        View
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => router.push(`/finance/production/execution/${record.id}/edit`)} 
+                                                        className="text-amber-500 hover:text-amber-700 font-semibold text-xs uppercase tracking-wider"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button 
+                                                        onClick={async () => {
+                                                            if(confirm('Are you sure you want to delete this production record? This will revert stock and accounts.')) {
+                                                                const res = await authenticatedFetch(`/api/finance/production/execution/${record.id}`, { method: 'DELETE' });
+                                                                if (res.ok) fetchRecords();
+                                                                else alert('Failed to delete.');
+                                                            }
+                                                        }}
+                                                        className="text-red-500 hover:text-red-700 font-semibold text-xs uppercase tracking-wider"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

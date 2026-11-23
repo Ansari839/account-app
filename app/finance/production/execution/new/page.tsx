@@ -30,10 +30,11 @@ export interface ProcessingServiceItem {
     baseStageId?: string;
 }
 
-export default function ProductionExecutionWizard() {
+export default function ProductionExecutionWizard({ editId }: { editId?: string } = {}) {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [editBatchNo, setEditBatchNo] = useState<string>("");
     
     // Meta data
     const [products, setProducts] = useState<any[]>([]);
@@ -204,8 +205,116 @@ export default function ProductionExecutionWizard() {
     const [greyInputCostRate, setGreyInputCostRate] = useState<string>("");
 
     useEffect(() => {
-        fetchMeta();
-    }, []);
+        const init = async () => {
+            setLoading(true);
+            await fetchMeta();
+            if (editId) {
+                await fetchExistingBatch(editId);
+            }
+            setLoading(false);
+        };
+        init();
+    }, [editId]);
+
+    const fetchExistingBatch = async (batchId: string) => {
+        try {
+            const res = await authenticatedFetch(`/api/finance/production/execution/${batchId}`);
+            const json = await res.json();
+            if (json.success && json.data) {
+                const rec = json.data;
+                setEditBatchNo(rec.cleanBatchNo || rec.batchNo || "");
+                if (rec.date) setDate(rec.date.split("T")[0]);
+                if (rec.outputProductId) setOutputProductId(rec.outputProductId);
+                if (rec.outputQuantity) setOutputQuantity(rec.outputQuantity.toString());
+                if (rec.outputUom) setOutputUnitCode(rec.outputUom);
+                if (rec.warehouseId) setWarehouseId(rec.warehouseId);
+                if (rec.cutSize) setCutSizeLength(rec.cutSize.toString());
+                if (rec.cutUnit) setCutSizeUnit(rec.cutUnit as any);
+                if (rec.pieceWeightKg) setWeightPerUnit(rec.pieceWeightKg.toString());
+                if (rec.netWeightKg) setOutputNetWeightKg(rec.netWeightKg.toString());
+
+                if (rec.outputStage === "GREY") {
+                    setExecutionMode("YARN_TO_GREY");
+                } else {
+                    setExecutionMode("DIRECT_FINISH");
+                }
+
+                // Populate yarn inputs
+                if (rec.inputs && rec.inputs.length > 0) {
+                    const mappedInputs = rec.inputs.map((inp: any) => {
+                        const isAcc = inp.lotNumber?.includes("ACCRUAL") || !inp.lotNumber;
+                        const qty = Number(inp.quantity) || 0;
+                        const costVal = Number(inp.costValue) || 0;
+                        const rate = qty > 0 ? (costVal / qty).toFixed(2) : "0";
+                        return {
+                            mode: isAcc ? "ACCRUAL" : "STOCK",
+                            productId: inp.productId || "",
+                            supplierId: inp.supplierId || "",
+                            isEFS: inp.isEFS || false,
+                            quantity: qty > 0 ? qty.toString() : "",
+                            costRate: rate,
+                            lotNumber: inp.lotNumber || (isAcc ? "ACCRUAL-UNBILLED" : "")
+                        };
+                    });
+                    setYarnInputs(mappedInputs);
+                }
+
+                // Populate Weaving & Processing Overheads
+                if (rec.overheads && rec.overheads.length > 0) {
+                    const weavingOv = rec.overheads.find((ov: any) =>
+                        ov.description?.toUpperCase().includes("WEAVING") ||
+                        ov.description?.toUpperCase().includes("KNITTING")
+                    );
+                    if (weavingOv) {
+                        setFabricProcessType(weavingOv.description?.toUpperCase().includes("KNIT") ? "KNITTING" : "WEAVING");
+                        if (weavingOv.description?.includes("In-house")) {
+                            setWeavingMode("IN_HOUSE");
+                            const qty = Number(weavingOv.quantity) || 1;
+                            const amt = Number(weavingOv.amount) || 0;
+                            setInHouseWeavingRate(qty > 0 ? (amt / qty).toFixed(2) : "10");
+                        } else {
+                            setWeavingMode("OUT_HOUSE");
+                            setOutHouseFabricMode(weavingOv.purchaseInvoiceItemId ? "VENDOR_BILL" : "ACCRUAL");
+                            const qty = Number(weavingOv.quantity) || 1;
+                            const amt = Number(weavingOv.amount) || 0;
+                            setOutHouseFabricRate(qty > 0 ? (amt / qty).toFixed(2) : "0");
+                            if (weavingOv.purchaseInvoiceItemId) {
+                                setSelectedWeavingServiceId(weavingOv.purchaseInvoiceItemId);
+                            }
+                        }
+                    }
+
+                    const procOvs = rec.overheads.filter((ov: any) =>
+                        !ov.description?.toUpperCase().includes("WEAVING") &&
+                        !ov.description?.toUpperCase().includes("KNITTING")
+                    );
+                    if (procOvs.length > 0) {
+                        const mappedServices = procOvs.map((ov: any, idx: number) => {
+                            const isAcc = ov.description?.includes("Unbilled Accrual");
+                            const qty = Number(ov.quantity) || 0;
+                            const amt = Number(ov.amount) || 0;
+                            const rate = qty > 0 ? (amt / qty).toFixed(2) : "0";
+                            return {
+                                id: ov.id || String(Date.now() + idx),
+                                serviceId: ov.purchaseInvoiceItemId || "",
+                                mode: isAcc ? "ACCRUAL" : ov.purchaseInvoiceItemId ? "VENDOR_BILL" : "MANUAL",
+                                manualName: ov.description || "Processing Service",
+                                productId: ov.productId || "",
+                                supplierId: ov.supplierId || "",
+                                wastage: 0,
+                                qty: qty > 0 ? qty.toString() : "",
+                                rate: rate,
+                                unit: ov.unit?.code || "KG"
+                            };
+                        });
+                        setProcessingServices(mappedServices);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load existing batch for editing", e);
+        }
+    };
 
     const fetchMeta = async () => {
         try {
@@ -224,8 +333,6 @@ export default function ProductionExecutionWizard() {
             }
         } catch (error) {
             alert("Failed to fetch meta data");
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -1245,16 +1352,19 @@ export default function ProductionExecutionWizard() {
 
         setSubmitting(true);
         try {
-            const res = await authenticatedFetch("/api/finance/production/execution", {
-                method: "POST",
+            const url = editId ? `/api/finance/production/execution/${editId}` : "/api/finance/production/execution";
+            const method = editId ? "PUT" : "POST";
+            const res = await authenticatedFetch(url, {
+                method,
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
             const json = await res.json();
             if (json.success) {
-                alert("Production batch posted successfully!");
-                router.push("/finance/production/execution");
+                alert(editId ? "Production batch updated successfully!" : "Production batch posted successfully!");
+                router.push(editId ? `/finance/production/execution/${editId}` : "/finance/production/execution");
             } else {
-                alert(json.error || "Failed to post production batch");
+                alert(json.error || (editId ? "Failed to update production batch" : "Failed to post production batch"));
             }
         } catch (e: any) {
             alert(e.message || "An error occurred");
@@ -1283,14 +1393,16 @@ export default function ProductionExecutionWizard() {
                     <div>
                         <div className="flex items-center gap-2 mb-1.5">
                             <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center gap-1.5">
-                                <Factory size={14} /> Production Execution
+                                <Factory size={14} /> {editId ? `Edit Batch: ${editBatchNo || 'Batch'}` : "Production Execution"}
                             </span>
                         </div>
                         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                            Production Execution Entry
+                            {editId ? `Edit Production Batch (${editBatchNo || 'Batch'})` : "Production Execution Entry"}
                         </h1>
                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
-                            Record batch production, allocate raw yarn from warehouse lots, and link job-work service bills.
+                            {editId 
+                                ? "Modify manufacturing output, raw materials, or service accruals for this completed batch." 
+                                : "Record batch production, allocate raw yarn from warehouse lots, and link job-work service bills."}
                         </p>
                     </div>
 
@@ -2724,7 +2836,7 @@ export default function ProductionExecutionWizard() {
                             <div className="flex flex-col sm:flex-row items-center gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
                                 <button
                                     type="button"
-                                    onClick={() => router.push("/finance/production")}
+                                    onClick={() => router.push(editId ? `/finance/production/execution/${editId}` : "/finance/production/execution")}
                                     className="w-full sm:w-auto px-8 py-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-base rounded-2xl transition-all"
                                 >
                                     Cancel
@@ -2738,12 +2850,12 @@ export default function ProductionExecutionWizard() {
                                     {submitting ? (
                                         <>
                                             <Loader2 className="w-6 h-6 animate-spin" />
-                                            <span>Posting Production Batch to ERP & GL...</span>
+                                            <span>{editId ? "Updating Production Batch in ERP & GL..." : "Posting Production Batch to ERP & GL..."}</span>
                                         </>
                                     ) : (
                                         <>
                                             <Save size={22} />
-                                            <span>Post Production Execution Batch (GL & Stock Ledger)</span>
+                                            <span>{editId ? `Update Production Batch (${editBatchNo || 'Batch'})` : "Post Production Execution Batch (GL & Stock Ledger)"}</span>
                                         </>
                                     )}
                                 </button>

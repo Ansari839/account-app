@@ -307,6 +307,15 @@ export default function ViewProductionExecutionPage({ params }: { params: Promis
                             )}
                         </div>
                     </div>
+                    <div className="relative z-10 flex items-center gap-3">
+                        <button 
+                            onClick={() => router.push(`/finance/production/execution/${id}/edit`)}
+                            className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-amber-500/20 text-xs uppercase tracking-wider hover:-translate-y-0.5"
+                        >
+                            <Edit2 size={15} />
+                            Edit Batch
+                        </button>
+                    </div>
                 </div>
 
                 {/* Output Summary Card */}

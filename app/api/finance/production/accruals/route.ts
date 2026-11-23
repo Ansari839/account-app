@@ -190,6 +190,9 @@ export async function GET(req: NextRequest) {
                         effectiveProductName = match[1].trim();
                     }
                 }
+                if (isStillUnspecified) {
+                    effectiveProductName = "Raw Yarn (Unspecified / Pending Settle)";
+                }
 
                 const sl = item.productionId ? stockLedgerMap.get(item.productionId) : null;
                 const rawBatchNo = sl?.batchNo || '';
