@@ -110,7 +110,7 @@ export async function GET(
                     id: `INV-${piItem.id}`,
                     settlementId: piItem.id,
                     settlementType: "INVOICE",
-                    accrualId: piItem.accrualId,
+                    accrualId: piItem.productionAccrualId,
                     qty: Number(piItem.qty),
                     rate: Number(piItem.rate),
                     amount: Math.round(Number(piItem.qty) * Number(piItem.rate) * 100) / 100,
@@ -252,8 +252,8 @@ export async function PUT(
                     }
                 });
 
-                if (piItem.accrualId) {
-                    const acc = await tx.productionAccrual.findUnique({ where: { id: piItem.accrualId } });
+                if (piItem.productionAccrualId) {
+                    const acc = await tx.productionAccrual.findUnique({ where: { id: piItem.productionAccrualId } });
                     if (acc) {
                         const updatedBilledQty = Math.max(0, Number(acc.billedQty) + qtyDiff);
                         const totalDemanded = Number(acc.qty);
@@ -361,26 +361,33 @@ export async function DELETE(
                 const piItem = await tx.purchaseInvoiceItem.findUnique({ where: { id: rawId } });
                 if (!piItem) throw new Error("Purchase invoice line not found");
 
-                if (piItem.accrualId) {
-                    const acc = await tx.productionAccrual.findUnique({ where: { id: piItem.accrualId } });
+                let revertedAccNo = "Invoice Line Unlinked";
+                if (piItem.productionAccrualId) {
+                    const acc = await tx.productionAccrual.findUnique({ where: { id: piItem.productionAccrualId } });
                     if (acc) {
+                        revertedAccNo = acc.accrualNo;
                         const newBilled = Math.max(0, Number(acc.billedQty) - Number(piItem.qty));
                         const newStatus = newBilled <= 0.001 ? "PENDING" : "PARTIALLY_BILLED";
+                        // Remove the invoice stamp from remarks if present
+                        const invoiceStampRegex = new RegExp(`\\[Billed via Invoice:[^\\]]+\\]`, 'g');
+                        const cleanedRemarks = (acc.remarks || '').replace(invoiceStampRegex, '').trim();
+
                         await tx.productionAccrual.update({
                             where: { id: acc.id },
                             data: {
                                 billedQty: newBilled,
-                                status: newStatus
+                                status: newStatus,
+                                remarks: cleanedRemarks || null
                             }
                         });
                     }
                     await tx.purchaseInvoiceItem.update({
                         where: { id: piItem.id },
-                        data: { accrualId: null }
+                        data: { productionAccrualId: null }
                     });
                 }
 
-                return { reverted: true, accrualNo: "Invoice Line Unlinked" };
+                return { reverted: true, accrualNo: revertedAccNo };
             }
         });
 

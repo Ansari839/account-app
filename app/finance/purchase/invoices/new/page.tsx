@@ -53,8 +53,9 @@ export default function NewPurchaseInvoicePage() {
 
     // Form Data
     const [formData, setFormData] = useState<any>({
-        sourceType: "PO", // PO | GRN | DIRECT
+        sourceType: "PO", // PO | GRN | DIRECT | PRODUCTION
         sourceId: "",
+        invoiceNo: "",
         supplierId: "",
         warehouseId: "",
         date: new Date().toISOString().split("T")[0],
@@ -65,6 +66,14 @@ export default function NewPurchaseInvoicePage() {
         items: [],
         taxes: [],
     });
+
+    // Quick Add Supplier Modal State
+    const [isAddSupplierModalOpen, setIsAddSupplierModalOpen] = useState(false);
+    const [newSupplierName, setNewSupplierName] = useState("");
+    const [newSupplierCode, setNewSupplierCode] = useState("");
+    const [newSupplierTaxId, setNewSupplierTaxId] = useState("");
+    const [newSupplierAccount, setNewSupplierAccount] = useState("");
+    const [isSavingSupplier, setIsSavingSupplier] = useState(false);
 
     const [accrualStageFilter, setAccrualStageFilter] = useState<"ALL" | "RAW" | "GREY" | "FINISH">("ALL");
 
@@ -299,12 +308,52 @@ export default function NewPurchaseInvoicePage() {
         }
     }, [formData.sourceType]);
 
+    const handleSaveQuickSupplier = async () => {
+        if (!newSupplierName.trim()) {
+            showNotification('error', "Please enter supplier / vendor name.");
+            return;
+        }
+        setIsSavingSupplier(true);
+        try {
+            const res = await authenticatedFetch("/api/finance/parties/supplier", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: newSupplierName.trim(),
+                    code: newSupplierCode.trim() || undefined,
+                    taxId: newSupplierTaxId.trim() || undefined,
+                    payableAccountId: newSupplierAccount || undefined
+                })
+            });
+            const json = await res.json();
+            if (json.success && json.data) {
+                const createdSup = json.data;
+                setSuppliers(prev => [...prev, createdSup]);
+                setFormData((prev: any) => ({ ...prev, supplierId: createdSup.id }));
+                setIsAddSupplierModalOpen(false);
+                setNewSupplierName("");
+                setNewSupplierCode("");
+                setNewSupplierTaxId("");
+                setNewSupplierAccount("");
+                showNotification('success', `Supplier "${createdSup.name}" created and selected!`);
+            } else {
+                showNotification('error', json.error || "Failed to create supplier");
+            }
+        } catch (e: any) {
+            showNotification('error', e.message || "Failed to create supplier");
+        } finally {
+            setIsSavingSupplier(false);
+        }
+    };
+
     // Handle incoming URL parameters (e.g. ?sourceType=PRODUCTION&accrualId=...)
     useEffect(() => {
         if (typeof window !== "undefined") {
             const params = new URLSearchParams(window.location.search);
             const pSourceType = params.get("sourceType");
             const pAccrualId = params.get("accrualId");
+            const pBatchId = params.get("batchId") || params.get("productionId");
+
             if (pSourceType === "PRODUCTION") {
                 if (formData.sourceType !== "PRODUCTION") {
                     setFormData((prev: any) => ({ ...prev, sourceType: "PRODUCTION" }));
@@ -313,6 +362,46 @@ export default function NewPurchaseInvoicePage() {
                     const match = sources.find((s: any) => s.id === pAccrualId);
                     if (match && formData.sourceId !== pAccrualId) {
                         handleSelectSource(pAccrualId);
+                    }
+                } else if (pBatchId && sources.length > 0 && formData.items.length === 0) {
+                    const batchMatches = sources.filter((s: any) => s.productionId === pBatchId);
+                    if (batchMatches.length > 0) {
+                        const newItems: any[] = [];
+                        let detectedSupId = formData.supplierId;
+                        let detectedBillNo = formData.invoiceNo;
+                        let detectedBillDate = formData.date;
+
+                        for (const s of batchMatches) {
+                            if (!detectedSupId && s.supplierId) detectedSupId = s.supplierId;
+                            if (!detectedBillNo && s.billRef) detectedBillNo = s.billRef;
+                            if (!detectedBillDate && s.billDate) detectedBillDate = s.billDate;
+
+                            newItems.push({
+                                id: Date.now().toString() + Math.random(),
+                                productId: s.productId,
+                                productName: `${s.productName} [Accrual: ${s.accrualNo}]`,
+                                accrualNo: s.accrualNo,
+                                unitId: s.unitId,
+                                unitName: s.unitCode,
+                                productionAccrualId: s.id,
+                                qtyAvailable: s.remainingQty,
+                                qty: s.remainingQty,
+                                rate: s.rate || 0,
+                                total: s.remainingQty * (s.rate || 0),
+                                notes: `Target Batch: ${s.outputProductName || 'Production'}${s.batchNo ? ` (${s.batchNo})` : ''}`
+                            });
+                        }
+
+                        setFormData((prev: any) => ({
+                            ...prev,
+                            sourceType: "PRODUCTION",
+                            sourceId: pBatchId,
+                            supplierId: detectedSupId || prev.supplierId,
+                            invoiceNo: detectedBillNo || prev.invoiceNo,
+                            date: detectedBillDate || prev.date,
+                            items: newItems
+                        }));
+                        showNotification('success', `Loaded ${newItems.length} accrual(s) for Batch #${pBatchId.slice(-6).toUpperCase()}`);
                     }
                 }
             }
@@ -364,26 +453,29 @@ export default function NewPurchaseInvoicePage() {
                 id: Date.now().toString() + Math.random(),
                 productId: source.productId,
                 productName: `${source.productName} [Accrual: ${source.accrualNo}]`,
+                accrualNo: source.accrualNo,
                 unitId: source.unitId,
+                unitName: source.unitCode,
                 productionAccrualId: source.id,
                 qtyAvailable: source.remainingQty,
                 qty: source.remainingQty,
                 rate: source.rate || 0,
                 total: source.remainingQty * (source.rate || 0),
+                notes: `Target Batch: ${source.outputProductName || 'Production'}${source.batchNo ? ` (${source.batchNo})` : ''}`
             };
 
             const existingAccrualItems = formData.items.filter((it: any) => it.productionAccrualId);
             items = [...existingAccrualItems, newItem];
         }
 
-        setFormData({
-            ...formData,
+        setFormData((prev: any) => ({
+            ...prev,
             sourceId: id,
-            supplierId: source.supplierId || formData.supplierId,
-            invoiceNo: (!formData.invoiceNo && source.billRef) ? source.billRef : formData.invoiceNo,
-            invoiceDate: (!formData.invoiceDate && source.billDate) ? source.billDate : formData.invoiceDate,
+            supplierId: source.supplierId || prev.supplierId,
+            invoiceNo: (!prev.invoiceNo && source.billRef) ? source.billRef : prev.invoiceNo,
+            date: (!prev.date && source.billDate) ? source.billDate : prev.date,
             items,
-        });
+        }));
     };
 
     const handleAutoAllocateFIFO = () => {
@@ -484,6 +576,7 @@ export default function NewPurchaseInvoicePage() {
                 id: Date.now().toString() + Math.random(),
                 productId: source.productId,
                 productName: `${source.productName} [Accrual: ${source.accrualNo}]`,
+                accrualNo: source.accrualNo,
                 unitId: source.unitId,
                 unitName: source.unitCode,
                 productionAccrualId: source.id,
@@ -500,7 +593,7 @@ export default function NewPurchaseInvoicePage() {
             ...prev,
             supplierId: detectedSupplierId || prev.supplierId,
             invoiceNo: detectedBillRef || prev.invoiceNo,
-            invoiceDate: detectedBillDate || prev.invoiceDate,
+            date: detectedBillDate || prev.date,
             items: [...nonAccrualItems, ...newItems]
         }));
 
@@ -988,6 +1081,7 @@ export default function NewPurchaseInvoicePage() {
         try {
             const payload = {
                 ...formData,
+                invoiceNo: formData.invoiceNo?.trim() || undefined,
                 items: validItems,
                 poId: formData.sourceType === "PO" ? formData.sourceId : undefined,
                 grnId: formData.sourceType === "GRN" ? formData.sourceId : undefined,
@@ -1013,10 +1107,17 @@ export default function NewPurchaseInvoicePage() {
         }
     };
 
-    const supplierOptions = suppliers.map(s => ({
-        value: s.id,
-        label: `${s.code} - ${s.name}`
-    }));
+    const supplierOptions = useMemo(() => {
+        return suppliers.map(s => {
+            const isAcct = Boolean(s.type && !s.payableAccountId);
+            return {
+                value: s.id,
+                label: isAcct 
+                    ? `[Account] ${s.name} (${s.code || 'NO-CODE'}) • ${s.type}`
+                    : `[Vendor] ${s.name} (${s.code || 'NO-CODE'})`
+            };
+        });
+    }, [suppliers]);
 
     const warehouseOptions = warehouses.map(w => ({
         value: w.id,
@@ -1136,141 +1237,172 @@ export default function NewPurchaseInvoicePage() {
                         </div>
                         
                         <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {formData.sourceType !== "DIRECT" ? (
+                            {formData.sourceType === "PRODUCTION" && (
                                 <div className="md:col-span-2 space-y-2.5">
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                            <FileText size={14} /> Link {formData.sourceType === "PRODUCTION" ? "Production Accrual (FIFO Date-wise)" : formData.sourceType}
+                                            <FileText size={14} /> Link Production Accrual (FIFO Date-wise)
                                         </label>
-                                        {formData.sourceType === "PRODUCTION" && (
-                                            <div className="flex bg-slate-800 p-0.5 rounded-lg border border-slate-700 text-xs font-bold">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setAccrualStageFilter("ALL")}
-                                                    className={cn("px-2.5 py-1 rounded-md transition-all", accrualStageFilter === "ALL" ? "bg-amber-600 text-white shadow-sm font-black" : "text-slate-400 hover:text-white")}
-                                                >
-                                                    All
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setAccrualStageFilter("RAW")}
-                                                    className={cn("px-2.5 py-1 rounded-md transition-all", accrualStageFilter === "RAW" ? "bg-emerald-600 text-white shadow-sm font-black" : "text-slate-400 hover:text-white")}
-                                                >
-                                                    🧶 Raw Yarn
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setAccrualStageFilter("GREY")}
-                                                    className={cn("px-2.5 py-1 rounded-md transition-all", accrualStageFilter === "GREY" ? "bg-blue-600 text-white shadow-sm font-black" : "text-slate-400 hover:text-white")}
-                                                >
-                                                    🧵 Weaving/Knit
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setAccrualStageFilter("FINISH")}
-                                                    className={cn("px-2.5 py-1 rounded-md transition-all", accrualStageFilter === "FINISH" ? "bg-indigo-600 text-white shadow-sm font-black" : "text-slate-400 hover:text-white")}
-                                                >
-                                                    🎨 Dyeing/Print
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                    {formData.sourceType === "PRODUCTION" ? (
-                                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                                            <div className="flex-1">
-                                                <Combobox
-                                                    options={sourceOptions}
-                                                    value={formData.sourceId}
-                                                    onChange={(val) => handleSelectSource(val)}
-                                                    placeholder="Select single Pending Production Accrual..."
-                                                    searchPlaceholder="Search accrual #, service, supplier, HS code..."
-                                                    className="w-full bg-slate-900/50 border-slate-700 text-white"
-                                                />
-                                            </div>
+                                        <div className="flex bg-slate-800 p-0.5 rounded-lg border border-slate-700 text-xs font-bold">
                                             <button
                                                 type="button"
-                                                onClick={() => {
-                                                    const init: any = {};
-                                                    sources.forEach(s => {
-                                                        init[s.id] = { selected: false, allocatedQty: s.remainingQty, rate: s.rate };
-                                                    });
-                                                    setBulkAllocations(init);
-                                                    setBulkModalStage(accrualStageFilter);
-                                                    setBulkModalTab("PENDING");
-                                                    fetchSettledHistory();
-                                                    setIsBulkAccrualModalOpen(true);
-                                                }}
-                                                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black text-xs shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all shrink-0"
+                                                onClick={() => setAccrualStageFilter("ALL")}
+                                                className={cn("px-2.5 py-1 rounded-md transition-all", accrualStageFilter === "ALL" ? "bg-amber-600 text-white shadow-sm font-black" : "text-slate-400 hover:text-white")}
                                             >
-                                                <Zap size={14} className="fill-current text-white" />
-                                                <span>⚡ Bulk FIFO Allocation</span>
+                                                All
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAccrualStageFilter("RAW")}
+                                                className={cn("px-2.5 py-1 rounded-md transition-all", accrualStageFilter === "RAW" ? "bg-emerald-600 text-white shadow-sm font-black" : "text-slate-400 hover:text-white")}
+                                            >
+                                                🧶 Raw Yarn
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAccrualStageFilter("GREY")}
+                                                className={cn("px-2.5 py-1 rounded-md transition-all", accrualStageFilter === "GREY" ? "bg-blue-600 text-white shadow-sm font-black" : "text-slate-400 hover:text-white")}
+                                            >
+                                                🧵 Weaving/Knit
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAccrualStageFilter("FINISH")}
+                                                className={cn("px-2.5 py-1 rounded-md transition-all", accrualStageFilter === "FINISH" ? "bg-indigo-600 text-white shadow-sm font-black" : "text-slate-400 hover:text-white")}
+                                            >
+                                                🎨 Dyeing/Print
                                             </button>
                                         </div>
-                                    ) : (
-                                        <Combobox
-                                            options={sourceOptions}
-                                            value={formData.sourceId}
-                                            onChange={(val) => handleSelectSource(val)}
-                                            placeholder={`Select ${formData.sourceType}...`}
-                                            className="w-full bg-slate-900/50 border-slate-700 text-white"
-                                        />
-                                    )}
-                                    {formData.sourceType === "PRODUCTION" && formData.items.length > 0 && (
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                        <div className="flex-1">
+                                            <Combobox
+                                                options={sourceOptions}
+                                                value={formData.sourceId}
+                                                onChange={(val) => handleSelectSource(val)}
+                                                placeholder="Select single Pending Production Accrual..."
+                                                searchPlaceholder="Search accrual #, service, supplier, HS code..."
+                                                className="w-full bg-slate-900/50 border-slate-700 text-white"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const init: any = {};
+                                                sources.forEach(s => {
+                                                    init[s.id] = { selected: false, allocatedQty: s.remainingQty, rate: s.rate };
+                                                });
+                                                setBulkAllocations(init);
+                                                setBulkModalStage(accrualStageFilter);
+                                                setBulkModalTab("PENDING");
+                                                fetchSettledHistory();
+                                                setIsBulkAccrualModalOpen(true);
+                                            }}
+                                            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black text-xs shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all shrink-0 cursor-pointer"
+                                        >
+                                            <Zap size={14} className="fill-current text-white" />
+                                            <span>⚡ Bulk FIFO Allocation</span>
+                                        </button>
+                                    </div>
+                                    {formData.items.length > 0 && (
                                         <div className="flex items-center justify-between text-xs font-semibold text-slate-400 px-1 pt-1">
                                             <span>Linked Accrual Items: <b className="text-white font-mono">{formData.items.length} line(s)</b> (You can add more accruals from the dropdown above)</span>
                                         </div>
                                     )}
                                 </div>
-                            ) : (
-                                <>
-                                    <div className="space-y-2">
-                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                            <Building2 size={14} /> Supplier Account
-                                        </label>
-                                        <Combobox
-                                            options={supplierOptions}
-                                            value={formData.supplierId}
-                                            onChange={(val) => setFormData({ ...formData, supplierId: val })}
-                                            placeholder="Select supplier..."
-                                            className="w-full bg-slate-900/50 border-slate-700 text-white"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                            <Warehouse size={14} /> Target Warehouse
-                                        </label>
-                                        <Combobox
-                                            options={warehouseOptions}
-                                            value={formData.warehouseId}
-                                            onChange={(val) => setFormData({ ...formData, warehouseId: val })}
-                                            placeholder="Choose Warehouse..."
-                                            className="w-full bg-slate-900/60 border-slate-700 text-white"
-                                        />
-                                    </div>
-                                </>
                             )}
 
+                            {(formData.sourceType === "PO" || formData.sourceType === "GRN") && (
+                                <div className="md:col-span-2 space-y-2">
+                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                        <FileText size={14} /> Link {formData.sourceType}
+                                    </label>
+                                    <Combobox
+                                        options={sourceOptions}
+                                        value={formData.sourceId}
+                                        onChange={(val) => handleSelectSource(val)}
+                                        placeholder={`Select ${formData.sourceType}...`}
+                                        className="w-full bg-slate-900/50 border-slate-700 text-white"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Supplier Account with + Quick Add Supplier button */}
                             <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <Calendar size={14} /> Invoice Date
-                                </label>
-                                <input
-                                    type="date"
-                                    value={formData.date}
-                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                <div className="flex items-center justify-between">
+                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                        <Building2 size={14} /> Supplier Account
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddSupplierModalOpen(true)}
+                                        className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <Plus size={12} /> Add Supplier
+                                    </button>
+                                </div>
+                                <Combobox
+                                    options={supplierOptions}
+                                    value={formData.supplierId}
+                                    onChange={(val) => setFormData((p: any) => ({ ...p, supplierId: val }))}
+                                    placeholder="Select supplier..."
+                                    searchPlaceholder="Search vendor or posting account..."
+                                    className="w-full bg-slate-900/50 border-slate-700 text-white"
                                 />
                             </div>
+
+                            {/* Supplier Bill / Invoice Number */}
                             <div className="space-y-2">
                                 <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                    <Calendar size={14} /> Due Date
+                                    <Receipt size={14} /> Supplier Bill / Invoice #
                                 </label>
                                 <input
-                                    type="date"
-                                    value={formData.dueDate}
-                                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                    type="text"
+                                    value={formData.invoiceNo || ""}
+                                    onChange={(e) => setFormData((p: any) => ({ ...p, invoiceNo: e.target.value }))}
+                                    placeholder="e.g. INV-2026-101 / Vendor Bill #"
+                                    className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white placeholder-slate-500 font-mono text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                                 />
+                            </div>
+
+                            {/* Target Warehouse */}
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                    <Warehouse size={14} /> Target Warehouse
+                                </label>
+                                <Combobox
+                                    options={warehouseOptions}
+                                    value={formData.warehouseId}
+                                    onChange={(val) => setFormData((p: any) => ({ ...p, warehouseId: val }))}
+                                    placeholder="Choose Warehouse..."
+                                    className="w-full bg-slate-900/60 border-slate-700 text-white"
+                                />
+                            </div>
+
+                            {/* Dates: Invoice Date & Due Date */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                        <Calendar size={14} /> Bill Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={formData.date}
+                                        onChange={(e) => setFormData((p: any) => ({ ...p, date: e.target.value }))}
+                                        className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                        <Calendar size={14} /> Due Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={formData.dueDate}
+                                        onChange={(e) => setFormData((p: any) => ({ ...p, dueDate: e.target.value }))}
+                                        className="w-full p-2.5 rounded-xl bg-slate-900/50 border border-slate-700 text-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1295,21 +1427,26 @@ export default function NewPurchaseInvoicePage() {
                     <div className="p-6 overflow-visible">
                         <div className="min-w-[800px]">
                             <div className="grid grid-cols-12 gap-4 mb-3 px-4 text-xs font-bold uppercase tracking-widest text-slate-400">
-                                <div className="col-span-3">Product</div>
+                                <div className={formData.sourceType !== "DIRECT" ? "col-span-3" : "col-span-4"}>Product</div>
                                 <div className="col-span-2">Unit</div>
                                 {formData.sourceType !== "DIRECT" && <div className="col-span-1 text-center">Available</div>}
                                 <div className="col-span-2">Bill Qty</div>
                                 <div className="col-span-2">Rate</div>
-                                <div className="col-span-2 text-right">Total</div>
-                                {formData.sourceType === "DIRECT" && <div className="col-span-1 text-center">Act</div>}
+                                <div className="col-span-1 text-right">Total</div>
+                                <div className="col-span-1 text-center">Act</div>
                             </div>
 
                             <div className="space-y-3">
                                 {formData.items.map((item: any, index: number) => (
                                     <div key={item.id} className="grid grid-cols-12 gap-4 items-center bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-700/50 transition-all hover:border-indigo-200 dark:hover:border-indigo-500/30">
-                                        <div className="col-span-3">
+                                        <div className={formData.sourceType !== "DIRECT" ? "col-span-3" : "col-span-4"}>
                                             {formData.sourceType === "PRODUCTION" || item.productionAccrualId ? (
                                                 <div className="space-y-1">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
+                                                            Accrual #{item.accrualNo || 'DEMAND'}
+                                                        </span>
+                                                    </div>
                                                     <Combobox
                                                         options={products.map(p => ({ value: p.id, label: `${p.name} (${p.code})` }))}
                                                         value={item.productId}
@@ -1383,22 +1520,22 @@ export default function NewPurchaseInvoicePage() {
                                             />
                                         </div>
 
-                                        <div className="col-span-2 flex items-center justify-end px-2">
-                                            <span className="font-black text-slate-800 dark:text-white">
+                                        <div className="col-span-1 flex items-center justify-end px-2">
+                                            <span className="font-black text-slate-800 dark:text-white truncate">
                                                 {item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                             </span>
                                         </div>
 
-                                        {formData.sourceType === "DIRECT" && (
-                                            <div className="col-span-1 flex justify-center">
-                                                <button 
-                                                    onClick={() => handleRemoveItem(item.id)}
-                                                    className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            </div>
-                                        )}
+                                        <div className="col-span-1 flex justify-center">
+                                            <button 
+                                                type="button"
+                                                onClick={() => handleRemoveItem(item.id)}
+                                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
+                                                title="Remove item"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                                 {formData.items.length === 0 && (
@@ -3120,6 +3257,126 @@ export default function NewPurchaseInvoicePage() {
                                     <>
                                         <CheckCircle2 size={14} />
                                         <span>Save Changes</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Quick Add Supplier Modal */}
+            {isAddSupplierModalOpen && (
+                <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl">
+                                    <Building2 size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="font-black text-slate-800 dark:text-white text-lg">Quick Add Supplier</h3>
+                                    <p className="text-xs text-slate-400">Create and auto-select a new vendor or external service provider</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsAddSupplierModalOpen(false)}
+                                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                    Supplier / Vendor Name <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newSupplierName}
+                                    onChange={(e) => setNewSupplierName(e.target.value)}
+                                    placeholder="e.g. Master Dyeing Mills / Al-Karam Yarn"
+                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Vendor Code (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={newSupplierCode}
+                                        onChange={(e) => setNewSupplierCode(e.target.value)}
+                                        placeholder="e.g. SUP-0042"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                        Tax ID / NTN (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={newSupplierTaxId}
+                                        onChange={(e) => setNewSupplierTaxId(e.target.value)}
+                                        placeholder="e.g. 1234567-8"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                    Payable / Liability Account
+                                </label>
+                                <Combobox
+                                    options={accounts
+                                        .filter(a => a.type === 'LIABILITY' || a.type === 'EXPENSE')
+                                        .map(a => ({ value: a.id, label: `${a.code} - ${a.name} (${a.type})` }))
+                                    }
+                                    value={newSupplierAccount}
+                                    onChange={(val) => setNewSupplierAccount(val)}
+                                    placeholder="Default: Accounts Payable / Trade Creditors"
+                                    searchPlaceholder="Search liability account..."
+                                    className="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                />
+                                <p className="text-[11px] text-slate-400 mt-1">
+                                    Leave blank to automatically link standard Trade Creditors (Accounts Payable).
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-5 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+                            <button
+                                type="button"
+                                disabled={isSavingSupplier}
+                                onClick={() => setIsAddSupplierModalOpen(false)}
+                                className="px-4 py-2 rounded-xl font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs uppercase tracking-wider"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isSavingSupplier}
+                                onClick={handleSaveQuickSupplier}
+                                className="px-5 py-2.5 rounded-xl font-black text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition-all text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer"
+                            >
+                                {isSavingSupplier ? (
+                                    <>
+                                        <Sparkles size={14} className="animate-spin" />
+                                        <span>Creating...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus size={14} />
+                                        <span>Create & Select Supplier</span>
                                     </>
                                 )}
                             </button>

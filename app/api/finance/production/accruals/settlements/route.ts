@@ -38,7 +38,21 @@ export async function GET(req: NextRequest) {
                 PurchaseInvoiceItem: {
                     include: {
                         PurchaseInvoice: {
-                            select: { id: true, invoiceNo: true, date: true, Supplier: { select: { name: true } } }
+                            select: { 
+                                id: true, 
+                                invoiceNo: true, 
+                                date: true, 
+                                Supplier: { select: { name: true } },
+                                JournalEntry: {
+                                    include: {
+                                        lines: {
+                                            include: {
+                                                Account: { select: { id: true, name: true, code: true } }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         },
                         Product: { select: { id: true, name: true, code: true } }
                     }
@@ -170,7 +184,18 @@ export async function GET(req: NextRequest) {
                             amount: Math.round(Number(piItem.qty) * Number(piItem.rate) * 100) / 100,
                             settlementDate: piItem.PurchaseInvoice?.date ? new Date(piItem.PurchaseInvoice.date).toISOString().split("T")[0] : "",
                             remarks: `Billed via Purchase Invoice #${piItem.PurchaseInvoice?.invoiceNo}`,
-                            journalEntry: null,
+                            journalEntry: piItem.PurchaseInvoice?.JournalEntry ? {
+                                id: piItem.PurchaseInvoice.JournalEntry.id,
+                                number: piItem.PurchaseInvoice.JournalEntry.number,
+                                date: piItem.PurchaseInvoice.JournalEntry.date,
+                                narration: piItem.PurchaseInvoice.JournalEntry.narration,
+                                lines: (piItem.PurchaseInvoice.JournalEntry.lines || []).map((l: any) => ({
+                                    accountCode: l.Account?.code,
+                                    accountName: l.Account?.name,
+                                    debit: Number(l.debit),
+                                    credit: Number(l.credit)
+                                }))
+                            } : null,
                             purchaseInvoice: piItem.PurchaseInvoice ? {
                                 id: piItem.PurchaseInvoice.id,
                                 invoiceNo: piItem.PurchaseInvoice.invoiceNo,

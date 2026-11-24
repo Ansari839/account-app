@@ -299,7 +299,7 @@ export default function ProductionDashboard() {
                             <span>Settled Accruals History ({settledHistory.length})</span>
                         </button>
                         <button 
-                            onClick={() => router.push('/finance/purchase/invoices/new')}
+                            onClick={() => router.push('/finance/purchase/invoices/new?sourceType=PRODUCTION')}
                             className="bg-slate-800 hover:bg-slate-700 text-white px-5 py-3 rounded-xl font-bold transition-all border border-slate-700 hover:border-slate-600 flex items-center gap-2 shadow-sm"
                         >
                             <FileText size={16} className="text-indigo-400" />
@@ -1693,7 +1693,7 @@ export default function ProductionDashboard() {
                                 )}
 
                                 <button
-                                    onClick={() => router.push('/finance/purchase/invoices/new')}
+                                    onClick={() => router.push(`/finance/purchase/invoices/new?sourceType=PRODUCTION&batchId=${selectedBatchForDrillDown.batchId}`)}
                                     className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 transition-all"
                                 >
                                     <span>Settle via Invoice / Stock</span>
