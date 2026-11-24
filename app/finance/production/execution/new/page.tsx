@@ -8,7 +8,7 @@ import {
     Loader2, Save, Layers, Package, Factory, Scissors, CheckCircle2,
     Calculator, Droplets, Box, AlertTriangle, ArrowRight, Plus, Trash2,
     Calendar, Warehouse, FileText, Check, ShieldCheck, ShoppingCart, RefreshCw,
-    Printer, Info, Sparkles, Search, X, Filter
+    Printer, Info, Sparkles, Search, X, Filter, Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Combobox from "@/components/Combobox";
@@ -23,6 +23,8 @@ export interface ProcessingServiceItem {
     manualName: string;
     productId?: string;
     supplierId?: string;
+    billRef?: string;
+    billDate?: string;
     wastage: number;
     qty: string;
     rate: string;
@@ -44,7 +46,17 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
     const [stockRates, setStockRates] = useState<Record<string, { qty: number, rate: number, isEFS: boolean }>>({});
     const [availableLots, setAvailableLots] = useState<any[]>([]);
     const [suppliers, setSuppliers] = useState<any[]>([]);
+    const [accounts, setAccounts] = useState<any[]>([]);
     const [serviceProducts, setServiceProducts] = useState<any[]>([]);
+
+    // Quick Add Supplier Modal State
+    const [isAddSupplierModalOpen, setIsAddSupplierModalOpen] = useState(false);
+    const [newSupplierName, setNewSupplierName] = useState("");
+    const [newSupplierCode, setNewSupplierCode] = useState("");
+    const [newSupplierTaxId, setNewSupplierTaxId] = useState("");
+    const [newSupplierAccount, setNewSupplierAccount] = useState("");
+    const [addSupplierCallback, setAddSupplierCallback] = useState<((supplierId: string) => void) | null>(null);
+    const [isSavingSupplier, setIsSavingSupplier] = useState(false);
 
     // Modal state for Yarn Lot Selection Table
     const [isYarnModalOpen, setIsYarnModalOpen] = useState(false);
@@ -56,6 +68,8 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
     const [yarnModalShowAccrualForm, setYarnModalShowAccrualForm] = useState(false);
     const [yarnModalAccrualProductId, setYarnModalAccrualProductId] = useState("");
     const [yarnModalAccrualSupplierId, setYarnModalAccrualSupplierId] = useState("");
+    const [yarnModalAccrualBillRef, setYarnModalAccrualBillRef] = useState("");
+    const [yarnModalAccrualBillDate, setYarnModalAccrualBillDate] = useState("");
     const [yarnModalAccrualQty, setYarnModalAccrualQty] = useState("");
     const [yarnModalAccrualRate, setYarnModalAccrualRate] = useState("");
 
@@ -70,6 +84,8 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
     const [modalShowAccrualForm, setModalShowAccrualForm] = useState(false);
     const [modalAccrualProductId, setModalAccrualProductId] = useState("");
     const [modalAccrualSupplierId, setModalAccrualSupplierId] = useState("");
+    const [modalAccrualBillRef, setModalAccrualBillRef] = useState("");
+    const [modalAccrualBillDate, setModalAccrualBillDate] = useState("");
     const [modalAccrualQty, setModalAccrualQty] = useState("");
     const [modalAccrualRate, setModalAccrualRate] = useState("");
     const [modalAccrualWastage, setModalAccrualWastage] = useState("0");
@@ -179,6 +195,8 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
     const [weavingServiceQty, setWeavingServiceQty] = useState<string>("");
     const [outHouseFabricProductId, setOutHouseFabricProductId] = useState<string>("");
     const [outHouseFabricSupplierId, setOutHouseFabricSupplierId] = useState<string>("");
+    const [outHouseFabricBillRef, setOutHouseFabricBillRef] = useState<string>("");
+    const [outHouseFabricBillDate, setOutHouseFabricBillDate] = useState<string>("");
     const [outHouseFabricRate, setOutHouseFabricRate] = useState<string>("");
     const [outHouseFabricManualRate, setOutHouseFabricManualRate] = useState<string>("");
 
@@ -189,6 +207,8 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
         mode: "STOCK" | "ACCRUAL";
         productId: string;
         supplierId?: string;
+        billRef?: string;
+        billDate?: string;
         isEFS: boolean;
         quantity: string;
         costRate: string;
@@ -246,10 +266,25 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                         const qty = Number(inp.quantity) || 0;
                         const costVal = Number(inp.costValue) || 0;
                         const rate = qty > 0 ? (costVal / qty).toFixed(2) : "0";
+                        let bRef = '';
+                        let bDate = '';
+                        if (inp.remarks) {
+                            const refM = inp.remarks.match(/\[BILL_REF:\s*([^\]]+)\]/i);
+                            if (refM) bRef = refM[1].trim();
+                            const dateM = inp.remarks.match(/\[BILL_DATE:\s*([^\]]+)\]/i);
+                            if (dateM) bDate = dateM[1].trim();
+                        }
+                        const matchingAcc = rec.accruals?.find((a: any) => (a.stage === 'RAW' || a.serviceType === 'RAW_YARN') && a.billRef);
+                        if (matchingAcc && !bRef) {
+                            bRef = matchingAcc.billRef;
+                            bDate = matchingAcc.billDate;
+                        }
                         return {
                             mode: isAcc ? "ACCRUAL" : "STOCK",
                             productId: inp.productId || "",
-                            supplierId: inp.supplierId || "",
+                            supplierId: inp.supplierId || matchingAcc?.supplierId || "",
+                            billRef: bRef || undefined,
+                            billDate: bDate || undefined,
                             isEFS: inp.isEFS || false,
                             quantity: qty > 0 ? qty.toString() : "",
                             costRate: rate,
@@ -281,6 +316,13 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                             if (weavingOv.purchaseInvoiceItemId) {
                                 setSelectedWeavingServiceId(weavingOv.purchaseInvoiceItemId);
                             }
+                            const matchingWeaveAcc = rec.accruals?.find((a: any) => a.stage === 'GREY' || a.serviceType === 'WEAVING' || a.serviceType === 'KNITTING');
+                            if (matchingWeaveAcc) {
+                                if (matchingWeaveAcc.supplierId) setOutHouseFabricSupplierId(matchingWeaveAcc.supplierId);
+                                if (matchingWeaveAcc.productId) setOutHouseFabricProductId(matchingWeaveAcc.productId);
+                                if (matchingWeaveAcc.billRef) setOutHouseFabricBillRef(matchingWeaveAcc.billRef);
+                                if (matchingWeaveAcc.billDate) setOutHouseFabricBillDate(matchingWeaveAcc.billDate);
+                            }
                         }
                     }
 
@@ -294,13 +336,28 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                             const qty = Number(ov.quantity) || 0;
                             const amt = Number(ov.amount) || 0;
                             const rate = qty > 0 ? (amt / qty).toFixed(2) : "0";
+                            let bRef = '';
+                            let bDate = '';
+                            if (ov.remarks) {
+                                const refM = ov.remarks.match(/\[BILL_REF:\s*([^\]]+)\]/i);
+                                if (refM) bRef = refM[1].trim();
+                                const dateM = ov.remarks.match(/\[BILL_DATE:\s*([^\]]+)\]/i);
+                                if (dateM) bDate = dateM[1].trim();
+                            }
+                            const matchingAcc = rec.accruals?.find((a: any) => a.accrualNo && ov.description?.includes(a.accrualNo));
+                            if (matchingAcc) {
+                                if (!bRef) bRef = matchingAcc.billRef;
+                                if (!bDate) bDate = matchingAcc.billDate;
+                            }
                             return {
                                 id: ov.id || String(Date.now() + idx),
                                 serviceId: ov.purchaseInvoiceItemId || "",
                                 mode: isAcc ? "ACCRUAL" : ov.purchaseInvoiceItemId ? "VENDOR_BILL" : "MANUAL",
                                 manualName: ov.description || "Processing Service",
-                                productId: ov.productId || "",
-                                supplierId: ov.supplierId || "",
+                                productId: ov.productId || matchingAcc?.productId || "",
+                                supplierId: ov.supplierId || matchingAcc?.supplierId || "",
+                                billRef: bRef || undefined,
+                                billDate: bDate || undefined,
                                 wastage: 0,
                                 qty: qty > 0 ? qty.toString() : "",
                                 rate: rate,
@@ -328,6 +385,7 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                 setStockRates(json.data.stockRates);
                 if (json.data.availableLots) setAvailableLots(json.data.availableLots);
                 if (json.data.suppliers) setSuppliers(json.data.suppliers);
+                if (json.data.accounts) setAccounts(json.data.accounts);
                 if (json.data.serviceProducts) setServiceProducts(json.data.serviceProducts);
                 if (json.data.warehouses.length > 0) setWarehouseId(json.data.warehouses[0].id);
             }
@@ -514,6 +572,77 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
             label: `${s.name} (${s.code})`
         }));
     }, [suppliers]);
+
+    // Unified Party & Account Options (Suppliers + COA Accounts)
+    const partyAndAccountOptions = useMemo(() => {
+        const list: Array<{ value: string; label: string; sublabel?: string }> = [];
+
+        // 1. Suppliers / Vendors
+        suppliers.forEach(s => {
+            list.push({
+                value: s.id,
+                label: `[Vendor] ${s.name} (${s.code})`,
+                sublabel: s.taxId ? `Tax ID / NTN: ${s.taxId}` : 'Vendor / Supplier'
+            });
+        });
+
+        // 2. Chart of Accounts (COA)
+        accounts.forEach(a => {
+            list.push({
+                value: a.id,
+                label: `[Account] ${a.name} (${a.code})`,
+                sublabel: `COA • ${a.type}`
+            });
+        });
+
+        return list;
+    }, [suppliers, accounts]);
+
+    const openAddSupplierModal = (onCreated?: (supplierId: string) => void) => {
+        setNewSupplierName("");
+        setNewSupplierCode("");
+        setNewSupplierTaxId("");
+        setNewSupplierAccount("");
+        setAddSupplierCallback(() => onCreated || null);
+        setIsAddSupplierModalOpen(true);
+    };
+
+    const handleSaveQuickSupplier = async () => {
+        if (!newSupplierName.trim()) {
+            alert("Please enter party / supplier name.");
+            return;
+        }
+        setIsSavingSupplier(true);
+        try {
+            const res = await authenticatedFetch("/api/finance/parties/supplier", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: newSupplierName.trim(),
+                    code: newSupplierCode.trim() || undefined,
+                    taxId: newSupplierTaxId.trim() || undefined,
+                    payableAccountId: newSupplierAccount || undefined
+                })
+            });
+            const json = await res.json();
+            if (json.success && json.data) {
+                const createdSup = json.data;
+                setSuppliers(prev => [...prev, createdSup]);
+                if (addSupplierCallback) {
+                    addSupplierCallback(createdSup.id);
+                }
+                setIsAddSupplierModalOpen(false);
+                setSyncNotification(`Supplier "${createdSup.name}" created successfully!`);
+                setTimeout(() => setSyncNotification(null), 3000);
+            } else {
+                alert(json.error || "Failed to create supplier");
+            }
+        } catch (e: any) {
+            alert(e.message || "Failed to create supplier");
+        } finally {
+            setIsSavingSupplier(false);
+        }
+    };
 
     // Dynamically computed processing services with live gross weights and stage labels
     const computedProcessingServices = useMemo(() => {
@@ -844,11 +973,15 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
             const curRow = yarnInputs[activeYarnRowIndex];
             setYarnModalAccrualProductId(curRow.mode === "ACCRUAL" ? (curRow.productId || "") : "");
             setYarnModalAccrualSupplierId(curRow.supplierId || "");
+            setYarnModalAccrualBillRef(curRow.billRef || "");
+            setYarnModalAccrualBillDate(curRow.billDate || "");
             setYarnModalAccrualQty(curRow.quantity || (shortfall > 0 ? shortfall.toString() : ""));
             setYarnModalAccrualRate(curRow.costRate || "");
         } else {
             setYarnModalAccrualProductId("");
             setYarnModalAccrualSupplierId("");
+            setYarnModalAccrualBillRef("");
+            setYarnModalAccrualBillDate("");
             setYarnModalAccrualQty(shortfall > 0 ? shortfall.toString() : "");
             setYarnModalAccrualRate("");
         }
@@ -867,6 +1000,8 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
             mode: "ACCRUAL" as const,
             productId: yarnModalAccrualProductId || "",
             supplierId: yarnModalAccrualSupplierId || undefined,
+            billRef: yarnModalAccrualBillRef || undefined,
+            billDate: yarnModalAccrualBillDate || undefined,
             quantity: q.toString(),
             costRate: r > 0 ? r.toString() : "0",
             lotNumber: "ACCRUAL-UNBILLED",
@@ -936,7 +1071,9 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
         }
 
         setModalAccrualProductId(defaultProdId);
-        setModalAccrualSupplierId(r?.supplierId || "");
+        setModalAccrualSupplierId(r?.supplierId || (serviceModalTarget === "WEAVING_KNITTING" ? outHouseFabricSupplierId : ""));
+        setModalAccrualBillRef(r?.billRef || (serviceModalTarget === "WEAVING_KNITTING" ? outHouseFabricBillRef : ""));
+        setModalAccrualBillDate(r?.billDate || (serviceModalTarget === "WEAVING_KNITTING" ? outHouseFabricBillDate : ""));
         
         const defaultBaseId = r?.baseStageId || (
             computedProcessingServices.length > 0 
@@ -956,7 +1093,7 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
         } else {
             setModalAccrualQty(effectiveNetWeightKg > 0 ? effectiveNetWeightKg.toString() : "");
         }
-        setModalAccrualRate(r?.rate || "");
+        setModalAccrualRate(r?.rate || (serviceModalTarget === "WEAVING_KNITTING" ? outHouseFabricRate : ""));
     };
 
     const getModalBaseWeight = (baseId: string) => {
@@ -1025,6 +1162,8 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                         serviceId: "",
                         productId: modalAccrualProductId,
                         supplierId: modalAccrualSupplierId || "",
+                        billRef: modalAccrualBillRef || undefined,
+                        billDate: modalAccrualBillDate || undefined,
                         manualName: selProd?.name || p.manualName,
                         qty: modalAccrualQty,
                         rate: modalAccrualRate,
@@ -1042,6 +1181,8 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                         serviceId: "",
                         productId: modalAccrualProductId,
                         supplierId: modalAccrualSupplierId || "",
+                        billRef: modalAccrualBillRef || undefined,
+                        billDate: modalAccrualBillDate || undefined,
                         manualName: selProd?.name || "Processing Service",
                         qty: modalAccrualQty,
                         rate: modalAccrualRate,
@@ -1053,8 +1194,12 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
             }
         } else if (serviceModalTarget === "WEAVING_KNITTING") {
             setWeavingMode("OUT_HOUSE");
-            setOutHouseFabricMode("MANUAL");
-            setOutHouseFabricManualRate(modalAccrualRate);
+            setOutHouseFabricMode("ACCRUAL");
+            setOutHouseFabricProductId(modalAccrualProductId);
+            setOutHouseFabricSupplierId(modalAccrualSupplierId);
+            setOutHouseFabricBillRef(modalAccrualBillRef);
+            setOutHouseFabricBillDate(modalAccrualBillDate);
+            setOutHouseFabricRate(modalAccrualRate);
             if (modalAccrualWastage && parseFloat(modalAccrualWastage) > 0) {
                 setWeavingWastage(parseFloat(modalAccrualWastage));
             }
@@ -1251,6 +1396,8 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                         serviceType: fabricProcessType,
                         productId: outHouseFabricProductId || undefined,
                         supplierId: outHouseFabricSupplierId || null,
+                        billRef: outHouseFabricBillRef || null,
+                        billDate: outHouseFabricBillDate || null,
                         quantity: q,
                         rate: r,
                         amount: amt,
@@ -1288,6 +1435,8 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                         mode: "ACCRUAL",
                         productId: ps.productId,
                         supplierId: ps.supplierId || null,
+                        billRef: ps.billRef || null,
+                        billDate: ps.billDate || null,
                         quantity: q,
                         rate: r,
                         amount: q * r,
@@ -1318,6 +1467,8 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
         }] : yarnInputs.map(y => ({
             productId: y.productId || null,
             supplierId: y.supplierId || null,
+            billRef: y.billRef || null,
+            billDate: y.billDate || null,
             isAccrual: y.mode === "ACCRUAL",
             quantity: parseFloat(y.quantity),
             costRate: parseFloat(y.costRate) || 0,
@@ -1848,16 +1999,52 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                                                                     />
                                                                 </div>
                                                                 <div className="space-y-1">
-                                                                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                                                                        Job Work Vendor / Supplier <span className="text-slate-400 font-normal">(Optional)</span>
-                                                                    </label>
+                                                                    <div className="flex items-center justify-between">
+                                                                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                                            Job Work Vendor / Credit Account <span className="text-slate-400 font-normal">(Optional)</span>
+                                                                        </label>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => openAddSupplierModal((id) => handleProcessingServiceChange(ps.id, "supplierId", id))}
+                                                                            className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5"
+                                                                        >
+                                                                            <Plus size={11} /> New Supplier
+                                                                        </button>
+                                                                    </div>
                                                                     <Combobox
-                                                                        options={supplierOptions}
+                                                                        options={partyAndAccountOptions}
                                                                         value={ps.supplierId || ""}
                                                                         onChange={(val) => handleProcessingServiceChange(ps.id, "supplierId", val)}
-                                                                        placeholder="Select Vendor / Supplier (Optional)..."
-                                                                        searchPlaceholder="Search supplier name or code..."
+                                                                        placeholder="Select Vendor / Account (Optional)..."
+                                                                        searchPlaceholder="Search vendor or COA account..."
                                                                         className="w-full text-sm font-semibold"
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Bill Ref & Date for Accrual */}
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-2.5 rounded-xl bg-amber-500/5 dark:bg-amber-950/20 border border-amber-500/15">
+                                                                <div>
+                                                                    <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                                                                        Supplier Bill / Invoice # <span className="text-slate-400 font-normal">(Optional Note)</span>
+                                                                    </label>
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder="e.g. DYE-INV-2041 or DC # 120"
+                                                                        value={ps.billRef || ""}
+                                                                        onChange={(e) => handleProcessingServiceChange(ps.id, "billRef", e.target.value)}
+                                                                        className="w-full px-3 py-1.5 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium outline-none focus:ring-1 focus:ring-amber-500"
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                                                                        Bill Date <span className="text-slate-400 font-normal">(Optional)</span>
+                                                                    </label>
+                                                                    <input
+                                                                        type="date"
+                                                                        value={ps.billDate || ""}
+                                                                        onChange={(e) => handleProcessingServiceChange(ps.id, "billDate", e.target.value)}
+                                                                        className="w-full px-3 py-1.5 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium outline-none focus:ring-1 focus:ring-amber-500"
                                                                     />
                                                                 </div>
                                                             </div>
@@ -2291,14 +2478,24 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                                                         />
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                                                            Weaver / Knitter Vendor
-                                                        </label>
+                                                        <div className="flex items-center justify-between">
+                                                            <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                                Weaver / Knitter Vendor / Account
+                                                            </label>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openAddSupplierModal((id) => setOutHouseFabricSupplierId(id))}
+                                                                className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5"
+                                                            >
+                                                                <Plus size={11} /> New Supplier
+                                                            </button>
+                                                        </div>
                                                         <Combobox
-                                                            options={supplierOptions}
+                                                            options={partyAndAccountOptions}
                                                             value={outHouseFabricSupplierId}
                                                             onChange={(val) => setOutHouseFabricSupplierId(val)}
                                                             placeholder="Select Vendor / Supplier..."
+                                                            searchPlaceholder="Search vendor or COA account..."
                                                             className="w-full text-sm font-semibold"
                                                         />
                                                     </div>
@@ -2325,6 +2522,33 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                                                             value={outHouseFabricRate}
                                                             onChange={(e) => setOutHouseFabricRate(e.target.value)}
                                                             className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-right outline-none focus:ring-1 focus:ring-amber-500 h-[44px]"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Weaver Bill Ref & Date */}
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-amber-500/15">
+                                                    <div>
+                                                        <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                                                            Weaver Bill / Challan Ref <span className="text-slate-400 font-normal">(Optional Note)</span>
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="e.g. WV-4401 or Challan # 90"
+                                                            value={outHouseFabricBillRef}
+                                                            onChange={(e) => setOutHouseFabricBillRef(e.target.value)}
+                                                            className="w-full px-3 py-1.5 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium outline-none focus:ring-1 focus:ring-amber-500"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                                                            Bill Date <span className="text-slate-400 font-normal">(Optional)</span>
+                                                        </label>
+                                                        <input
+                                                            type="date"
+                                                            value={outHouseFabricBillDate}
+                                                            onChange={(e) => setOutHouseFabricBillDate(e.target.value)}
+                                                            className="w-full px-3 py-1.5 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium outline-none focus:ring-1 focus:ring-amber-500"
                                                         />
                                                     </div>
                                                 </div>
@@ -2584,18 +2808,29 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                                                             </div>
                                                             <div className="col-span-12 sm:col-span-6 lg:col-span-2">
                                                                 <Combobox
-                                                                    options={supplierOptions}
+                                                                    options={partyAndAccountOptions}
                                                                     value={row.supplierId || ""}
                                                                     onChange={(val) => {
                                                                         const next = [...yarnInputs];
                                                                         next[idx].supplierId = val;
                                                                         setYarnInputs(next);
                                                                     }}
-                                                                    placeholder="Yarn Supplier (Optional)..."
-                                                                    searchPlaceholder="Search supplier or leave blank..."
+                                                                    placeholder="Yarn Supplier / Account..."
+                                                                    searchPlaceholder="Search vendor or COA account..."
                                                                     clearable={true}
                                                                     className="w-full text-sm font-semibold"
                                                                 />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => openAddSupplierModal((id) => {
+                                                                        const next = [...yarnInputs];
+                                                                        next[idx].supplierId = id;
+                                                                        setYarnInputs(next);
+                                                                    })}
+                                                                    className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 mt-1"
+                                                                >
+                                                                    <Plus size={10} /> New Supplier
+                                                                </button>
                                                             </div>
                                                         </>
                                                     )}
@@ -2656,6 +2891,40 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                                                         </button>
                                                     </div>
                                                 </div>
+
+                                                {/* Accrual Bill Ref & Date for Yarn */}
+                                                {isAccrual && (
+                                                    <div className="mt-2.5 pt-2 border-t border-dashed border-amber-200 dark:border-amber-800/60 flex flex-wrap items-center gap-3 text-xs">
+                                                        <span className="font-bold text-amber-700 dark:text-amber-400 text-[11px] uppercase tracking-wider">Accrual Bill Ref:</span>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-slate-400 text-[11px]">Bill / Inv #:</span>
+                                                            <input
+                                                                type="text"
+                                                                placeholder="e.g. YARN-901 or DC # 400"
+                                                                value={row.billRef || ""}
+                                                                onChange={(e) => {
+                                                                    const next = [...yarnInputs];
+                                                                    next[idx].billRef = e.target.value;
+                                                                    setYarnInputs(next);
+                                                                }}
+                                                                className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-medium w-40 outline-none focus:ring-1 focus:ring-amber-500"
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-slate-400 text-[11px]">Bill Date:</span>
+                                                            <input
+                                                                type="date"
+                                                                value={row.billDate || ""}
+                                                                onChange={(e) => {
+                                                                    const next = [...yarnInputs];
+                                                                    next[idx].billDate = e.target.value;
+                                                                    setYarnInputs(next);
+                                                                }}
+                                                                className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium w-36 outline-none focus:ring-1 focus:ring-amber-500"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })}
@@ -2973,16 +3242,24 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
-                                            <span>Yarn Supplier / Vendor</span>
-                                            <span className="text-xs text-slate-400 font-medium">Optional</span>
-                                        </label>
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                                Yarn Supplier / Credit Account
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => openAddSupplierModal((id) => setYarnModalAccrualSupplierId(id))}
+                                                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                                            >
+                                                <Plus size={12} /> Add Supplier
+                                            </button>
+                                        </div>
                                         <Combobox
-                                            options={supplierOptions}
+                                            options={partyAndAccountOptions}
                                             value={yarnModalAccrualSupplierId}
                                             onChange={(val) => setYarnModalAccrualSupplierId(val)}
-                                            placeholder="Select Supplier (Optional)..."
-                                            searchPlaceholder="Search supplier name or code..."
+                                            placeholder="Select Supplier or COA Account (Optional)..."
+                                            searchPlaceholder="Search vendor or COA account..."
                                             className="w-full text-sm font-semibold"
                                         />
                                     </div>
@@ -3023,6 +3300,34 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                                                 className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm sm:text-base font-mono font-bold text-right outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
                                             />
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Bill Ref & Date */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 p-4 rounded-xl bg-amber-500/5 dark:bg-amber-950/20 border border-amber-500/15">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                            Supplier Bill / Invoice # <span className="text-slate-400 font-normal">(Optional Note)</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={yarnModalAccrualBillRef}
+                                            onChange={(e) => setYarnModalAccrualBillRef(e.target.value)}
+                                            placeholder="e.g. YARN-INV-9901 or DC-880"
+                                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                            Bill Date <span className="text-slate-400 font-normal">(Optional)</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={yarnModalAccrualBillDate}
+                                            onChange={(e) => setYarnModalAccrualBillDate(e.target.value)}
+                                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -3327,16 +3632,24 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
-                                            <span>Job Work Vendor / Supplier</span>
-                                            <span className="text-xs text-slate-400 font-medium">Optional</span>
-                                        </label>
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                                Job Work Vendor / Credit Account
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => openAddSupplierModal((id) => setModalAccrualSupplierId(id))}
+                                                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                                            >
+                                                <Plus size={12} /> Add Supplier
+                                            </button>
+                                        </div>
                                         <Combobox
-                                            options={supplierOptions}
+                                            options={partyAndAccountOptions}
                                             value={modalAccrualSupplierId}
                                             onChange={(val) => setModalAccrualSupplierId(val)}
-                                            placeholder="Select Vendor / Supplier (Optional)..."
-                                            searchPlaceholder="Search supplier name or code..."
+                                            placeholder="Select Vendor or Account (Optional)..."
+                                            searchPlaceholder="Search vendor or COA account..."
                                             className="w-full text-sm font-semibold"
                                         />
                                     </div>
@@ -3476,6 +3789,34 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                                         <div className="px-3.5 py-2.5 bg-gradient-to-br from-amber-500/15 to-amber-600/5 dark:from-amber-950/40 dark:to-slate-900 rounded-xl border border-amber-500/30 font-mono text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 text-right h-[46px] flex items-center justify-end shadow-inner">
                                             Rs. {((parseFloat(modalAccrualQty) || 0) * (parseFloat(modalAccrualRate) || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Bill Ref & Date for Service Accrual */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 p-4 rounded-xl bg-amber-500/5 dark:bg-amber-950/20 border border-amber-500/15">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                            Supplier Bill / Invoice # <span className="text-slate-400 font-normal">(Optional Note)</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={modalAccrualBillRef}
+                                            onChange={(e) => setModalAccrualBillRef(e.target.value)}
+                                            placeholder="e.g. DYE-INV-2041 or Challan # 789"
+                                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                            Bill Date <span className="text-slate-400 font-normal">(Optional)</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={modalAccrualBillDate}
+                                            onChange={(e) => setModalAccrualBillDate(e.target.value)}
+                                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500 h-[44px]"
+                                        />
                                     </div>
                                 </div>
 
@@ -3711,6 +4052,126 @@ export default function ProductionExecutionWizard({ editId }: { editId?: string 
                                     </button>
                                 </>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* QUICK ADD SUPPLIER / PARTY MODAL */}
+            {isAddSupplierModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+                        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                                    <Users size={18} />
+                                </div>
+                                <div>
+                                    <h3 className="font-black text-base text-slate-900 dark:text-white">Quick Add Supplier / Vendor</h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Instantly create party record for accruals and purchase bills</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsAddSupplierModalOpen(false)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="p-5 sm:p-6 space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                    Party / Supplier Name <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    autoFocus
+                                    value={newSupplierName}
+                                    onChange={(e) => setNewSupplierName(e.target.value)}
+                                    placeholder="e.g. Al-Madina Spinning Mills, Fast Dyeing House"
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                        Supplier Code (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={newSupplierCode}
+                                        onChange={(e) => setNewSupplierCode(e.target.value)}
+                                        placeholder="Auto-generated if blank"
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                        Tax ID / NTN (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={newSupplierTaxId}
+                                        onChange={(e) => setNewSupplierTaxId(e.target.value)}
+                                        placeholder="e.g. 1234567-8"
+                                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                                    <span>Payable / Liability Account</span>
+                                    <span className="text-xs text-slate-400 font-normal">Defaults to 2100 Trade Creditors</span>
+                                </label>
+                                <select
+                                    value={newSupplierAccount}
+                                    onChange={(e) => setNewSupplierAccount(e.target.value)}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                >
+                                    <option value="">Default (Accounts Payable / Trade Creditors 2100)</option>
+                                    {accounts
+                                        .filter(a => a.type === 'LIABILITY' || a.code?.startsWith('2'))
+                                        .map(a => (
+                                            <option key={a.id} value={a.id}>
+                                                {a.code} - {a.name} ({a.type})
+                                            </option>
+                                        ))
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                            <button
+                                type="button"
+                                onClick={() => setIsAddSupplierModalOpen(false)}
+                                className="px-4 py-2 text-sm font-bold rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isSavingSupplier || !newSupplierName.trim()}
+                                onClick={handleSaveQuickSupplier}
+                                className="px-5 py-2 text-sm font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 transition-all shadow-md flex items-center gap-2"
+                            >
+                                {isSavingSupplier ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <span>Saving...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Check size={16} />
+                                        <span>Save & Select Supplier</span>
+                                    </>
+                                )}
+                            </button>
                         </div>
                     </div>
                 </div>

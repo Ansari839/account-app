@@ -380,6 +380,8 @@ export default function NewPurchaseInvoicePage() {
             ...formData,
             sourceId: id,
             supplierId: source.supplierId || formData.supplierId,
+            invoiceNo: (!formData.invoiceNo && source.billRef) ? source.billRef : formData.invoiceNo,
+            invoiceDate: (!formData.invoiceDate && source.billDate) ? source.billDate : formData.invoiceDate,
             items,
         });
     };
@@ -461,6 +463,8 @@ export default function NewPurchaseInvoicePage() {
 
         const newItems: any[] = [];
         let detectedSupplierId = formData.supplierId;
+        let detectedBillRef = formData.invoiceNo;
+        let detectedBillDate = formData.invoiceDate;
 
         for (const [accrualId, alloc] of selectedEntries) {
             const source = sources.find(s => s.id === accrualId);
@@ -468,6 +472,12 @@ export default function NewPurchaseInvoicePage() {
 
             if (!detectedSupplierId && source.supplierId) {
                 detectedSupplierId = source.supplierId;
+            }
+            if (!detectedBillRef && source.billRef) {
+                detectedBillRef = source.billRef;
+            }
+            if (!detectedBillDate && source.billDate) {
+                detectedBillDate = source.billDate;
             }
 
             newItems.push({
@@ -489,6 +499,8 @@ export default function NewPurchaseInvoicePage() {
         setFormData((prev: any) => ({
             ...prev,
             supplierId: detectedSupplierId || prev.supplierId,
+            invoiceNo: detectedBillRef || prev.invoiceNo,
+            invoiceDate: detectedBillDate || prev.invoiceDate,
             items: [...nonAccrualItems, ...newItems]
         }));
 
@@ -1930,7 +1942,13 @@ export default function NewPurchaseInvoicePage() {
                                                         </td>
                                                         {/* Supplier */}
                                                         <td className="p-3 text-slate-600 dark:text-slate-300 font-medium">
-                                                            {source.supplierName || 'Unassigned'}
+                                                            <div>{source.supplierName || 'Unassigned'}</div>
+                                                            {source.billRef && (
+                                                                <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                                                    <span>Bill Ref: {source.billRef}</span>
+                                                                    {source.billDate && <span>({source.billDate})</span>}
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         {/* Available Pending */}
                                                         <td className="p-3 text-right font-black text-slate-900 dark:text-white">

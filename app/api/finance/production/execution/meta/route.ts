@@ -571,9 +571,25 @@ export async function GET(req: NextRequest) {
             orderBy: { name: 'asc' }
         });
 
+        // Fetch Accounts from Chart of Accounts (posting accounts)
+        const accounts = await prisma.account.findMany({
+            where: {
+                companyId,
+                deletedAt: null,
+                isPosting: true
+            },
+            select: {
+                id: true,
+                code: true,
+                name: true,
+                type: true
+            },
+            orderBy: { code: 'asc' }
+        });
+
         return NextResponse.json({
             success: true,
-            data: { products, serviceProducts, warehouses, units, unconsumedServices, stockRates, availableLots, suppliers }
+            data: { products, serviceProducts, warehouses, units, unconsumedServices, stockRates, availableLots, suppliers, accounts }
         });
     } catch (e: any) {
         return NextResponse.json({ success: false, error: e.message }, { status: 500 });

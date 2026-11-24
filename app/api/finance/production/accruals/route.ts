@@ -199,10 +199,21 @@ export async function GET(req: NextRequest) {
                 const batchNoClean = rawBatchNo ? rawBatchNo.split(' [')[0] : (item.productionId ? `BATCH-${item.productionId.slice(-6).toUpperCase()}` : '');
                 const batchSpecs = rawBatchNo && rawBatchNo.includes('[') ? rawBatchNo.slice(rawBatchNo.indexOf('[')) : '';
 
+                let billRef = '';
+                let billDate = '';
+                if (item.remarks) {
+                    const refMatch = item.remarks.match(/\[BILL_REF:\s*([^\]]+)\]/i);
+                    if (refMatch) billRef = refMatch[1].trim();
+                    const dateMatch = item.remarks.match(/\[BILL_DATE:\s*([^\]]+)\]/i);
+                    if (dateMatch) billDate = dateMatch[1].trim();
+                }
+
                 return {
                     id: item.id,
                     accrualNo: item.accrualNo,
                     date: item.date,
+                    billRef,
+                    billDate,
                     productionId: item.productionId,
                     productionOutput: item.ProductionRecord?.Product?.name || "-",
                     outputProductName: item.ProductionRecord?.Product?.name || "",

@@ -108,7 +108,29 @@ export async function POST(req: NextRequest) {
                     let validSupplierId: string | null = null;
                     if (input.supplierId) {
                         const s = await tx.supplier.findFirst({ where: { id: input.supplierId, companyId } });
-                        if (s) validSupplierId = s.id;
+                        if (s) {
+                            validSupplierId = s.id;
+                        } else {
+                            const acc = await tx.account.findFirst({ where: { id: input.supplierId, companyId } });
+                            if (acc) {
+                                let linkedSup = await tx.supplier.findFirst({ where: { payableAccountId: acc.id, companyId } });
+                                if (!linkedSup) {
+                                    try {
+                                        const defCurr = await tx.currency.findFirst({ where: { companyId } }) || await tx.currency.findFirst();
+                                        linkedSup = await tx.supplier.create({
+                                            data: {
+                                                companyId,
+                                                code: `SUP-${acc.code}`,
+                                                name: acc.name,
+                                                payableAccountId: acc.id,
+                                                currencyCode: defCurr?.id || 'PKR'
+                                            }
+                                        });
+                                    } catch (e) {}
+                                }
+                                if (linkedSup) validSupplierId = linkedSup.id;
+                            }
+                        }
                     }
 
                     let validUnitId: string | null = null;
@@ -119,6 +141,8 @@ export async function POST(req: NextRequest) {
                     if (!validUnitId && yarnProd?.baseUnitId) {
                         validUnitId = yarnProd.baseUnitId;
                     }
+
+                    const billRefPrefix = input.billRef ? `[BILL_REF: ${input.billRef}]${input.billDate ? ` [BILL_DATE: ${input.billDate}]` : ''} ` : '';
 
                     accrualRecordsToCreate.push({
                         companyId,
@@ -135,8 +159,8 @@ export async function POST(req: NextRequest) {
                         billedQty: 0,
                         status: 'PENDING',
                         remarks: isExplicitYarn 
-                            ? (input.remarks || `Accrued Unbilled Yarn [${yarnName}] for Production Batch`)
-                            : `[UNSPECIFIED_YARN] ${input.remarks || 'Accrued Unbilled Raw Yarn (Physical lot will be selected upon stock or invoice settlement)'}`
+                            ? `${billRefPrefix}${input.remarks || `Accrued Unbilled Yarn [${yarnName}] for Production Batch`}`
+                            : `[UNSPECIFIED_YARN] ${billRefPrefix}${input.remarks || 'Accrued Unbilled Raw Yarn (Physical lot will be selected upon stock or invoice settlement)'}`
                     });
                 }
             }
@@ -217,7 +241,29 @@ export async function POST(req: NextRequest) {
                         let validSupplierId: string | null = null;
                         if (ov.supplierId) {
                             const s = await tx.supplier.findFirst({ where: { id: ov.supplierId, companyId } });
-                            if (s) validSupplierId = s.id;
+                            if (s) {
+                                validSupplierId = s.id;
+                            } else {
+                                const acc = await tx.account.findFirst({ where: { id: ov.supplierId, companyId } });
+                                if (acc) {
+                                    let linkedSup = await tx.supplier.findFirst({ where: { payableAccountId: acc.id, companyId } });
+                                    if (!linkedSup) {
+                                        try {
+                                            const defCurr = await tx.currency.findFirst({ where: { companyId } }) || await tx.currency.findFirst();
+                                            linkedSup = await tx.supplier.create({
+                                                data: {
+                                                    companyId,
+                                                    code: `SUP-${acc.code}`,
+                                                    name: acc.name,
+                                                    payableAccountId: acc.id,
+                                                    currencyCode: defCurr?.id || 'PKR'
+                                                }
+                                            });
+                                        } catch (e) {}
+                                    }
+                                    if (linkedSup) validSupplierId = linkedSup.id;
+                                }
+                            }
                         }
 
                         let validUnitId: string | null = null;
@@ -231,6 +277,8 @@ export async function POST(req: NextRequest) {
 
                         const determinedStage = ov.stage || (ov.serviceType === 'WEAVING' || ov.serviceType === 'KNITTING' ? 'GREY' : processStage);
                         const determinedServiceType = ov.serviceType || (prodName.toUpperCase().includes('DYE') ? 'DYEING' : prodName.toUpperCase().includes('PRINT') ? 'PRINTING' : (prodName.toUpperCase().includes('WEAV') ? 'WEAVING' : (prodName.toUpperCase().includes('KNIT') ? 'KNITTING' : 'DYEING')));
+
+                        const billRefPrefix = ov.billRef ? `[BILL_REF: ${ov.billRef}]${ov.billDate ? ` [BILL_DATE: ${ov.billDate}]` : ''} ` : '';
 
                         accrualRecordsToCreate.push({
                             companyId,
@@ -246,7 +294,7 @@ export async function POST(req: NextRequest) {
                             amount: ovAmount,
                             billedQty: 0,
                             status: 'PENDING',
-                            remarks: ov.remarks || `Accrued Service for Production Batch`
+                            remarks: `${billRefPrefix}${ov.remarks || `Accrued Service for Production Batch`}`
                         });
 
                         overheadRecords.push({
